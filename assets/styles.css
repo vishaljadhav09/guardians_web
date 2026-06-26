@@ -1,0 +1,175 @@
+/* ============================================================
+   GUARDIANS OF GAIA — SHARED DESIGN SYSTEM
+   Neo-brutalist cartoon-toy: chunky outlines, offset hard
+   shadows, cream paper-grain background, punchy accents.
+   ============================================================ */
+
+:root {
+  /* ---- palette ---- */
+  --gog-cream:     #F5EFE0;
+  --gog-cream-dk:  #EAE0C8;
+  --gog-ink:       #1A1A1A;
+  --gog-lime:      #C9F23D;
+  --gog-pink:      #FF3D8A;
+  --gog-tangerine: #FF8A3D;
+  --gog-cobalt:    #2E5EE8;
+  --gog-lavender:  #B6A6FF;
+  --gog-white:     #FFFDF8;
+
+  /* ---- type ---- */
+  --gog-font-head: "Baloo 2", system-ui, sans-serif;
+  --gog-font-body: "Quicksand", system-ui, sans-serif;
+  --gog-font-hand: "Caveat", cursive;
+
+  /* ---- brutalist shadow system ---- */
+  --gog-border-w: 4px;
+  --gog-shadow-sm: 4px 4px 0 var(--gog-ink);
+  --gog-shadow-md: 7px 7px 0 var(--gog-ink);
+  --gog-shadow-lg: 10px 10px 0 var(--gog-ink);
+}
+
+* { box-sizing: border-box; }
+
+html, body {
+  margin: 0;
+  padding: 0;
+  min-height: 100%;
+  background-color: var(--gog-cream);
+  font-family: var(--gog-font-body);
+  color: var(--gog-ink);
+  -webkit-tap-highlight-color: transparent;
+  overscroll-behavior: none;
+}
+
+/* Paper-grain texture: layered noise via repeating radial dots,
+   cheap (no image asset) and on-brand. */
+body {
+  background-image:
+    radial-gradient(circle at 1px 1px, rgba(26,26,26,0.05) 1px, transparent 0);
+  background-size: 14px 14px;
+}
+
+h1, h2, h3, h4 {
+  font-family: var(--gog-font-head);
+  margin: 0;
+  letter-spacing: 0.2px;
+}
+
+p, span, button, label, input { font-family: var(--gog-font-body); }
+
+.hand {
+  font-family: var(--gog-font-hand);
+  font-weight: 600;
+}
+
+button {
+  cursor: pointer;
+  font-family: var(--gog-font-head);
+}
+
+img, svg { display: block; max-width: 100%; }
+
+/* ---- reusable brutalist building blocks ---- */
+
+.brutal-box {
+  background: var(--gog-white);
+  border: var(--gog-border-w) solid var(--gog-ink);
+  box-shadow: var(--gog-shadow-md);
+  border-radius: 18px;
+}
+
+.brutal-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  background: var(--gog-lime);
+  color: var(--gog-ink);
+  border: var(--gog-border-w) solid var(--gog-ink);
+  box-shadow: var(--gog-shadow-sm);
+  border-radius: 14px;
+  padding: 12px 22px;
+  font-size: 1.05rem;
+  font-weight: 700;
+  transition: transform 0.08s ease, box-shadow 0.08s ease;
+  user-select: none;
+}
+.brutal-btn:hover { transform: translate(-2px, -2px); box-shadow: 6px 6px 0 var(--gog-ink); }
+.brutal-btn:active { transform: translate(2px, 2px); box-shadow: 2px 2px 0 var(--gog-ink); }
+.brutal-btn:focus-visible { outline: 3px solid var(--gog-cobalt); outline-offset: 2px; }
+
+.brutal-btn.pink      { background: var(--gog-pink); color: var(--gog-white); }
+.brutal-btn.tangerine { background: var(--gog-tangerine); }
+.brutal-btn.cobalt    { background: var(--gog-cobalt); color: var(--gog-white); }
+.brutal-btn.lavender  { background: var(--gog-lavender); }
+.brutal-btn.ghost     { background: var(--gog-white); }
+.brutal-btn:disabled  { opacity: 0.45; cursor: not-allowed; transform: none; box-shadow: var(--gog-shadow-sm); }
+
+.chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: var(--gog-white);
+  border: 3px solid var(--gog-ink);
+  border-radius: 999px;
+  padding: 6px 14px;
+  font-weight: 700;
+  font-size: 0.95rem;
+  box-shadow: 3px 3px 0 var(--gog-ink);
+}
+
+/* ---- overlay shell (used by ui.js on every stage) ---- */
+.gog-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(26, 18, 12, 0.55);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 200;
+  padding: 20px;
+}
+.gog-overlay-card {
+  max-width: 460px;
+  width: 100%;
+  padding: 28px 26px;
+  text-align: center;
+  position: relative;
+  animation: gogPop 0.25s cubic-bezier(.2,1.4,.4,1);
+}
+@keyframes gogPop {
+  from { transform: scale(0.85); opacity: 0; }
+  to   { transform: scale(1); opacity: 1; }
+}
+
+.gog-toast {
+  position: fixed;
+  bottom: 26px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: var(--gog-ink);
+  color: var(--gog-cream);
+  border-radius: 14px;
+  padding: 12px 20px;
+  font-weight: 700;
+  z-index: 300;
+  box-shadow: var(--gog-shadow-sm);
+  max-width: 90vw;
+  text-align: center;
+  animation: gogToastIn 0.2s ease;
+}
+@keyframes gogToastIn {
+  from { transform: translate(-50%, 14px); opacity: 0; }
+  to   { transform: translate(-50%, 0); opacity: 1; }
+}
+
+.visually-hidden {
+  position: absolute;
+  width: 1px; height: 1px;
+  overflow: hidden;
+  clip: rect(0,0,0,0);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation-duration: 0.001ms !important; transition-duration: 0.001ms !important; }
+}

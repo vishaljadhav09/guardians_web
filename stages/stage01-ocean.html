@@ -1,0 +1,496 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<title>Splash & the Plastic Tide — Guardians of Gaia</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@500;700;800&family=Quicksand:wght@500;600;700&family=Caveat:wght@600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../assets/styles.css" />
+<style>
+  .stage-wrap {
+    max-width: 980px;
+    margin: 0 auto;
+    padding: 14px 14px 40px;
+  }
+  .stage-hud {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    flex-wrap: wrap;
+    margin-bottom: 12px;
+  }
+  .stage-title { display: flex; align-items: center; gap: 10px; }
+  .stage-title h1 { font-size: 1.25rem; }
+  .stage-title small { display: block; font-family: var(--gog-font-hand); font-size: 1rem; color: #5b5347; }
+
+  .hud-mid {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    flex-wrap: wrap;
+  }
+  .meter {
+    display: flex; align-items: center; gap: 8px;
+    background: var(--gog-white);
+    border: 3px solid var(--gog-ink);
+    border-radius: 999px;
+    padding: 6px 14px 6px 10px;
+    box-shadow: var(--gog-shadow-sm);
+    min-width: 168px;
+  }
+  .meter .label { font-size: 0.78rem; font-weight: 700; white-space: nowrap; }
+  .meter-track {
+    flex: 1; height: 10px; border-radius: 999px;
+    background: #d8e8f5; border: 2px solid var(--gog-ink); overflow: hidden;
+  }
+  .meter-fill { height: 100%; background: linear-gradient(90deg,#3dd6c0,#2E5EE8); width: 0%; transition: width 0.25s ease; }
+  .timer-chip { font-weight: 700; min-width: 64px; text-align: center; }
+
+  .canvas-frame {
+    position: relative;
+    width: 100%;
+    aspect-ratio: 16 / 10;
+    overflow: hidden;
+  }
+  canvas {
+    width: 100%; height: 100%;
+    display: block;
+    touch-action: none;
+    cursor: crosshair;
+  }
+
+  .stage-controls {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-top: 12px;
+    gap: 10px;
+    flex-wrap: wrap;
+  }
+
+  .calm-badge {
+    font-size: 0.78rem; font-weight: 700;
+  }
+
+  @media (max-width: 560px) {
+    .stage-title h1 { font-size: 1.05rem; }
+    .meter { min-width: 140px; }
+  }
+</style>
+</head>
+<body>
+
+<div class="stage-wrap">
+
+  <div class="stage-hud">
+    <div class="stage-title">
+      <span style="font-size:1.8rem;">🐬</span>
+      <div>
+        <h1>Splash & the Plastic Tide</h1>
+        <small>Stage 1 · Ocean</small>
+      </div>
+    </div>
+    <div class="hud-mid">
+      <div class="meter" title="Reef Health">
+        <span class="label">REEF</span>
+        <div class="meter-track"><div class="meter-fill" id="reefFill"></div></div>
+        <span class="label" id="reefPct">0%</span>
+      </div>
+      <span class="chip timer-chip" id="timerChip">75s</span>
+      <span class="chip">🌱 <span id="sproutsChip">0</span></span>
+      <button class="icon-btn" id="muteBtn" title="Toggle sound" aria-label="Toggle sound">🔈</button>
+    </div>
+  </div>
+
+  <div class="brutal-box canvas-frame" id="canvasFrame">
+    <canvas id="gameCanvas" width="960" height="600"></canvas>
+  </div>
+
+  <div class="stage-controls">
+    <a class="brutal-btn ghost" href="../index.html">⬅ Back to Map</a>
+    <span class="hand calm-badge" id="calmBadge"></span>
+  </div>
+
+</div>
+
+<script src="../data/content.js"></script>
+<script src="../assets/save.js"></script>
+<script src="../assets/engine.js"></script>
+<script src="../assets/ui.js"></script>
+<script>
+(function () {
+  "use strict";
+
+  var STAGE_ID = "stage01";
+  var stageMeta = GOGContent.byId(STAGE_ID);
+  var save = GOGSave.load();
+
+  var canvas = document.getElementById("gameCanvas");
+  var ctx = canvas.getContext("2d");
+  var W = canvas.width, H = canvas.height;
+
+  var input = new GOGEngine.Input(canvas);
+  var particles = new GOGEngine.ParticleSystem(140);
+  var audio = new GOGEngine.Audio(!save.settings.sound);
+  var Collision = GOGEngine.Collision;
+
+  var calmMode = !!save.settings.calmMode;
+  document.getElementById("calmBadge").textContent = calmMode
+    ? "🧘 Calm mode is on — no timer pressure."
+    : "";
+
+  var muteBtn = document.getElementById("muteBtn");
+  function syncMuteBtn() { muteBtn.textContent = audio.muted ? "🔇" : "🔈"; }
+  syncMuteBtn();
+  muteBtn.addEventListener("click", function () {
+    var nowMuted = !audio.muted;
+    audio.setMuted(nowMuted);
+    save = GOGSave.patch({ settings: { sound: !nowMuted } });
+    syncMuteBtn();
+  });
+
+  /* ---------------- parallax background layers ---------------- */
+  var layers = [
+    { img: null, speed: 10, y: 0 },  // Sky/Deep background (slowest)
+    { img: null, speed: 20, y: 0 },  // Far elements
+    { img: null, speed: 40, y: 0 },  // Mid-ground
+    { img: null, speed: 60, y: 0 }  // Foreground elements (fastest)
+  ];
+  var scrollX = 0;
+
+  function loadImage(src) {
+    return new Promise(function (resolve) {
+      var img = new Image();
+      img.onload = function () { resolve(img); };
+      img.src = src;
+    });
+  }
+
+  // Pre-load background image assets asynchronously
+async function init() {
+  try {
+    var loaded = await Promise.all([
+      loadImage('assets/1.png'),
+      loadImage('assets/2.png'),
+      loadImage('assets/3.png'),
+      loadImage('assets/4.png')
+    ]);
+    layers.forEach(function (layer, i) { layer.img = loaded[i]; });
+  } catch (e) {
+    console.error("Background load failed:", e);
+  }
+}
+
+  /* ---------------- game state ---------------- */
+  var TOTAL_TIME = 75; // seconds
+  var state = {
+    running: true,
+    won: false,
+    reef: 0,            // 0..100
+    sproutsEarned: 0,
+    hits: 0,
+    timeLeft: TOTAL_TIME,
+    invulnUntil: 0,
+    elapsed: 0
+  };
+
+  var dolphin = { x: W * 0.5, y: H * 0.5, r: 30, facing: 1, wobble: 0 };
+
+  var items = []; // {type, x,y,vx,vy,r,glyph,dead}
+
+  function rand(min, max) { return min + Math.random() * (max - min); }
+
+  function spawnTrash() {
+    var glyphs = ["🍶", "🛍️", "🥤", "🧴"];
+    var fromLeft = Math.random() < 0.5;
+    items.push({
+      type: "trash",
+      x: fromLeft ? -30 : W + 30,
+      y: rand(60, H - 60),
+      vx: (fromLeft ? 1 : -1) * rand(40, 80),
+      vy: rand(-12, 12),
+      r: 22,
+      glyph: glyphs[Math.floor(Math.random() * glyphs.length)],
+      bob: Math.random() * Math.PI * 2
+    });
+  }
+
+  function spawnTurtle() {
+    var fromLeft = Math.random() < 0.5;
+    items.push({
+      type: "turtle",
+      x: fromLeft ? -40 : W + 40,
+      y: rand(80, H - 80),
+      vx: (fromLeft ? 1 : -1) * rand(30, 55),
+      vy: rand(-8, 8),
+      r: 26,
+      glyph: "🐢",
+      bob: Math.random() * Math.PI * 2
+    });
+  }
+
+  function spawnPuffer() {
+    var fromTop = Math.random() < 0.5;
+    items.push({
+      type: "pufferfish",
+      x: rand(60, W - 60),
+      y: fromTop ? -30 : H + 30,
+      vx: rand(-20, 20),
+      vy: (fromTop ? 1 : -1) * rand(45, 85),
+      r: 24,
+      glyph: "🐡",
+      bob: Math.random() * Math.PI * 2
+    });
+  }
+
+  var trashTimer = 0, turtleTimer = 3, pufferTimer = 4;
+
+  function updateSpawns(dt) {
+    trashTimer -= dt;
+    if (trashTimer <= 0) { spawnTrash(); trashTimer = rand(0.7, 1.1); }
+
+    turtleTimer -= dt;
+    if (turtleTimer <= 0) { spawnTurtle(); turtleTimer = rand(7, 10); }
+
+    var pufferInterval = calmMode ? rand(4.2, 6.5) : rand(2.6, 4.2);
+    pufferTimer -= dt;
+    if (pufferTimer <= 0 && state.elapsed > 4) { spawnPuffer(); pufferTimer = pufferInterval; }
+  }
+
+  function setReef(delta) {
+    state.reef = Collision.clamp(state.reef + delta, 0, 100);
+    document.getElementById("reefFill").style.width = state.reef + "%";
+    document.getElementById("reefPct").textContent = Math.round(state.reef) + "%";
+  }
+
+  function addSprouts(n) {
+    state.sproutsEarned += n;
+    document.getElementById("sproutsChip").textContent = state.sproutsEarned;
+  }
+
+  /* ---------------- update ---------------- */
+  function update(dt) {
+    if (!state.running) return;
+    state.elapsed += dt;
+
+    if (!calmMode) {
+      state.timeLeft = Math.max(0, state.timeLeft - dt);
+      document.getElementById("timerChip").textContent = Math.ceil(state.timeLeft) + "s";
+      if (state.timeLeft <= 0 && state.reef < 100) {
+        endLose();
+        return;
+      }
+    } else {
+      document.getElementById("timerChip").textContent = "∞";
+    }
+
+    // --- background scroll update ---
+    scrollX += 60 * dt;
+
+    // --- spawn timers ---
+    updateSpawns(dt);
+
+    // --- dolphin follows pointer, with keyboard fallback ---
+    if (input.pointer.active) {
+      dolphin.x = Collision.lerp(dolphin.x, input.pointer.x, 0.16);
+      dolphin.y = Collision.lerp(dolphin.y, input.pointer.y, 0.16);
+    }
+    var kb = 220 * dt;
+    if (input.isDown("ArrowLeft") || input.isDown("a")) dolphin.x -= kb;
+    if (input.isDown("ArrowRight") || input.isDown("d")) dolphin.x += kb;
+    if (input.isDown("ArrowUp") || input.isDown("w")) dolphin.y -= kb;
+    if (input.isDown("ArrowDown") || input.isDown("s")) dolphin.y += kb;
+    dolphin.x = Collision.clamp(dolphin.x, 30, W - 30);
+    dolphin.y = Collision.clamp(dolphin.y, 30, H - 30);
+    dolphin.wobble += dt * 6;
+
+    // --- items ---
+    for (var i = items.length - 1; i >= 0; i--) {
+      var it = items[i];
+      it.x += it.vx * dt;
+      it.y += it.vy * dt + Math.sin(state.elapsed * 2 + it.bob) * 6 * dt;
+
+      var offscreen = it.x < -80 || it.x > W + 80 || it.y < -80 || it.y > H + 80;
+      if (offscreen) { items.splice(i, 1); continue; }
+
+      var hit = Collision.circleHit(dolphin.x, dolphin.y, dolphin.r * 0.8, it.x, it.y, it.r * 0.8);
+      if (!hit) continue;
+
+      if (it.type === "trash") {
+        items.splice(i, 1);
+        setReef(7);
+        addSprouts(2);
+        particles.burst(it.x, it.y, { glyphs: ["✨", "💧"], count: 7, life: 550 });
+        audio.collect();
+        GOGUi.floatLabel(document.getElementById("canvasFrame"), canvasXToClient(it.x), canvasYToClient(it.y), "+7 Reef", "#2E5EE8");
+      } else if (it.type === "turtle") {
+        items.splice(i, 1);
+        setReef(16);
+        addSprouts(6);
+        particles.burst(it.x, it.y, { glyphs: ["💚", "✨"], count: 12, life: 700 });
+        audio.collect();
+        GOGUi.floatLabel(document.getElementById("canvasFrame"), canvasXToClient(it.x), canvasYToClient(it.y), "Turtle saved! +16", "#1aa05e");
+      } else if (it.type === "pufferfish") {
+        if (state.elapsed < state.invulnUntil) continue;
+        items.splice(i, 1);
+        setReef(-6);
+        state.hits++;
+        state.invulnUntil = state.elapsed + 0.7;
+        particles.burst(dolphin.x, dolphin.y, { glyphs: ["💥"], count: 6, life: 420, gravity: 60 });
+        audio.hazard();
+        shakeFrame();
+      }
+    }
+
+    particles.update(dt);
+
+    if (state.reef >= 100 && !state.won) {
+      endWin();
+    }
+  }
+
+  function canvasXToClient(x) {
+    var rect = canvas.getBoundingClientRect();
+    return (x / W) * rect.width;
+  }
+  function canvasYToClient(y) {
+    var rect = canvas.getBoundingClientRect();
+    return (y / H) * rect.height;
+  }
+
+  function shakeFrame() {
+    var frame = document.getElementById("canvasFrame");
+    frame.style.transform = "translate(2px, -2px)";
+    setTimeout(function () { frame.style.transform = "translate(-2px, 2px)"; }, 60);
+    setTimeout(function () { frame.style.transform = "translate(0,0)"; }, 120);
+  }
+
+  /* ---------------- draw ---------------- */
+  
+  function drawBackground() {
+    // Clear canvas before drawing layers
+  ctx.clearRect(0, 0, W, H);
+
+  // fallback fill so it never looks "dirty" even before images are ready
+  ctx.fillStyle = "#1a6fa3";
+  ctx.fillRect(0, 0, W, H);
+
+  layers.forEach(function (layer) {
+    if (!layer.img) return;
+    var img = layer.img;
+    var tileW = img.width;
+    var x = (scrollX * (layer.speed * 0.1)) % tileW;
+    if (x > 0) x -= tileW;          // normalize into (-tileW, 0]
+    for (var dx = x; dx < W; dx += tileW) {
+      ctx.drawImage(img, dx, layer.y, tileW, H);
+    }
+  });
+
+    // seabed coral strip — grows greener/brighter as reef heals
+    var coralH = 60;
+    ctx.save();
+    ctx.translate(0, H - coralH);
+    var reefT = state.reef / 100;
+    ctx.fillStyle = "rgba(20,40,30," + (0.25 + reefT * 0.3) + ")";
+    ctx.fillRect(0, 0, W, coralH);
+    ctx.font = "26px sans-serif";
+    for (var cx = 20; cx < W; cx += 70) {
+      var bloom = (cx / W) < reefT + 0.08;
+      ctx.globalAlpha = bloom ? 1 : 0.25;
+      ctx.fillText(bloom ? "🪸" : "🪨", cx, coralH - 14 + Math.sin(cx) * 4);
+    }
+    ctx.globalAlpha = 1;
+    ctx.restore();
+  }
+
+  function drawDolphin() {
+    ctx.save();
+    ctx.translate(dolphin.x, dolphin.y);
+    var bob = Math.sin(dolphin.wobble) * 4;
+    ctx.translate(0, bob);
+    ctx.font = "54px sans-serif";
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+    var flash = state.elapsed < state.invulnUntil && Math.floor(state.elapsed * 20) % 2 === 0;
+    ctx.globalAlpha = flash ? 0.4 : 1;
+    ctx.fillText("🐬", 0, 0);
+    ctx.globalAlpha = 1;
+    ctx.restore();
+  }
+
+  function drawItems() {
+    ctx.font = "40px sans-serif";
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+    items.forEach(function (it) {
+      ctx.fillText(it.glyph, it.x, it.y);
+    });
+  }
+
+  function draw() {
+    drawBackground();
+    drawItems();
+    drawDolphin();
+    particles.draw(ctx);
+  }
+
+  /* ---------------- end states ---------------- */
+  function computeStars() {
+    if (state.hits === 0 && state.timeLeft > TOTAL_TIME * 0.3) return 3;
+    if (state.hits <= 2) return 2;
+    return 1;
+  }
+
+  function endWin() {
+    state.won = true;
+    state.running = false;
+    audio.win();
+    var stars = computeStars();
+    var nextSave = GOGSave.recordStageClear(STAGE_ID, {
+      stars: stars,
+      sprouts: state.sproutsEarned,
+      smogDrop: 10
+    });
+    save = nextSave;
+
+    setTimeout(function () {
+      GOGUi.showOverlay({
+        accent: "var(--gog-white)",
+        title: "🪸 The reef is blooming!",
+        body: "Splash wakes up and a Seed of Life flies back to the Guardian Tree.",
+        stars: stars,
+        factText: stageMeta.fact,
+        primaryLabel: "Back to Map",
+        secondaryLabel: "Play Again",
+        onPrimary: function () { window.location.href = "../index.html"; },
+        onSecondary: function () { window.location.reload(); }
+      });
+    }, 500);
+  }
+
+  function endLose() {
+    state.running = false;
+    GOGUi.showOverlay({
+      title: "🌫️ The tide's still cloudy",
+      body: "The reef needs a little more love. Want to dive back in? Nothing is lost.",
+      primaryLabel: "Try Again",
+      secondaryLabel: "Back to Map",
+      onPrimary: function () { window.location.reload(); },
+      onSecondary: function () { window.location.href = "../index.html"; }
+    });
+  }
+
+  /* ---------------- loop ---------------- */
+  var loop = new GOGEngine.GameLoop({
+    update: update,
+    draw: draw
+  });
+  loop.start();
+
+   init();
+})();
+</script>
+</body>
+</html>

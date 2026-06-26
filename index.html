@@ -1,0 +1,512 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<title>Guardians of Gaia</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@500;700;800&family=Quicksand:wght@500;600;700&family=Caveat:wght@600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="assets/styles.css" />
+<style>
+  .wrap {
+    max-width: 980px;
+    margin: 0 auto;
+    padding: 18px 16px 60px;
+  }
+
+  /* ---------- top HUD ---------- */
+  .hud {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 14px;
+    flex-wrap: wrap;
+    margin-bottom: 18px;
+  }
+  .brand {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+  .brand .owl { font-size: 2.1rem; }
+  .brand h1 {
+    font-size: 1.5rem;
+    line-height: 1;
+  }
+  .brand small {
+    font-family: var(--gog-font-hand);
+    font-size: 1.05rem;
+    color: #5b5347;
+    display: block;
+    margin-top: 2px;
+  }
+  .hud-right { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+
+  .smog-meter {
+    display: flex; align-items: center; gap: 8px;
+    background: var(--gog-white);
+    border: 3px solid var(--gog-ink);
+    border-radius: 999px;
+    padding: 6px 14px 6px 10px;
+    box-shadow: var(--gog-shadow-sm);
+    min-width: 168px;
+  }
+  .smog-meter .label { font-size: 0.78rem; font-weight: 700; white-space: nowrap; }
+  .smog-track {
+    flex: 1;
+    height: 10px;
+    border-radius: 999px;
+    background: #e4ddc9;
+    border: 2px solid var(--gog-ink);
+    overflow: hidden;
+  }
+  .smog-fill {
+    height: 100%;
+    background: linear-gradient(90deg, var(--gog-lime), #6bd66b);
+    width: 0%;
+    transition: width 0.6s cubic-bezier(.3,1,.4,1);
+  }
+
+  .icon-btn {
+    width: 42px; height: 42px;
+    border-radius: 50%;
+    background: var(--gog-white);
+    border: 3px solid var(--gog-ink);
+    box-shadow: var(--gog-shadow-sm);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 1.15rem;
+  }
+  .icon-btn:hover { transform: translate(-1px,-1px); }
+
+  /* ---------- map stage ---------- */
+  .map-stage {
+    position: relative;
+    width: 100%;
+    aspect-ratio: 1 / 1;
+    max-height: 720px;
+    overflow: hidden;
+    background:
+      radial-gradient(circle at 50% 45%, #fffdf6 0%, var(--gog-cream-dk) 72%);
+  }
+  @media (min-width: 700px) {
+    .map-stage { aspect-ratio: 16 / 11; }
+  }
+
+  .biome-blob {
+    position: absolute;
+    border-radius: 48% 52% 55% 45% / 50% 45% 55% 50%;
+    filter: blur(0px);
+    opacity: 0.55;
+    transition: opacity 0.8s ease, filter 0.8s ease;
+  }
+  .biome-blob.cleared { opacity: 0.9; }
+
+  .tree-zone {
+    position: absolute;
+    left: 50%; top: 50%;
+    transform: translate(-50%, -50%);
+    width: 26%;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    z-index: 5;
+    pointer-events: none;
+  }
+  .tree-svg { width: 100%; height: auto; }
+  .leaf-bud { transition: transform 0.5s cubic-bezier(.3,1.6,.4,1), opacity 0.5s ease, fill 0.5s ease; transform-origin: center; }
+  .leaf-bud.bloom { fill: var(--gog-lime); }
+
+  .marker {
+    position: absolute;
+    transform: translate(-50%, -50%);
+    width: 78px;
+    height: 78px;
+    border-radius: 50%;
+    border: 4px solid var(--gog-ink);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 2rem;
+    cursor: pointer;
+    box-shadow: var(--gog-shadow-sm);
+    background: var(--gog-white);
+    transition: transform 0.15s ease, box-shadow 0.15s ease, filter 0.5s ease;
+    z-index: 6;
+  }
+  .marker:hover { transform: translate(-50%, -50%) translateY(-3px); box-shadow: 6px 6px 0 var(--gog-ink); }
+  .marker:active { transform: translate(-50%, -50%) translateY(1px); }
+
+  .marker.locked {
+    filter: grayscale(1) brightness(0.78);
+    cursor: not-allowed;
+  }
+  .marker.locked::after {
+    content: "\1F512";
+    position: absolute;
+    bottom: -6px; right: -6px;
+    font-size: 0.95rem;
+    background: var(--gog-white);
+    border: 2px solid var(--gog-ink);
+    border-radius: 50%;
+    width: 24px; height: 24px;
+    display: flex; align-items: center; justify-content: center;
+  }
+  .marker.cleared { animation: markerBob 2.6s ease-in-out infinite; }
+  .marker.unlocked-ready {
+    animation: markerPulse 1.6s ease-in-out infinite;
+  }
+  @keyframes markerBob {
+    0%, 100% { transform: translate(-50%, -50%) translateY(0); }
+    50% { transform: translate(-50%, -50%) translateY(-6px); }
+  }
+  @keyframes markerPulse {
+    0%, 100% { box-shadow: var(--gog-shadow-sm), 0 0 0 0 rgba(201,242,61,0.0); }
+    50% { box-shadow: 6px 6px 0 var(--gog-ink); }
+  }
+
+  .marker-label {
+    position: absolute;
+    top: 100%;
+    left: 50%;
+    transform: translateX(-50%);
+    margin-top: 4px;
+    font-size: 0.7rem;
+    font-weight: 700;
+    white-space: nowrap;
+    background: var(--gog-white);
+    border: 2px solid var(--gog-ink);
+    border-radius: 8px;
+    padding: 1px 7px;
+  }
+
+  /* fog */
+  .fog-layer {
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    z-index: 4;
+    transition: opacity 1s ease;
+  }
+  .fog-blob {
+    position: absolute;
+    border-radius: 50%;
+    background: radial-gradient(circle, rgba(150,150,150,0.85), rgba(150,150,150,0));
+    filter: blur(10px);
+    animation: fogDrift 18s ease-in-out infinite;
+  }
+@keyframes fogDrift {
+  0%   { transform: translate(-50%, -50%) scale(1); }
+  50%  { transform: translate(-47%, -52%) scale(1.08); } /* Shifting 3% right and 2% up from center */
+  100% { transform: translate(-50%, -50%) scale(1); }
+}
+
+  .bloom-flash {
+    position: absolute; inset: 0;
+    background: radial-gradient(circle, rgba(255,255,255,0.95), rgba(201,242,61,0));
+    opacity: 0;
+    z-index: 30;
+    pointer-events: none;
+  }
+  .bloom-flash.play {
+    animation: bloomSweep 1.4s ease-out forwards;
+  }
+  @keyframes bloomSweep {
+    0% { opacity: 0; transform: scale(0.2); }
+    35% { opacity: 1; }
+    100% { opacity: 0; transform: scale(2.4); }
+  }
+
+  /* bottom strip */
+  .bottom-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-top: 16px;
+    gap: 12px;
+    flex-wrap: wrap;
+  }
+  .legend {
+    display: flex; gap: 8px; flex-wrap: wrap;
+  }
+
+  .footer-note {
+    margin-top: 28px;
+    text-align: center;
+    font-family: var(--gog-font-hand);
+    font-size: 1.05rem;
+    color: #6b6354;
+  }
+
+  /* settings panel */
+  .settings-panel { text-align: left; }
+  .settings-row {
+    display: flex; align-items: center; justify-content: space-between;
+    gap: 14px;
+    padding: 10px 0;
+    border-bottom: 2px dashed #d8cfb8;
+  }
+  .settings-row:last-of-type { border-bottom: none; }
+  .switch {
+    position: relative; width: 50px; height: 28px; flex-shrink: 0;
+  }
+  .switch input { opacity: 0; width: 0; height: 0; }
+  .switch .track {
+    position: absolute; inset: 0; background: #d8cfb8;
+    border: 3px solid var(--gog-ink); border-radius: 999px; transition: background 0.2s;
+  }
+  .switch .knob {
+    position: absolute; top: 2px; left: 2px; width: 18px; height: 18px;
+    background: var(--gog-white); border: 2px solid var(--gog-ink); border-radius: 50%;
+    transition: transform 0.2s;
+  }
+  .switch input:checked + .track { background: var(--gog-lime); }
+  .switch input:checked + .track + .knob { transform: translateX(20px); }
+</style>
+</head>
+<body>
+
+<div class="wrap">
+
+  <div class="hud">
+    <div class="brand">
+      <span class="owl">🦉</span>
+      <div>
+        <h1>Guardians of Gaia</h1>
+        <small>Spika's world is waiting to bloom again</small>
+      </div>
+    </div>
+    <div class="hud-right">
+      <div class="chip" title="Seeds of Life returned to the Guardian Tree">🌱 <span id="seedsCount">0</span>/10</div>
+      <div class="smog-meter" title="The Smog level over the world">
+        <span class="label">SMOG</span>
+        <div class="smog-track"><div class="smog-fill" id="smogFill"></div></div>
+        <span class="label" id="smogPct">100%</span>
+      </div>
+      <button class="icon-btn" id="settingsBtn" title="Settings" aria-label="Settings">⚙️</button>
+    </div>
+  </div>
+
+  <div class="brutal-box map-stage" id="mapStage">
+    <!-- biome blobs (decorative regions), filled in by JS from content.js -->
+    <div id="biomeLayer"></div>
+
+    <!-- guardian tree -->
+    <div class="tree-zone">
+      <svg class="tree-svg" viewBox="0 0 200 220" id="treeSvg">
+        <ellipse cx="100" cy="206" rx="46" ry="9" fill="rgba(26,26,26,0.12)"></ellipse>
+        <rect x="92" y="120" width="16" height="86" rx="6" fill="#8a6a45" stroke="#1A1A1A" stroke-width="4"></rect>
+        <path d="M100 140 C 70 130, 55 110, 60 92" stroke="#8a6a45" stroke-width="10" fill="none" stroke-linecap="round"></path>
+        <path d="M100 130 C 130 118, 145 98, 142 80" stroke="#8a6a45" stroke-width="10" fill="none" stroke-linecap="round"></path>
+        <!-- 10 leaf buds, JS toggles .bloom as seeds grow -->
+        <circle class="leaf-bud" id="leaf0" cx="100" cy="95" r="20" fill="#cfc7ad" stroke="#1A1A1A" stroke-width="4" transform="scale(0.4)" style="transform-origin:100px 95px;"></circle>
+        <circle class="leaf-bud" id="leaf1" cx="62"  cy="86" r="17" fill="#cfc7ad" stroke="#1A1A1A" stroke-width="4" transform="scale(0.4)" style="transform-origin:62px 86px;"></circle>
+        <circle class="leaf-bud" id="leaf2" cx="140" cy="74" r="17" fill="#cfc7ad" stroke="#1A1A1A" stroke-width="4" transform="scale(0.4)" style="transform-origin:140px 74px;"></circle>
+        <circle class="leaf-bud" id="leaf3" cx="40"  cy="60" r="14" fill="#cfc7ad" stroke="#1A1A1A" stroke-width="4" transform="scale(0.4)" style="transform-origin:40px 60px;"></circle>
+        <circle class="leaf-bud" id="leaf4" cx="160" cy="50" r="14" fill="#cfc7ad" stroke="#1A1A1A" stroke-width="4" transform="scale(0.4)" style="transform-origin:160px 50px;"></circle>
+        <circle class="leaf-bud" id="leaf5" cx="100" cy="48" r="20" fill="#cfc7ad" stroke="#1A1A1A" stroke-width="4" transform="scale(0.4)" style="transform-origin:100px 48px;"></circle>
+        <circle class="leaf-bud" id="leaf6" cx="70"  cy="34" r="13" fill="#cfc7ad" stroke="#1A1A1A" stroke-width="4" transform="scale(0.4)" style="transform-origin:70px 34px;"></circle>
+        <circle class="leaf-bud" id="leaf7" cx="130" cy="30" r="13" fill="#cfc7ad" stroke="#1A1A1A" stroke-width="4" transform="scale(0.4)" style="transform-origin:130px 30px;"></circle>
+        <circle class="leaf-bud" id="leaf8" cx="100" cy="14" r="12" fill="#cfc7ad" stroke="#1A1A1A" stroke-width="4" transform="scale(0.4)" style="transform-origin:100px 14px;"></circle>
+        <circle class="leaf-bud" id="leaf9" cx="100" cy="95" r="34" fill="#cfc7ad" stroke="#1A1A1A" stroke-width="3" opacity="0.0" transform="scale(0.4)" style="transform-origin:100px 95px;"></circle>
+      </svg>
+    </div>
+
+    <!-- 10 stage markers -->
+    <div id="markerLayer"></div>
+
+    <!-- fog -->
+    <div class="fog-layer" id="fogLayer"></div>
+
+    <div class="bloom-flash" id="bloomFlash"></div>
+  </div>
+
+  <div class="bottom-row">
+    <div class="legend">
+      <span class="chip">🌱 <span id="sproutsCount">0</span> sprouts</span>
+      <span class="chip" id="clearedChip">0/10 awake</span>
+    </div>
+    <button class="brutal-btn ghost" id="resetBtn" title="Clear local save (for testing)">Reset world</button>
+  </div>
+
+  <div class="footer-note hand">Tap a glowing marker to fly there with Spika 🦉</div>
+</div>
+
+<script src="data/content.js"></script>
+<script src="assets/save.js"></script>
+<script src="assets/ui.js"></script>
+<script>
+(function () {
+  "use strict";
+
+  var STAGES = GOGContent.STAGES;
+  var save = GOGSave.load();
+
+  var biomeLayer = document.getElementById("biomeLayer");
+  var markerLayer = document.getElementById("markerLayer");
+  var fogLayer = document.getElementById("fogLayer");
+
+  // ---- build decorative biome blobs ----
+  STAGES.forEach(function (stage) {
+    var blob = document.createElement("div");
+    blob.className = "biome-blob";
+    blob.id = "blob-" + stage.id;
+    var size = stage.finale ? 30 : 24;
+    blob.style.width = size + "%";
+    blob.style.height = size + "%";
+    blob.style.left = stage.mapPos.x + "%";
+    blob.style.top = stage.mapPos.y + "%";
+    blob.style.transform = "translate(-50%, -50%)";
+    blob.style.background = stage.color;
+    biomeLayer.appendChild(blob);
+  });
+
+  // ---- build fog blobs (one per stage, fades when that stage clears) ----
+  STAGES.forEach(function (stage) {
+    console.log(stage,'stage')
+    if(!stage.playable){
+    var fog = document.createElement("div");
+    fog.className = "fog-blob";
+    fog.id = "fog-" + stage.id;
+    var size = stage.finale ? 36 : 28;
+    fog.style.width = size + "%";
+    fog.style.height = size + "%";
+    fog.style.left = stage.mapPos.x + "%";
+    fog.style.top = stage.mapPos.y + "%";
+    fog.style.transform = "translate(-50%, -50%)";
+    fog.style.animationDelay = (stage.order * 0.7) + "s";
+    fogLayer.appendChild(fog);
+    }
+
+  });
+
+  // ---- build markers ----
+  function buildMarkers() {
+    markerLayer.innerHTML = "";
+    STAGES.forEach(function (stage) {
+      var cleared = save.stagesCleared.indexOf(stage.id) !== -1;
+      var unlocked = GOGContent.isUnlocked(stage, save);
+
+      var el = document.createElement("button");
+      el.className = "marker";
+      el.style.left = stage.mapPos.x + "%";
+      el.style.top = stage.mapPos.y + "%";
+      el.setAttribute("aria-label", stage.guardian + " - " + stage.biome);
+
+      if (cleared) {
+        el.classList.add("cleared");
+        el.textContent = stage.icon;
+        el.style.background = stage.color;
+      } else if (unlocked && stage.playable) {
+        el.classList.add("unlocked-ready");
+        el.textContent = stage.icon;
+        el.style.filter = "grayscale(0.15)";
+      } else if (unlocked && !stage.playable) {
+        // unlocked by story order, but this build doesn't have the stage file yet
+        el.textContent = stage.icon;
+        el.style.filter = "grayscale(0.5)";
+        el.title = stage.guardian + " is stirring... (coming in a future build)";
+      } else {
+        el.classList.add("locked");
+        el.textContent = "💤";
+      }
+
+      var label = document.createElement("span");
+      label.className = "marker-label";
+      label.textContent = stage.order + ". " + stage.guardian;
+      el.appendChild(label);
+
+      el.addEventListener("click", function () { onMarkerClick(stage, cleared, unlocked); });
+      markerLayer.appendChild(el);
+    });
+  }
+
+  function onMarkerClick(stage, cleared, unlocked) {
+    if (!unlocked) {
+      GOGUi.showToast("🌫️ " + stage.guardian + " is still asleep behind the Smog. Clear earlier stages first!");
+      return;
+    }
+    if (!stage.playable) {
+      GOGUi.showToast("✨ " + stage.guardian + "'s stage is being built next \u2014 check back soon!");
+      return;
+    }
+    window.location.href = stage.href + (cleared ? "?replay=1" : "");
+  }
+
+  // ---- render HUD numbers, fog opacity, tree blooms ----
+  function renderState() {
+    document.getElementById("seedsCount").textContent = save.seeds;
+    document.getElementById("sproutsCount").textContent = save.sprouts;
+    document.getElementById("clearedChip").textContent = save.stagesCleared.length + "/10 awake";
+    document.getElementById("smogPct").textContent = save.smogLevel + "%";
+    document.getElementById("smogFill").style.width = (100 - save.smogLevel) + "%";
+
+    // per-stage fog + blob clearing
+    STAGES.forEach(function (stage) {
+      var cleared = save.stagesCleared.indexOf(stage.id) !== -1;
+      var fog = document.getElementById("fog-" + stage.id);
+      var blob = document.getElementById("blob-" + stage.id);
+      if (fog) fog.style.opacity = cleared ? "0" : "0.9";
+      if (blob) blob.classList.toggle("cleared", cleared);
+    });
+
+    // tree blooms: leaf i visible once seeds > i
+    for (var i = 0; i < 10; i++) {
+      var leaf = document.getElementById("leaf" + i);
+      if (!leaf) continue;
+      var shouldBloom = save.seeds > i;
+      leaf.classList.toggle("bloom", shouldBloom);
+      leaf.setAttribute("transform", shouldBloom ? "scale(1)" : "scale(0.4)");
+      leaf.style.opacity = shouldBloom ? "1" : "0.5";
+    }
+
+    if (save.smogLevel <= 0) {
+      var flash = document.getElementById("bloomFlash");
+      flash.classList.add("play");
+    }
+  }
+
+  buildMarkers();
+  renderState();
+
+  // ---- reset button (handy for testing / a fresh start) ----
+  document.getElementById("resetBtn").addEventListener("click", function () {
+    if (!confirm("Reset all progress? The Smog will cover the world again.")) return;
+    save = GOGSave.reset();
+    buildMarkers();
+    renderState();
+  });
+
+  // ---- settings panel ----
+  document.getElementById("settingsBtn").addEventListener("click", function () {
+    var overlay = GOGUi.showOverlay({
+      title: "⚙️ Settings",
+      body:
+        '<div class="settings-panel">' +
+        '<div class="settings-row"><span>🔊 Sound</span>' +
+        '<label class="switch"><input type="checkbox" id="soundToggle" ' + (save.settings.sound ? "checked" : "") + '><span class="track"></span><span class="knob"></span></label>' +
+        '</div>' +
+        '<div class="settings-row"><span>🧘 Calm mode <small style="display:block;font-weight:500;">No timers, gentler pace</small></span>' +
+        '<label class="switch"><input type="checkbox" id="calmToggle" ' + (save.settings.calmMode ? "checked" : "") + '><span class="track"></span><span class="knob"></span></label>' +
+        '</div>' +
+        '</div>',
+      primaryLabel: "Done",
+      onPrimary: function () { GOGUi.closeOverlay(overlay); }
+    });
+    overlay.querySelector("#soundToggle").addEventListener("change", function (e) {
+      save = GOGSave.patch({ settings: { sound: e.target.checked } });
+    });
+    overlay.querySelector("#calmToggle").addEventListener("change", function (e) {
+      save = GOGSave.patch({ settings: { calmMode: e.target.checked } });
+    });
+  });
+
+  // re-render if the player comes back from a stage (e.g. browser back button)
+  window.addEventListener("focus", function () {
+    save = GOGSave.load();
+    buildMarkers();
+    renderState();
+  });
+})();
+</script>
+</body>
+</html>
