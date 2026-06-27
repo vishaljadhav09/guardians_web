@@ -169,6 +169,7 @@
   }
 
   var dolphinImg = null;
+  var dolphinAttackImg = null;
 
   // Pre-load background image assets asynchronously
 async function init() {
@@ -178,10 +179,12 @@ async function init() {
       loadImage('assets/2.png'),
       loadImage('assets/3.png'),
       loadImage('assets/4.png'),
-      loadImage('assets/sprites/stage01/dolphine_swim.png')
+      loadImage('assets/sprites/stage01/dolphine_swim.png'),
+      loadImage('assets/sprites/stage01/dolphine_attack.png')
     ]);
     layers.forEach(function (layer, i) { layer.img = loaded[i]; });
     dolphinImg = loaded[4];
+    dolphinAttackImg = loaded[5];
   } catch (e) {
     console.error("Background load failed:", e);
   }
@@ -206,6 +209,7 @@ async function init() {
     r: 30,
     facing: 1,
     wobble: 0,
+    state: "swim", // "swim" or "attack"
     frameIndex: 0,
     elapsedFrameTime: 0,
     fps: 15
@@ -329,9 +333,19 @@ async function init() {
 
     // Advance animation frame index
     dolphin.elapsedFrameTime += dt;
-    while (dolphin.elapsedFrameTime >= 1 / dolphin.fps) {
-      dolphin.frameIndex = (dolphin.frameIndex + 1) % 20; // 20 frames total (5x4 sheet)
-      dolphin.elapsedFrameTime -= 1 / dolphin.fps;
+    var maxFrames = dolphin.state === "attack" ? 10 : 20;
+    var currentFps = dolphin.state === "attack" ? 32 : 15; // attack animation runs slightly faster for snappier feedback
+    while (dolphin.elapsedFrameTime >= 1 / currentFps) {
+      dolphin.frameIndex++;
+      if (dolphin.frameIndex >= maxFrames) {
+        if (dolphin.state === "attack") {
+          dolphin.state = "swim";
+          dolphin.frameIndex = 0;
+        } else {
+          dolphin.frameIndex = 0;
+        }
+      }
+      dolphin.elapsedFrameTime -= 1 / currentFps;
     }
 
     // --- items ---
@@ -353,6 +367,11 @@ async function init() {
         particles.burst(it.x, it.y, { glyphs: ["✨", "💧"], count: 7, life: 550 });
         audio.collect();
         GOGUi.floatLabel(document.getElementById("canvasFrame"), canvasXToClient(it.x), canvasYToClient(it.y), "+7 Reef", "#2E5EE8");
+        
+        // Trigger attack animation
+        dolphin.state = "attack";
+        dolphin.frameIndex = 0;
+        dolphin.elapsedFrameTime = 0;
       } else if (it.type === "turtle") {
         items.splice(i, 1);
         setReef(16);
@@ -437,9 +456,11 @@ async function init() {
     ctx.save();
     ctx.translate(dolphin.x, dolphin.y);
     
-    // Smooth, subtle bobbing effect (since sprite sheet already has some swim wave, keep it very gentle)
-    var bob = Math.sin(dolphin.wobble) * 2;
-    ctx.translate(0, bob);
+    // Smooth, subtle bobbing effect (only when swimming, not attacking)
+    if (dolphin.state === "swim") {
+      var bob = Math.sin(dolphin.wobble) * 2;
+      ctx.translate(0, bob);
+    }
     
     // Apply horizontal flip if facing left
     if (dolphin.facing === -1) {
@@ -449,7 +470,23 @@ async function init() {
     var flash = state.elapsed < state.invulnUntil && Math.floor(state.elapsed * 20) % 2 === 0;
     ctx.globalAlpha = flash ? 0.4 : 1;
 
-    if (dolphinImg) {
+    if (dolphin.state === "attack" && dolphinAttackImg) {
+      var col = dolphin.frameIndex % 5;
+      var row = Math.floor(dolphin.frameIndex / 5);
+      var sWidth = 256;
+      var sHeight = 256;
+      var sx = col * sWidth;
+      var sy = row * sHeight;
+      
+      var dWidth = 150;
+      var dHeight = 150;
+      
+      ctx.drawImage(
+        dolphinAttackImg,
+        sx, sy, sWidth, sHeight,
+        -dWidth / 2, -dHeight / 2, dWidth, dHeight
+      );
+    } else if (dolphinImg) {
       var col = dolphin.frameIndex % 5;
       var row = Math.floor(dolphin.frameIndex / 5);
       var sWidth = 128;
@@ -457,8 +494,6 @@ async function init() {
       var sx = col * sWidth;
       var sy = row * sHeight;
       
-      // Scaling: logical frame size on the canvas
-      // With canvas logical coordinate width 960 and height 600, a size of 100x100 looks great
       var dWidth = 150;
       var dHeight = 150;
       
