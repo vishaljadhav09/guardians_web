@@ -168,6 +168,8 @@
     });
   }
 
+  var dolphinImg = null;
+
   // Pre-load background image assets asynchronously
 async function init() {
   try {
@@ -175,9 +177,11 @@ async function init() {
       loadImage('assets/1.png'),
       loadImage('assets/2.png'),
       loadImage('assets/3.png'),
-      loadImage('assets/4.png')
+      loadImage('assets/4.png'),
+      loadImage('assets/sprites/stage01/dolphine_swim.png')
     ]);
     layers.forEach(function (layer, i) { layer.img = loaded[i]; });
+    dolphinImg = loaded[4];
   } catch (e) {
     console.error("Background load failed:", e);
   }
@@ -196,7 +200,16 @@ async function init() {
     elapsed: 0
   };
 
-  var dolphin = { x: W * 0.5, y: H * 0.5, r: 30, facing: 1, wobble: 0 };
+  var dolphin = {
+    x: W * 0.5,
+    y: H * 0.5,
+    r: 30,
+    facing: 1,
+    wobble: 0,
+    frameIndex: 0,
+    elapsedFrameTime: 0,
+    fps: 15
+  };
 
   var items = []; // {type, x,y,vx,vy,r,glyph,dead}
 
@@ -293,6 +306,7 @@ async function init() {
     updateSpawns(dt);
 
     // --- dolphin follows pointer, with keyboard fallback ---
+    var prevX = dolphin.x;
     if (input.pointer.active) {
       dolphin.x = Collision.lerp(dolphin.x, input.pointer.x, 0.16);
       dolphin.y = Collision.lerp(dolphin.y, input.pointer.y, 0.16);
@@ -305,6 +319,20 @@ async function init() {
     dolphin.x = Collision.clamp(dolphin.x, 30, W - 30);
     dolphin.y = Collision.clamp(dolphin.y, 30, H - 30);
     dolphin.wobble += dt * 6;
+
+    // Update facing direction based on movement
+    if (dolphin.x > prevX + 0.1) {
+      dolphin.facing = 1;
+    } else if (dolphin.x < prevX - 0.1) {
+      dolphin.facing = -1;
+    }
+
+    // Advance animation frame index
+    dolphin.elapsedFrameTime += dt;
+    while (dolphin.elapsedFrameTime >= 1 / dolphin.fps) {
+      dolphin.frameIndex = (dolphin.frameIndex + 1) % 20; // 20 frames total (5x4 sheet)
+      dolphin.elapsedFrameTime -= 1 / dolphin.fps;
+    }
 
     // --- items ---
     for (var i = items.length - 1; i >= 0; i--) {
@@ -408,14 +436,45 @@ async function init() {
   function drawDolphin() {
     ctx.save();
     ctx.translate(dolphin.x, dolphin.y);
-    var bob = Math.sin(dolphin.wobble) * 4;
+    
+    // Smooth, subtle bobbing effect (since sprite sheet already has some swim wave, keep it very gentle)
+    var bob = Math.sin(dolphin.wobble) * 2;
     ctx.translate(0, bob);
-    ctx.font = "54px sans-serif";
-    ctx.textAlign = "center";
-    ctx.textBaseline = "middle";
+    
+    // Apply horizontal flip if facing left
+    if (dolphin.facing === -1) {
+      ctx.scale(-1, 1);
+    }
+    
     var flash = state.elapsed < state.invulnUntil && Math.floor(state.elapsed * 20) % 2 === 0;
     ctx.globalAlpha = flash ? 0.4 : 1;
-    ctx.fillText("🐬", 0, 0);
+
+    if (dolphinImg) {
+      var col = dolphin.frameIndex % 5;
+      var row = Math.floor(dolphin.frameIndex / 5);
+      var sWidth = 128;
+      var sHeight = 128;
+      var sx = col * sWidth;
+      var sy = row * sHeight;
+      
+      // Scaling: logical frame size on the canvas
+      // With canvas logical coordinate width 960 and height 600, a size of 100x100 looks great
+      var dWidth = 150;
+      var dHeight = 150;
+      
+      ctx.drawImage(
+        dolphinImg,
+        sx, sy, sWidth, sHeight,
+        -dWidth / 2, -dHeight / 2, dWidth, dHeight
+      );
+    } else {
+      // Fallback if image not loaded yet
+      ctx.font = "54px sans-serif";
+      ctx.textAlign = "center";
+      ctx.textBaseline = "middle";
+      ctx.fillText("🐬", 0, 0);
+    }
+    
     ctx.globalAlpha = 1;
     ctx.restore();
   }
