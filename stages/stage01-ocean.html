@@ -289,6 +289,36 @@
   var input = new GOGEngine.Input(canvas);
   var particles = new GOGEngine.ParticleSystem(140);
   var audio = new GOGEngine.Audio(!save.settings.sound);
+
+  // Background music
+  var bgMusic = new Audio("assets/audio/stage01/underwater.mp3");
+  bgMusic.loop = true;
+  bgMusic.volume = 0.35;
+  bgMusic.preload = "auto";
+
+  function playBackgroundMusic() {
+    if (audio.muted) return;
+    bgMusic.volume = 0;
+    bgMusic.currentTime = 0;
+    bgMusic.play().then(function(){
+      var v=0;
+      var fade=setInterval(function(){
+        v+=0.02;
+        bgMusic.volume=Math.min(v,0.35);
+        if(v>=0.35) clearInterval(fade);
+      },120);
+    }).catch(()=>{});
+  }
+
+  function stopBackgroundMusic() {
+    bgMusic.pause();
+    bgMusic.currentTime = 0;
+  }
+
+  document.addEventListener("visibilitychange", function () {
+    if (document.hidden) bgMusic.pause();
+    else if (!audio.muted) bgMusic.play().catch(()=>{});
+  });
   var Collision = GOGEngine.Collision;
 
   var calmMode = !!save.settings.calmMode;
@@ -302,6 +332,7 @@
   muteBtn.addEventListener("click", function () {
     var nowMuted = !audio.muted;
     audio.setMuted(nowMuted);
+    if(nowMuted){bgMusic.pause();}else{bgMusic.play().catch(()=>{});}
     save = GOGSave.patch({ settings: { sound: !nowMuted } });
     syncMuteBtn();
 
@@ -373,6 +404,7 @@ async function init() {
     layers.forEach(function (layer, i) { layer.img = loaded[i]; });
     dolphinImg = loaded[4];
     dolphinAttackImg = loaded[5];
+    playBackgroundMusic();
   } catch (e) {
     console.error("Background load failed:", e);
   }
@@ -1328,6 +1360,7 @@ async function init() {
   }
 
   function endWin() {
+    stopBackgroundMusic();
     state.won = true;
     state.running = false;
     audio.win();
@@ -1366,6 +1399,7 @@ async function init() {
   }
 
   function endLose() {
+    stopBackgroundMusic();
     state.running = false;
     // NEW: a gentle desaturating fade signals "not quite yet" without feeling harsh
     document.getElementById("canvasFrame").classList.add("flash-lose");
