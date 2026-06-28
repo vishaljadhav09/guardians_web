@@ -12,6 +12,7 @@
     max-width: 980px;
     margin: 0 auto;
     padding: 14px 14px 40px;
+    animation: pageFadeIn 0.5s ease both;
   }
   .stage-hud {
     display: flex;
@@ -39,14 +40,61 @@
     padding: 6px 14px 6px 10px;
     box-shadow: var(--gog-shadow-sm);
     min-width: 168px;
+    transition: transform 0.15s ease, background-color 0.15s ease, border-color 0.15s ease;
   }
   .meter .label { font-size: 0.78rem; font-weight: 700; white-space: nowrap; }
   .meter-track {
     flex: 1; height: 10px; border-radius: 999px;
     background: #d8e8f5; border: 2px solid var(--gog-ink); overflow: hidden;
   }
-  .meter-fill { height: 100%; background: linear-gradient(90deg,#3dd6c0,#2E5EE8); width: 0%; transition: width 0.25s ease; }
+  .meter-fill { height: 100%; background: linear-gradient(90deg,#3dd6c0,#2E5EE8); width: 0%; transition: width 0.35s cubic-bezier(0.175, 0.885, 0.32, 1.275); }
   .timer-chip { font-weight: 700; min-width: 64px; text-align: center; }
+
+  /* Smooth HUD Punch Animations */
+  .meter-pulse-up {
+    animation: meterGlowUp 0.4s ease-out forwards;
+  }
+  .meter-pulse-down {
+    animation: meterGlowDown 0.4s ease-out forwards;
+  }
+
+  @keyframes meterGlowUp {
+    0% {
+      transform: scale(1);
+      box-shadow: 0 0 0px rgba(61, 214, 192, 0);
+      border-color: var(--gog-ink);
+    }
+    30% {
+      transform: scale(1.15);
+      box-shadow: 0 0 25px rgba(61, 214, 192, 0.8);
+      border-color: #3dd6c0;
+      background-color: #e6fbf7;
+    }
+    100% {
+      transform: scale(1);
+      box-shadow: 0 0 0px rgba(61, 214, 192, 0);
+      border-color: var(--gog-ink);
+    }
+  }
+
+  @keyframes meterGlowDown {
+    0% {
+      transform: scale(1);
+      box-shadow: 0 0 0px rgba(232, 46, 93, 0);
+      border-color: var(--gog-ink);
+    }
+    30% {
+      transform: scale(0.9);
+      box-shadow: 0 0 25px rgba(232, 46, 93, 0.8);
+      border-color: #e82e5d;
+      background-color: #ffeef2;
+    }
+    100% {
+      transform: scale(1);
+      box-shadow: 0 0 0px rgba(232, 46, 93, 0);
+      border-color: var(--gog-ink);
+    }
+  }
 
   .canvas-frame {
     position: relative;
@@ -72,11 +120,104 @@
 
   .calm-badge {
     font-size: 0.78rem; font-weight: 700;
+    animation: fadeInUp 0.6s ease both;
   }
 
   @media (max-width: 560px) {
     .stage-title h1 { font-size: 1.05rem; }
     .meter { min-width: 140px; }
+  }
+
+  /* =========================================================
+     NEW: kid-friendly delight animations
+     ========================================================= */
+
+  /* Whole page gently settles in on load */
+  @keyframes pageFadeIn {
+    from { opacity: 0; transform: translateY(10px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+
+  /* Title dolphin icon bobs & wiggles forever */
+  .emoji-float {
+    display: inline-block;
+    animation: emojiFloat 2.6s ease-in-out infinite;
+  }
+  @keyframes emojiFloat {
+    0%, 100% { transform: translateY(0) rotate(-4deg); }
+    50%      { transform: translateY(-5px) rotate(5deg); }
+  }
+
+  /* Calm-mode badge slides up into place */
+  @keyframes fadeInUp {
+    from { opacity: 0; transform: translateY(6px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+
+  /* Sprout chip "pops" every time it goes up */
+  .chip-pop { animation: chipPop 0.45s ease-out; }
+  @keyframes chipPop {
+    0%   { transform: scale(1) rotate(0deg); }
+    35%  { transform: scale(1.35) rotate(-8deg); }
+    65%  { transform: scale(0.95) rotate(5deg); }
+    100% { transform: scale(1) rotate(0deg); }
+  }
+
+  /* Timer starts pulsing red once time is running low */
+  .timer-chip.timer-urgent {
+    animation: timerPulse 0.8s ease-in-out infinite;
+    color: #e82e5d;
+  }
+  @keyframes timerPulse {
+    0%, 100% { transform: scale(1);     box-shadow: 0 0 0 rgba(232,46,93,0); }
+    50%      { transform: scale(1.14);  box-shadow: 0 0 16px rgba(232,46,93,0.65); }
+  }
+
+  /* Mute button gives a happy little bounce on click */
+  .btn-bounce { animation: btnBounce 0.4s ease; }
+  @keyframes btnBounce {
+    0%   { transform: scale(1) rotate(0deg); }
+    40%  { transform: scale(1.3) rotate(-12deg); }
+    100% { transform: scale(1) rotate(0deg); }
+  }
+
+  /* Canvas frame reacts to winning / losing the stage */
+  .canvas-frame.flash-win { animation: winFlash 1.5s ease; }
+  @keyframes winFlash {
+    0%   { filter: brightness(1) saturate(1); }
+    25%  { filter: brightness(1.5) saturate(1.7); }
+    100% { filter: brightness(1) saturate(1); }
+  }
+  .canvas-frame.flash-lose { animation: loseFade 0.9s ease forwards; }
+  @keyframes loseFade {
+    from { filter: grayscale(0) brightness(1); }
+    to   { filter: grayscale(0.45) brightness(0.75); }
+  }
+
+  /* Combo streak chip — hidden until the player chains 2+ pickups */
+  .combo-chip {
+    display: none;
+    font-weight: 700;
+    color: #2E5EE8;
+  }
+  .combo-chip.combo-visible { display: inline-flex; align-items: center; gap: 4px; }
+  .combo-chip.combo-tier-2 { color: #e8830e; }
+  .combo-chip.combo-tier-3 { color: #e82e5d; }
+
+  /* Boost button shows a faded, disabled look while on cooldown */
+  #boostBtn.boost-cooldown {
+    opacity: 0.5;
+    font-size: 0.75rem;
+    font-weight: 700;
+    pointer-events: none;
+  }
+
+  /* Camera "punch" for big positive moments (turtle save, milestones, combos, near-miss) */
+  .canvas-frame.zoom-punch { animation: zoomPunch 0.35s ease; }
+  @keyframes zoomPunch {
+    0%   { transform: scale(1); }
+    35%  { transform: scale(1.045); }
+    100% { transform: scale(1); }
   }
 </style>
 </head>
@@ -86,7 +227,7 @@
 
   <div class="stage-hud">
     <div class="stage-title">
-      <span style="font-size:1.8rem;">🐬</span>
+      <span style="font-size:1.8rem;" class="emoji-float">🐬</span>
       <div>
         <h1>Splash & the Plastic Tide</h1>
         <small>Stage 1 · Ocean</small>
@@ -100,6 +241,8 @@
       </div>
       <span class="chip timer-chip" id="timerChip">75s</span>
       <span class="chip">🌱 <span id="sproutsChip">0</span></span>
+      <span class="chip combo-chip" id="comboChip">🔥 x0</span>
+      <button class="icon-btn" id="boostBtn" title="Echo Boost — dash & break through trash" aria-label="Echo Boost">💨</button>
       <button class="icon-btn" id="muteBtn" title="Toggle sound" aria-label="Toggle sound">🔈</button>
     </div>
   </div>
@@ -131,6 +274,18 @@
   var ctx = canvas.getContext("2d");
   var W = canvas.width, H = canvas.height;
 
+  // PERF: these gradients are created ONCE and reused every frame instead of
+  // being rebuilt 60 times a second. Re-creating gradients per-frame was the
+  // single biggest cause of the intermittent stutter — it forces the browser
+  // to allocate + garbage-collect a new object on every draw call.
+  var pollutionHazeGradient = ctx.createLinearGradient(0, 0, 0, H);
+  pollutionHazeGradient.addColorStop(0, "rgba(70,60,40,0.6)");
+  pollutionHazeGradient.addColorStop(1, "rgba(40,50,40,0.2)");
+
+  var causticRayGradient = ctx.createLinearGradient(0, 0, 70, H);
+  causticRayGradient.addColorStop(0, "rgba(255,255,255,0.4)");
+  causticRayGradient.addColorStop(1, "rgba(255,255,255,0)");
+
   var input = new GOGEngine.Input(canvas);
   var particles = new GOGEngine.ParticleSystem(140);
   var audio = new GOGEngine.Audio(!save.settings.sound);
@@ -149,6 +304,39 @@
     audio.setMuted(nowMuted);
     save = GOGSave.patch({ settings: { sound: !nowMuted } });
     syncMuteBtn();
+
+    // happy little bounce on the button itself
+    muteBtn.classList.remove("btn-bounce");
+    void muteBtn.offsetWidth;
+    muteBtn.classList.add("btn-bounce");
+  });
+
+  // Tap/click ripples — pure delight, doesn't affect gameplay input at all
+  var ripples = [];
+  canvas.addEventListener("pointerdown", function (e) {
+    var rect = canvas.getBoundingClientRect();
+    var px = (e.clientX - rect.left) / rect.width * W;
+    var py = (e.clientY - rect.top) / rect.height * H;
+    if (ripples.length < 12) {
+      ripples.push({ x: px, y: py, radius: 4, alpha: 0.55 });
+    }
+  });
+
+  // NEW: Echo Boost — a short dash with invincibility, on a cooldown.
+  // Implemented as a HUD button (rather than a key/hold gesture) so it works
+  // identically for mouse, touch, and keyboard players.
+  var BOOST_DURATION = 1.1;
+  var BOOST_COOLDOWN = 5;
+  var boostBtn = document.getElementById("boostBtn");
+  boostBtn.addEventListener("click", function () {
+    if (!state.running || state.elapsed < state.boostReadyAt) return;
+    state.boostUntil = state.elapsed + BOOST_DURATION;
+    state.boostReadyAt = state.elapsed + BOOST_COOLDOWN;
+    state.invulnUntil = Math.max(state.invulnUntil, state.boostUntil);
+    audio.collect();
+    particles.burst(dolphin.x, dolphin.y, { glyphs: ["💨", "✨"], count: 10, life: 500 });
+    triggerZoomPunch();
+    boostBtn.classList.add("boost-cooldown");
   });
 
   /* ---------------- parallax background layers ---------------- */
@@ -156,7 +344,7 @@
     { img: null, speed: 10, y: 0 },  // Sky/Deep background (slowest)
     { img: null, speed: 20, y: 0 },  // Far elements
     { img: null, speed: 40, y: 0 },  // Mid-ground
-    { img: null, speed: 60, y: 0 }  // Foreground elements (fastest)
+    { img: null, speed: 60, y: 0 }   // Foreground elements (fastest)
   ];
   var scrollX = 0;
 
@@ -200,7 +388,13 @@ async function init() {
     hits: 0,
     timeLeft: TOTAL_TIME,
     invulnUntil: 0,
-    elapsed: 0
+    elapsed: 0,
+    hitFlashUntil: 0,   // NEW: red vignette timer when hit by a pufferfish
+    introPlayed: false, // NEW: plays a one-time splash burst when the stage opens
+    combo: 0,           // NEW: consecutive pickups without getting hit
+    boostUntil: 0,      // NEW: Echo Boost dash end time
+    boostReadyAt: 0,    // NEW: when the boost cools down and becomes available again
+    slowMoUntil: 0       // NEW: brief bullet-time window on a perfect dodge
   };
 
   var dolphin = {
@@ -216,6 +410,49 @@ async function init() {
   };
 
   var items = []; // {type, x,y,vx,vy,r,glyph,dead}
+  var shockwaves = []; // {x, y, radius, maxRadius, alpha, color}
+
+  // NEW: ambient + celebratory FX systems
+  var bubbles = [];       // rising background bubbles for underwater atmosphere
+  var trail = [];         // little bubbles left behind the dolphin as it swims
+  var confetti = [];      // confetti rectangles for milestones / win
+  var milestonesHit = { 25: false, 50: false, 75: false };
+  var trailTimer = 0;
+  var idleTimer = 0;      // NEW: how long the dolphin has been roughly still
+
+  // NEW: movement & dash FX
+  var speedLines = [];
+  var speedLineTimer = 0;
+
+  // NEW: ambient kelp + background fish — set up once, animated procedurally (cheap: no images)
+  var kelpStalks = [];
+  (function initKelp() {
+    var count = 7;
+    for (var k = 0; k < count; k++) {
+      kelpStalks.push({
+        baseX: (k + 0.5) * (W / count) + rand(-20, 20),
+        height: rand(70, 130),
+        phase: rand(0, Math.PI * 2),
+        speed: rand(0.6, 1.1),
+        hue: rand(150, 170)
+      });
+    }
+  })();
+
+  var bgFish = [];
+  (function initBgFish() {
+    var glyphs = ["🐟", "🐠"];
+    for (var f = 0; f < 5; f++) {
+      bgFish.push({
+        x: rand(0, W),
+        y: rand(40, H - 100),
+        dir: Math.random() < 0.5 ? 1 : -1,
+        speed: rand(12, 26),
+        glyph: glyphs[Math.floor(Math.random() * glyphs.length)],
+        bob: rand(0, Math.PI * 2)
+      });
+    }
+  })();
 
   function rand(min, max) { return min + Math.random() * (max - min); }
 
@@ -230,7 +467,8 @@ async function init() {
       vy: rand(-12, 12),
       r: 22,
       glyph: glyphs[Math.floor(Math.random() * glyphs.length)],
-      bob: Math.random() * Math.PI * 2
+      bob: Math.random() * Math.PI * 2,
+      age: 0
     });
   }
 
@@ -244,7 +482,8 @@ async function init() {
       vy: rand(-8, 8),
       r: 26,
       glyph: "🐢",
-      bob: Math.random() * Math.PI * 2
+      bob: Math.random() * Math.PI * 2,
+      age: 0
     });
   }
 
@@ -258,11 +497,324 @@ async function init() {
       vy: (fromTop ? 1 : -1) * rand(45, 85),
       r: 24,
       glyph: "🐡",
-      bob: Math.random() * Math.PI * 2
+      bob: Math.random() * Math.PI * 2,
+      age: 0,
+      armed: false,        // NEW: telegraphed for 0.5s before it can actually hurt the dolphin
+      nearMissFired: false // NEW: ensures the "Phew!" near-miss only fires once per puffer
     });
   }
 
-  var trashTimer = 0, turtleTimer = 3, pufferTimer = 4;
+  // NEW: a rare, extra-valuable pickup — sells the "ocean has treasures too" feeling
+  function spawnPearl() {
+    var fromLeft = Math.random() < 0.5;
+    items.push({
+      type: "pearl",
+      x: fromLeft ? -40 : W + 40,
+      y: rand(100, H - 100),
+      vx: (fromLeft ? 1 : -1) * rand(25, 45),
+      vy: rand(-6, 6),
+      r: 24,
+      glyph: "🦪",
+      bob: Math.random() * Math.PI * 2,
+      age: 0
+    });
+  }
+
+  /* ---------------- NEW: ambient bubbles ---------------- */
+  function spawnBubble() {
+    bubbles.push({
+      x: rand(0, W),
+      y: H + rand(0, 40),
+      r: rand(3, 9),
+      speed: rand(30, 70),
+      wobbleSpeed: rand(1, 3),
+      wobbleAmt: rand(6, 18),
+      phase: Math.random() * Math.PI * 2,
+      alpha: rand(0.22, 0.55)
+    });
+  }
+  var bubbleTimer = 0;
+  function updateBubbles(dt) {
+    bubbleTimer -= dt;
+    if (bubbleTimer <= 0 && bubbles.length < 40) {
+      spawnBubble();
+      bubbleTimer = rand(0.2, 0.45);
+    }
+    for (var i = bubbles.length - 1; i >= 0; i--) {
+      var b = bubbles[i];
+      b.y -= b.speed * dt;
+      b.phase += b.wobbleSpeed * dt;
+      if (b.y < -20) bubbles.splice(i, 1);
+    }
+  }
+  function drawBubbles() {
+    // PERF: one fill per bubble, no stroke — visually almost identical, half the canvas calls
+    ctx.save();
+    bubbles.forEach(function (b) {
+      var bx = b.x + Math.sin(b.phase) * b.wobbleAmt;
+      ctx.globalAlpha = b.alpha;
+      ctx.beginPath();
+      ctx.arc(bx, b.y, b.r, 0, Math.PI * 2);
+      ctx.fillStyle = "rgba(255,255,255,0.6)";
+      ctx.fill();
+    });
+    ctx.globalAlpha = 1;
+    ctx.restore();
+  }
+
+  /* ---------------- NEW: drifting underwater light rays ---------------- */
+  function drawCaustics(t) {
+    ctx.save();
+    ctx.globalAlpha = 0.10 + 0.04 * Math.sin(t * 0.6);
+    var rayCount = 3; // PERF: fewer rays — still reads as drifting light, far cheaper
+    for (var i = 0; i < rayCount; i++) {
+      var rx = ((i / rayCount) * W + t * 18) % (W + 200) - 100;
+      ctx.save();
+      ctx.translate(rx, 0);
+      ctx.transform(1, 0, 0.15, 1, 0, 0);
+      ctx.fillStyle = causticRayGradient; // PERF: reused, not recreated
+      ctx.fillRect(0, 0, 70, H);
+      ctx.restore();
+    }
+    ctx.restore();
+  }
+
+  /* ---------------- NEW: pollution haze that clears as the reef heals ---------------- */
+  function drawPollutionHaze() {
+    var haze = Collision.clamp(1 - state.reef / 100, 0, 1);
+    if (haze <= 0.02) return;
+    ctx.save();
+    ctx.globalAlpha = haze * 0.35;
+    ctx.fillStyle = pollutionHazeGradient; // PERF: reused, not recreated
+    ctx.fillRect(0, 0, W, H);
+    ctx.restore();
+  }
+
+  /* ---------------- NEW: little bubble trail behind the swimming dolphin ---------------- */
+  function emitTrail(x, y, speedT) {
+    speedT = speedT || 0;
+    trail.push({ x: x + rand(-4, 4), y: y + rand(-4, 4), r: rand(3, 6) + speedT * 3, alpha: 0.5 + speedT * 0.2, life: 0.5 });
+  }
+  function updateTrail(dt) {
+    for (var i = trail.length - 1; i >= 0; i--) {
+      var t = trail[i];
+      t.life -= dt;
+      t.alpha = Math.max(0, t.life / 0.5) * 0.5;
+      t.y -= 12 * dt;
+      if (t.life <= 0) trail.splice(i, 1);
+    }
+  }
+  function drawTrail() {
+    ctx.save();
+    trail.forEach(function (t) {
+      ctx.globalAlpha = t.alpha;
+      ctx.beginPath();
+      ctx.arc(t.x, t.y, t.r, 0, Math.PI * 2);
+      ctx.fillStyle = "#bfe9ff";
+      ctx.fill();
+    });
+    ctx.globalAlpha = 1;
+    ctx.restore();
+  }
+
+  /* ---------------- NEW: confetti for milestones + the win screen ---------------- */
+  function spawnConfettiBurst(count, originX, originY) {
+    if (confetti.length > 130) return; // PERF: lower cap, plenty for a satisfying burst
+    var colors = ["#3dd6c0", "#2E5EE8", "#ffd166", "#e82e5d", "#9b5de5"];
+    for (var i = 0; i < count; i++) {
+      confetti.push({
+        x: originX !== undefined ? originX : rand(0, W),
+        y: originY !== undefined ? originY : -20,
+        vx: rand(-60, 60),
+        vy: rand(40, 140),
+        size: rand(5, 10),
+        rot: rand(0, Math.PI * 2),
+        vr: rand(-4, 4),
+        color: colors[Math.floor(Math.random() * colors.length)],
+        life: rand(1.2, 2.2)
+      });
+    }
+  }
+  function updateConfetti(dt) {
+    for (var i = confetti.length - 1; i >= 0; i--) {
+      var c = confetti[i];
+      c.x += c.vx * dt;
+      c.y += c.vy * dt;
+      c.vy += 60 * dt; // gravity
+      c.rot += c.vr * dt;
+      c.life -= dt;
+      if (c.life <= 0 || c.y > H + 30) confetti.splice(i, 1);
+    }
+  }
+  function drawConfetti() {
+    if (confetti.length === 0) return;
+    // PERF: one save/restore for the whole batch, using setTransform per piece
+    // instead of save+translate+rotate+restore per piece (4 stack ops -> 1 matrix op).
+    ctx.save();
+    confetti.forEach(function (c) {
+      var hw = c.size / 2, hh = c.size * 0.33;
+      ctx.setTransform(Math.cos(c.rot), Math.sin(c.rot), -Math.sin(c.rot), Math.cos(c.rot), c.x, c.y);
+      ctx.fillStyle = c.color;
+      ctx.fillRect(-hw, -hh, c.size, c.size * 0.66);
+    });
+    ctx.restore();
+  }
+
+  /* ---------------- NEW: tap/click ripples ---------------- */
+  function updateRipples(dt) {
+    for (var i = ripples.length - 1; i >= 0; i--) {
+      var r = ripples[i];
+      r.radius += 140 * dt;
+      r.alpha -= dt * 1.2;
+      if (r.alpha <= 0) ripples.splice(i, 1);
+    }
+  }
+  function drawRipples() {
+    ctx.save();
+    ripples.forEach(function (r) {
+      ctx.globalAlpha = Math.max(0, r.alpha);
+      ctx.lineWidth = 3;
+      ctx.strokeStyle = "#ffffff";
+      ctx.beginPath();
+      ctx.arc(r.x, r.y, r.radius, 0, Math.PI * 2);
+      ctx.stroke();
+    });
+    ctx.globalAlpha = 1;
+    ctx.restore();
+  }
+
+  /* ---------------- NEW: swaying kelp (pure procedural, no art needed) ---------------- */
+  function drawKelp(t) {
+    ctx.save();
+    ctx.lineCap = "round";
+    kelpStalks.forEach(function (k) {
+      var sway = Math.sin(t * k.speed + k.phase) * 14;
+      var midSway = sway * 0.5;
+      ctx.beginPath();
+      ctx.moveTo(k.baseX, H);
+      ctx.quadraticCurveTo(k.baseX + midSway, H - k.height * 0.55, k.baseX + sway, H - k.height);
+      ctx.lineWidth = 6;
+      ctx.strokeStyle = "hsla(" + k.hue + ", 45%, 28%, 0.55)";
+      ctx.stroke();
+    });
+    ctx.restore();
+  }
+
+  /* ---------------- NEW: ambient background fish (decorative only) ---------------- */
+  function updateBgFish(dt) {
+    bgFish.forEach(function (f) {
+      f.x += f.dir * f.speed * dt;
+      if (f.dir > 0 && f.x > W + 30) f.x = -30;
+      if (f.dir < 0 && f.x < -30) f.x = W + 30;
+    });
+  }
+  function drawBgFish(t) {
+    ctx.save();
+    ctx.font = "22px sans-serif";
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+    ctx.globalAlpha = 0.5;
+    bgFish.forEach(function (f) {
+      var by = f.y + Math.sin(t * 1.4 + f.bob) * 6;
+      ctx.save();
+      ctx.translate(f.x, by);
+      if (f.dir < 0) ctx.scale(-1, 1);
+      ctx.fillText(f.glyph, 0, 0);
+      ctx.restore();
+    });
+    ctx.globalAlpha = 1;
+    ctx.restore();
+  }
+
+  /* ---------------- NEW: speed-line "swoosh" trail while boosting ---------------- */
+  function updateSpeedLines(dt) {
+    for (var i = speedLines.length - 1; i >= 0; i--) {
+      var sl = speedLines[i];
+      sl.life -= dt;
+      sl.alpha = Math.max(0, sl.life / 0.25) * 0.55;
+      if (sl.life <= 0) speedLines.splice(i, 1);
+    }
+  }
+  function drawSpeedLines() {
+    if (speedLines.length === 0) return;
+    ctx.save();
+    ctx.strokeStyle = "#eaffff";
+    ctx.lineWidth = 3;
+    speedLines.forEach(function (sl) {
+      ctx.globalAlpha = sl.alpha;
+      ctx.beginPath();
+      ctx.moveTo(sl.x, sl.y);
+      ctx.lineTo(sl.x + sl.facing * sl.len, sl.y);
+      ctx.stroke();
+    });
+    ctx.globalAlpha = 1;
+    ctx.restore();
+  }
+
+  /* ---------------- NEW: camera "punch" for big positive moments ---------------- */
+  function triggerZoomPunch() {
+    var frame = document.getElementById("canvasFrame");
+    frame.classList.remove("zoom-punch");
+    void frame.offsetWidth;
+    frame.classList.add("zoom-punch");
+  }
+
+  /* ---------------- NEW: perfect-dodge near-miss -> brief bullet-time ---------------- */
+  function triggerNearMiss(x, y) {
+    particles.burst(x, y, { glyphs: ["💨"], count: 4, life: 350 });
+    GOGUi.floatLabel(document.getElementById("canvasFrame"), canvasXToClient(x), canvasYToClient(y), "Phew!", "#ffd166");
+    state.slowMoUntil = state.elapsed + 0.55;
+    triggerZoomPunch();
+  }
+
+  /* ---------------- NEW: combo streak — consecutive pickups without getting hit ---------------- */
+  function addCombo() {
+    state.combo++;
+    var comboChip = document.getElementById("comboChip");
+    if (state.combo >= 2) {
+      comboChip.textContent = "🔥 x" + state.combo;
+      comboChip.classList.add("combo-visible");
+      comboChip.classList.remove("combo-tier-2", "combo-tier-3");
+      if (state.combo >= 10) comboChip.classList.add("combo-tier-3");
+      else if (state.combo >= 5) comboChip.classList.add("combo-tier-2");
+      comboChip.classList.remove("chip-pop");
+      void comboChip.offsetWidth;
+      comboChip.classList.add("chip-pop");
+    }
+    if (state.combo > 0 && state.combo % 5 === 0) {
+      addSprouts(3);
+      particles.burst(dolphin.x, dolphin.y, { glyphs: ["🔥", "✨"], count: 10, life: 600 });
+      triggerZoomPunch();
+    }
+  }
+  function resetCombo() {
+    state.combo = 0;
+    document.getElementById("comboChip").classList.remove("combo-visible", "combo-tier-2", "combo-tier-3");
+  }
+
+  /* ---------------- NEW: reef milestone celebrations (25% / 50% / 75%) ---------------- */
+  function milestoneMessage(p) {
+    if (p === 25) return "Reef waking up! 25%";
+    if (p === 50) return "Halfway healed! 50%";
+    return "Almost there! 75%";
+  }
+  function celebrateMilestone(percent, x, y) {
+    audio.collect();
+    particles.burst(x, y, { glyphs: ["🎉", "✨", "💙"], count: 16, life: 900 });
+    GOGUi.floatLabel(document.getElementById("canvasFrame"), canvasXToClient(x), canvasYToClient(y), milestoneMessage(percent), "#2E5EE8");
+    spawnConfettiBurst(12); // rains in from the top across the whole scene
+    triggerZoomPunch(); // NEW
+  }
+  function checkMilestones(x, y) {
+    [25, 50, 75].forEach(function (m) {
+      if (!milestonesHit[m] && state.reef >= m) {
+        milestonesHit[m] = true;
+        celebrateMilestone(m, x, y);
+      }
+    });
+  }
+
+  var trashTimer = 0, turtleTimer = 3, pufferTimer = 4, pearlTimer = 20;
 
   function updateSpawns(dt) {
     trashTimer -= dt;
@@ -274,27 +826,111 @@ async function init() {
     var pufferInterval = calmMode ? rand(4.2, 6.5) : rand(2.6, 4.2);
     pufferTimer -= dt;
     if (pufferTimer <= 0 && state.elapsed > 4) { spawnPuffer(); pufferTimer = pufferInterval; }
+
+    pearlTimer -= dt;
+    if (pearlTimer <= 0 && state.elapsed > 8) { spawnPearl(); pearlTimer = rand(20, 30); }
   }
 
-  function setReef(delta) {
+  function setReef(delta, originX, originY) {
     state.reef = Collision.clamp(state.reef + delta, 0, 100);
-    document.getElementById("reefFill").style.width = state.reef + "%";
-    document.getElementById("reefPct").textContent = Math.round(state.reef) + "%";
+    
+    var fillElem = document.getElementById("reefFill");
+    var pctElem = document.getElementById("reefPct");
+    var meterHUD = document.querySelector(".meter");
+
+    fillElem.style.width = state.reef + "%";
+    pctElem.textContent = Math.round(state.reef) + "%";
+
+    // Play HUD Punch Animations
+    if (meterHUD) {
+      meterHUD.classList.remove("meter-pulse-up", "meter-pulse-down");
+      void meterHUD.offsetWidth; // Force element reflow reset
+      if (delta > 0) {
+        meterHUD.classList.add("meter-pulse-up");
+      } else if (delta < 0) {
+        meterHUD.classList.add("meter-pulse-down");
+      }
+    }
+
+    // Generate Dynamic Canvas Expansion Rings
+    if (originX !== undefined && originY !== undefined && delta !== 0) {
+      shockwaves.push({
+        x: originX,
+        y: originY,
+        radius: 8,
+        maxRadius: delta > 0 ? 80 : 50,
+        alpha: 1,
+        color: delta > 0 ? "rgba(61, 214, 192, " : "rgba(232, 46, 93, "
+      });
+    }
+
+    // NEW: celebrate crossing a reef-health milestone
+    checkMilestones(
+      originX !== undefined ? originX : dolphin.x,
+      originY !== undefined ? originY : dolphin.y
+    );
   }
 
   function addSprouts(n) {
     state.sproutsEarned += n;
-    document.getElementById("sproutsChip").textContent = state.sproutsEarned;
+    var chip = document.getElementById("sproutsChip");
+    chip.textContent = state.sproutsEarned;
+
+    // NEW: pop the whole sprout chip so the gain feels rewarding
+    var chipParent = chip.parentElement;
+    if (chipParent) {
+      chipParent.classList.remove("chip-pop");
+      void chipParent.offsetWidth;
+      chipParent.classList.add("chip-pop");
+    }
   }
 
   /* ---------------- update ---------------- */
   function update(dt) {
+    // Ambient + celebratory FX keep animating even after the round ends,
+    // so confetti/bubbles/ripples don't freeze on the win/lose screen.
+    updateBubbles(dt);
+    updateConfetti(dt);
+    updateRipples(dt);
+    updateBgFish(dt); // NEW: background fish keep drifting regardless of game state
+    particles.update(dt);
+
     if (!state.running) return;
+
+    // NEW: brief bullet-time window after a perfect dodge. Ambient FX above
+    // already ran at full speed, so only the "scene itself" slows down here.
+    if (state.elapsed < state.slowMoUntil) {
+      dt *= 0.35;
+    }
+
     state.elapsed += dt;
+
+    // NEW: one-time splash burst the moment the stage opens
+    if (!state.introPlayed) {
+      state.introPlayed = true;
+      particles.burst(dolphin.x, dolphin.y, { glyphs: ["💦", "✨"], count: 10, life: 600 });
+    }
+
+    // NEW: keep the Echo Boost button's cooldown countdown in sync
+    if (state.elapsed < state.boostReadyAt) {
+      boostBtn.textContent = Math.ceil(state.boostReadyAt - state.elapsed) + "s";
+    } else if (boostBtn.textContent !== "💨") {
+      boostBtn.textContent = "💨";
+      boostBtn.classList.remove("boost-cooldown");
+    }
 
     if (!calmMode) {
       state.timeLeft = Math.max(0, state.timeLeft - dt);
-      document.getElementById("timerChip").textContent = Math.ceil(state.timeLeft) + "s";
+      var timerChipEl = document.getElementById("timerChip");
+      timerChipEl.textContent = Math.ceil(state.timeLeft) + "s";
+
+      // NEW: timer starts pulsing red in the last 10 seconds
+      if (state.timeLeft <= 10) {
+        timerChipEl.classList.add("timer-urgent");
+      } else {
+        timerChipEl.classList.remove("timer-urgent");
+      }
+
       if (state.timeLeft <= 0 && state.reef < 100) {
         endLose();
         return;
@@ -310,12 +946,14 @@ async function init() {
     updateSpawns(dt);
 
     // --- dolphin follows pointer, with keyboard fallback ---
-    var prevX = dolphin.x;
+    var boosting = state.elapsed < state.boostUntil; // NEW: Echo Boost in progress
+    var prevX = dolphin.x, prevY = dolphin.y;
+    var followLerp = boosting ? 0.34 : 0.16;
     if (input.pointer.active) {
-      dolphin.x = Collision.lerp(dolphin.x, input.pointer.x, 0.16);
-      dolphin.y = Collision.lerp(dolphin.y, input.pointer.y, 0.16);
+      dolphin.x = Collision.lerp(dolphin.x, input.pointer.x, followLerp);
+      dolphin.y = Collision.lerp(dolphin.y, input.pointer.y, followLerp);
     }
-    var kb = 220 * dt;
+    var kb = (boosting ? 380 : 220) * dt;
     if (input.isDown("ArrowLeft") || input.isDown("a")) dolphin.x -= kb;
     if (input.isDown("ArrowRight") || input.isDown("d")) dolphin.x += kb;
     if (input.isDown("ArrowUp") || input.isDown("w")) dolphin.y -= kb;
@@ -326,10 +964,36 @@ async function init() {
 
     // Update facing direction based on movement
     if (dolphin.x > prevX + 0.1) {
+      if (dolphin.facing !== 1) particles.burst(dolphin.x, dolphin.y, { glyphs: ["💦"], count: 4, life: 300 }); // NEW: direction-change splash
       dolphin.facing = 1;
     } else if (dolphin.x < prevX - 0.1) {
+      if (dolphin.facing !== -1) particles.burst(dolphin.x, dolphin.y, { glyphs: ["💦"], count: 4, life: 300 }); // NEW: direction-change splash
       dolphin.facing = -1;
     }
+
+    // NEW: idle "breathing" — tracked here, used in drawDolphin
+    var moved = Math.abs(dolphin.x - prevX) + Math.abs(dolphin.y - prevY);
+    idleTimer = moved < 0.15 ? idleTimer + dt : 0;
+
+    // NEW: trail gets bigger & more frequent the faster the dolphin is moving
+    var speedMag = dt > 0 ? moved / dt : 0;
+    var speedT = Collision.clamp(speedMag / 260, 0, 1);
+    trailTimer -= dt;
+    if (trailTimer <= 0 && moved > 0.5 && trail.length < 50) {
+      emitTrail(dolphin.x - dolphin.facing * 22, dolphin.y + 6, speedT);
+      trailTimer = 0.09 - speedT * 0.06;
+    }
+    updateTrail(dt);
+
+    // NEW: speed-line "swoosh" streaks while boosting
+    if (boosting) {
+      speedLineTimer -= dt;
+      if (speedLineTimer <= 0) {
+        speedLines.push({ x: dolphin.x - dolphin.facing * 10, y: dolphin.y + rand(-14, 14), len: rand(18, 30), life: 0.25, alpha: 0.55, facing: dolphin.facing });
+        speedLineTimer = 0.04;
+      }
+    }
+    updateSpeedLines(dt);
 
     // Advance animation frame index
     dolphin.elapsedFrameTime += dt;
@@ -351,19 +1015,37 @@ async function init() {
     // --- items ---
     for (var i = items.length - 1; i >= 0; i--) {
       var it = items[i];
+      it.age += dt; // NEW: used to scale items in with a little pop when they spawn
       it.x += it.vx * dt;
       it.y += it.vy * dt + Math.sin(state.elapsed * 2 + it.bob) * 6 * dt;
 
       var offscreen = it.x < -80 || it.x > W + 80 || it.y < -80 || it.y > H + 80;
       if (offscreen) { items.splice(i, 1); continue; }
 
+      // NEW: pufferfish telegraph for 0.5s before they can actually deal damage
+      if (it.type === "pufferfish" && !it.armed && it.age > 0.5) it.armed = true;
+
       var hit = Collision.circleHit(dolphin.x, dolphin.y, dolphin.r * 0.8, it.x, it.y, it.r * 0.8);
+      if (it.type === "pufferfish" && !it.armed) hit = false; // not dangerous yet, just a visual warning
+
+      // NEW: perfect-dodge detection — fires once per puffer, right as it passes close by
+      if (it.type === "pufferfish" && !hit && !it.nearMissFired && it.armed) {
+        var pdx = dolphin.x - it.x, pdy = dolphin.y - it.y;
+        var pdist = Math.sqrt(pdx * pdx + pdy * pdy);
+        var hitR = dolphin.r * 0.8 + it.r * 0.8;
+        if (pdist < hitR + 16) {
+          it.nearMissFired = true;
+          triggerNearMiss(it.x, it.y);
+        }
+      }
+
       if (!hit) continue;
 
       if (it.type === "trash") {
         items.splice(i, 1);
-        setReef(7);
+        setReef(7, it.x, it.y);
         addSprouts(2);
+        addCombo(); // NEW: chain pickups for a streak bonus
         particles.burst(it.x, it.y, { glyphs: ["✨", "💧"], count: 7, life: 550 });
         audio.collect();
         GOGUi.floatLabel(document.getElementById("canvasFrame"), canvasXToClient(it.x), canvasYToClient(it.y), "+7 Reef", "#2E5EE8");
@@ -374,24 +1056,54 @@ async function init() {
         dolphin.elapsedFrameTime = 0;
       } else if (it.type === "turtle") {
         items.splice(i, 1);
-        setReef(16);
+        setReef(16, it.x, it.y);
         addSprouts(6);
+        addCombo(); // NEW
         particles.burst(it.x, it.y, { glyphs: ["💚", "✨"], count: 12, life: 700 });
+        spawnConfettiBurst(14, it.x, it.y); // NEW: extra-special turtle-save flourish
+        triggerZoomPunch(); // NEW: camera punch for the big save
         audio.collect();
         GOGUi.floatLabel(document.getElementById("canvasFrame"), canvasXToClient(it.x), canvasYToClient(it.y), "Turtle saved! +16", "#1aa05e");
+      } else if (it.type === "pearl") {
+        // NEW: rare Golden Pearl — biggest single reward in the stage
+        items.splice(i, 1);
+        setReef(20, it.x, it.y);
+        addSprouts(10);
+        addCombo();
+        particles.burst(it.x, it.y, { glyphs: ["🌟", "💛", "✨"], count: 18, life: 900 });
+        spawnConfettiBurst(20, it.x, it.y);
+        triggerZoomPunch();
+        audio.collect();
+        GOGUi.floatLabel(document.getElementById("canvasFrame"), canvasXToClient(it.x), canvasYToClient(it.y), "Golden Pearl! +20", "#ffae00");
       } else if (it.type === "pufferfish") {
         if (state.elapsed < state.invulnUntil) continue;
         items.splice(i, 1);
-        setReef(-6);
+        setReef(-6, dolphin.x, dolphin.y);
         state.hits++;
+        resetCombo(); // NEW: a hit breaks the streak
         state.invulnUntil = state.elapsed + 0.7;
+        state.hitFlashUntil = state.elapsed + 0.25; // NEW: brief red screen flash
         particles.burst(dolphin.x, dolphin.y, { glyphs: ["💥"], count: 6, life: 420, gravity: 60 });
         audio.hazard();
         shakeFrame();
+
+        // NEW: gentle knockback away from the pufferfish
+        var kdx = dolphin.x - it.x, kdy = dolphin.y - it.y;
+        var kdist = Math.max(1, Math.sqrt(kdx * kdx + kdy * kdy));
+        dolphin.x = Collision.clamp(dolphin.x + (kdx / kdist) * 16, 30, W - 30);
+        dolphin.y = Collision.clamp(dolphin.y + (kdy / kdist) * 16, 30, H - 30);
       }
     }
 
-    particles.update(dt);
+    // --- update custom shockwaves ---
+    for (var s = shockwaves.length - 1; s >= 0; s--) {
+      var sw = shockwaves[s];
+      sw.radius += 200 * dt; 
+      sw.alpha = 1 - (sw.radius / sw.maxRadius);
+      if (sw.alpha <= 0) {
+        shockwaves.splice(s, 1);
+      }
+    }
 
     if (state.reef >= 100 && !state.won) {
       endWin();
@@ -418,22 +1130,27 @@ async function init() {
   
   function drawBackground() {
     // Clear canvas before drawing layers
-  ctx.clearRect(0, 0, W, H);
+    ctx.clearRect(0, 0, W, H);
 
-  // fallback fill so it never looks "dirty" even before images are ready
-  ctx.fillStyle = "#1a6fa3";
-  ctx.fillRect(0, 0, W, H);
+    // fallback fill so it never looks "dirty" even before images are ready
+    ctx.fillStyle = "#1a6fa3";
+    ctx.fillRect(0, 0, W, H);
 
-  layers.forEach(function (layer) {
-    if (!layer.img) return;
-    var img = layer.img;
-    var tileW = img.width;
-    var x = (scrollX * (layer.speed * 0.1)) % tileW;
-    if (x > 0) x -= tileW;          // normalize into (-tileW, 0]
-    for (var dx = x; dx < W; dx += tileW) {
-      ctx.drawImage(img, dx, layer.y, tileW, H);
-    }
-  });
+    // NEW: a very gentle shear that drifts back and forth — reads as a slow current
+    var currentShear = Math.sin(state.elapsed * 0.4) * 0.012;
+    ctx.save();
+    ctx.transform(1, 0, currentShear, 1, 0, 0);
+    layers.forEach(function (layer) {
+      if (!layer.img) return;
+      var img = layer.img;
+      var tileW = img.width;
+      var x = (scrollX * (layer.speed * 0.1)) % tileW;
+      if (x > 0) x -= tileW;          // normalize into (-tileW, 0]
+      for (var dx = x; dx < W; dx += tileW) {
+        ctx.drawImage(img, dx, layer.y, tileW, H);
+      }
+    });
+    ctx.restore();
 
     // seabed coral strip — grows greener/brighter as reef heals
     var coralH = 60;
@@ -454,6 +1171,14 @@ async function init() {
 
   function drawDolphin() {
     ctx.save();
+
+    // NEW: dolphin "swims in" on stage start — eased scale + fade with a tiny overshoot bounce
+    var entranceT = Math.min(1, state.elapsed / 0.6);
+    var entranceEase = 1 - Math.pow(1 - entranceT, 3);
+    var entranceScale = entranceT < 1
+      ? entranceEase + Math.sin(entranceT * Math.PI) * 0.18 * (1 - entranceT)
+      : 1;
+
     ctx.translate(dolphin.x, dolphin.y);
     
     // Smooth, subtle bobbing effect (only when swimming, not attacking)
@@ -466,9 +1191,14 @@ async function init() {
     if (dolphin.facing === -1) {
       ctx.scale(-1, 1);
     }
+
+    // NEW: gentle squash & stretch while swimming, plus a slow "breathing" pulse when idle
+    var squash = dolphin.state === "swim" ? 1 + Math.sin(dolphin.wobble * 1.3) * 0.035 : 1;
+    var idleBreath = idleTimer > 1.5 ? 1 + Math.sin(state.elapsed * 1.3) * 0.025 : 1;
+    ctx.scale(entranceScale * squash * idleBreath, entranceScale * (1 / squash) * idleBreath);
     
     var flash = state.elapsed < state.invulnUntil && Math.floor(state.elapsed * 20) % 2 === 0;
-    ctx.globalAlpha = flash ? 0.4 : 1;
+    ctx.globalAlpha = flash ? 0.4 : Math.min(1, entranceT * 1.4);
 
     if (dolphin.state === "attack" && dolphinAttackImg) {
       var col = dolphin.frameIndex % 5;
@@ -519,15 +1249,75 @@ async function init() {
     ctx.textAlign = "center";
     ctx.textBaseline = "middle";
     items.forEach(function (it) {
-      ctx.fillText(it.glyph, it.x, it.y);
+      // NEW: items pop in with a little overshoot when they spawn, and wiggle gently
+      var growT = Math.min(1, it.age / 0.25);
+      var growEase = 1 - Math.pow(1 - growT, 3);
+      var growScale = growT < 1
+        ? growEase + Math.sin(growT * Math.PI) * 0.25 * (1 - growT)
+        : 1;
+      var wiggle = Math.sin(state.elapsed * 3 + it.bob) * 0.12;
+
+      ctx.save();
+      ctx.translate(it.x, it.y);
+
+      // NEW: pufferfish telegraph their danger with a fading warning ring before arming
+      if (it.type === "pufferfish" && !it.armed) {
+        var telegraphT = it.age / 0.5;
+        ctx.save();
+        ctx.globalAlpha = 0.5 * (1 - telegraphT);
+        ctx.lineWidth = 3;
+        ctx.strokeStyle = "#ffd166";
+        ctx.beginPath();
+        ctx.arc(0, 0, 26 + telegraphT * 14, 0, Math.PI * 2);
+        ctx.stroke();
+        ctx.restore();
+      }
+
+      ctx.rotate(wiggle);
+      ctx.scale(growScale, growScale);
+      ctx.fillText(it.glyph, 0, 0);
+      ctx.restore();
     });
   }
 
   function draw() {
     drawBackground();
+    drawBgFish(state.elapsed);   // NEW: ambient background fish, behind everything
+    // drawKelp(state.elapsed);     // NEW: swaying kelp rising from the seabed
+    drawBubbles();          // NEW: ambient rising bubbles
+    drawCaustics(state.elapsed); // NEW: drifting underwater light rays
+    drawPollutionHaze();    // NEW: murky haze that clears as the reef heals
     drawItems();
+    drawTrail();            // NEW: dolphin's swim trail
+    drawSpeedLines();       // NEW: boost "swoosh" streaks
     drawDolphin();
     particles.draw(ctx);
+    drawConfetti();         // NEW: milestone / win confetti
+    drawRipples();          // NEW: tap/click ripples
+
+    // --- Draw custom shockwaves ---
+    ctx.save();
+    shockwaves.forEach(function (sw) {
+      ctx.lineWidth = 4;
+      ctx.strokeStyle = sw.color + sw.alpha + ")";
+      ctx.beginPath();
+      ctx.arc(sw.x, sw.y, sw.radius, 0, Math.PI * 2);
+      ctx.stroke();
+    });
+    ctx.restore();
+
+    drawHitFlash(); // NEW: brief red vignette when hit by a pufferfish
+  }
+
+  // NEW: quick red screen flash when a pufferfish lands a hit
+  function drawHitFlash() {
+    if (state.elapsed >= state.hitFlashUntil) return;
+    var remain = state.hitFlashUntil - state.elapsed;
+    var alpha = Collision.clamp(remain / 0.25, 0, 1) * 0.32;
+    ctx.save();
+    ctx.fillStyle = "rgba(232,46,93," + alpha + ")";
+    ctx.fillRect(0, 0, W, H);
+    ctx.restore();
   }
 
   /* ---------------- end states ---------------- */
@@ -549,6 +1339,17 @@ async function init() {
     });
     save = nextSave;
 
+    // NEW: the canvas frame brightens triumphantly...
+    document.getElementById("canvasFrame").classList.add("flash-win");
+
+    // ...and confetti rains in over a few waves before the overlay appears
+    var confettiBursts = 0;
+    var confettiInterval = setInterval(function () {
+      spawnConfettiBurst(16);
+      confettiBursts++;
+      if (confettiBursts >= 3) clearInterval(confettiInterval);
+    }, 220);
+
     setTimeout(function () {
       GOGUi.showOverlay({
         accent: "var(--gog-white)",
@@ -561,11 +1362,13 @@ async function init() {
         onPrimary: function () { window.location.href = "../index.html"; },
         onSecondary: function () { window.location.reload(); }
       });
-    }, 500);
+    }, 750);
   }
 
   function endLose() {
     state.running = false;
+    // NEW: a gentle desaturating fade signals "not quite yet" without feeling harsh
+    document.getElementById("canvasFrame").classList.add("flash-lose");
     GOGUi.showOverlay({
       title: "🌫️ The tide's still cloudy",
       body: "The reef needs a little more love. Want to dive back in? Nothing is lost.",
