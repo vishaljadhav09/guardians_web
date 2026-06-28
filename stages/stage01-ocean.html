@@ -342,6 +342,26 @@
     muteBtn.classList.add("btn-bounce");
   });
 
+  // Resume AudioContext & start bgMusic on first user interaction
+  function resumeAudioOnGesture() {
+    if (audio && typeof audio._ensureCtx === "function") {
+      var ctx = audio._ensureCtx();
+      if (ctx && ctx.state === "suspended") {
+        ctx.resume();
+      }
+    }
+    if (!audio.muted && bgMusic && bgMusic.paused) {
+      bgMusic.play().catch(function(){});
+    }
+    // Remove listeners once done
+    document.removeEventListener("click", resumeAudioOnGesture);
+    document.removeEventListener("keydown", resumeAudioOnGesture);
+    document.removeEventListener("pointerdown", resumeAudioOnGesture);
+  }
+  document.addEventListener("click", resumeAudioOnGesture);
+  document.addEventListener("keydown", resumeAudioOnGesture);
+  document.addEventListener("pointerdown", resumeAudioOnGesture);
+
   // Tap/click ripples — pure delight, doesn't affect gameplay input at all
   var ripples = [];
   canvas.addEventListener("pointerdown", function (e) {
@@ -1393,7 +1413,7 @@ async function init() {
         primaryLabel: "Back to Map",
         secondaryLabel: "Play Again",
         onPrimary: function () { window.location.href = "../index.html"; },
-        onSecondary: function () { window.location.reload(); }
+        onSecondary: function () { window.location.href = "stage01-ocean.html"; }
       });
     }, 750);
   }
@@ -1408,7 +1428,7 @@ async function init() {
       body: "The reef needs a little more love. Want to dive back in? Nothing is lost.",
       primaryLabel: "Try Again",
       secondaryLabel: "Back to Map",
-      onPrimary: function () { window.location.reload(); },
+      onPrimary: function () { window.location.href = "stage01-ocean.html"; },
       onSecondary: function () { window.location.href = "../index.html"; }
     });
   }

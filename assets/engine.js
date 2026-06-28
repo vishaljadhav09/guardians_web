@@ -201,19 +201,44 @@
     }
   };
 
-  /* ---------------- Audio ---------------- */
-  // Minimal Web Audio wrapper. Mute-aware, respects save settings.
-  // v1 ships with simple synthesized blips so there's zero asset weight;
-  // swapping in real SFX/ambient files later is a one-line change.
+  var hasUserGesture = false;
+  function registerUserGesture() {
+    hasUserGesture = true;
+    if (global.document) {
+      ["click", "keydown", "pointerdown", "touchstart"].forEach(function (e) {
+        global.document.removeEventListener(e, registerUserGesture, { capture: true });
+      });
+    }
+  }
+  if (global.document) {
+    ["click", "keydown", "pointerdown", "touchstart"].forEach(function (e) {
+      global.document.addEventListener(e, registerUserGesture, { capture: true, passive: true });
+    });
+  }
+
   function Audio(muted) {
     this.muted = !!muted;
     this._ctx = null;
   }
 
   Audio.prototype._ensureCtx = function () {
+    var activated = false;
+    if (global.navigator && global.navigator.userActivation) {
+      activated = global.navigator.userActivation.hasBeenActive;
+    } else {
+      activated = hasUserGesture;
+    }
+
+    if (!activated) {
+      return null;
+    }
+
     if (!this._ctx) {
       var AC = global.AudioContext || global.webkitAudioContext;
       if (AC) this._ctx = new AC();
+    }
+    if (this._ctx && this._ctx.state === "suspended") {
+      this._ctx.resume().catch(function(){});
     }
     return this._ctx;
   };
@@ -233,9 +258,14 @@
     gain.connect(ctx.destination);
     var now = ctx.currentTime;
     gain.gain.setValueAtTime(0.06, now);
-    gain.gain.exponentialRampToValueAtTime(0.0001, now + (durationMs || 140) / 1000);
+    var stopTime = now + (durationMs || 140) / 1000;
+    gain.gain.exponentialRampToValueAtTime(0.0001, stopTime);
     osc.start(now);
-    osc.stop(now + (durationMs || 140) / 1000);
+    osc.stop(stopTime);
+    osc.onended = function () {
+      osc.disconnect();
+      gain.disconnect();
+    };
   };
 
   Audio.prototype.collect = function () { this.blip(880, 110, "triangle"); };
