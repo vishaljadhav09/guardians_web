@@ -101,6 +101,18 @@
     width: 100%;
     aspect-ratio: 16 / 10;
     overflow: hidden;
+    transition: border-color 0.2s, box-shadow 0.2s;
+  }
+  .canvas-frame.boosting-active {
+    border-color: #3dd6c0;
+    animation: boostGlowRainbow 1s linear infinite;
+    box-shadow: 0 0 25px rgba(61, 214, 192, 0.85), var(--gog-shadow-md);
+  }
+  @keyframes boostGlowRainbow {
+    0% { border-color: #3dd6c0; box-shadow: 0 0 22px rgba(61, 214, 192, 0.85), var(--gog-shadow-md); }
+    33% { border-color: #ffd166; box-shadow: 0 0 22px rgba(255, 209, 102, 0.85), var(--gog-shadow-md); }
+    66% { border-color: #e82e5d; box-shadow: 0 0 22px rgba(232, 46, 93, 0.85), var(--gog-shadow-md); }
+    100% { border-color: #3dd6c0; box-shadow: 0 0 22px rgba(61, 214, 192, 0.85), var(--gog-shadow-md); }
   }
   canvas {
     width: 100%; height: 100%;
@@ -493,14 +505,32 @@ async function init() {
 
   var bgFish = [];
   (function initBgFish() {
-    var glyphs = ["🐟", "🐠"];
-    for (var f = 0; f < 5; f++) {
+    var glyphs = ["🐟", "🐠", "🐡", "🐙", "🦑", "🦐"];
+    for (var f = 0; f < 9; f++) {
       bgFish.push({
         x: rand(0, W),
-        y: rand(40, H - 100),
+        y: rand(40, H - 120),
         dir: Math.random() < 0.5 ? 1 : -1,
-        speed: rand(12, 26),
+        speed: rand(14, 32),
         glyph: glyphs[Math.floor(Math.random() * glyphs.length)],
+        bob: rand(0, Math.PI * 2),
+        size: rand(16, 28)
+      });
+    }
+  })();
+
+  // NEW: seabed decorations (crabs crawling, seashells, starfish)
+  var seabedDecorations = [];
+  (function initSeabedDecorations() {
+    var count = 5;
+    var glyphs = ["🦀", "🐚", "🐌", "🐚"];
+    for (var i = 0; i < count; i++) {
+      seabedDecorations.push({
+        x: rand(50, W - 50),
+        y: H - 15,
+        glyph: glyphs[Math.floor(Math.random() * glyphs.length)],
+        speed: rand(10, 22),
+        dir: Math.random() < 0.5 ? 1 : -1,
         bob: rand(0, Math.PI * 2)
       });
     }
@@ -645,14 +675,24 @@ async function init() {
   /* ---------------- NEW: little bubble trail behind the swimming dolphin ---------------- */
   function emitTrail(x, y, speedT) {
     speedT = speedT || 0;
-    trail.push({ x: x + rand(-4, 4), y: y + rand(-4, 4), r: rand(3, 6) + speedT * 3, alpha: 0.5 + speedT * 0.2, life: 0.5 });
+    var boosting = state.elapsed < state.boostUntil;
+    trail.push({
+      x: x + rand(-4, 4),
+      y: y + rand(-4, 4),
+      r: rand(3, 6) + speedT * 3,
+      alpha: 0.5 + speedT * 0.2,
+      life: boosting ? 0.7 : 0.5,
+      boosting: boosting,
+      hue: boosting ? Math.floor(state.elapsed * 450) % 360 : 200
+    });
   }
   function updateTrail(dt) {
     for (var i = trail.length - 1; i >= 0; i--) {
       var t = trail[i];
       t.life -= dt;
-      t.alpha = Math.max(0, t.life / 0.5) * 0.5;
-      t.y -= 12 * dt;
+      var maxLife = t.boosting ? 0.7 : 0.5;
+      t.alpha = Math.max(0, t.life / maxLife) * 0.6;
+      t.y -= (t.boosting ? 18 : 12) * dt;
       if (t.life <= 0) trail.splice(i, 1);
     }
   }
@@ -662,8 +702,20 @@ async function init() {
       ctx.globalAlpha = t.alpha;
       ctx.beginPath();
       ctx.arc(t.x, t.y, t.r, 0, Math.PI * 2);
-      ctx.fillStyle = "#bfe9ff";
+      if (t.boosting) {
+        ctx.fillStyle = "hsla(" + t.hue + ", 95%, 68%, " + t.alpha + ")";
+      } else {
+        ctx.fillStyle = "rgba(191, 233, 255, " + t.alpha + ")";
+      }
       ctx.fill();
+
+      // Inner highlight
+      if (t.r > 4) {
+        ctx.beginPath();
+        ctx.arc(t.x - t.r * 0.3, t.y - t.r * 0.3, t.r * 0.22, 0, Math.PI * 2);
+        ctx.fillStyle = "rgba(255, 255, 255, " + (t.alpha * 0.85) + ")";
+        ctx.fill();
+      }
     });
     ctx.globalAlpha = 1;
     ctx.restore();
@@ -740,14 +792,90 @@ async function init() {
     ctx.save();
     ctx.lineCap = "round";
     kelpStalks.forEach(function (k) {
-      var sway = Math.sin(t * k.speed + k.phase) * 14;
+      var sway = Math.sin(t * k.speed + k.phase) * 16;
       var midSway = sway * 0.5;
+      
+      // Draw stalk stem
       ctx.beginPath();
       ctx.moveTo(k.baseX, H);
       ctx.quadraticCurveTo(k.baseX + midSway, H - k.height * 0.55, k.baseX + sway, H - k.height);
-      ctx.lineWidth = 6;
-      ctx.strokeStyle = "hsla(" + k.hue + ", 45%, 28%, 0.55)";
+      ctx.lineWidth = 7;
+      ctx.strokeStyle = "hsla(" + k.hue + ", 50%, 26%, 0.65)";
       ctx.stroke();
+
+      // Draw leaves branching off the stem
+      for (var u = 0.25; u <= 0.95; u += 0.18) {
+        var t0 = (1 - u) * (1 - u);
+        var t1 = 2 * (1 - u) * u;
+        var t2 = u * u;
+        
+        // Position on the curve
+        var lx = t0 * k.baseX + t1 * (k.baseX + midSway) + t2 * (k.baseX + sway);
+        var ly = t0 * H + t1 * (H - k.height * 0.55) + t2 * (H - k.height);
+        
+        // Stalk tangent derivative B'(u)
+        var dx = 2 * (1 - u) * midSway + 2 * u * (sway - midSway);
+        var dy = 2 * (1 - u) * (-k.height * 0.55) + 2 * u * (-k.height * 0.45);
+        var angle = Math.atan2(dy, dx);
+        
+        var leafSize = (1 - u * 0.5) * 8.5;
+        
+        // Left Leaf
+        ctx.save();
+        ctx.translate(lx, ly);
+        ctx.rotate(angle - Math.PI / 2 + Math.sin(t * 1.8 + u * 8) * 0.22);
+        ctx.beginPath();
+        ctx.ellipse(0, 0, leafSize * 1.8, leafSize * 0.75, 0, 0, Math.PI * 2);
+        ctx.fillStyle = "hsla(" + (k.hue + 12) + ", 65%, 32%, 0.75)";
+        ctx.fill();
+        ctx.restore();
+
+        // Right Leaf
+        ctx.save();
+        ctx.translate(lx, ly);
+        ctx.rotate(angle + Math.PI / 2 + Math.cos(t * 1.8 + u * 8) * 0.22);
+        ctx.beginPath();
+        ctx.ellipse(0, 0, leafSize * 1.8, leafSize * 0.75, 0, 0, Math.PI * 2);
+        ctx.fillStyle = "hsla(" + (k.hue - 12) + ", 65%, 28%, 0.75)";
+        ctx.fill();
+        ctx.restore();
+      }
+    });
+    ctx.restore();
+  }
+
+  // NEW: seabed decorations (crabs crawling, seashells, starfish)
+  function updateSeabedDecorations(dt) {
+    if (!state.running) return;
+    seabedDecorations.forEach(function (d) {
+      if (d.glyph === "🦀") {
+        d.x += d.dir * d.speed * dt;
+        if (d.x > W - 30) { d.x = W - 30; d.dir = -1; }
+        if (d.x < 30) { d.x = 30; d.dir = 1; }
+      }
+    });
+  }
+
+  function drawSeabedDecorations() {
+    ctx.save();
+    ctx.font = "20px sans-serif";
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+    seabedDecorations.forEach(function (d) {
+      ctx.save();
+      ctx.translate(d.x, d.y);
+      if (d.glyph === "🦀") {
+        // Wiggle rotation for walk effect
+        var walkWiggle = Math.sin(state.elapsed * 9 + d.bob) * 0.15;
+        ctx.rotate(walkWiggle);
+        if (d.dir < 0) ctx.scale(-1, 1);
+      } else {
+        // Shells bob gently
+        var scaleY = 1 + Math.sin(state.elapsed * 1.5 + d.bob) * 0.06;
+        ctx.scale(1, scaleY);
+      }
+      ctx.fillText(d.glyph, 0, 0);
+      ctx.restore();
     });
     ctx.restore();
   }
@@ -762,19 +890,26 @@ async function init() {
   }
   function drawBgFish(t) {
     ctx.save();
-    ctx.font = "22px sans-serif";
-    ctx.textAlign = "center";
-    ctx.textBaseline = "middle";
-    ctx.globalAlpha = 0.5;
     bgFish.forEach(function (f) {
-      var by = f.y + Math.sin(t * 1.4 + f.bob) * 6;
       ctx.save();
-      ctx.translate(f.x, by);
+      ctx.font = Math.round(f.size) + "px sans-serif";
+      // Bobbing speed is proportional to their size/type
+      var yBob = Math.sin(t * 1.6 + f.bob) * 10;
+      ctx.translate(f.x, f.y + yBob);
       if (f.dir < 0) ctx.scale(-1, 1);
+      
+      // Make squid/octopus bob slightly differently (vertical pulse)
+      if (f.glyph === "🐙" || f.glyph === "🦑") {
+        var pulse = 1 + Math.sin(t * 3.5 + f.bob) * 0.1;
+        ctx.scale(1, pulse);
+      }
+      
+      ctx.globalAlpha = 0.32; // Blend into the water background
+      ctx.textAlign = "center";
+      ctx.textBaseline = "middle";
       ctx.fillText(f.glyph, 0, 0);
       ctx.restore();
     });
-    ctx.globalAlpha = 1;
     ctx.restore();
   }
 
@@ -790,13 +925,21 @@ async function init() {
   function drawSpeedLines() {
     if (speedLines.length === 0) return;
     ctx.save();
-    ctx.strokeStyle = "#eaffff";
-    ctx.lineWidth = 3;
+    ctx.lineWidth = 3.5;
     speedLines.forEach(function (sl) {
       ctx.globalAlpha = sl.alpha;
       ctx.beginPath();
       ctx.moveTo(sl.x, sl.y);
       ctx.lineTo(sl.x + sl.facing * sl.len, sl.y);
+      
+      // Draw colorful/white gradient speed line
+      var grad = ctx.createLinearGradient(sl.x, sl.y, sl.x + sl.facing * sl.len, sl.y);
+      grad.addColorStop(0, "rgba(255,255,255,0)");
+      grad.addColorStop(0.3, "rgba(61,214,192,0.95)");
+      grad.addColorStop(0.7, "rgba(255,255,255,0.95)");
+      grad.addColorStop(1, "rgba(255,255,255,0)");
+      
+      ctx.strokeStyle = grad;
       ctx.stroke();
     });
     ctx.globalAlpha = 1;
@@ -916,6 +1059,22 @@ async function init() {
       });
     }
 
+    // Spawn coral bloom particles rising from the seabed!
+    if (delta > 0) {
+      var numSparks = Math.round(delta * 1.5);
+      for (var s = 0; s < numSparks; s++) {
+        particles.burst(rand(10, W - 10), H - 20, {
+          glyphs: ["✨", "💧", "🌟"],
+          count: 1,
+          life: rand(500, 1000),
+          gravity: rand(-40, -10),
+          lift: rand(10, 30),
+          minSpeed: 5,
+          maxSpeed: 25
+        });
+      }
+    }
+
     // NEW: celebrate crossing a reef-health milestone
     checkMilestones(
       originX !== undefined ? originX : dolphin.x,
@@ -945,6 +1104,7 @@ async function init() {
     updateConfetti(dt);
     updateRipples(dt);
     updateBgFish(dt); // NEW: background fish keep drifting regardless of game state
+    updateSeabedDecorations(dt); // Crawling crabs, snails, seashells wiggles
     particles.update(dt);
 
     if (!state.running) return;
@@ -999,6 +1159,10 @@ async function init() {
 
     // --- dolphin follows pointer, with keyboard fallback ---
     var boosting = state.elapsed < state.boostUntil; // NEW: Echo Boost in progress
+    var frameElem = document.getElementById("canvasFrame");
+    if (frameElem) {
+      frameElem.classList.toggle("boosting-active", boosting);
+    }
     var prevX = dolphin.x, prevY = dolphin.y;
     var followLerp = boosting ? 0.34 : 0.16;
     if (input.pointer.active) {
@@ -1212,10 +1376,24 @@ async function init() {
     ctx.fillStyle = "rgba(20,40,30," + (0.25 + reefT * 0.3) + ")";
     ctx.fillRect(0, 0, W, coralH);
     ctx.font = "26px sans-serif";
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
     for (var cx = 20; cx < W; cx += 70) {
       var bloom = (cx / W) < reefT + 0.08;
-      ctx.globalAlpha = bloom ? 1 : 0.25;
-      ctx.fillText(bloom ? "🪸" : "🪨", cx, coralH - 14 + Math.sin(cx) * 4);
+      ctx.save();
+      
+      // Bobbing and wiggling in the current
+      var bobY = Math.sin(state.elapsed * 1.5 + cx) * 3;
+      var sway = Math.sin(state.elapsed * 0.8 + cx) * 0.08;
+      var scale = bloom ? 1 + Math.sin(state.elapsed * 2 + cx) * 0.04 : 0.95;
+      
+      ctx.translate(cx, coralH - 18 + bobY);
+      ctx.rotate(sway);
+      ctx.scale(scale, scale);
+      
+      ctx.globalAlpha = bloom ? 1 : 0.22;
+      ctx.fillText(bloom ? "🪸" : "🪨", 0, 0);
+      ctx.restore();
     }
     ctx.globalAlpha = 1;
     ctx.restore();
@@ -1334,8 +1512,9 @@ async function init() {
 
   function draw() {
     drawBackground();
+    drawKelp(state.elapsed);      // NEW: swaying kelp with leaves
+    drawSeabedDecorations();      // NEW: crawling crabs, bobbing shells/snails
     drawBgFish(state.elapsed);   // NEW: ambient background fish, behind everything
-    // drawKelp(state.elapsed);     // NEW: swaying kelp rising from the seabed
     drawBubbles();          // NEW: ambient rising bubbles
     drawCaustics(state.elapsed); // NEW: drifting underwater light rays
     drawPollutionHaze();    // NEW: murky haze that clears as the reef heals
@@ -1350,11 +1529,21 @@ async function init() {
     // --- Draw custom shockwaves ---
     ctx.save();
     shockwaves.forEach(function (sw) {
+      // Outer ring
       ctx.lineWidth = 4;
       ctx.strokeStyle = sw.color + sw.alpha + ")";
       ctx.beginPath();
       ctx.arc(sw.x, sw.y, sw.radius, 0, Math.PI * 2);
       ctx.stroke();
+
+      // Inner soft ring (if positive shockwave)
+      if (sw.maxRadius > 60) {
+        ctx.lineWidth = 2;
+        ctx.strokeStyle = "rgba(255,255,255," + (sw.alpha * 0.7) + ")";
+        ctx.beginPath();
+        ctx.arc(sw.x, sw.y, Math.max(0, sw.radius - 12), 0, Math.PI * 2);
+        ctx.stroke();
+      }
     });
     ctx.restore();
 
