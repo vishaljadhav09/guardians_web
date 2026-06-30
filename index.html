@@ -8,265 +8,515 @@
 <link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@500;700;800&family=Quicksand:wght@500;600;700&family=Caveat:wght@600;700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="assets/styles.css" />
 <style>
-  .wrap {
-    max-width: 980px;
-    margin: 0 auto;
-    padding: 18px 16px 60px;
+  :root {
+    --gog-lime: #a3e635;
+    --gog-ink: #1e293b;
+    --gog-white: rgba(255, 255, 255, 0.85);
+    --gog-glass: rgba(15, 23, 42, 0.45);
+    --gog-text-light: #f8fafc;
+    --fx-pink: #f43f5e;
+    --fx-tangerine: #f97316;
+    --fx-cobalt: #3b82f6;
+    --fx-lavender: #a855f7;
+    --gog-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.3), 0 8px 10px -6px rgba(0, 0, 0, 0.3);
   }
 
-  /* ---------- top HUD ---------- */
+  body {
+    margin: 0;
+    font-family: 'Quicksand', sans-serif;
+    background-color: #0f172a;
+    color: var(--gog-text-light);
+    min-height: 100vh;
+    overflow-x: hidden;
+    position: relative;
+  }
+
+  /* ---- Parallax Background Canvas ---- */
+  .parallax-bg {
+    position: fixed;
+    inset: -30px;
+    z-index: -2;
+    overflow: hidden;
+    pointer-events: none;
+    background-color: #090d16;
+  }
+  .parallax-layer {
+    position: absolute;
+    inset: 0;
+    background-size: cover;
+    background-position: center;
+    transition: transform 0.15s cubic-bezier(0.25, 1, 0.5, 1);
+  }
+  .layer-stars {
+    background-image: url('https://images.unsplash.com/photo-1506318137071-a8e063b4bec0?auto=format&fit=crop&w=1920&q=80');
+    opacity: 0.35;
+  }
+  .layer-mountains {
+    background-image: url('https://images.unsplash.com/photo-1511497584788-876760111969?auto=format&fit=crop&w=1920&q=80');
+    filter: brightness(0.35) saturate(1.1);
+  }
+
+  /* Decorative Aurora Ambient Blurs */
+  body::after {
+    content: "";
+    position: fixed;
+    inset: -15%;
+    z-index: -1;
+    pointer-events: none;
+    background:
+      radial-gradient(circle at 15% 20%, rgba(163, 230, 53, 0.12) 0%, transparent 40%),
+      radial-gradient(circle at 85% 15%, rgba(244, 63, 94, 0.12) 0%, transparent 40%),
+      radial-gradient(circle at 75% 85%, rgba(59, 130, 246, 0.12) 0%, transparent 40%);
+    filter: blur(90px);
+    animation: auroraDrift 30s ease-in-out infinite alternate;
+  }
+
+  @keyframes auroraDrift {
+    0% { transform: translate(0, 0) scale(1); }
+    100% { transform: translate(2%, -2%) scale(1.04); }
+  }
+
+  .wrap {
+    max-width: 1100px;
+    margin: 0 auto;
+    padding: 24px 20px 80px;
+  }
+
+  /* ---------- Modern Glassmorphic HUD HUD ---------- */
   .hud {
     display: flex;
     align-items: center;
     justify-content: space-between;
-    gap: 14px;
+    gap: 20px;
     flex-wrap: wrap;
-    margin-bottom: 18px;
+    margin-bottom: 24px;
+    background: var(--gog-glass);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+    padding: 16px 24px;
+    border-radius: 24px;
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    box-shadow: var(--gog-shadow);
+    animation: popIn 0.6s cubic-bezier(.2,1.2,.4,1) both;
   }
+
   .brand {
     display: flex;
     align-items: center;
-    gap: 10px;
+    gap: 14px;
   }
-  .brand .owl { font-size: 2.1rem; }
+  .brand .owl { 
+    font-size: 2.5rem; 
+    filter: drop-shadow(0 4px 6px rgba(0,0,0,0.2));
+  }
   .brand h1 {
-    font-size: 1.5rem;
-    line-height: 1;
+    font-family: 'Baloo 2', sans-serif;
+    font-weight: 800;
+    font-size: 1.8rem;
+    line-height: 1.1;
+    margin: 0;
+    background: linear-gradient(90deg, var(--gog-lime), #4ade80, var(--fx-lavender), var(--gog-lime));
+    background-size: 300% 100%;
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+    animation: titleRainbow 8s linear infinite;
   }
   .brand small {
-    font-family: var(--gog-font-hand);
-    font-size: 1.05rem;
-    color: #5b5347;
+    font-family: 'Caveat', cursive;
+    font-size: 1.25rem;
+    color: #cbd5e1;
     display: block;
     margin-top: 2px;
   }
-  .hud-right { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+
+  .hud-right { 
+    display: flex; 
+    gap: 12px; 
+    align-items: center; 
+    flex-wrap: wrap; 
+  }
+
+  .chip {
+    background: rgba(255, 255, 255, 0.08);
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    color: var(--gog-text-light);
+    padding: 8px 16px;
+    border-radius: 999px;
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1);
+    transition: transform 0.2s ease, background 0.2s ease;
+  }
+  .chip:hover {
+    transform: translateY(-2px);
+    background: rgba(255, 255, 255, 0.14);
+  }
 
   .smog-meter {
-    display: flex; align-items: center; gap: 8px;
-    background: var(--gog-white);
-    border: 3px solid var(--gog-ink);
+    display: flex; 
+    align-items: center; 
+    gap: 10px;
+    background: rgba(15, 23, 42, 0.5);
+    border: 1px solid rgba(255, 255, 255, 0.08);
     border-radius: 999px;
-    padding: 6px 14px 6px 10px;
-    box-shadow: var(--gog-shadow-sm);
-    min-width: 168px;
+    padding: 6px 16px;
+    min-width: 200px;
   }
-  .smog-meter .label { font-size: 0.78rem; font-weight: 700; white-space: nowrap; }
+  .smog-meter .label { 
+    font-size: 0.8rem; 
+    font-weight: 800; 
+    letter-spacing: 1px;
+    color: #94a3b8;
+  }
   .smog-track {
     flex: 1;
-    height: 10px;
+    height: 12px;
     border-radius: 999px;
-    background: #e4ddc9;
-    border: 2px solid var(--gog-ink);
+    background: #334155;
     overflow: hidden;
+    position: relative;
   }
   .smog-fill {
     height: 100%;
-    background: linear-gradient(90deg, var(--gog-lime), #6bd66b);
+    background: linear-gradient(90deg, #ef4444, #f97316, var(--gog-lime));
     width: 0%;
-    transition: width 0.6s cubic-bezier(.3,1,.4,1);
+    transition: width 0.8s cubic-bezier(.3,1,.4,1);
+    position: relative;
+  }
+  .smog-fill::after {
+    content: "";
+    position: absolute; inset: 0;
+    background: linear-gradient(110deg, transparent 30%, rgba(255,255,255,0.3) 50%, transparent 70%);
+    background-size: 200% 100%;
+    animation: smogShimmer 2s linear infinite;
   }
 
   .icon-btn {
-    width: 42px; height: 42px;
+    width: 44px; height: 44px;
     border-radius: 50%;
-    background: var(--gog-white);
-    border: 3px solid var(--gog-ink);
-    box-shadow: var(--gog-shadow-sm);
+    background: rgba(255, 255, 255, 0.08);
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    color: white;
+    cursor: pointer;
     display: flex; align-items: center; justify-content: center;
-    font-size: 1.15rem;
+    font-size: 1.2rem;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   }
-  .icon-btn:hover { transform: translate(-1px,-1px); }
+  .icon-btn:hover { 
+    background: var(--gog-lime);
+    color: #0f172a;
+    transform: rotate(45deg) scale(1.05);
+  }
 
-  /* ---------- map stage ---------- */
+  /* ---------- Map Main Viewport Section ---------- */
   .map-stage {
     position: relative;
     width: 100%;
-    aspect-ratio: 1 / 1;
-    max-height: 720px;
+    aspect-ratio: 16 / 10;
+    border-radius: 32px;
     overflow: hidden;
-    background:
-      radial-gradient(circle at 50% 45%, #fffdf6 0%, var(--gog-cream-dk) 72%);
+    background-image: url('https://images.unsplash.com/photo-1448375240586-882707db888b?auto=format&fit=crop&w=1200&q=80');
+    background-size: cover;
+    background-position: center;
+    box-shadow: var(--gog-shadow), inset 0 0 100px rgba(0,0,0,0.5);
+    border: 1px solid rgba(255,255,255,0.08);
+    animation: popIn 0.8s cubic-bezier(.2,1.2,.4,1) 0.1s both;
   }
-  @media (min-width: 700px) {
-    .map-stage { aspect-ratio: 16 / 11; }
+
+  /* Constellation Dynamic Vectors */
+  .constellation-svg {
+    position: absolute;
+    inset: 0;
+    width: 100%; height: 100%;
+    pointer-events: none;
+    z-index: 4;
+  }
+  .constellation-line {
+    stroke-dasharray: 8, 8;
+    animation: constellationPulse 35s linear infinite;
+    filter: drop-shadow(0 0 4px rgba(255,255,255,0.2));
   }
 
   .biome-blob {
     position: absolute;
-    border-radius: 48% 52% 55% 45% / 50% 45% 55% 50%;
-    filter: blur(0px);
-    opacity: 0.55;
-    transition: opacity 0.8s ease, filter 0.8s ease;
+    border-radius: 50%;
+    mix-blend-mode: screen;
+    filter: blur(30px);
+    opacity: 0.2;
+    transition: all 1s ease;
+    transform: translate(-50%, -50%);
+    animation: blobFloat 14s ease-in-out infinite alternate;
   }
-  .biome-blob.cleared { opacity: 0.9; }
+  .biome-blob.cleared { 
+    opacity: 0.6; 
+    filter: blur(18px);
+    animation: blobFloat 8s ease-in-out infinite alternate, blobGlow 4s ease-in-out infinite;
+  }
 
+  /* ---------- Centerpiece: The Guardian Tree ---------- */
   .tree-zone {
     position: absolute;
     left: 50%; top: 50%;
     transform: translate(-50%, -50%);
-    width: 26%;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    z-index: 5;
+    width: 22%;
+    z-index: 10;
     pointer-events: none;
+    transform-origin: bottom center;
+    animation: treeSway 6s ease-in-out infinite;
   }
-  .tree-svg { width: 100%; height: auto; }
-  .leaf-bud { transition: transform 0.5s cubic-bezier(.3,1.6,.4,1), opacity 0.5s ease, fill 0.5s ease; transform-origin: center; }
-  .leaf-bud.bloom { fill: var(--gog-lime); }
+  .tree-zone::before {
+    content: "";
+    position: absolute;
+    left: 50%; top: 50%;
+    width: 160%; height: 160%;
+    transform: translate(-50%, -50%);
+    background: radial-gradient(circle, rgba(163,230,53,0.25) 0%, rgba(168,85,247,0.08) 45%, transparent 70%);
+    filter: blur(20px);
+    z-index: -1;
+    animation: treeHaloPulse 4s ease-in-out infinite;
+  }
 
+  .tree-svg { width: 100%; height: auto; filter: drop-shadow(0 10px 15px rgba(0,0,0,0.4)); }
+  .leaf-bud { 
+    transition: all 0.6s cubic-bezier(.3,1.5,.4,1); 
+    transform-origin: center;
+  }
+  .leaf-bud.bloom { 
+    fill: #22c55e; 
+    filter: drop-shadow(0 0 8px rgba(34,197,94,0.8));
+  }
+
+  /* ---------- Strategic Interface Markers ---------- */
   .marker {
     position: absolute;
-    transform: translate(-50%, -50%);
-    width: 78px;
-    height: 78px;
+    transform: translate(-50%, -50%) scale(1);
+    width: 64px; height: 64px;
     border-radius: 50%;
-    border: 4px solid var(--gog-ink);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 2rem;
+    border: 2px solid rgba(255, 255, 255, 0.35);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 1.8rem;
     cursor: pointer;
-    box-shadow: var(--gog-shadow-sm);
-    background: var(--gog-white);
-    transition: transform 0.15s ease, box-shadow 0.15s ease, filter 0.5s ease;
-    z-index: 6;
+    background: rgba(15, 23, 42, 0.8);
+    backdrop-filter: blur(8px);
+    box-shadow: 0 10px 20px rgba(0,0,0,0.35);
+    transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.2);
+    z-index: 15;
   }
-  .marker:hover { transform: translate(-50%, -50%) translateY(-3px); box-shadow: 6px 6px 0 var(--gog-ink); }
-  .marker:active { transform: translate(-50%, -50%) translateY(1px); }
+  .marker:not(.locked):hover {
+    transform: translate(-50%, -50%) scale(1.2);
+    background: #ffffff;
+    border-color: var(--gog-ink);
+    box-shadow: 0 0 25px rgba(255,255,255,0.5);
+  }
 
   .marker.locked {
-    filter: grayscale(1) brightness(0.78);
+    filter: grayscale(1) opacity(0.35);
     cursor: not-allowed;
+    background: rgba(30, 41, 59, 0.85);
   }
   .marker.locked::after {
-    content: "\1F512";
-    position: absolute;
-    bottom: -6px; right: -6px;
-    font-size: 0.95rem;
-    background: var(--gog-white);
-    border: 2px solid var(--gog-ink);
-    border-radius: 50%;
-    width: 24px; height: 24px;
+    content: "🔒";
+    position: absolute; bottom: -2px; right: -2px;
+    font-size: 0.8rem; background: #334155;
+    border-radius: 50%; width: 20px; height: 20px;
     display: flex; align-items: center; justify-content: center;
   }
-  .marker.cleared { animation: markerBob 2.6s ease-in-out infinite; }
+  
   .marker.unlocked-ready {
-    animation: markerPulse 1.6s ease-in-out infinite;
+    border-color: var(--gog-lime);
+    box-shadow: 0 0 20px rgba(163, 230, 53, 0.4);
+    animation: markerPulse 2s ease-in-out infinite;
   }
-  @keyframes markerBob {
-    0%, 100% { transform: translate(-50%, -50%) translateY(0); }
-    50% { transform: translate(-50%, -50%) translateY(-6px); }
-  }
-  @keyframes markerPulse {
-    0%, 100% { box-shadow: var(--gog-shadow-sm), 0 0 0 0 rgba(201,242,61,0.0); }
-    50% { box-shadow: 6px 6px 0 var(--gog-ink); }
+  .marker.unlocked-ready::before {
+    content: '';
+    position: absolute; inset: -6px;
+    border-radius: 50%; border: 2px solid var(--gog-lime);
+    animation: markerPulseRing 2s cubic-bezier(0.24, 0, 0.38, 1) infinite;
   }
 
+  .marker.cleared::after {
+    content: "";
+    position: absolute; inset: -5px;
+    border-radius: 50%; border: 1.5px dashed rgba(163, 230, 53, 0.4);
+    animation: clearedRingSpin 24s linear infinite;
+  }
+
+  /* Engaging Story Narrative Tooltip Cards */
   .marker-label {
     position: absolute;
-    top: 100%;
-    left: 50%;
-    transform: translateX(-50%);
-    margin-top: 4px;
-    font-size: 0.7rem;
+    top: 115%; left: 50%;
+    transform: translateX(-50%) translateY(5px);
+    font-size: 0.8rem;
     font-weight: 700;
+    line-height: 1.3;
     white-space: nowrap;
-    background: var(--gog-white);
-    border: 2px solid var(--gog-ink);
+    color: white;
+    background: linear-gradient(135deg, #1e293b, #0f172a);
+    border: 1px solid rgba(255,255,255,0.15);
+    border-left: 3px solid var(--gog-lime);
+    padding: 6px 12px;
     border-radius: 8px;
-    padding: 1px 7px;
+    pointer-events: none;
+    box-shadow: 0 8px 16px rgba(0,0,0,0.3);
+    opacity: 0;
+    transition: all 0.3s cubic-bezier(0.25, 1, 0.5, 1);
+  }
+  .marker:hover .marker-label {
+    opacity: 1;
+    transform: translateX(-50%) translateY(0);
   }
 
-  /* fog */
+  /* ---------- Fog Canvas Overlays ---------- */
   .fog-layer {
-    position: absolute;
-    inset: 0;
+    position: absolute; inset: 0;
     pointer-events: none;
-    z-index: 4;
-    transition: opacity 1s ease;
+    z-index: 12;
   }
   .fog-blob {
     position: absolute;
     border-radius: 50%;
-    background: radial-gradient(circle, rgba(150,150,150,0.85), rgba(150,150,150,0));
-    filter: blur(10px);
-    animation: fogDrift 18s ease-in-out infinite;
+    background: radial-gradient(circle, rgba(100, 116, 139, 0.7) 0%, rgba(100, 116, 139, 0) 70%);
+    filter: blur(24px);
+    transform: translate(-50%, -50%);
+    animation: fogDrift 22s ease-in-out infinite alternate;
+    transition: opacity 1.5s ease;
   }
-@keyframes fogDrift {
-  0%   { transform: translate(-50%, -50%) scale(1); }
-  50%  { transform: translate(-47%, -52%) scale(1.08); } /* Shifting 3% right and 2% up from center */
-  100% { transform: translate(-50%, -50%) scale(1); }
-}
 
-  .bloom-flash {
-    position: absolute; inset: 0;
-    background: radial-gradient(circle, rgba(255,255,255,0.95), rgba(201,242,61,0));
-    opacity: 0;
-    z-index: 30;
+  /* ---------- Real-Time Particle Visuals ---------- */
+  .spika-flyer {
+    position: absolute;
+    font-size: 2.5rem;
+    z-index: 100;
     pointer-events: none;
+    transform: translate(-50%, -50%) scale(0);
+    transition: left 0.85s cubic-bezier(0.25, 1, 0.5, 1), top 0.85s cubic-bezier(0.25, 1, 0.5, 1), transform 0.3s ease;
+    filter: drop-shadow(0 10px 15px rgba(0,0,0,0.4));
   }
-  .bloom-flash.play {
-    animation: bloomSweep 1.4s ease-out forwards;
-  }
-  @keyframes bloomSweep {
-    0% { opacity: 0; transform: scale(0.2); }
-    35% { opacity: 1; }
-    100% { opacity: 0; transform: scale(2.4); }
+  .spika-flyer.active { transform: translate(-50%, -50%) scale(1.25); }
+
+  .spika-sparkle, .leaf-sparkle, .ambient-bubble, .ambient-butterfly, .ambient-flower, .ambient-sparkle {
+    position: absolute; pointer-events: none; z-index: 99; transform: translate(-50%, -50%);
   }
 
-  /* bottom strip */
+  .smog-puff {
+    position: absolute;
+    background: radial-gradient(circle, rgba(148, 163, 184, 0.75) 0%, rgba(148, 163, 184, 0) 70%);
+    border-radius: 50%; pointer-events: none; z-index: 13;
+    animation: puffDisperse 1.2s cubic-bezier(0.1, 0.8, 0.3, 1) forwards;
+  }
+
+  /* ---------- Layout Utilities ---------- */
   .bottom-row {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    margin-top: 16px;
-    gap: 12px;
+    margin-top: 24px;
+    gap: 16px;
     flex-wrap: wrap;
+    animation: popIn 0.6s cubic-bezier(.2,1.2,.4,1) 0.2s both;
   }
-  .legend {
-    display: flex; gap: 8px; flex-wrap: wrap;
+  .legend { display: flex; gap: 10px; flex-wrap: wrap; }
+
+  .brutal-btn {
+    background: rgba(239, 68, 68, 0.15);
+    border: 1px solid rgba(239, 68, 68, 0.3);
+    color: #fca5a5;
+    padding: 10px 20px;
+    border-radius: 12px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s ease;
+  }
+  .brutal-btn:hover {
+    background: #ef4444;
+    color: white;
+    box-shadow: 0 0 15px rgba(239, 68, 68, 0.4);
   }
 
   .footer-note {
-    margin-top: 28px;
+    margin-top: 32px;
     text-align: center;
-    font-family: var(--gog-font-hand);
-    font-size: 1.05rem;
-    color: #6b6354;
+    font-family: 'Caveat', cursive;
+    font-size: 1.5rem;
+    color: #94a3b8;
+  }
+  .footer-note::before, .footer-note::after {
+    content: " ✨ ";
+    display: inline-block;
   }
 
-  /* settings panel */
-  .settings-panel { text-align: left; }
+  /* Configuration Switch Items */
+  .settings-panel { padding: 8px 4px; color: #1e293b; }
   .settings-row {
     display: flex; align-items: center; justify-content: space-between;
-    gap: 14px;
-    padding: 10px 0;
-    border-bottom: 2px dashed #d8cfb8;
+    gap: 24px; padding: 12px 0;
+    border-bottom: 1px dashed #cbd5e1;
   }
-  .settings-row:last-of-type { border-bottom: none; }
-  .switch {
-    position: relative; width: 50px; height: 28px; flex-shrink: 0;
-  }
+  .settings-row span { font-weight: 600; }
+  .switch { position: relative; width: 48px; height: 26px; }
   .switch input { opacity: 0; width: 0; height: 0; }
   .switch .track {
-    position: absolute; inset: 0; background: #d8cfb8;
-    border: 3px solid var(--gog-ink); border-radius: 999px; transition: background 0.2s;
+    position: absolute; inset: 0; background: #cbd5e1;
+    border-radius: 999px; transition: background 0.3s;
+    cursor: pointer;
   }
   .switch .knob {
-    position: absolute; top: 2px; left: 2px; width: 18px; height: 18px;
-    background: var(--gog-white); border: 2px solid var(--gog-ink); border-radius: 50%;
-    transition: transform 0.2s;
+    position: absolute; top: 3px; left: 3px; width: 20px; height: 20px;
+    background: white; border-radius: 50%; transition: transform 0.3s;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.2);
   }
-  .switch input:checked + .track { background: var(--gog-lime); }
-  .switch input:checked + .track + .knob { transform: translateX(20px); }
+  .switch input:checked + .track { background: #22c55e; }
+  .switch input:checked + .track + .knob { transform: translateX(22px); }
+
+  /* ---------- Dynamic Frames Core CSS Keyframes ---------- */
+  @keyframes titleRainbow { to { background-position: 300% 0; } }
+  @keyframes smogShimmer { 0% { background-position: 200% 0; } 100% { background-position: -200% 0; } }
+  @keyframes constellationPulse { to { stroke-dashoffset: -100px; } }
+  @keyframes popIn { 0% { opacity: 0; transform: translateY(20px) scale(0.97); } 100% { opacity: 1; transform: translateY(0) scale(1); } }
+  @keyframes treeSway { 0%, 100% { transform: translate(-50%, -50%) rotate(0deg); } 50% { transform: translate(-50%, -50%) rotate(1.2deg); } }
+  @keyframes treeHaloPulse { 0%, 100% { opacity: 0.2; transform: translate(-50%, -50%) scale(0.96); } 50% { opacity: 0.4; transform: translate(-50%, -50%) scale(1.04); } }
+  @keyframes markerPulse { 0%, 100% { box-shadow: 0 0 15px rgba(163, 230, 53, 0.4); } 50% { box-shadow: 0 0 25px rgba(163, 230, 53, 0.75); } }
+  @keyframes markerPulseRing { 0% { transform: scale(0.95); opacity: 0.8; } 100% { transform: scale(1.4); opacity: 0; } }
+  @keyframes clearedRingSpin { to { transform: rotate(360deg); } }
+  @keyframes blobFloat { 0% { transform: translate(-50%, -50%) scale(1); } 100% { transform: translate(-48%, -52%) scale(1.08) rotate(3deg); } }
+  @keyframes blobGlow { 0%, 100% { filter: blur(18px) saturate(1); } 50% { filter: blur(14px) saturate(1.35) brightness(1.1); } }
+  @keyframes fogDrift { 0% { transform: translate(-50%, -50%) scale(1); } 100% { transform: translate(-48%, -52%) scale(1.12); } }
+  @keyframes puffDisperse { 0% { transform: translate(-50%, -50%) scale(0.5); opacity: 0.9; } 100% { transform: translate(calc(-50% + var(--tx)), calc(-50% + var(--ty))) scale(2.2); opacity: 0; } }
+
+  /* Ambient Particle Animation Trees */
+  @keyframes spikaSparkleOut { 0% { opacity: 1; transform: translate(-50%, -50%) scale(0.5); } 100% { opacity: 0; transform: translate(calc(-50% + var(--tx)), calc(-50% + var(--ty))) scale(1.2); } }
+  @keyframes leafSparkleOut { 0% { opacity: 1; transform: translate(-50%, -50%) rotate(0deg); } 100% { opacity: 0; transform: translate(calc(-50% + var(--tx)), calc(-50% + var(--ty))) scale(1.3) rotate(180deg); } }
+  @keyframes ambientBubbleFloat { 0% { transform: translateY(0) scale(0.7); opacity: 0; } 15% { opacity: 0.7; } 85% { opacity: 0.7; } 100% { transform: translateY(-75px) translateX(var(--drift)) scale(1.2); opacity: 0; } }
+  @keyframes ambientButterflyFlutter { 0% { transform: translate(0,0) scale(0.5); opacity: 0; } 20% { opacity: 0.8; } 100% { transform: translate(var(--dx2), var(--dy2)) scale(0.75); opacity: 0; } }
+  @keyframes ambientFlowerSway { 0% { transform: scale(0); opacity: 0; } 20% { transform: scale(1); opacity: 0.85; } 100% { transform: scale(0); opacity: 0; } }
+  @keyframes ambientSparkleTwinkle { 0%, 100% { transform: scale(0); opacity: 0; } 50% { transform: scale(1.2); opacity: 0.9; } }
+
+  .spika-sparkle { animation: spikaSparkleOut 0.7s cubic-bezier(0.1, 0.8, 0.3, 1) forwards; }
+  .leaf-sparkle { animation: leafSparkleOut 0.8s cubic-bezier(0.1, 0.8, 0.3, 1) forwards; }
+  .ambient-bubble { animation: ambientBubbleFloat 3.2s ease-out forwards; }
+  .ambient-butterfly { animation: ambientButterflyFlutter 4.2s ease-in-out forwards; }
+  .ambient-flower { animation: ambientFlowerSway 4.8s ease-in-out forwards; }
+  .ambient-sparkle { animation: ambientSparkleTwinkle 2.5s ease-in-out infinite; }
+
+  @media (max-width: 768px) {
+    .map-stage { aspect-ratio: 1 / 1; }
+    .hud { flex-direction: column; align-items: stretch; text-align: center; }
+    .brand { flex-direction: column; }
+    .hud-right { justify-content: center; }
+  }
 </style>
 </head>
 <body>
 
-<div class="wrap">
+<div class="parallax-bg">
+  <div class="parallax-layer layer-stars"></div>
+  <div class="parallax-layer layer-mountains"></div>
+</div>
 
+<div class="wrap">
   <div class="hud">
     <div class="brand">
       <span class="owl">🦉</span>
@@ -286,38 +536,31 @@
     </div>
   </div>
 
-  <div class="brutal-box map-stage" id="mapStage">
-    <!-- biome blobs (decorative regions), filled in by JS from content.js -->
+  <div class="map-stage" id="mapStage">
     <div id="biomeLayer"></div>
+    <svg class="constellation-svg" id="constellationSvg"></svg>
 
-    <!-- guardian tree -->
     <div class="tree-zone">
       <svg class="tree-svg" viewBox="0 0 200 220" id="treeSvg">
-        <ellipse cx="100" cy="206" rx="46" ry="9" fill="rgba(26,26,26,0.12)"></ellipse>
-        <rect x="92" y="120" width="16" height="86" rx="6" fill="#8a6a45" stroke="#1A1A1A" stroke-width="4"></rect>
-        <path d="M100 140 C 70 130, 55 110, 60 92" stroke="#8a6a45" stroke-width="10" fill="none" stroke-linecap="round"></path>
-        <path d="M100 130 C 130 118, 145 98, 142 80" stroke="#8a6a45" stroke-width="10" fill="none" stroke-linecap="round"></path>
-        <!-- 10 leaf buds, JS toggles .bloom as seeds grow -->
-        <circle class="leaf-bud" id="leaf0" cx="100" cy="95" r="20" fill="#cfc7ad" stroke="#1A1A1A" stroke-width="4" transform="scale(0.4)" style="transform-origin:100px 95px;"></circle>
-        <circle class="leaf-bud" id="leaf1" cx="62"  cy="86" r="17" fill="#cfc7ad" stroke="#1A1A1A" stroke-width="4" transform="scale(0.4)" style="transform-origin:62px 86px;"></circle>
-        <circle class="leaf-bud" id="leaf2" cx="140" cy="74" r="17" fill="#cfc7ad" stroke="#1A1A1A" stroke-width="4" transform="scale(0.4)" style="transform-origin:140px 74px;"></circle>
-        <circle class="leaf-bud" id="leaf3" cx="40"  cy="60" r="14" fill="#cfc7ad" stroke="#1A1A1A" stroke-width="4" transform="scale(0.4)" style="transform-origin:40px 60px;"></circle>
-        <circle class="leaf-bud" id="leaf4" cx="160" cy="50" r="14" fill="#cfc7ad" stroke="#1A1A1A" stroke-width="4" transform="scale(0.4)" style="transform-origin:160px 50px;"></circle>
-        <circle class="leaf-bud" id="leaf5" cx="100" cy="48" r="20" fill="#cfc7ad" stroke="#1A1A1A" stroke-width="4" transform="scale(0.4)" style="transform-origin:100px 48px;"></circle>
-        <circle class="leaf-bud" id="leaf6" cx="70"  cy="34" r="13" fill="#cfc7ad" stroke="#1A1A1A" stroke-width="4" transform="scale(0.4)" style="transform-origin:70px 34px;"></circle>
-        <circle class="leaf-bud" id="leaf7" cx="130" cy="30" r="13" fill="#cfc7ad" stroke="#1A1A1A" stroke-width="4" transform="scale(0.4)" style="transform-origin:130px 30px;"></circle>
-        <circle class="leaf-bud" id="leaf8" cx="100" cy="14" r="12" fill="#cfc7ad" stroke="#1A1A1A" stroke-width="4" transform="scale(0.4)" style="transform-origin:100px 14px;"></circle>
-        <circle class="leaf-bud" id="leaf9" cx="100" cy="95" r="34" fill="#cfc7ad" stroke="#1A1A1A" stroke-width="3" opacity="0.0" transform="scale(0.4)" style="transform-origin:100px 95px;"></circle>
+        <ellipse cx="100" cy="206" rx="46" ry="9" fill="rgba(15,23,42,0.3)"></ellipse>
+        <rect x="92" y="120" width="16" height="86" rx="6" fill="#78350f" stroke="#0f172a" stroke-width="3"></rect>
+        <path d="M100 140 C 70 130, 55 110, 60 92" stroke="#78350f" stroke-width="9" fill="none" stroke-linecap="round"></path>
+        <path d="M100 130 C 130 118, 145 98, 142 80" stroke="#78350f" stroke-width="9" fill="none" stroke-linecap="round"></path>
+        <circle class="leaf-bud" id="leaf0" cx="100" cy="95" r="20" fill="#475569" stroke="#0f172a" stroke-width="3" transform="scale(0.4)" style="transform-origin:100px 95px;"></circle>
+        <circle class="leaf-bud" id="leaf1" cx="62"  cy="86" r="17" fill="#475569" stroke="#0f172a" stroke-width="3" transform="scale(0.4)" style="transform-origin:62px 86px;"></circle>
+        <circle class="leaf-bud" id="leaf2" cx="140" cy="74" r="17" fill="#475569" stroke="#0f172a" stroke-width="3" transform="scale(0.4)" style="transform-origin:140px 74px;"></circle>
+        <circle class="leaf-bud" id="leaf3" cx="40"  cy="60" r="14" fill="#475569" stroke="#0f172a" stroke-width="3" transform="scale(0.4)" style="transform-origin:40px 60px;"></circle>
+        <circle class="leaf-bud" id="leaf4" cx="160" cy="50" r="14" fill="#475569" stroke="#0f172a" stroke-width="3" transform="scale(0.4)" style="transform-origin:160px 50px;"></circle>
+        <circle class="leaf-bud" id="leaf5" cx="100" cy="48" r="20" fill="#475569" stroke="#0f172a" stroke-width="3" transform="scale(0.4)" style="transform-origin:100px 48px;"></circle>
+        <circle class="leaf-bud" id="leaf6" cx="70"  cy="34" r="13" fill="#475569" stroke="#0f172a" stroke-width="3" transform="scale(0.4)" style="transform-origin:70px 34px;"></circle>
+        <circle class="leaf-bud" id="leaf7" cx="130" cy="30" r="13" fill="#475569" stroke="#0f172a" stroke-width="3" transform="scale(0.4)" style="transform-origin:130px 30px;"></circle>
+        <circle class="leaf-bud" id="leaf8" cx="100" cy="14" r="12" fill="#475569" stroke="#0f172a" stroke-width="3" transform="scale(0.4)" style="transform-origin:100px 14px;"></circle>
+        <circle class="leaf-bud" id="leaf9" cx="100" cy="95" r="34" fill="#475569" stroke="#0f172a" stroke-width="2" opacity="0.0" transform="scale(0.4)" style="transform-origin:100px 95px;"></circle>
       </svg>
     </div>
 
-    <!-- 10 stage markers -->
     <div id="markerLayer"></div>
-
-    <!-- fog -->
     <div class="fog-layer" id="fogLayer"></div>
-
-    <div class="bloom-flash" id="bloomFlash"></div>
   </div>
 
   <div class="bottom-row">
@@ -325,10 +568,10 @@
       <span class="chip">🌱 <span id="sproutsCount">0</span> sprouts</span>
       <span class="chip" id="clearedChip">0/10 awake</span>
     </div>
-    <button class="brutal-btn ghost" id="resetBtn" title="Clear local save (for testing)">Reset world</button>
+    <button class="brutal-btn" id="resetBtn" title="Clear local save">Reset world</button>
   </div>
 
-  <div class="footer-note hand">Tap a glowing marker to fly there with Spika 🦉</div>
+  <div class="footer-note">Hover over unlocked zones to observe weather systems. Tap to fly with Spika! 🦉</div>
 </div>
 
 <script src="data/content.js"></script>
@@ -345,41 +588,108 @@
   var markerLayer = document.getElementById("markerLayer");
   var fogLayer = document.getElementById("fogLayer");
 
-  // ---- build decorative biome blobs ----
+  // Core Procedural Synthesizer Sound Engine Configuration
+  var GaiaAudio = {
+    ctx: null,
+    init: function() {
+      if (!this.ctx) this.ctx = new (window.AudioContext || window.webkitAudioContext)();
+    },
+    playWhoosh: function() {
+      if (save.settings && save.settings.sound === false) return;
+      this.init();
+      var osc = this.ctx.createOscillator(), gain = this.ctx.createGain();
+      osc.type = 'triangle'; osc.frequency.setValueAtTime(320, this.ctx.currentTime);
+      osc.frequency.exponentialRampToValueAtTime(100, this.ctx.currentTime + 0.6);
+      gain.gain.setValueAtTime(0.18, this.ctx.currentTime);
+      gain.gain.linearRampToValueAtTime(0, this.ctx.currentTime + 0.6);
+      osc.connect(gain); gain.connect(this.ctx.destination);
+      osc.start(); osc.stop(this.ctx.currentTime + 0.6);
+    }
+  };
+
+  // Parallax Event Coordinates Tracking Setup
+  document.addEventListener("mousemove", function (e) {
+    var cx = window.innerWidth / 2;
+    var cy = window.innerHeight / 2;
+    var dx = e.clientX - cx;
+    var dy = e.clientY - cy;
+    var layerStars = document.querySelector(".layer-stars");
+    var layerMountains = document.querySelector(".layer-mountains");
+    if (layerStars) layerStars.style.transform = "translate(" + (dx * 0.01) + "px, " + (dy * 0.01) + "px) scale(1.02)";
+    if (layerMountains) layerMountains.style.transform = "translate(" + (dx * 0.025) + "px, " + (dy * 0.025) + "px) scale(1.04)";
+  });
+
+  var spikaFlyer = document.createElement("div");
+  spikaFlyer.className = "spika-flyer";
+  spikaFlyer.textContent = "🦉";
+  document.getElementById("mapStage").appendChild(spikaFlyer);
+
+  var prevCleared = JSON.parse(sessionStorage.getItem("gog_prev_cleared") || "[]");
+  var prevSeeds = parseInt(sessionStorage.getItem("gog_prev_seeds") || "0", 10);
+  var isFirstLoad = sessionStorage.getItem("gog_prev_cleared") === null;
+
+  if (isFirstLoad) {
+    sessionStorage.setItem("gog_prev_cleared", JSON.stringify(save.stagesCleared));
+    sessionStorage.setItem("gog_prev_seeds", save.seeds.toString());
+    prevCleared = save.stagesCleared;
+    prevSeeds = save.seeds;
+  }
+
   STAGES.forEach(function (stage) {
     var blob = document.createElement("div");
     blob.className = "biome-blob";
     blob.id = "blob-" + stage.id;
-    var size = stage.finale ? 30 : 24;
+    var size = stage.finale ? 35 : 28;
     blob.style.width = size + "%";
     blob.style.height = size + "%";
     blob.style.left = stage.mapPos.x + "%";
     blob.style.top = stage.mapPos.y + "%";
-    blob.style.transform = "translate(-50%, -50%)";
     blob.style.background = stage.color;
     biomeLayer.appendChild(blob);
   });
 
-  // ---- build fog blobs (one per stage, fades when that stage clears) ----
   STAGES.forEach(function (stage) {
-    console.log(stage,'stage')
     if(!stage.playable){
-    var fog = document.createElement("div");
-    fog.className = "fog-blob";
-    fog.id = "fog-" + stage.id;
-    var size = stage.finale ? 36 : 28;
-    fog.style.width = size + "%";
-    fog.style.height = size + "%";
-    fog.style.left = stage.mapPos.x + "%";
-    fog.style.top = stage.mapPos.y + "%";
-    fog.style.transform = "translate(-50%, -50%)";
-    fog.style.animationDelay = (stage.order * 0.7) + "s";
-    fogLayer.appendChild(fog);
+      var fog = document.createElement("div");
+      fog.className = "fog-blob";
+      fog.id = "fog-" + stage.id;
+      var size = stage.finale ? 40 : 32;
+      fog.style.width = size + "%";
+      fog.style.height = size + "%";
+      fog.style.left = stage.mapPos.x + "%";
+      fog.style.top = stage.mapPos.y + "%";
+      fog.style.animationDelay = (stage.order * 0.4) + "s";
+      fogLayer.appendChild(fog);
     }
-
   });
 
-  // ---- build markers ----
+  // Dynamic Constellation Vector Rendering Algorithm
+  function drawConstellationLines() {
+    var svg = document.getElementById("constellationSvg");
+    if (!svg) return;
+    svg.innerHTML = "";
+    
+    for (var i = 0; i < STAGES.length - 1; i++) {
+      var current = STAGES[i];
+      var next = STAGES[i+1];
+      var currentCleared = save.stagesCleared.indexOf(current.id) !== -1;
+      var nextUnlocked = GOGContent.isUnlocked(next, save);
+
+      if (currentCleared || nextUnlocked) {
+        var line = document.createElementNS("http://www.w3.org/2000/svg", "line");
+        line.setAttribute("x1", current.mapPos.x + "%");
+        line.setAttribute("y1", current.mapPos.y + "%");
+        line.setAttribute("x2", next.mapPos.x + "%");
+        line.setAttribute("y2", next.mapPos.y + "%");
+        line.setAttribute("class", "constellation-line");
+        line.setAttribute("stroke", currentCleared ? current.color : "rgba(255,255,255,0.25)");
+        line.setAttribute("stroke-width", currentCleared ? "2.5" : "1.5");
+        line.setAttribute("opacity", "0.65");
+        svg.appendChild(line);
+      }
+    }
+  }
+
   function buildMarkers() {
     markerLayer.innerHTML = "";
     STAGES.forEach(function (stage) {
@@ -395,16 +705,13 @@
       if (cleared) {
         el.classList.add("cleared");
         el.textContent = stage.icon;
-        el.style.background = stage.color;
+        el.style.boxShadow = "0 0 20px " + stage.color;
       } else if (unlocked && stage.playable) {
         el.classList.add("unlocked-ready");
         el.textContent = stage.icon;
-        el.style.filter = "grayscale(0.15)";
       } else if (unlocked && !stage.playable) {
-        // unlocked by story order, but this build doesn't have the stage file yet
         el.textContent = stage.icon;
-        el.style.filter = "grayscale(0.5)";
-        el.title = stage.guardian + " is stirring... (coming in a future build)";
+        el.style.filter = "grayscale(0.4)";
       } else {
         el.classList.add("locked");
         el.textContent = "💤";
@@ -412,7 +719,7 @@
 
       var label = document.createElement("span");
       label.className = "marker-label";
-      label.textContent = stage.order + ". " + stage.guardian;
+      label.innerHTML = "<strong>" + stage.order + ". " + stage.guardian + "</strong><br><small style='color:#94a3b8;font-weight:500;'>" + stage.biome + "</small>";
       el.appendChild(label);
 
       el.addEventListener("click", function () { onMarkerClick(stage, cleared, unlocked); });
@@ -420,19 +727,146 @@
     });
   }
 
+  var isAnimatingSpika = false;
+
   function onMarkerClick(stage, cleared, unlocked) {
+    if (isAnimatingSpika) return;
     if (!unlocked) {
-      GOGUi.showToast("🌫️ " + stage.guardian + " is still asleep behind the Smog. Clear earlier stages first!");
+      GOGUi.showToast("🌫️ " + stage.guardian + " is still asleep behind the Smog.");
       return;
     }
     if (!stage.playable) {
-      GOGUi.showToast("✨ " + stage.guardian + "'s stage is being built next \u2014 check back soon!");
+      GOGUi.showToast("✨ " + stage.guardian + "'s stage is being built next!");
       return;
     }
-    window.location.href = stage.href;
+
+    isAnimatingSpika = true;
+    GaiaAudio.playWhoosh();
+    spikaFlyer.style.left = "50%";
+    spikaFlyer.style.top = "50%";
+    spikaFlyer.offsetHeight; 
+    spikaFlyer.classList.add("active");
+
+    var trailInterval = setInterval(function () {
+      spawnSpikaTrail(parseFloat(spikaFlyer.style.left), parseFloat(spikaFlyer.style.top));
+    }, 40);
+
+    setTimeout(function () {
+      spikaFlyer.style.left = stage.mapPos.x + "%";
+      spikaFlyer.style.top = stage.mapPos.y + "%";
+      spikaFlyer.style.transform = stage.mapPos.x < 50 ? "translate(-50%, -50%) scale(1.2) scaleX(-1)" : "translate(-50%, -50%) scale(1.2) scaleX(1)";
+    }, 50);
+
+    setTimeout(function () {
+      clearInterval(trailInterval);
+      window.location.href = stage.href;
+    }, 850);
   }
 
-  // ---- render HUD numbers, fog opacity, tree blooms ----
+  function spawnSpikaTrail(x, y) {
+    var sparkle = document.createElement("div");
+    sparkle.className = "spika-sparkle";
+    var items = ["🌱", "✨", "🍃", "🟢"];
+    sparkle.textContent = items[Math.floor(Math.random() * items.length)];
+    sparkle.style.left = x + "%";
+    sparkle.style.top = y + "%";
+    var angle = Math.random() * Math.PI * 2;
+    var dist = 10 + Math.random() * 15;
+    sparkle.style.setProperty("--tx", Math.cos(angle) * dist + "px");
+    sparkle.style.setProperty("--ty", Math.sin(angle) * dist + "px");
+    document.getElementById("mapStage").appendChild(sparkle);
+    setTimeout(function () { sparkle.remove(); }, 600);
+  }
+
+  function triggerSmogDispersion(x, y) {
+    for (var i = 0; i < 15; i++) {
+      var puff = document.createElement("div");
+      puff.className = "smog-puff";
+      puff.style.left = x + "%";
+      puff.style.top = y + "%";
+      var size = 25 + Math.random() * 25;
+      var angle = Math.random() * Math.PI * 2;
+      var dist = 30 + Math.random() * 50;
+      puff.style.width = size + "px";
+      puff.style.height = size + "px";
+      puff.style.setProperty("--tx", Math.cos(angle) * dist + "px");
+      puff.style.setProperty("--ty", Math.sin(angle) * dist + "px");
+      document.getElementById("mapStage").appendChild(puff);
+      (function(p){ setTimeout(function(){ p.remove(); }, 1100); })(puff);
+    }
+  }
+
+  function triggerLeafSparkles(leafId) {
+    var leaf = document.getElementById(leafId);
+    if (!leaf) return;
+    var zone = document.querySelector(".tree-zone");
+    var rect = leaf.getBoundingClientRect(), zRect = zone.getBoundingClientRect();
+    var cx = rect.left - zRect.left + rect.width / 2;
+    var cy = rect.top - zRect.top + rect.height / 2;
+
+    for (var i = 0; i < 8; i++) {
+      var sparkle = document.createElement("div");
+      sparkle.className = "leaf-sparkle";
+      sparkle.textContent = Math.random() > 0.5 ? "✨" : "🍃";
+      sparkle.style.left = cx + "px";
+      sparkle.style.top = cy + "px";
+      var angle = Math.random() * Math.PI * 2;
+      var dist = 15 + Math.random() * 20;
+      sparkle.style.setProperty("--tx", Math.cos(angle) * dist + "px");
+      sparkle.style.setProperty("--ty", Math.sin(angle) * dist + "px");
+      zone.appendChild(sparkle);
+      (function(s){ setTimeout(function(){ s.remove(); }, 750); })(sparkle);
+    }
+  }
+
+  // Interactive Hover Micro-Weather System Engine Loops
+  var ambientIntervals = [];
+  function startAmbientEffects() {
+    ambientIntervals.forEach(clearInterval);
+    ambientIntervals = [];
+    STAGES.forEach(function (stage) {
+      if (save.stagesCleared.indexOf(stage.id) === -1) return;
+      var blob = document.getElementById("blob-" + stage.id);
+      if (!blob) return;
+
+      if (stage.id === "stage01") {
+        ambientIntervals.push(setInterval(function () { spawnAmbientBubble(blob); }, 1400));
+      } else if (["stage02", "stage06", "stage08"].indexOf(stage.id) !== -1) {
+        ambientIntervals.push(setInterval(function () { spawnAmbientFloraFauna(blob, stage.id); }, 2200));
+      } else if (stage.id === "stage03") {
+        ambientIntervals.push(setInterval(function () { spawnAmbientFlower(blob); }, 1800));
+      } else if (["stage04", "stage10"].indexOf(stage.id) !== -1) {
+        ambientIntervals.push(setInterval(function () { spawnAmbientSparkle(blob); }, 1500));
+      }
+    });
+  }
+
+  function spawnAmbientBubble(blob) {
+    var b = document.createElement("div"); b.className = "ambient-bubble"; b.textContent = Math.random() > 0.5 ? "🫧" : "💧";
+    b.style.left = (15 + Math.random() * 70) + "%"; b.style.setProperty("--drift", (-20 + Math.random() * 40) + "px");
+    blob.appendChild(b); setTimeout(function () { b.remove(); }, 2800);
+  }
+
+  function spawnAmbientFloraFauna(blob, id) {
+    var e = document.createElement("div"); e.className = id === "stage06" ? "leaf-sparkle" : "ambient-butterfly";
+    e.textContent = id === "stage06" ? "🍃" : "🦋"; e.style.left = (20 + Math.random() * 60) + "%"; e.style.top = (20 + Math.random() * 60) + "%";
+    e.style.setProperty("--dx2", (-40 + Math.random() * 80) + "px"); e.style.setProperty("--dy2", (-40 + Math.random() * 80) + "px");
+    blob.appendChild(e); setTimeout(function () { e.remove(); }, 3800);
+  }
+
+  function spawnAmbientFlower(blob) {
+    var f = document.createElement("div"); f.className = "ambient-flower";
+    var fl = ["🌸", "🌼", "🌻", "🌺"]; f.textContent = fl[Math.floor(Math.random() * fl.length)];
+    f.style.left = (15 + Math.random() * 70) + "%"; f.style.top = (15 + Math.random() * 70) + "%";
+    blob.appendChild(f); setTimeout(function () { f.remove(); }, 4800);
+  }
+
+  function spawnAmbientSparkle(blob) {
+    var s = document.createElement("div"); s.className = "ambient-sparkle"; s.textContent = "✨";
+    s.style.left = (15 + Math.random() * 70) + "%"; s.style.top = (15 + Math.random() * 70) + "%";
+    blob.appendChild(s); setTimeout(function () { s.remove(); }, 2400);
+  }
+
   function renderState() {
     document.getElementById("seedsCount").textContent = save.seeds;
     document.getElementById("sproutsCount").textContent = save.sprouts;
@@ -440,72 +874,64 @@
     document.getElementById("smogPct").textContent = save.smogLevel + "%";
     document.getElementById("smogFill").style.width = (100 - save.smogLevel) + "%";
 
-    // per-stage fog + blob clearing
     STAGES.forEach(function (stage) {
       var cleared = save.stagesCleared.indexOf(stage.id) !== -1;
       var fog = document.getElementById("fog-" + stage.id);
       var blob = document.getElementById("blob-" + stage.id);
-      if (fog) fog.style.opacity = cleared ? "0" : "0.9";
+      if (fog) {
+        if (cleared && prevCleared.indexOf(stage.id) === -1) {
+          setTimeout(function () {
+            triggerSmogDispersion(stage.mapPos.x, stage.mapPos.y);
+            if (fog) fog.style.opacity = "0";
+          }, 400);
+        } else {
+          fog.style.opacity = cleared ? "0" : "0.85";
+        }
+      }
       if (blob) blob.classList.toggle("cleared", cleared);
     });
 
-    // tree blooms: leaf i visible once seeds > i
     for (var i = 0; i < 10; i++) {
       var leaf = document.getElementById("leaf" + i);
       if (!leaf) continue;
       var shouldBloom = save.seeds > i;
       leaf.classList.toggle("bloom", shouldBloom);
       leaf.setAttribute("transform", shouldBloom ? "scale(1)" : "scale(0.4)");
-      leaf.style.opacity = shouldBloom ? "1" : "0.5";
+      leaf.style.opacity = shouldBloom ? "1" : "0.4";
+
+      if (shouldBloom && prevSeeds <= i) {
+        (function (lId, idx) {
+          setTimeout(function () { triggerLeafSparkles(lId); }, 500 + idx * 100);
+        })("leaf" + i, i);
+      }
     }
 
-    if (save.smogLevel <= 0) {
-      var flash = document.getElementById("bloomFlash");
-      flash.classList.add("play");
-    }
+    drawConstellationLines();
+    startAmbientEffects();
+    sessionStorage.setItem("gog_prev_cleared", JSON.stringify(save.stagesCleared));
+    sessionStorage.setItem("gog_prev_seeds", save.seeds.toString());
+    prevCleared = save.stagesCleared; prevSeeds = save.seeds;
   }
 
   buildMarkers();
   renderState();
 
-  // ---- reset button (handy for testing / a fresh start) ----
   document.getElementById("resetBtn").addEventListener("click", function () {
-    if (!confirm("Reset all progress? The Smog will cover the world again.")) return;
-    save = GOGSave.reset();
-    buildMarkers();
-    renderState();
+    if (!confirm("Reset all progress?")) return;
+    save = GOGSave.reset(); buildMarkers(); renderState();
   });
 
-  // ---- settings panel ----
   document.getElementById("settingsBtn").addEventListener("click", function () {
     var overlay = GOGUi.showOverlay({
       title: "⚙️ Settings",
-      body:
-        '<div class="settings-panel">' +
-        '<div class="settings-row"><span>🔊 Sound</span>' +
-        '<label class="switch"><input type="checkbox" id="soundToggle" ' + (save.settings.sound ? "checked" : "") + '><span class="track"></span><span class="knob"></span></label>' +
-        '</div>' +
-        '<div class="settings-row"><span>🧘 Calm mode <small style="display:block;font-weight:500;">No timers, gentler pace</small></span>' +
-        '<label class="switch"><input type="checkbox" id="calmToggle" ' + (save.settings.calmMode ? "checked" : "") + '><span class="track"></span><span class="knob"></span></label>' +
-        '</div>' +
-        '</div>',
-      primaryLabel: "Done",
-      onPrimary: function () { GOGUi.closeOverlay(overlay); }
+      body: '<div class="settings-panel"><div class="settings-row"><span>🔊 Sound FX Engine</span><label class="switch"><input type="checkbox" id="soundToggle" ' + (save.settings.sound ? "checked" : "") + '><span class="track"></span><span class="knob"></span></label></div><div class="settings-row"><span>🧘 Calm mode</span><label class="switch"><input type="checkbox" id="calmToggle" ' + (save.settings.calmMode ? "checked" : "") + '><span class="track"></span><span class="knob"></span></label></div></div>',
+      primaryLabel: "Done", onPrimary: function () { GOGUi.closeOverlay(overlay); }
     });
-    overlay.querySelector("#soundToggle").addEventListener("change", function (e) {
-      save = GOGSave.patch({ settings: { sound: e.target.checked } });
-    });
-    overlay.querySelector("#calmToggle").addEventListener("change", function (e) {
-      save = GOGSave.patch({ settings: { calmMode: e.target.checked } });
-    });
+    overlay.querySelector("#soundToggle").addEventListener("change", function (e) { save = GOGSave.patch({ settings: { sound: e.target.checked } }); });
+    overlay.querySelector("#calmToggle").addEventListener("change", function (e) { save = GOGSave.patch({ settings: { calmMode: e.target.checked } }); });
   });
 
-  // re-render if the player comes back from a stage (e.g. browser back button)
-  window.addEventListener("focus", function () {
-    save = GOGSave.load();
-    buildMarkers();
-    renderState();
-  });
+  window.addEventListener("focus", function () { save = GOGSave.load(); buildMarkers(); renderState(); });
 })();
 </script>
 </body>
