@@ -252,6 +252,7 @@
         <span class="label" id="reefPct">0%</span>
       </div>
       <span class="chip timer-chip" id="timerChip">75s</span>
+      <span class="chip" id="difficultyChip" title="Difficulty Level (increases over time)" style="background: var(--gog-white); border-color: var(--gog-ink); color: var(--gog-ink); transition: background-color 0.3s, color 0.3s; font-weight: 800;">⚡ Lvl 1</span>
       <span class="chip">🌱 <span id="sproutsChip">0</span></span>
       <span class="chip combo-chip" id="comboChip">🔥 x0</span>
       <button class="icon-btn" id="boostBtn" title="Echo Boost — dash & break through trash" aria-label="Echo Boost">💨</button>
@@ -275,6 +276,15 @@
         <label for="spawnRightOnly" style="font-weight: 700; cursor: pointer; font-size: 0.95rem; user-select: none;">
           Always Spawn From Right Side
         </label>
+      </div>
+
+      <!-- Trash Quantity Slider -->
+      <div style="display: flex; flex-direction: column; gap: 4px;">
+        <div style="display: flex; justify-content: space-between; font-weight: 700; font-size: 0.9rem;">
+          <span>📦 Trash Quantity</span>
+          <span id="trashQtyVal" style="color: var(--gog-cobalt); font-family: monospace;">Normal (1.0x)</span>
+        </div>
+        <input type="range" id="trashQtyMult" min="0.2" max="2.0" step="0.2" value="1.0" style="cursor: pointer; accent-color: var(--gog-cobalt);" />
       </div>
 
       <!-- Trash Speed Slider -->
@@ -418,6 +428,21 @@
         });
       }
     });
+
+    var qtySlider = document.getElementById("trashQtyMult");
+    var qtyLabel = document.getElementById("trashQtyVal");
+    if (qtySlider && qtyLabel) {
+      qtySlider.addEventListener("input", function () {
+        var val = parseFloat(qtySlider.value);
+        var text = "";
+        if (val <= 0.3) text = "Very Low";
+        else if (val <= 0.7) text = "Low";
+        else if (val <= 1.1) text = "Normal";
+        else if (val <= 1.6) text = "High";
+        else text = "Max";
+        qtyLabel.textContent = text + " (" + val.toFixed(1) + "x)";
+      });
+    }
   })();
 
   // Resume AudioContext & start bgMusic on first user interaction
@@ -1119,21 +1144,94 @@ async function init() {
     });
   }
 
+  function getDifficultyLevel() {
+    // Level 1 to 5 based on elapsed time (every 15 seconds steps up, max 5)
+    return Math.min(5, 1 + Math.floor(state.elapsed / 15));
+  }
+
+  var currentDifficulty = 1;
+  function updateDifficultyUI() {
+    var level = getDifficultyLevel();
+    if (level === currentDifficulty) return;
+    
+    currentDifficulty = level;
+
+    var diffChip = document.getElementById("difficultyChip");
+    if (!diffChip) return;
+
+    // Update styling based on new level
+    var colors = [
+      { text: "⚡ Lvl 1", bg: "var(--gog-white)", color: "var(--gog-ink)" },
+      { text: "⚡ Lvl 2", bg: "#ffd166", color: "var(--gog-ink)" },
+      { text: "🔥 Lvl 3", bg: "var(--gog-tangerine)", color: "var(--gog-ink)" },
+      { text: "💀 Lvl 4", bg: "var(--gog-pink)", color: "var(--gog-white)" },
+      { text: "☣️ MAX", bg: "#ef4444", color: "var(--gog-white)" }
+    ];
+
+    var config = colors[level - 1];
+    diffChip.textContent = config.text;
+    diffChip.style.backgroundColor = config.bg;
+    diffChip.style.color = config.color;
+
+    // Add bounce animation
+    diffChip.classList.remove("chip-pop");
+    void diffChip.offsetWidth;
+    diffChip.classList.add("chip-pop");
+
+    // Float notification on the screen
+    var cx = canvasXToClient(W / 2);
+    var cy = canvasYToClient(H / 2) - 40;
+    GOGUi.floatLabel(
+      document.getElementById("canvasFrame"),
+      cx,
+      cy,
+      "⚠️ Danger: " + config.text + "!",
+      level >= 4 ? "#ef4444" : "var(--gog-cobalt)"
+    );
+    
+    // Play hazard sound effect
+    audio.hazard();
+  }
+
   var trashTimer = 0, turtleTimer = 3, pufferTimer = 4, pearlTimer = 20;
 
   function updateSpawns(dt) {
+    var level = getDifficultyLevel();
+    
+    // Scale intervals down (which means faster spawning)
+    var spawnFreqMultiplier = 1.0;
+    if (level === 2) spawnFreqMultiplier = 0.8;
+    else if (level === 3) spawnFreqMultiplier = 0.65;
+    else if (level === 4) spawnFreqMultiplier = 0.5;
+    else if (level === 5) spawnFreqMultiplier = 0.35;
+
+    var qtySlider = document.getElementById("trashQtyMult");
+    var trashQuantityMult = qtySlider ? parseFloat(qtySlider.value) : 1.0;
+
     trashTimer -= dt;
-    if (trashTimer <= 0) { spawnTrash(); trashTimer = rand(0.7, 1.1); }
+    if (trashTimer <= 0) { 
+      spawnTrash(); 
+      trashTimer = (rand(0.7, 1.1) * spawnFreqMultiplier) / trashQuantityMult; 
+    }
 
     turtleTimer -= dt;
-    if (turtleTimer <= 0) { spawnTurtle(); turtleTimer = rand(7, 10); }
+    if (turtleTimer <= 0) { 
+      spawnTurtle(); 
+      turtleTimer = rand(7, 10) * Math.max(0.7, spawnFreqMultiplier); 
+    }
 
     var pufferInterval = calmMode ? rand(4.2, 6.5) : rand(2.6, 4.2);
     pufferTimer -= dt;
-    if (pufferTimer <= 0 && state.elapsed > 4) { spawnPuffer(); pufferTimer = pufferInterval; }
+    if (pufferTimer <= 0 && state.elapsed > 4) { 
+      spawnPuffer(); 
+      pufferTimer = pufferInterval * spawnFreqMultiplier; 
+    }
 
     pearlTimer -= dt;
-    if (pearlTimer <= 0 && state.elapsed > 8) { spawnPearl(); pearlTimer = rand(20, 30); }
+    if (pearlTimer <= 0 && state.elapsed > 8) { 
+      spawnPearl(); 
+      pearlTimer = rand(20, 30); 
+    }
   }
 
   function setReef(delta, originX, originY) {
@@ -1226,6 +1324,7 @@ async function init() {
     }
 
     state.elapsed += dt;
+    updateDifficultyUI();
 
     // NEW: one-time splash burst the moment the stage opens
     if (!state.introPlayed) {
@@ -1400,36 +1499,67 @@ async function init() {
         }
       } else if (it.type === "turtle") {
         items.splice(i, 1);
-        setReef(16, it.x, it.y);
-        addSprouts(6);
-        addCombo(); // NEW
-        particles.burst(it.x, it.y, { glyphs: ["💚", "✨"], count: 12, life: 700 });
-        spawnConfettiBurst(14, it.x, it.y); // NEW: extra-special turtle-save flourish
-        triggerZoomPunch(); // NEW: camera punch for the big save
-        audio.collect();
-        GOGUi.floatLabel(document.getElementById("canvasFrame"), canvasXToClient(it.x), canvasYToClient(it.y), "Turtle saved! +16", "#1aa05e");
+        if (dolphin.state === "attack") {
+          // Mistakenly attacked the turtle!
+          setReef(-10, it.x, it.y);
+          resetCombo();
+          particles.burst(it.x, it.y, { glyphs: ["😢", "💥"], count: 8, life: 600 });
+          audio.hazard();
+          shakeFrame();
+          GOGUi.floatLabel(document.getElementById("canvasFrame"), canvasXToClient(it.x), canvasYToClient(it.y), "Hurt Turtle! -10 Reef", "#ef4444");
+        } else {
+          setReef(16, it.x, it.y);
+          addSprouts(6);
+          addCombo(); // NEW
+          particles.burst(it.x, it.y, { glyphs: ["💚", "✨"], count: 12, life: 700 });
+          spawnConfettiBurst(14, it.x, it.y); // NEW: extra-special turtle-save flourish
+          triggerZoomPunch(); // NEW: camera punch for the big save
+          audio.collect();
+          GOGUi.floatLabel(document.getElementById("canvasFrame"), canvasXToClient(it.x), canvasYToClient(it.y), "Turtle saved! +16", "#1aa05e");
+        }
       } else if (it.type === "pearl") {
         // NEW: rare Golden Pearl — biggest single reward in the stage
         items.splice(i, 1);
-        setReef(20, it.x, it.y);
-        addSprouts(10);
-        addCombo();
-        particles.burst(it.x, it.y, { glyphs: ["🌟", "💛", "✨"], count: 18, life: 900 });
-        spawnConfettiBurst(20, it.x, it.y);
-        triggerZoomPunch();
-        audio.collect();
-        GOGUi.floatLabel(document.getElementById("canvasFrame"), canvasXToClient(it.x), canvasYToClient(it.y), "Golden Pearl! +20", "#ffae00");
+        if (dolphin.state === "attack") {
+          // Mistakenly crushed the pearl!
+          setReef(-12, it.x, it.y);
+          resetCombo();
+          particles.burst(it.x, it.y, { glyphs: ["🪨", "💥"], count: 8, life: 600 });
+          audio.hazard();
+          shakeFrame();
+          GOGUi.floatLabel(document.getElementById("canvasFrame"), canvasXToClient(it.x), canvasYToClient(it.y), "Crushed Pearl! -12 Reef", "#ef4444");
+        } else {
+          setReef(20, it.x, it.y);
+          addSprouts(10);
+          addCombo();
+          particles.burst(it.x, it.y, { glyphs: ["🌟", "💛", "✨"], count: 18, life: 900 });
+          spawnConfettiBurst(20, it.x, it.y);
+          triggerZoomPunch();
+          audio.collect();
+          GOGUi.floatLabel(document.getElementById("canvasFrame"), canvasXToClient(it.x), canvasYToClient(it.y), "Golden Pearl! +20", "#ffae00");
+        }
       } else if (it.type === "pufferfish") {
         if (state.elapsed < state.invulnUntil) continue;
         items.splice(i, 1);
-        setReef(-6, dolphin.x, dolphin.y);
+
+        var damage = 6;
+        var labelText = "-6 Reef";
+        if (dolphin.state === "attack") {
+          damage = 12; // Double damage for attacking a spiky puffer!
+          labelText = "Puffer Spike! -12 Reef";
+          particles.burst(dolphin.x, dolphin.y, { glyphs: ["💥", "🐡"], count: 8, life: 500, gravity: 60 });
+        } else {
+          particles.burst(dolphin.x, dolphin.y, { glyphs: ["💥"], count: 6, life: 420, gravity: 60 });
+        }
+
+        setReef(-damage, dolphin.x, dolphin.y);
         state.hits++;
         resetCombo(); // NEW: a hit breaks the streak
         state.invulnUntil = state.elapsed + 0.7;
         state.hitFlashUntil = state.elapsed + 0.25; // NEW: brief red screen flash
-        particles.burst(dolphin.x, dolphin.y, { glyphs: ["💥"], count: 6, life: 420, gravity: 60 });
         audio.hazard();
         shakeFrame();
+        GOGUi.floatLabel(document.getElementById("canvasFrame"), canvasXToClient(dolphin.x), canvasYToClient(dolphin.y), labelText, "#ef4444");
 
         // NEW: gentle knockback away from the pufferfish
         var kdx = dolphin.x - it.x, kdy = dolphin.y - it.y;
