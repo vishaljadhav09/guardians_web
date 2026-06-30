@@ -263,6 +263,58 @@
     <canvas id="gameCanvas" width="960" height="600"></canvas>
   </div>
 
+  <!-- Spawning & Speed Controls -->
+  <div class="brutal-box" style="margin: 20px auto 0; padding: 20px; background: var(--gog-white); border-radius: 18px;">
+    <h3 style="margin-top: 0; margin-bottom: 12px; font-family: var(--gog-font-head); font-size: 1.35rem; display: flex; align-items: center; gap: 8px;">
+      ⚙️ Spawning & Speed Controls
+    </h3>
+    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 16px; align-items: center;">
+      <!-- Toggle: Spawn Right Only -->
+      <div style="display: flex; align-items: center; gap: 10px;">
+        <input type="checkbox" id="spawnRightOnly" checked style="width: 22px; height: 22px; cursor: pointer; accent-color: var(--gog-cobalt);" />
+        <label for="spawnRightOnly" style="font-weight: 700; cursor: pointer; font-size: 0.95rem; user-select: none;">
+          Always Spawn From Right Side
+        </label>
+      </div>
+
+      <!-- Trash Speed Slider -->
+      <div style="display: flex; flex-direction: column; gap: 4px;">
+        <div style="display: flex; justify-content: space-between; font-weight: 700; font-size: 0.9rem;">
+          <span>🍶/🛍️ Trash Speed</span>
+          <span id="trashSpeedVal" style="color: var(--gog-cobalt); font-family: monospace;">1.0x</span>
+        </div>
+        <input type="range" id="trashSpeedMult" min="0.2" max="3.0" step="0.1" value="1.0" style="cursor: pointer; accent-color: var(--gog-cobalt);" />
+      </div>
+
+      <!-- Turtle Speed Slider -->
+      <div style="display: flex; flex-direction: column; gap: 4px;">
+        <div style="display: flex; justify-content: space-between; font-weight: 700; font-size: 0.9rem;">
+          <span>🐢 Turtle Speed</span>
+          <span id="turtleSpeedVal" style="color: var(--gog-cobalt); font-family: monospace;">1.0x</span>
+        </div>
+        <input type="range" id="turtleSpeedMult" min="0.2" max="3.0" step="0.1" value="1.0" style="cursor: pointer; accent-color: var(--gog-cobalt);" />
+      </div>
+
+      <!-- Pufferfish Speed Slider -->
+      <div style="display: flex; flex-direction: column; gap: 4px;">
+        <div style="display: flex; justify-content: space-between; font-weight: 700; font-size: 0.9rem;">
+          <span>🐡 Pufferfish Speed</span>
+          <span id="pufferSpeedVal" style="color: var(--gog-cobalt); font-family: monospace;">1.0x</span>
+        </div>
+        <input type="range" id="pufferSpeedMult" min="0.2" max="3.0" step="0.1" value="1.0" style="cursor: pointer; accent-color: var(--gog-cobalt);" />
+      </div>
+
+      <!-- Pearl Speed Slider -->
+      <div style="display: flex; flex-direction: column; gap: 4px;">
+        <div style="display: flex; justify-content: space-between; font-weight: 700; font-size: 0.9rem;">
+          <span>🦪 Pearl Speed</span>
+          <span id="pearlSpeedVal" style="color: var(--gog-cobalt); font-family: monospace;">1.0x</span>
+        </div>
+        <input type="range" id="pearlSpeedMult" min="0.2" max="3.0" step="0.1" value="1.0" style="cursor: pointer; accent-color: var(--gog-cobalt);" />
+      </div>
+    </div>
+  </div>
+
   <div class="stage-controls">
     <a class="brutal-btn ghost" href="../index.html">⬅ Back to Map</a>
     <span class="hand calm-badge" id="calmBadge"></span>
@@ -353,6 +405,20 @@
     void muteBtn.offsetWidth;
     muteBtn.classList.add("btn-bounce");
   });
+
+  // Connect speed value UI displays
+  (function setupSpeedControls() {
+    var speedTypes = ["trash", "turtle", "puffer", "pearl"];
+    speedTypes.forEach(function (type) {
+      var slider = document.getElementById(type + "SpeedMult");
+      var label = document.getElementById(type + "SpeedVal");
+      if (slider && label) {
+        slider.addEventListener("input", function () {
+          label.textContent = parseFloat(slider.value).toFixed(1) + "x";
+        });
+      }
+    });
+  })();
 
   // Resume AudioContext & start bgMusic on first user interaction
   function resumeAudioOnGesture() {
@@ -541,11 +607,21 @@ async function init() {
   function spawnTrash() {
     var glyphs = ["🍶", "🛍️", "🥤", "🧴"];
     var fromLeft = Math.random() < 0.5;
+    var rightOnly = document.getElementById("spawnRightOnly")?.checked;
+    var x, vx;
+    if (rightOnly) {
+      x = W + 30;
+      vx = -1 * rand(40, 80);
+    } else {
+      x = fromLeft ? -30 : W + 30;
+      vx = (fromLeft ? 1 : -1) * rand(40, 80);
+    }
+
     items.push({
       type: "trash",
-      x: fromLeft ? -30 : W + 30,
+      x: x,
       y: rand(60, H - 60),
-      vx: (fromLeft ? 1 : -1) * rand(40, 80),
+      vx: vx,
       vy: rand(-12, 12),
       r: 22,
       glyph: glyphs[Math.floor(Math.random() * glyphs.length)],
@@ -556,11 +632,21 @@ async function init() {
 
   function spawnTurtle() {
     var fromLeft = Math.random() < 0.5;
+    var rightOnly = document.getElementById("spawnRightOnly")?.checked;
+    var x, vx;
+    if (rightOnly) {
+      x = W + 40;
+      vx = -1 * rand(30, 55);
+    } else {
+      x = fromLeft ? -40 : W + 40;
+      vx = (fromLeft ? 1 : -1) * rand(30, 55);
+    }
+
     items.push({
       type: "turtle",
-      x: fromLeft ? -40 : W + 40,
+      x: x,
       y: rand(80, H - 80),
-      vx: (fromLeft ? 1 : -1) * rand(30, 55),
+      vx: vx,
       vy: rand(-8, 8),
       r: 26,
       glyph: "🐢",
@@ -571,12 +657,26 @@ async function init() {
 
   function spawnPuffer() {
     var fromTop = Math.random() < 0.5;
+    var rightOnly = document.getElementById("spawnRightOnly")?.checked;
+    var x, y, vx, vy;
+    if (rightOnly) {
+      x = W + 30;
+      y = rand(60, H - 60);
+      vx = -1 * rand(45, 85);
+      vy = rand(-12, 12);
+    } else {
+      x = rand(60, W - 60);
+      y = fromTop ? -30 : H + 30;
+      vx = rand(-20, 20);
+      vy = (fromTop ? 1 : -1) * rand(45, 85);
+    }
+
     items.push({
       type: "pufferfish",
-      x: rand(60, W - 60),
-      y: fromTop ? -30 : H + 30,
-      vx: rand(-20, 20),
-      vy: (fromTop ? 1 : -1) * rand(45, 85),
+      x: x,
+      y: y,
+      vx: vx,
+      vy: vy,
       r: 24,
       glyph: "🐡",
       bob: Math.random() * Math.PI * 2,
@@ -589,11 +689,21 @@ async function init() {
   // NEW: a rare, extra-valuable pickup — sells the "ocean has treasures too" feeling
   function spawnPearl() {
     var fromLeft = Math.random() < 0.5;
+    var rightOnly = document.getElementById("spawnRightOnly")?.checked;
+    var x, vx;
+    if (rightOnly) {
+      x = W + 40;
+      vx = -1 * rand(25, 45);
+    } else {
+      x = fromLeft ? -40 : W + 40;
+      vx = (fromLeft ? 1 : -1) * rand(25, 45);
+    }
+
     items.push({
       type: "pearl",
-      x: fromLeft ? -40 : W + 40,
+      x: x,
       y: rand(100, H - 100),
-      vx: (fromLeft ? 1 : -1) * rand(25, 45),
+      vx: vx,
       vy: rand(-6, 6),
       r: 24,
       glyph: "🦪",
@@ -1232,8 +1342,24 @@ async function init() {
     for (var i = items.length - 1; i >= 0; i--) {
       var it = items[i];
       it.age += dt; // NEW: used to scale items in with a little pop when they spawn
-      it.x += it.vx * dt;
-      it.y += it.vy * dt + Math.sin(state.elapsed * 2 + it.bob) * 6 * dt;
+
+      var speedMult = 1.0;
+      if (it.type === "trash") {
+        var el = document.getElementById("trashSpeedMult");
+        if (el) speedMult = parseFloat(el.value);
+      } else if (it.type === "turtle") {
+        var el = document.getElementById("turtleSpeedMult");
+        if (el) speedMult = parseFloat(el.value);
+      } else if (it.type === "pearl") {
+        var el = document.getElementById("pearlSpeedMult");
+        if (el) speedMult = parseFloat(el.value);
+      } else if (it.type === "pufferfish") {
+        var el = document.getElementById("pufferSpeedMult");
+        if (el) speedMult = parseFloat(el.value);
+      }
+
+      it.x += it.vx * speedMult * dt;
+      it.y += it.vy * speedMult * dt + Math.sin(state.elapsed * 2 + it.bob) * 6 * dt;
 
       var offscreen = it.x < -80 || it.x > W + 80 || it.y < -80 || it.y > H + 80;
       if (offscreen) { items.splice(i, 1); continue; }
@@ -1267,9 +1393,11 @@ async function init() {
         GOGUi.floatLabel(document.getElementById("canvasFrame"), canvasXToClient(it.x), canvasYToClient(it.y), "+7 Reef", "#2E5EE8");
         
         // Trigger attack animation
-        dolphin.state = "attack";
-        dolphin.frameIndex = 0;
-        dolphin.elapsedFrameTime = 0;
+        if (dolphin.state !== "attack") {
+          dolphin.state = "attack";
+          dolphin.frameIndex = 0;
+          dolphin.elapsedFrameTime = 0;
+        }
       } else if (it.type === "turtle") {
         items.splice(i, 1);
         setReef(16, it.x, it.y);
