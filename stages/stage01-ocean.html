@@ -231,9 +231,86 @@
     35%  { transform: scale(1.045); }
     100% { transform: scale(1); }
   }
+
+  /* =========================================================
+     NEW: ambient ocean backdrop for the page itself (outside
+     the canvas) — ties the HUD/controls into the same underwater
+     world instead of sitting on a flat, unrelated background.
+     ========================================================= */
+  body { position: relative; }
+  .page-bg {
+    position: fixed;
+    inset: 0;
+    z-index: -1;
+    overflow: hidden;
+    pointer-events: none;
+    background:
+      radial-gradient(ellipse at 50% -8%, #eaf7ff 0%, #d7ecf8 42%, #fdf6e6 100%);
+  }
+  .page-bubble {
+    position: absolute;
+    bottom: -10vh;
+    border-radius: 50%;
+    background: radial-gradient(circle at 32% 28%, rgba(255,255,255,.95), rgba(255,255,255,.05) 70%);
+    opacity: 0;
+    animation: pageBubbleRise linear infinite;
+  }
+  @keyframes pageBubbleRise {
+    0%   { transform: translateY(0) translateX(0); opacity: 0; }
+    8%   { opacity: .5; }
+    90%  { opacity: .35; }
+    100% { transform: translateY(-125vh) translateX(var(--drift, 24px)); opacity: 0; }
+  }
+
+  /* =========================================================
+     NEW: collect / oops / heal feedback that bleeds past the
+     canvas frame into the surrounding page, so the big moments
+     are felt across the whole screen — not just inside the box.
+     ========================================================= */
+  .page-fx {
+    position: fixed;
+    inset: 0;
+    z-index: 5;
+    pointer-events: none;
+    opacity: 0;
+  }
+  .page-fx.fx-collect {
+    background: radial-gradient(ellipse at 50% 50%, transparent 40%, rgba(46,94,232,.30) 150%);
+    animation: pageFxPulse .5s ease-out;
+  }
+  .page-fx.fx-oops {
+    background: radial-gradient(ellipse at 50% 50%, transparent 30%, rgba(232,46,93,.42) 150%);
+    animation: pageFxPulse .5s ease-out;
+  }
+  .page-fx.fx-heal {
+    background: radial-gradient(ellipse at 50% 50%, transparent 32%, rgba(61,214,192,.38) 150%);
+    animation: pageFxPulse .65s ease-out;
+  }
+  @keyframes pageFxPulse {
+    0%   { opacity: 0; }
+    22%  { opacity: 1; }
+    100% { opacity: 0; }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .page-bubble { animation: none; opacity: 0; }
+    .page-fx.fx-collect, .page-fx.fx-oops, .page-fx.fx-heal { animation-duration: .01s; }
+  }
 </style>
 </head>
 <body>
+
+<!-- NEW: ambient ocean backdrop + page-wide collect/oops/heal glow, both outside the canvas -->
+<div class="page-bg" aria-hidden="true">
+  <span class="page-bubble" style="left:6%;  width:14px; height:14px; animation-duration:14s; animation-delay:0s;   --drift:18px;"></span>
+  <span class="page-bubble" style="left:18%; width:9px;  height:9px;  animation-duration:11s; animation-delay:2.4s; --drift:-14px;"></span>
+  <span class="page-bubble" style="left:32%; width:18px; height:18px; animation-duration:17s; animation-delay:5s;   --drift:22px;"></span>
+  <span class="page-bubble" style="left:48%; width:11px; height:11px; animation-duration:13s; animation-delay:1.2s; --drift:-10px;"></span>
+  <span class="page-bubble" style="left:64%; width:16px; height:16px; animation-duration:16s; animation-delay:7s;   --drift:16px;"></span>
+  <span class="page-bubble" style="left:78%; width:10px; height:10px; animation-duration:12s; animation-delay:3.6s; --drift:-18px;"></span>
+  <span class="page-bubble" style="left:90%; width:13px; height:13px; animation-duration:15s; animation-delay:6.2s; --drift:12px;"></span>
+</div>
+<div class="page-fx" id="pageFx" aria-hidden="true"></div>
 
 <div class="stage-wrap">
 
@@ -260,6 +337,12 @@
     </div>
   </div>
 
+  <!-- Spika Mascot Guide Bar -->
+  <div class="guideBar">
+    <div class="guideAvatar" aria-hidden="true">🦋</div>
+    <div class="guideBubble" id="guideText">Help Splash collect the plastic trash! 🐬</div>
+  </div>
+
   <div class="brutal-box canvas-frame" id="canvasFrame">
     <canvas id="gameCanvas" width="960" height="600"></canvas>
   </div>
@@ -284,7 +367,7 @@
           <span>📦 Trash Quantity</span>
           <span id="trashQtyVal" style="color: var(--gog-cobalt); font-family: monospace;">Normal (1.0x)</span>
         </div>
-        <input type="range" id="trashQtyMult" min="0.2" max="2.0" step="0.2" value="1.0" style="cursor: pointer; accent-color: var(--gog-cobalt);" />
+        <input type="range" id="trashQtyMult" min="0.2" max="2.0" step="0.2" value="0.4" style="cursor: pointer; accent-color: var(--gog-cobalt);" />
       </div>
 
       <!-- Trash Speed Slider -->
@@ -293,7 +376,7 @@
           <span>🍶/🛍️ Trash Speed</span>
           <span id="trashSpeedVal" style="color: var(--gog-cobalt); font-family: monospace;">1.0x</span>
         </div>
-        <input type="range" id="trashSpeedMult" min="0.2" max="3.0" step="0.1" value="1.0" style="cursor: pointer; accent-color: var(--gog-cobalt);" />
+        <input type="range" id="trashSpeedMult" min="0.2" max="3.0" step="0.1" value="3.0" style="cursor: pointer; accent-color: var(--gog-cobalt);" />
       </div>
 
       <!-- Turtle Speed Slider -->
@@ -332,6 +415,14 @@
 
 </div>
 
+<!-- Seed Returns Cutscene Overlay -->
+<div class="cutscene-overlay" id="cutscene">
+  <div class="csSeed">🌱</div>
+  <div class="csTree" id="csTreeIcon">🌳</div>
+  <div class="csText">A seed returns to the Tree…</div>
+  <button class="btn small csSkip" id="csSkipBtn">Skip ⏭</button>
+</div>
+
 <script src="../data/content.js"></script>
 <script src="../assets/save.js"></script>
 <script src="../assets/engine.js"></script>
@@ -364,21 +455,33 @@
   var particles = new GOGEngine.ParticleSystem(140);
   var audio = new GOGEngine.Audio(!save.settings.sound);
 
-  // Background music
+  // Background music & ambient sound
   var bgMusic = new Audio("assets/audio/stage01/underwater.mp3");
   bgMusic.loop = true;
   bgMusic.volume = 0.35;
   bgMusic.preload = "auto";
 
+  var ambientMusic = new Audio("assets/audio/stage01/bombinsound.mp3");
+  ambientMusic.loop = true;
+  ambientMusic.volume = 0.35;
+  ambientMusic.preload = "auto";
+
   function playBackgroundMusic() {
     if (audio.muted) return;
     bgMusic.volume = 0;
     bgMusic.currentTime = 0;
-    bgMusic.play().then(function(){
+    ambientMusic.volume = 0;
+    ambientMusic.currentTime = 0;
+
+    var p1 = bgMusic.play();
+    var p2 = ambientMusic.play();
+
+    Promise.all([p1, p2]).then(function(){
       var v=0;
       var fade=setInterval(function(){
         v+=0.02;
         bgMusic.volume=Math.min(v,0.35);
+        ambientMusic.volume=Math.min(v,0.35);
         if(v>=0.35) clearInterval(fade);
       },120);
     }).catch(()=>{});
@@ -387,11 +490,18 @@
   function stopBackgroundMusic() {
     bgMusic.pause();
     bgMusic.currentTime = 0;
+    ambientMusic.pause();
+    ambientMusic.currentTime = 0;
   }
 
   document.addEventListener("visibilitychange", function () {
-    if (document.hidden) bgMusic.pause();
-    else if (!audio.muted) bgMusic.play().catch(()=>{});
+    if (document.hidden) {
+      bgMusic.pause();
+      ambientMusic.pause();
+    } else if (!audio.muted) {
+      bgMusic.play().catch(()=>{});
+      ambientMusic.play().catch(()=>{});
+    }
   });
   var Collision = GOGEngine.Collision;
 
@@ -406,7 +516,13 @@
   muteBtn.addEventListener("click", function () {
     var nowMuted = !audio.muted;
     audio.setMuted(nowMuted);
-    if(nowMuted){bgMusic.pause();}else{bgMusic.play().catch(()=>{});}
+    if(nowMuted){
+      bgMusic.pause();
+      ambientMusic.pause();
+    }else{
+      bgMusic.play().catch(()=>{});
+      ambientMusic.play().catch(()=>{});
+    }
     save = GOGSave.patch({ settings: { sound: !nowMuted } });
     syncMuteBtn();
 
@@ -453,8 +569,9 @@
         ctx.resume();
       }
     }
-    if (!audio.muted && bgMusic && bgMusic.paused) {
-      bgMusic.play().catch(function(){});
+    if (!audio.muted) {
+      if (bgMusic && bgMusic.paused) bgMusic.play().catch(function(){});
+      if (ambientMusic && ambientMusic.paused) ambientMusic.play().catch(function(){});
     }
     // Remove listeners once done
     document.removeEventListener("click", resumeAudioOnGesture);
@@ -488,9 +605,11 @@
     state.boostReadyAt = state.elapsed + BOOST_COOLDOWN;
     state.invulnUntil = Math.max(state.invulnUntil, state.boostUntil);
     audio.collect();
+    pageFx("collect");
     particles.burst(dolphin.x, dolphin.y, { glyphs: ["💨", "✨"], count: 10, life: 500 });
     triggerZoomPunch();
     boostBtn.classList.add("boost-cooldown");
+    GOGUi.say("Zooooom! Dash through the water! 💨");
   });
 
   /* ---------------- parallax background layers ---------------- */
@@ -545,6 +664,7 @@ async function init() {
     invulnUntil: 0,
     elapsed: 0,
     hitFlashUntil: 0,   // NEW: red vignette timer when hit by a pufferfish
+    healFlashUntil: 0,  // NEW: green vignette timer when a heal/save occurs
     introPlayed: false, // NEW: plays a one-time splash burst when the stage opens
     combo: 0,           // NEW: consecutive pickups without getting hit
     boostUntil: 0,      // NEW: Echo Boost dash end time
@@ -1129,7 +1249,8 @@ async function init() {
     return "Almost there! 75%";
   }
   function celebrateMilestone(percent, x, y) {
-    audio.collect();
+    audio.heal();
+    pageFx("heal");
     particles.burst(x, y, { glyphs: ["🎉", "✨", "💙"], count: 16, life: 900 });
     GOGUi.floatLabel(document.getElementById("canvasFrame"), canvasXToClient(x), canvasYToClient(y), milestoneMessage(percent), "#2E5EE8");
     spawnConfettiBurst(12); // rains in from the top across the whole scene
@@ -1206,7 +1327,7 @@ async function init() {
     else if (level === 5) spawnFreqMultiplier = 0.35;
 
     var qtySlider = document.getElementById("trashQtyMult");
-    var trashQuantityMult = qtySlider ? parseFloat(qtySlider.value) : 1.0;
+    var trashQuantityMult = qtySlider ? parseFloat(qtySlider.value) : 0.4;
 
     trashTimer -= dt;
     if (trashTimer <= 0) { 
@@ -1489,7 +1610,9 @@ async function init() {
         addCombo(); // NEW: chain pickups for a streak bonus
         particles.burst(it.x, it.y, { glyphs: ["✨", "💧"], count: 7, life: 550 });
         audio.collect();
-        GOGUi.floatLabel(document.getElementById("canvasFrame"), canvasXToClient(it.x), canvasYToClient(it.y), "+7 Reef", "#2E5EE8");
+        pageFx("collect");
+        GOGUi.floatLabel(document.getElementById("canvasFrame"), canvasXToClient(it.x), canvasYToClient(it.y), "Scoop! ♻️ +7 Reef", "#2E5EE8");
+        GOGUi.say("Yum, a piece of trash cleared! 🍃");
         
         // Trigger attack animation
         if (dolphin.state !== "attack") {
@@ -1504,9 +1627,13 @@ async function init() {
           setReef(-10, it.x, it.y);
           resetCombo();
           particles.burst(it.x, it.y, { glyphs: ["😢", "💥"], count: 8, life: 600 });
-          audio.hazard();
+          audio.oops();
+          pageFx("oops");
           shakeFrame();
-          GOGUi.floatLabel(document.getElementById("canvasFrame"), canvasXToClient(it.x), canvasYToClient(it.y), "Hurt Turtle! -10 Reef", "#ef4444");
+          state.hitFlashUntil = state.elapsed + 0.25;
+          spawnDizzyStars();
+          GOGUi.floatLabel(document.getElementById("canvasFrame"), canvasXToClient(it.x), canvasYToClient(it.y), "Oops! 🩹 Hurt Turtle! -10 Reef", "#ef4444");
+          GOGUi.say("Oh no! Be careful around our turtle friends! 🩹");
         } else {
           setReef(16, it.x, it.y);
           addSprouts(6);
@@ -1514,8 +1641,11 @@ async function init() {
           particles.burst(it.x, it.y, { glyphs: ["💚", "✨"], count: 12, life: 700 });
           spawnConfettiBurst(14, it.x, it.y); // NEW: extra-special turtle-save flourish
           triggerZoomPunch(); // NEW: camera punch for the big save
-          audio.collect();
-          GOGUi.floatLabel(document.getElementById("canvasFrame"), canvasXToClient(it.x), canvasYToClient(it.y), "Turtle saved! +16", "#1aa05e");
+          audio.heal();
+          pageFx("heal");
+          state.healFlashUntil = state.elapsed + 0.25;
+          GOGUi.floatLabel(document.getElementById("canvasFrame"), canvasXToClient(it.x), canvasYToClient(it.y), "Heal! 🐢 Turtle saved! +16", "#1aa05e");
+          GOGUi.say("Yay, you saved a turtle! 🐢");
         }
       } else if (it.type === "pearl") {
         // NEW: rare Golden Pearl — biggest single reward in the stage
@@ -1525,9 +1655,13 @@ async function init() {
           setReef(-12, it.x, it.y);
           resetCombo();
           particles.burst(it.x, it.y, { glyphs: ["🪨", "💥"], count: 8, life: 600 });
-          audio.hazard();
+          audio.oops();
+          pageFx("oops");
           shakeFrame();
-          GOGUi.floatLabel(document.getElementById("canvasFrame"), canvasXToClient(it.x), canvasYToClient(it.y), "Crushed Pearl! -12 Reef", "#ef4444");
+          state.hitFlashUntil = state.elapsed + 0.25;
+          spawnDizzyStars();
+          GOGUi.floatLabel(document.getElementById("canvasFrame"), canvasXToClient(it.x), canvasYToClient(it.y), "Oops! 🪨 Crushed Pearl! -12 Reef", "#ef4444");
+          GOGUi.say("Oh no! Be careful around treasures! 🩹");
         } else {
           setReef(20, it.x, it.y);
           addSprouts(10);
@@ -1535,18 +1669,21 @@ async function init() {
           particles.burst(it.x, it.y, { glyphs: ["🌟", "💛", "✨"], count: 18, life: 900 });
           spawnConfettiBurst(20, it.x, it.y);
           triggerZoomPunch();
-          audio.collect();
-          GOGUi.floatLabel(document.getElementById("canvasFrame"), canvasXToClient(it.x), canvasYToClient(it.y), "Golden Pearl! +20", "#ffae00");
+          audio.heal();
+          pageFx("heal");
+          state.healFlashUntil = state.elapsed + 0.25;
+          GOGUi.floatLabel(document.getElementById("canvasFrame"), canvasXToClient(it.x), canvasYToClient(it.y), "Heal! 🦪 Golden Pearl! +20", "#ffae00");
+          GOGUi.say("Incredible, a golden pearl! 🦪");
         }
       } else if (it.type === "pufferfish") {
         if (state.elapsed < state.invulnUntil) continue;
         items.splice(i, 1);
 
         var damage = 6;
-        var labelText = "-6 Reef";
+        var labelText = "Oops! 🐡 -6 Reef";
         if (dolphin.state === "attack") {
           damage = 12; // Double damage for attacking a spiky puffer!
-          labelText = "Puffer Spike! -12 Reef";
+          labelText = "Oops! 🐡 Puffer Spike! -12 Reef";
           particles.burst(dolphin.x, dolphin.y, { glyphs: ["💥", "🐡"], count: 8, life: 500, gravity: 60 });
         } else {
           particles.burst(dolphin.x, dolphin.y, { glyphs: ["💥"], count: 6, life: 420, gravity: 60 });
@@ -1557,9 +1694,12 @@ async function init() {
         resetCombo(); // NEW: a hit breaks the streak
         state.invulnUntil = state.elapsed + 0.7;
         state.hitFlashUntil = state.elapsed + 0.25; // NEW: brief red screen flash
-        audio.hazard();
+        audio.oops();
+        pageFx("oops");
         shakeFrame();
+        spawnDizzyStars();
         GOGUi.floatLabel(document.getElementById("canvasFrame"), canvasXToClient(dolphin.x), canvasYToClient(dolphin.y), labelText, "#ef4444");
+        GOGUi.say("Oops, a smoggy bump! Shake it off and try again 💪");
 
         // NEW: gentle knockback away from the pufferfish
         var kdx = dolphin.x - it.x, kdy = dolphin.y - it.y;
@@ -1595,9 +1735,42 @@ async function init() {
 
   function shakeFrame() {
     var frame = document.getElementById("canvasFrame");
-    frame.style.transform = "translate(2px, -2px)";
-    setTimeout(function () { frame.style.transform = "translate(-2px, 2px)"; }, 60);
-    setTimeout(function () { frame.style.transform = "translate(0,0)"; }, 120);
+    if (!frame) return;
+    frame.classList.remove("shake");
+    void frame.offsetWidth;
+    frame.classList.add("shake");
+  }
+
+  // NEW: pulses a soft full-page glow (collect / oops / heal) so the feedback
+  // for these three moments reads beyond the canvas frame, across the whole
+  // screen — the HUD, the margins, everything.
+  function pageFx(kind) {
+    var el = document.getElementById("pageFx");
+    if (!el) return;
+    el.classList.remove("fx-collect", "fx-oops", "fx-heal");
+    void el.offsetWidth;
+    el.classList.add("fx-" + kind);
+  }
+
+  function spawnDizzyStars() {
+    var frame = document.getElementById("canvasFrame");
+    var rect = frame.getBoundingClientRect();
+    var clientX = rect.left + canvasXToClient(dolphin.x);
+    var clientY = rect.top + canvasYToClient(dolphin.y) - 40;
+    
+    for (var i = 0; i < 3; i++) {
+      var star = document.createElement("div");
+      star.className = "dizzyStar";
+      star.textContent = "⭐";
+      star.style.left = clientX + "px";
+      star.style.top = clientY + "px";
+      star.style.setProperty("--dx", ((i - 1) * 22) + "px");
+      star.style.animationDelay = (i * 0.06) + "s";
+      document.body.appendChild(star);
+      (function (el) {
+        setTimeout(function () { el.remove(); }, 850);
+      })(star);
+    }
   }
 
   /* ---------------- draw ---------------- */
@@ -1806,6 +1979,7 @@ async function init() {
     ctx.restore();
 
     drawHitFlash(); // NEW: brief red vignette when hit by a pufferfish
+    drawHealFlash(); // NEW: brief green vignette when a heal/save occurs
   }
 
   // NEW: quick red screen flash when a pufferfish lands a hit
@@ -1819,7 +1993,50 @@ async function init() {
     ctx.restore();
   }
 
+  // NEW: quick green/teal screen flash when a heal/save occurs
+  function drawHealFlash() {
+    if (state.elapsed >= state.healFlashUntil) return;
+    var remain = state.healFlashUntil - state.elapsed;
+    var alpha = Collision.clamp(remain / 0.25, 0, 1) * 0.25;
+    ctx.save();
+    ctx.fillStyle = "rgba(61, 214, 192, " + alpha + ")";
+    ctx.fillRect(0, 0, W, H);
+    ctx.restore();
+  }
+
   /* ---------------- end states ---------------- */
+  var cutsceneTimer = null;
+  function triggerSeedReturnCutscene(onComplete) {
+    var overlay = document.getElementById("cutscene");
+    var treeIcon = document.getElementById("csTreeIcon");
+    if (!overlay) {
+      onComplete();
+      return;
+    }
+    overlay.classList.add("show");
+    if (treeIcon) {
+      treeIcon.classList.remove("pulse");
+      void treeIcon.offsetWidth;
+      treeIcon.classList.add("pulse");
+    }
+    GOGUi.say("A seed is heading home to the Tree… 🌱");
+    
+    function closeCutscene() {
+      overlay.classList.remove("show");
+      if (cutsceneTimer) clearTimeout(cutsceneTimer);
+      onComplete();
+    }
+    
+    var skipBtn = document.getElementById("csSkipBtn");
+    if (skipBtn) {
+      var newSkip = skipBtn.cloneNode(true);
+      skipBtn.parentNode.replaceChild(newSkip, skipBtn);
+      newSkip.addEventListener("click", closeCutscene);
+    }
+    
+    cutsceneTimer = setTimeout(closeCutscene, 2200);
+  }
+
   function computeStars() {
     if (state.hits === 0 && state.timeLeft > TOTAL_TIME * 0.3) return 3;
     if (state.hits <= 2) return 2;
@@ -1850,17 +2067,21 @@ async function init() {
       if (confettiBursts >= 3) clearInterval(confettiInterval);
     }, 220);
 
+    GOGUi.say("You did it! A seed is heading home to the Tree… 🌱");
+
     setTimeout(function () {
-      GOGUi.showOverlay({
-        accent: "var(--gog-white)",
-        title: "🪸 The reef is blooming!",
-        body: "Splash wakes up and a Seed of Life flies back to the Guardian Tree.",
-        stars: stars,
-        factText: stageMeta.fact,
-        primaryLabel: "Back to Map",
-        secondaryLabel: "Play Again",
-        onPrimary: function () { window.location.href = "../index.html"; },
-        onSecondary: function () { window.location.href = "stage01-ocean.html"; }
+      triggerSeedReturnCutscene(function () {
+        GOGUi.showOverlay({
+          accent: "var(--gog-white)",
+          title: "🪸 The reef is blooming!",
+          body: "Splash wakes up and a Seed of Life flies back to the Guardian Tree.",
+          stars: stars,
+          factText: stageMeta.fact,
+          primaryLabel: "Back to Map",
+          secondaryLabel: "Play Again",
+          onPrimary: function () { window.location.href = "../index.html"; },
+          onSecondary: function () { window.location.href = "stage01-ocean.html"; }
+        });
       });
     }, 750);
   }
@@ -1870,6 +2091,7 @@ async function init() {
     state.running = false;
     // NEW: a gentle desaturating fade signals "not quite yet" without feeling harsh
     document.getElementById("canvasFrame").classList.add("flash-lose");
+    GOGUi.say("Don't worry, Splash is ready to try again! 💙");
     GOGUi.showOverlay({
       title: "🌫️ The tide's still cloudy",
       body: "The reef needs a little more love. Want to dive back in? Nothing is lost.",

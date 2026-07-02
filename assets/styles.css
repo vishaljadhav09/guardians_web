@@ -173,3 +173,150 @@ img, svg { display: block; max-width: 100%; }
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { animation-duration: 0.001ms !important; transition-duration: 0.001ms !important; }
 }
+
+/* ====================================================================
+   KID-FRIENDLY AESTHETICS & JUICE ADDITIONS
+   ==================================================================== */
+:root {
+  --lime: #C6FF3D;
+  --pink: #FF3DA6;
+  --tangerine: #FF9142;
+  --cobalt: #2D4DE0;
+  --lavender: #B79CFF;
+  --ink: #1A1A2E;
+  --cream: #FFF8E7;
+  --smog: #8C8C99;
+}
+
+/* big, chunky, high-contrast, finger-friendly buttons everywhere */
+.btn {
+  font-family: 'Baloo 2', sans-serif;
+  font-weight: 700;
+  font-size: 1.02rem;
+  border: 3px solid var(--ink);
+  background: var(--lavender);
+  color: var(--ink);
+  padding: 13px 20px;
+  min-height: 54px;
+  border-radius: 18px;
+  cursor: pointer;
+  box-shadow: 3px 3px 0 var(--ink);
+  transition: transform .08s, box-shadow .08s, filter .15s;
+  white-space: nowrap;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  touch-action: manipulation;
+  text-decoration: none;
+}
+.btn:hover { transform: translate(-1px,-1px); box-shadow: 4px 4px 0 var(--ink); }
+.btn:active { transform: translate(2px,2px); box-shadow: 0px 0px 0 var(--ink); }
+.btn:focus-visible { outline: 4px solid #fff; outline-offset: 2px; }
+.btn.active { background: var(--lime); }
+.btn.pink { background: var(--pink); color: #fff; }
+.btn.tangerine { background: var(--tangerine); }
+.btn.cobalt { background: var(--cobalt); color: #fff; }
+.btn.small { font-size: .85rem; padding: 9px 14px; min-height: 42px; border-radius: 14px; }
+
+.iconBtn {
+  width: 46px; height: 46px; border-radius: 50%; border: 3px solid var(--ink);
+  background: var(--cream); font-size: 1.3rem; display: flex; align-items: center; justify-content: center;
+  cursor: pointer; box-shadow: 2px 2px 0 var(--ink); transition: transform .08s;
+  touch-action: manipulation;
+}
+.iconBtn:hover { transform: translate(-1px,-1px); }
+.iconBtn:active { transform: translate(1px,1px); }
+.iconBtn:focus-visible { outline: 4px solid var(--ink); outline-offset: 2px; }
+
+/* Confetti tap feedback */
+.confetti-bit {
+  position: fixed; width: 8px; height: 8px; border-radius: 2px;
+  pointer-events: none; z-index: 500;
+  animation: confettiPop .6s ease-out forwards;
+}
+@keyframes confettiPop {
+  0% { transform: translate(0,0) rotate(0); opacity: 1; }
+  100% { transform: translate(var(--dx),var(--dy)) rotate(var(--rot)); opacity: 0; }
+}
+
+/* Dizzy stars for hazard reactions */
+.dizzyStar {
+  position: absolute; font-size: 1.1rem; pointer-events: none; z-index: 600;
+  animation: dizzy .8s ease-out forwards;
+}
+@keyframes dizzy {
+  0% { opacity: 0; transform: translate(0,0) rotate(0deg) scale(.4); }
+  20% { opacity: 1; }
+  100% { opacity: 0; transform: translate(var(--dx),-26px) rotate(360deg) scale(1); }
+}
+
+/* GUIDE BAR (Mascot Spika) */
+.guideBar {
+  display: flex; align-items: center; gap: 12px;
+  padding: 10px 16px; background: #fff; border: 3px solid var(--gog-ink);
+  border-radius: 18px; box-shadow: var(--gog-shadow-sm);
+  margin-bottom: 16px; z-index: 40;
+}
+.guideAvatar {
+  font-size: 1.8rem; flex: 0 0 auto;
+  animation: guideBob 2.6s ease-in-out infinite;
+}
+@keyframes guideBob {
+  0%, 100% { transform: translateY(0) rotate(-4deg); }
+  50% { transform: translateY(-4px) rotate(4deg); }
+}
+.guideBubble {
+  position: relative; background: var(--cream); border: 3px solid var(--gog-ink);
+  border-radius: 16px; padding: 8px 14px; font-family: 'Caveat', cursive;
+  font-size: 1.35rem; line-height: 1.2; color: var(--gog-ink); flex: 1;
+}
+.guideBubble.pop { animation: bubblePop .35s cubic-bezier(.34,1.56,.64,1); }
+@keyframes bubblePop {
+  0% { transform: scale(.9); }
+  60% { transform: scale(1.04); }
+  100% { transform: scale(1); }
+}
+
+/* Screen Shake */
+.canvas-frame.shake { animation: shake .26s ease; }
+@keyframes shake {
+  0% { transform: translate(0,0); }
+  20% { transform: translate(-6px,3px) rotate(-.8deg); }
+  40% { transform: translate(5px,-3px) rotate(.8deg); }
+  60% { transform: translate(-4px,2px); }
+  80% { transform: translate(3px,-2px); }
+  100% { transform: translate(0,0); }
+}
+
+/* Seed returns cutscene overlay */
+.cutscene-overlay {
+  position: fixed; inset: 0; background: rgba(13,12,28,0);
+  display: flex; align-items: center; justify-content: center;
+  pointer-events: none; transition: background .4s ease; z-index: 200;
+}
+.cutscene-overlay.show { background: rgba(13,12,28,.78); pointer-events: auto; }
+.csTree { font-size: 5rem; opacity: 0; transform: scale(.6); filter: drop-shadow(3px 4px 0 rgba(0,0,0,0.35)); }
+.cutscene-overlay.show .csTree { opacity: 1; transform: scale(1); transition: opacity .3s ease .15s, transform .4s cubic-bezier(.34,1.56,.64,1) .15s; }
+.cutscene-overlay.show .csTree.pulse { animation: treePulse .6s ease 1.45s; }
+@keyframes treePulse { 0%, 100% { filter: drop-shadow(0 0 0 var(--lime)); } 50% { filter: drop-shadow(0 0 28px var(--lime)); } }
+.csSeed { position: absolute; font-size: 1.7rem; left: 50%; top: 78%; opacity: 0; }
+.cutscene-overlay.show .csSeed { animation: seedFly 1.3s cubic-bezier(.5,0,.4,1) .25s forwards; }
+@keyframes seedFly { 0% { opacity: 1; transform: translate(-50%, -50%) scale(1); } 100% { opacity: 0; transform: translate(-50%, -340%) scale(.3); } }
+.csText { position: absolute; bottom: 18%; left: 50%; transform: translate(-50%, 10px); font-family: 'Caveat', cursive; font-size: 1.7rem; color: #fff; opacity: 0; text-align: center; }
+.cutscene-overlay.show .csText { transition: opacity .4s ease 1.5s, transform .4s ease 1.5s; opacity: 1; transform: translate(-50%, 0); }
+.csSkip { position: absolute; top: 18px; right: 18px; opacity: 0; pointer-events: none; }
+.cutscene-overlay.show .csSkip { opacity: 1; pointer-events: auto; transition: opacity .3s ease .3s; }
+
+/* Bloom Sweep Transition */
+.bloomSweep {
+  position: absolute; inset: 0; pointer-events: none; z-index: 100;
+  background: radial-gradient(circle at 50% 30%, rgba(198,255,61,.95) 0%, rgba(255,61,166,.85) 35%, rgba(255,145,66,.65) 55%, rgba(255,255,255,0) 72%);
+  mix-blend-mode: screen; clip-path: circle(0% at 50% 30%);
+}
+.bloomSweep.run { animation: bloomWipe 1.6s cubic-bezier(.2,.7,.3,1) forwards; }
+@keyframes bloomWipe {
+  0% { clip-path: circle(0% at 50% 30%); }
+  70% { clip-path: circle(85% at 50% 30%); }
+  100% { clip-path: circle(140% at 50% 30%); opacity: 0; }
+}
+

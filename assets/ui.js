@@ -103,11 +103,51 @@
     setTimeout(function () { el.remove(); }, 720);
   }
 
+  function say(text) {
+    var bubble = document.getElementById('guideText');
+    if (!bubble) return;
+    bubble.classList.remove('pop');
+    void bubble.offsetWidth;
+    bubble.textContent = text;
+    bubble.classList.add('pop');
+  }
+
+  function confettiAt(x, y, n) {
+    var colors = ['#C6FF3D', '#FF3DA6', '#FF9142', '#2D4DE0', '#B79CFF'];
+    for (var i = 0; i < (n || 10); i++) {
+      var d = document.createElement('div');
+      d.className = 'confetti-bit';
+      d.style.left = x + 'px';
+      d.style.top = y + 'px';
+      d.style.background = colors[i % colors.length];
+      var ang = Math.random() * Math.PI * 2;
+      var dist = 26 + Math.random() * 44;
+      d.style.setProperty('--dx', (Math.cos(ang) * dist) + 'px');
+      d.style.setProperty('--dy', (Math.sin(ang) * dist) + 'px');
+      d.style.setProperty('--rot', (Math.random() * 360) + 'deg');
+      document.body.appendChild(d);
+      (function (el) {
+        setTimeout(function () { el.remove(); }, 650);
+      })(d);
+    }
+  }
+
+  if (typeof document !== 'undefined') {
+    document.addEventListener('click', function (e) {
+      var btn = e.target.closest('.btn, .brutal-btn, .marker, .iconBtn, .icon-btn');
+      if (!btn) return;
+      var r = btn.getBoundingClientRect();
+      confettiAt(r.left + r.width / 2, r.top + r.height / 2, 8);
+    }, true);
+  }
+
   global.GOGUi = {
     starsMarkup: starsMarkup,
     showToast: showToast,
     showOverlay: showOverlay,
     closeOverlay: closeOverlay,
-    floatLabel: floatLabel
+    floatLabel: floatLabel,
+    say: say,
+    confettiAt: confettiAt
   };
 })(window);

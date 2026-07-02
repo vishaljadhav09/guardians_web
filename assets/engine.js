@@ -245,36 +245,67 @@
 
   Audio.prototype.setMuted = function (muted) { this.muted = muted; };
 
-  Audio.prototype.blip = function (freq, durationMs, type) {
+  Audio.prototype.tone = function (freq, dur, type, peak, glideTo, delay) {
     if (this.muted) return;
     var ctx = this._ensureCtx();
     if (!ctx) return;
+    var t0 = ctx.currentTime + (delay || 0);
     var osc = ctx.createOscillator();
-    var gain = ctx.createGain();
+    var g = ctx.createGain();
     osc.type = type || "sine";
-    osc.frequency.value = freq || 660;
-    gain.gain.value = 0.05;
-    osc.connect(gain);
-    gain.connect(ctx.destination);
-    var now = ctx.currentTime;
-    gain.gain.setValueAtTime(0.06, now);
-    var stopTime = now + (durationMs || 140) / 1000;
-    gain.gain.exponentialRampToValueAtTime(0.0001, stopTime);
-    osc.start(now);
-    osc.stop(stopTime);
+    osc.frequency.setValueAtTime(freq, t0);
+    if (glideTo) {
+      osc.frequency.exponentialRampToValueAtTime(glideTo, t0 + dur);
+    }
+    var p = peak != null ? peak : 0.05;
+    g.gain.setValueAtTime(0.0001, t0);
+    g.gain.exponentialRampToValueAtTime(p, t0 + Math.min(0.02, dur * 0.15));
+    g.gain.exponentialRampToValueAtTime(0.0001, t0 + dur);
+    osc.connect(g);
+    g.connect(ctx.destination);
+    osc.start(t0);
+    osc.stop(t0 + dur + 0.03);
+    
     osc.onended = function () {
       osc.disconnect();
-      gain.disconnect();
+      g.disconnect();
     };
   };
 
-  Audio.prototype.collect = function () { this.blip(880, 110, "triangle"); };
-  Audio.prototype.hazard = function () { this.blip(160, 180, "sawtooth"); };
-  Audio.prototype.win = function () {
+  Audio.prototype.blip = function (freq, durationMs, type) {
+    this.tone(freq || 660, (durationMs || 140) / 1000, type || "sine");
+  };
+
+  Audio.prototype.collect = function () {
+    this.tone(660, 0.14, 'triangle', 0.1, 880);
+    this.tone(990, 0.13, 'triangle', 0.08, 1200, 0.06);
+  };
+  Audio.prototype.hazard = function () {
+    this.tone(180, 0.22, 'sawtooth', 0.06, 110);
+  };
+  Audio.prototype.oops = function () {
+    this.tone(300, 0.15, 'sawtooth', 0.08, 150);
+    this.tone(200, 0.22, 'sawtooth', 0.07, 100, 0.08);
+  };
+  Audio.prototype.heal = function () {
+    this.tone(440, 0.12, 'sine', 0.08, 660);
+    this.tone(554, 0.12, 'sine', 0.08, 880, 0.06);
+    this.tone(659, 0.16, 'sine', 0.06, 1100, 0.12);
+  };
+  Audio.prototype.grow = function () {
+    this.tone(160, 0.5, 'sine', 0.1, 420);
+  };
+  Audio.prototype.fly = function () {
+    this.tone(500, 0.35, 'sine', 0.08, 900);
+  };
+  Audio.prototype.bloom = function () {
     var self = this;
     [523, 659, 784, 1046].forEach(function (f, i) {
-      setTimeout(function () { self.blip(f, 160, "triangle"); }, i * 90);
+      self.tone(f, 0.22, 'triangle', 0.08, null, i * 0.09);
     });
+  };
+  Audio.prototype.win = function () {
+    this.bloom();
   };
 
   global.GOGEngine = {

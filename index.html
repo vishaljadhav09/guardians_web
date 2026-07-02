@@ -24,7 +24,7 @@
   body {
     margin: 0;
     font-family: 'Quicksand', sans-serif;
-    background-color: #667085;
+    background-color: #56595e;
     color: var(--gog-text-light);
     min-height: 100vh;
     overflow-x: hidden;
@@ -291,6 +291,12 @@
   .leaf-bud.bloom { 
     fill: #22c55e; 
     filter: drop-shadow(0 0 8px rgba(34,197,94,0.8));
+    animation: leafPop 0.55s cubic-bezier(.34,1.56,.64,1) forwards;
+  }
+  @keyframes leafPop {
+    0% { transform: scale(0.4); opacity: 0.4; }
+    70% { transform: scale(1.25); opacity: 1; }
+    100% { transform: scale(1); opacity: 1; }
   }
 
   /* ---------- Strategic Interface Markers ---------- */
@@ -509,7 +515,7 @@
 }
   @keyframes treeSway { 0%, 100% { transform: translate(-50%, -50%) rotate(0deg); } 50% { transform: translate(-50%, -50%) rotate(1.2deg); } }
   @keyframes treeHaloPulse { 0%, 100% { opacity: 0.2; transform: translate(-50%, -50%) scale(0.96); } 50% { opacity: 0.4; transform: translate(-50%, -50%) scale(1.04); } }
-  @keyframes markerPulse { 0%, 100% { box-shadow: 0 0 15px rgba(163, 230, 53, 0.4); } 50% { box-shadow: 0 0 25px rgba(163, 230, 53, 0.75); } }
+  @keyframes markerPulse { 0%, 100% { box-shadow: 0 0 15px rgba(163, 230, 53, 0.4); transform: translate(-50%, -50%) rotate(-3deg); } 50% { box-shadow: 0 0 25px rgba(163, 230, 53, 0.75); transform: translate(-50%, calc(-50% - 8px)) rotate(3deg); } }
   @keyframes markerPulseRing { 0% { transform: scale(0.95); opacity: 0.8; } 100% { transform: scale(1.4); opacity: 0; } }
   @keyframes clearedRingSpin { to { transform: rotate(360deg); } }
   @keyframes blobFloat { 0% { transform: translate(-50%, -50%) scale(1); } 100% { transform: translate(-48%, -52%) scale(1.08) rotate(3deg); } }
@@ -688,6 +694,30 @@
     .hud-right { justify-content: center; }
   }
 
+  /* Cleared Marker Bobbing */
+  .marker.cleared {
+    animation: clearedBob 3s ease-in-out infinite;
+  }
+  @keyframes clearedBob {
+    0%, 100% { transform: translate(-50%, -50%) rotate(-2deg); }
+    50% { transform: translate(-50%, calc(-50% - 6px)) rotate(2deg); }
+  }
+
+  /* Drifting map fog layers */
+  .fog {
+    position: absolute; border-radius: 50%;
+    background: radial-gradient(circle, rgba(255,255,255,.25) 0%, rgba(255,255,255,0) 70%);
+    filter: blur(10px); pointer-events: none; mix-blend-mode: screen; z-index: 5;
+  }
+  .fog1 { width: 50%; height: 35%; top: 5%; left: -10%; animation: driftA 26s ease-in-out infinite, hazeBlur 9s ease-in-out infinite; }
+  .fog2 { width: 60%; height: 40%; top: 40%; left: 50%; animation: driftB 34s ease-in-out infinite, hazeBlur 11s ease-in-out infinite reverse; opacity: .6; }
+  .fog3 { width: 45%; height: 30%; top: 65%; left: 10%; animation: driftC 22s ease-in-out infinite, hazeBlur 7s ease-in-out infinite; opacity: .45; }
+
+  @keyframes driftA { 0% { transform: translate(0,0); } 50% { transform: translate(15vw, 2vh); } 100% { transform: translate(0,0); } }
+  @keyframes driftB { 0% { transform: translate(0,0); } 50% { transform: translate(-15vw, -3vh); } 100% { transform: translate(0,0); } }
+  @keyframes driftC { 0% { transform: translate(0,0); } 50% { transform: translate(12vw, -4vh); } 100% { transform: translate(0,0); } }
+  @keyframes hazeBlur { 0%, 100% { filter: blur(10px); } 50% { filter: blur(18px); } }
+
   @media (prefers-reduced-motion: reduce) {
     .brand .owl, .brand-text, .sprouts-chip, .cleared-chip, .reset-btn, .marker {
       animation: none !important;
@@ -723,9 +753,21 @@
     </div>
   </div>
 
+  <!-- Spika Mascot Guide Bar -->
+  <div class="guideBar">
+    <div class="guideAvatar" aria-hidden="true">🦋</div>
+    <div class="guideBubble" id="guideText">Hi, I'm Spika! Tap a stage marker to start clean-up! 🌍</div>
+  </div>
+
   <div class="map-stage" id="mapStage">
     <div id="biomeLayer"></div>
     <svg class="constellation-svg" id="constellationSvg"></svg>
+    <div class="bloomSweep" id="bloomSweep"></div>
+
+    <!-- Drifting Atmospheric Fog Layers -->
+    <div class="fog fog1"></div>
+    <div class="fog fog2"></div>
+    <div class="fog fog3"></div>
 
     <div class="tree-zone">
       <svg class="tree-svg" viewBox="0 0 200 220" id="treeSvg">
@@ -781,16 +823,47 @@
     init: function() {
       if (!this.ctx) this.ctx = new (window.AudioContext || window.webkitAudioContext)();
     },
-    playWhoosh: function() {
+    playTone: function(freq, dur, type, peak, glideTo, delay) {
       if (save.settings && save.settings.sound === false) return;
       this.init();
-      var osc = this.ctx.createOscillator(), gain = this.ctx.createGain();
-      osc.type = 'triangle'; osc.frequency.setValueAtTime(320, this.ctx.currentTime);
-      osc.frequency.exponentialRampToValueAtTime(100, this.ctx.currentTime + 0.6);
-      gain.gain.setValueAtTime(0.18, this.ctx.currentTime);
-      gain.gain.linearRampToValueAtTime(0, this.ctx.currentTime + 0.6);
-      osc.connect(gain); gain.connect(this.ctx.destination);
-      osc.start(); osc.stop(this.ctx.currentTime + 0.6);
+      if (this.ctx.state === 'suspended') this.ctx.resume().catch(function(){});
+      
+      var t0 = this.ctx.currentTime + (delay || 0);
+      var osc = this.ctx.createOscillator();
+      var g = this.ctx.createGain();
+      osc.type = type || 'sine';
+      osc.frequency.setValueAtTime(freq, t0);
+      if (glideTo) {
+        osc.frequency.exponentialRampToValueAtTime(glideTo, t0 + dur);
+      }
+      var p = peak != null ? peak : 0.05;
+      g.gain.setValueAtTime(0.0001, t0);
+      g.gain.exponentialRampToValueAtTime(p, t0 + Math.min(0.02, dur * 0.15));
+      g.gain.exponentialRampToValueAtTime(0.0001, t0 + dur);
+      osc.connect(g);
+      g.connect(this.ctx.destination);
+      osc.start(t0);
+      osc.stop(t0 + dur + 0.03);
+      
+      osc.onended = function () {
+        osc.disconnect();
+        g.disconnect();
+      };
+    },
+    playWhoosh: function() {
+      this.playTone(320, 0.6, 'triangle', 0.12, 100);
+    },
+    playFly: function() {
+      this.playTone(500, 0.35, 'sine', 0.08, 900);
+    },
+    playGrow: function() {
+      this.playTone(160, 0.5, 'sine', 0.12, 420);
+    },
+    playBloom: function() {
+      var self = this;
+      [523, 659, 784, 1046].forEach(function (f, i) {
+        self.playTone(f, 0.22, 'triangle', 0.08, null, i * 0.09);
+      });
     }
   };
 
@@ -808,7 +881,7 @@
 
   var spikaFlyer = document.createElement("div");
   spikaFlyer.className = "spika-flyer";
-  spikaFlyer.textContent = "🦉";
+  spikaFlyer.textContent = "🦋";
   document.getElementById("mapStage").appendChild(spikaFlyer);
 
   var brandOwl = document.querySelector(".brand .owl");
@@ -942,7 +1015,8 @@
     }
 
     isAnimatingSpika = true;
-    GaiaAudio.playWhoosh();
+    GaiaAudio.playFly();
+    GOGUi.say("Off Spika flutters to the next stage! 🦋");
     spikaFlyer.style.left = "50%";
     spikaFlyer.style.top = "50%";
     spikaFlyer.offsetHeight; 
@@ -1096,12 +1170,14 @@
     document.getElementById("smogPct").textContent = save.smogLevel + "%";
     document.getElementById("smogFill").style.width = (100 - save.smogLevel) + "%";
 
+    var newlyClearedStage = null;
     STAGES.forEach(function (stage) {
       var cleared = save.stagesCleared.indexOf(stage.id) !== -1;
       var fog = document.getElementById("fog-" + stage.id);
       var blob = document.getElementById("blob-" + stage.id);
       if (fog) {
         if (cleared && prevCleared.indexOf(stage.id) === -1) {
+          newlyClearedStage = stage;
           setTimeout(function () {
             triggerSmogDispersion(stage.mapPos.x, stage.mapPos.y);
             if (fog) fog.style.opacity = "0";
@@ -1112,6 +1188,28 @@
       }
       if (blob) blob.classList.toggle("cleared", cleared);
     });
+
+    if (newlyClearedStage) {
+      // Bloom Sweep Transition
+      var sweep = document.getElementById("bloomSweep");
+      if (sweep) {
+        sweep.classList.remove("run");
+        void sweep.offsetWidth;
+        sweep.classList.add("run");
+      }
+      // Procedural Sounds
+      GaiaAudio.playBloom();
+      setTimeout(function () { GaiaAudio.playGrow(); }, 800);
+      
+      // Spika Mascot Guide Speech
+      GOGUi.say("Ta-da! The land bursts into color! 🌈");
+    } else {
+      if (save.stagesCleared.length >= 10) {
+        GOGUi.say("Yay, you did it! Spika's world is clean, healthy, and happy! 🌸🌍");
+      } else {
+        GOGUi.say("Hi, I'm Spika! Tap a stage marker to start clean-up! 🌍");
+      }
+    }
 
     for (var i = 0; i < 10; i++) {
       var leaf = document.getElementById("leaf" + i);
@@ -1140,7 +1238,11 @@
 
   document.getElementById("resetBtn").addEventListener("click", function () {
     if (!confirm("Reset all progress?")) return;
-    save = GOGSave.reset(); buildMarkers(); renderState();
+    save = GOGSave.reset();
+    buildMarkers();
+    renderState();
+    GaiaAudio.playWhoosh();
+    GOGUi.say("Let's make the world clean and green again! 🌱");
   });
 
   document.getElementById("settingsBtn").addEventListener("click", function () {
