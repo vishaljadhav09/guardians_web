@@ -25,17 +25,73 @@
     };
   }
 
+  /**
+   * Deeply sanitizes data to ensure no PII text strings or malformed
+   * values are injected into runtime parameters. (COPPA & GDPR-K Compliance Boundary)
+   */
+  function sanitize(data) {
+    if (!data || typeof data !== 'object') return defaultSave();
+
+    var clean = defaultSave();
+
+    // 1. Enforce strict numeric thresholds for core stats
+    clean.version = typeof data.version === 'number' ? data.version : SAVE_VERSION;
+    clean.seeds = Math.max(0, Math.floor(Number(data.seeds) || 0));
+    clean.sprouts = Math.max(0, Math.floor(Number(data.sprouts) || 0));
+    clean.smogLevel = Math.max(0, Math.min(100, Number(data.smogLevel) != null ? Number(data.smogLevel) : 100));
+
+    // 2. Settings: Enforce explicit boolean conversions
+    if (data.settings && typeof data.settings === 'object') {
+      clean.settings.sound = !!data.settings.sound;
+      clean.settings.calmMode = !!data.settings.calmMode;
+    }
+
+    // 3. Stages Cleared: Strip out anything that isn't a clean stage identifier string
+    // (Prevents arbitrary messaging injection via array injection)
+    if (Array.isArray(data.stagesCleared)) {
+      clean.stagesCleared = data.stagesCleared.filter(function (id) {
+        return typeof id === 'string' && id.length < 64 && /^[a-zA-Z0-9_\-]+$/.test(id);
+      });
+    }
+
+    // 4. Stars Per Stage: Strip keys matching unsafe patterns or containing non-numeric values
+    if (data.starsPerStage && typeof data.starsPerStage === 'object') {
+      for (var key in data.starsPerStage) {
+        if (Object.prototype.hasOwnProperty.call(data.starsPerStage, key)) {
+          // Reject keys that fail basic structural string naming schemas
+          if (/^[a-zA-Z0-9_\-]+$/.test(key) && key.length < 64) {
+            var val = Number(data.starsPerStage[key]);
+            if (!isNaN(val)) {
+              clean.starsPerStage[key] = Math.max(0, Math.floor(val));
+            }
+          }
+        }
+      }
+    }
+
+    return clean;
+  }
+
   function load() {
     try {
       var raw = global.localStorage.getItem(SAVE_KEY);
       if (!raw) return defaultSave();
-      var parsed = JSON.parse(raw);
-      // merge onto defaults so missing/new fields never crash older saves
+      
+      // Secure JSON parsing with a reviver to prevent prototype pollution
+      var parsed = JSON.parse(raw, function (key, value) {
+        if (key === "__proto__" || key === "constructor" || key === "prototype") {
+          return undefined;
+        }
+        return value;
+      });
+      
+      // Merge onto defaults so missing/new fields never crash older saves, then sanitize
       var merged = Object.assign({}, defaultSave(), parsed);
       merged.starsPerStage = Object.assign({}, defaultSave().starsPerStage, parsed.starsPerStage || {});
       merged.settings = Object.assign({}, defaultSave().settings, parsed.settings || {});
       merged.stagesCleared = Array.isArray(parsed.stagesCleared) ? parsed.stagesCleared : [];
-      return merged;
+      
+      return sanitize(merged);
     } catch (e) {
       console.warn("[SaveManager] Could not read save, starting fresh.", e);
       return defaultSave();
@@ -44,7 +100,9 @@
 
   function save(data) {
     try {
-      global.localStorage.setItem(SAVE_KEY, JSON.stringify(data));
+      // Always pass runtime state through our sanitizer engine prior to writing to storage
+      var verifiedState = sanitize(data);
+      global.localStorage.setItem(SAVE_KEY, JSON.stringify(verifiedState));
       return true;
     } catch (e) {
       console.warn("[SaveManager] Could not write save.", e);
@@ -63,7 +121,7 @@
       next.settings = Object.assign({}, current.settings, partial.settings);
     }
     save(next);
-    return next;
+    return load(); // Return sanitized load output for runtime state consistency
   }
 
   // Record a stage clear: adds seed, sprouts, stars, drops smog, dedupes.
@@ -86,7 +144,7 @@
     next.starsPerStage[stageId] = Math.max(prevStars, newStars);
 
     save(next);
-    return next;
+    return load();
   }
 
   function reset() {

@@ -10,6 +10,7 @@
 <style>
   :root {
     --gog-lime: #a3e635;
+    --gog-sun: #facc15;
     --gog-ink: #1e293b;
     --gog-white: rgba(255, 255, 255, 0.85);
     --gog-glass: rgba(15, 23, 42, 0.45);
@@ -47,14 +48,14 @@
     background-position: center;
     transition: transform 0.15s cubic-bezier(0.25, 1, 0.5, 1);
   }
-  .layer-stars {
+  /* .layer-stars {
     background-image: url('https://images.unsplash.com/photo-1506318137071-a8e063b4bec0?auto=format&fit=crop&w=1920&q=80');
     opacity: 0.35;
   }
   .layer-mountains {
     background-image: url('https://images.unsplash.com/photo-1511497584788-876760111969?auto=format&fit=crop&w=1920&q=80');
     filter: brightness(0.35) saturate(1.1);
-  }
+  } */
 
   /* Decorative Aurora Ambient Blurs */
   body::after {
@@ -345,6 +346,30 @@
     position: absolute; inset: -6px;
     border-radius: 50%; border: 2px solid var(--gog-lime);
     animation: markerPulseRing 2s cubic-bezier(0.24, 0, 0.38, 1) infinite;
+  }
+
+  .marker.unlocked-upcoming {
+    border-color: var(--gog-sun);
+    background: rgba(255, 255, 255, 0.9);
+    box-shadow: 0 0 18px rgba(250, 204, 21, 0.35);
+  }
+  .marker.unlocked-upcoming::after {
+    content: "Soon";
+    position: absolute;
+    bottom: -8px;
+    left: 50%;
+    transform: translateX(-50%);
+    padding: 2px 7px;
+    border: 1px solid var(--gog-ink);
+    border-radius: 999px;
+    background: var(--gog-sun);
+    color: var(--gog-ink);
+    font-family: var(--gog-font-body);
+    font-size: 0.62rem;
+    font-weight: 900;
+    line-height: 1;
+    letter-spacing: 0;
+    box-shadow: 2px 2px 0 var(--gog-ink);
   }
 
   .marker.cleared::after {
@@ -975,7 +1000,6 @@
       el.style.left = stage.mapPos.x + "%";
       el.style.top = stage.mapPos.y + "%";
       el.setAttribute("aria-label", stage.guardian + " - " + stage.biome);
-
       if (cleared) {
         el.classList.add("cleared");
         el.textContent = stage.icon;
@@ -984,8 +1008,9 @@
         el.classList.add("unlocked-ready");
         el.textContent = stage.icon;
       } else if (unlocked && !stage.playable) {
+        el.classList.add("unlocked-upcoming");
         el.textContent = stage.icon;
-        el.style.filter = "grayscale(0.4)";
+        el.title = stage.guardian + " is unlocked, but this stage is still being built.";
       } else {
         el.classList.add("locked");
         el.textContent = "💤";

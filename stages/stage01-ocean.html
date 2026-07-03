@@ -660,6 +660,7 @@ async function init() {
     reef: 0,            // 0..100
     sproutsEarned: 0,
     hits: 0,
+    turtleAttackCount: 0,
     timeLeft: TOTAL_TIME,
     invulnUntil: 0,
     elapsed: 0,
@@ -768,7 +769,7 @@ async function init() {
       y: rand(60, H - 60),
       vx: vx,
       vy: rand(-12, 12),
-      r: 22,
+      r: 28,
       glyph: glyphs[Math.floor(Math.random() * glyphs.length)],
       bob: Math.random() * Math.PI * 2,
       age: 0
@@ -1444,6 +1445,10 @@ async function init() {
       dt *= 0.35;
     }
 
+    var difficultyLevel = getDifficultyLevel();
+    var gameSpeedMult = 1 + (difficultyLevel - 1) * 0.2;
+    var physicsDt = dt * gameSpeedMult;
+
     state.elapsed += dt;
     updateDifficultyUI();
 
@@ -1482,10 +1487,10 @@ async function init() {
     }
 
     // --- background scroll update ---
-    scrollX += 60 * dt;
+    scrollX += 60 * physicsDt;
 
     // --- spawn timers ---
-    updateSpawns(dt);
+    updateSpawns(physicsDt);
 
     // --- dolphin follows pointer, with keyboard fallback ---
     var boosting = state.elapsed < state.boostUntil; // NEW: Echo Boost in progress
@@ -1578,11 +1583,31 @@ async function init() {
         if (el) speedMult = parseFloat(el.value);
       }
 
-      it.x += it.vx * speedMult * dt;
-      it.y += it.vy * speedMult * dt + Math.sin(state.elapsed * 2 + it.bob) * 6 * dt;
+      it.x += it.vx * speedMult * dt * gameSpeedMult;
+      it.y += it.vy * speedMult * dt * gameSpeedMult + Math.sin(state.elapsed * 2 + it.bob) * 6 * dt * gameSpeedMult;
 
-      var offscreen = it.x < -80 || it.x > W + 80 || it.y < -80 || it.y > H + 80;
-      if (offscreen) { items.splice(i, 1); continue; }
+      // NEW: keep items inside the vertical play area so they always flow
+      // horizontally across the screen instead of drifting off the top/bottom.
+      // Gently bounce vy when an item nears the top or bottom edge.
+      var vMargin = (it.r || 24) + 10;
+      if (it.y < vMargin) {
+        it.y = vMargin;
+        if (it.vy < 0) it.vy = -it.vy;
+      } else if (it.y > H - vMargin) {
+        it.y = H - vMargin;
+        if (it.vy > 0) it.vy = -it.vy;
+      }
+
+      var offscreen = it.x < -80 || it.x > W + 80;
+      if (offscreen) {
+        if (it.type === "trash") {
+          GOGUi.say("A piece of trash escaped! 🗑️ Try again.");
+          endLose();
+          return;
+        }
+        items.splice(i, 1);
+        continue;
+      }
 
       // NEW: pufferfish telegraph for 0.5s before they can actually deal damage
       if (it.type === "pufferfish" && !it.armed && it.age > 0.5) it.armed = true;
@@ -1605,13 +1630,13 @@ async function init() {
 
       if (it.type === "trash") {
         items.splice(i, 1);
-        setReef(7, it.x, it.y);
+        setReef(5, it.x, it.y);
         addSprouts(2);
         addCombo(); // NEW: chain pickups for a streak bonus
         particles.burst(it.x, it.y, { glyphs: ["✨", "💧"], count: 7, life: 550 });
         audio.collect();
         pageFx("collect");
-        GOGUi.floatLabel(document.getElementById("canvasFrame"), canvasXToClient(it.x), canvasYToClient(it.y), "Scoop! ♻️ +7 Reef", "#2E5EE8");
+        GOGUi.floatLabel(document.getElementById("canvasFrame"), canvasXToClient(it.x), canvasYToClient(it.y), "Scoop! ♻️ +5 Reef", "#2E5EE8");
         GOGUi.say("Yum, a piece of trash cleared! 🍃");
         
         // Trigger attack animation
@@ -1624,6 +1649,7 @@ async function init() {
         items.splice(i, 1);
         if (dolphin.state === "attack") {
           // Mistakenly attacked the turtle!
+          state.turtleAttackCount++;
           setReef(-10, it.x, it.y);
           resetCombo();
           particles.burst(it.x, it.y, { glyphs: ["😢", "💥"], count: 8, life: 600 });
@@ -1634,8 +1660,13 @@ async function init() {
           spawnDizzyStars();
           GOGUi.floatLabel(document.getElementById("canvasFrame"), canvasXToClient(it.x), canvasYToClient(it.y), "Oops! 🩹 Hurt Turtle! -10 Reef", "#ef4444");
           GOGUi.say("Oh no! Be careful around our turtle friends! 🩹");
+          if (state.turtleAttackCount > 3) {
+            GOGUi.say("Too many turtle attacks! The reef needs another chance.");
+            endLose();
+            return;
+          }
         } else {
-          setReef(16, it.x, it.y);
+          setReef(7, it.x, it.y);
           addSprouts(6);
           addCombo(); // NEW
           particles.burst(it.x, it.y, { glyphs: ["💚", "✨"], count: 12, life: 700 });
@@ -1644,7 +1675,7 @@ async function init() {
           audio.heal();
           pageFx("heal");
           state.healFlashUntil = state.elapsed + 0.25;
-          GOGUi.floatLabel(document.getElementById("canvasFrame"), canvasXToClient(it.x), canvasYToClient(it.y), "Heal! 🐢 Turtle saved! +16", "#1aa05e");
+          GOGUi.floatLabel(document.getElementById("canvasFrame"), canvasXToClient(it.x), canvasYToClient(it.y), "Heal! 🐢 Turtle saved! +7", "#1aa05e");
           GOGUi.say("Yay, you saved a turtle! 🐢");
         }
       } else if (it.type === "pearl") {
@@ -1663,7 +1694,7 @@ async function init() {
           GOGUi.floatLabel(document.getElementById("canvasFrame"), canvasXToClient(it.x), canvasYToClient(it.y), "Oops! 🪨 Crushed Pearl! -12 Reef", "#ef4444");
           GOGUi.say("Oh no! Be careful around treasures! 🩹");
         } else {
-          setReef(20, it.x, it.y);
+          setReef(7, it.x, it.y);
           addSprouts(10);
           addCombo();
           particles.burst(it.x, it.y, { glyphs: ["🌟", "💛", "✨"], count: 18, life: 900 });
@@ -1672,17 +1703,16 @@ async function init() {
           audio.heal();
           pageFx("heal");
           state.healFlashUntil = state.elapsed + 0.25;
-          GOGUi.floatLabel(document.getElementById("canvasFrame"), canvasXToClient(it.x), canvasYToClient(it.y), "Heal! 🦪 Golden Pearl! +20", "#ffae00");
+          GOGUi.floatLabel(document.getElementById("canvasFrame"), canvasXToClient(it.x), canvasYToClient(it.y), "Heal! 🦪 Golden Pearl! +7", "#ffae00");
           GOGUi.say("Incredible, a golden pearl! 🦪");
         }
       } else if (it.type === "pufferfish") {
         if (state.elapsed < state.invulnUntil) continue;
         items.splice(i, 1);
 
-        var damage = 6;
-        var labelText = "Oops! 🐡 -6 Reef";
+        var damage = 12;
+        var labelText = "Oops! 🐡 -12 Reef";
         if (dolphin.state === "attack") {
-          damage = 12; // Double damage for attacking a spiky puffer!
           labelText = "Oops! 🐡 Puffer Spike! -12 Reef";
           particles.burst(dolphin.x, dolphin.y, { glyphs: ["💥", "🐡"], count: 8, life: 500, gravity: 60 });
         } else {
@@ -1691,6 +1721,11 @@ async function init() {
 
         setReef(-damage, dolphin.x, dolphin.y);
         state.hits++;
+        if (state.hits > 3) {
+          GOGUi.say("Too many pufferfish hits! Try again.");
+          endLose();
+          return;
+        }
         resetCombo(); // NEW: a hit breaks the streak
         state.invulnUntil = state.elapsed + 0.7;
         state.hitFlashUntil = state.elapsed + 0.25; // NEW: brief red screen flash
@@ -1906,7 +1941,6 @@ async function init() {
   }
 
   function drawItems() {
-    ctx.font = "40px sans-serif";
     ctx.textAlign = "center";
     ctx.textBaseline = "middle";
     items.forEach(function (it) {
@@ -1936,6 +1970,7 @@ async function init() {
 
       ctx.rotate(wiggle);
       ctx.scale(growScale, growScale);
+      ctx.font = (it.type === "trash" ? "54px" : "40px") + " sans-serif";
       ctx.fillText(it.glyph, 0, 0);
       ctx.restore();
     });
