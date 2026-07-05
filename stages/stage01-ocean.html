@@ -40,7 +40,21 @@
     padding: 6px 14px 6px 10px;
     box-shadow: var(--gog-shadow-sm);
     min-width: 168px;
-    transition: transform 0.15s ease, background-color 0.15s ease, border-color 0.15s ease;
+    transition: transform 0.15s ease;
+    position: relative;
+  }
+  .meter .label, .meter .meter-track {
+    position: relative;
+    z-index: 2;
+  }
+  .meter::after {
+    content: "";
+    position: absolute;
+    inset: -3px; /* Align with parent border */
+    border-radius: inherit;
+    opacity: 0;
+    pointer-events: none;
+    z-index: 1;
   }
   .meter .label { font-size: 0.78rem; font-weight: 700; white-space: nowrap; }
   .meter-track {
@@ -52,48 +66,46 @@
 
   /* Smooth HUD Punch Animations */
   .meter-pulse-up {
-    animation: meterGlowUp 0.4s ease-out forwards;
+    animation: meterScaleUp 0.4s ease-out forwards;
   }
   .meter-pulse-down {
-    animation: meterGlowDown 0.4s ease-out forwards;
+    animation: meterScaleDown 0.4s ease-out forwards;
+  }
+  .meter-pulse-up::after {
+    background-color: #e6fbf7;
+    border: 3px solid #3dd6c0;
+    box-shadow: 0 0 25px rgba(61, 214, 192, 0.8);
+    animation: glowFadeUp 0.4s ease-out forwards;
+  }
+  .meter-pulse-down::after {
+    background-color: #ffeef2;
+    border: 3px solid #e82e5d;
+    box-shadow: 0 0 25px rgba(232, 46, 93, 0.8);
+    animation: glowFadeDown 0.4s ease-out forwards;
   }
 
-  @keyframes meterGlowUp {
-    0% {
-      transform: scale(1);
-      box-shadow: 0 0 0px rgba(61, 214, 192, 0);
-      border-color: var(--gog-ink);
-    }
-    30% {
-      transform: scale(1.15);
-      box-shadow: 0 0 25px rgba(61, 214, 192, 0.8);
-      border-color: #3dd6c0;
-      background-color: #e6fbf7;
-    }
-    100% {
-      transform: scale(1);
-      box-shadow: 0 0 0px rgba(61, 214, 192, 0);
-      border-color: var(--gog-ink);
-    }
+  @keyframes meterScaleUp {
+    0% { transform: scale(1); }
+    30% { transform: scale(1.15); }
+    100% { transform: scale(1); }
   }
 
-  @keyframes meterGlowDown {
-    0% {
-      transform: scale(1);
-      box-shadow: 0 0 0px rgba(232, 46, 93, 0);
-      border-color: var(--gog-ink);
-    }
-    30% {
-      transform: scale(0.9);
-      box-shadow: 0 0 25px rgba(232, 46, 93, 0.8);
-      border-color: #e82e5d;
-      background-color: #ffeef2;
-    }
-    100% {
-      transform: scale(1);
-      box-shadow: 0 0 0px rgba(232, 46, 93, 0);
-      border-color: var(--gog-ink);
-    }
+  @keyframes meterScaleDown {
+    0% { transform: scale(1); }
+    30% { transform: scale(0.9); }
+    100% { transform: scale(1); }
+  }
+
+  @keyframes glowFadeUp {
+    0% { opacity: 0; }
+    30% { opacity: 1; }
+    100% { opacity: 0; }
+  }
+
+  @keyframes glowFadeDown {
+    0% { opacity: 0; }
+    30% { opacity: 1; }
+    100% { opacity: 0; }
   }
 
   .canvas-frame {
@@ -104,15 +116,58 @@
     transition: border-color 0.2s, box-shadow 0.2s;
   }
   .canvas-frame.boosting-active {
-    border-color: #3dd6c0;
-    animation: boostGlowRainbow 1s linear infinite;
-    box-shadow: 0 0 25px rgba(61, 214, 192, 0.85), var(--gog-shadow-md);
+    /* No direct animation on the frame itself to prevent expensive repaints */
   }
-  @keyframes boostGlowRainbow {
-    0% { border-color: #3dd6c0; box-shadow: 0 0 22px rgba(61, 214, 192, 0.85), var(--gog-shadow-md); }
-    33% { border-color: #ffd166; box-shadow: 0 0 22px rgba(255, 209, 102, 0.85), var(--gog-shadow-md); }
-    66% { border-color: #e82e5d; box-shadow: 0 0 22px rgba(232, 46, 93, 0.85), var(--gog-shadow-md); }
-    100% { border-color: #3dd6c0; box-shadow: 0 0 22px rgba(61, 214, 192, 0.85), var(--gog-shadow-md); }
+  .frame-overlay-win, .frame-overlay-lose,
+  .frame-overlay-boost-teal, .frame-overlay-boost-yellow, .frame-overlay-boost-pink {
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    opacity: 0;
+    z-index: 10; /* Render on top of canvas */
+  }
+  .frame-overlay-boost-teal, .frame-overlay-boost-yellow, .frame-overlay-boost-pink {
+    inset: -3px; /* Align with parent border */
+    border-radius: inherit;
+    z-index: 11;
+  }
+  .frame-overlay-boost-teal {
+    border: 3px solid #3dd6c0;
+    box-shadow: 0 0 22px rgba(61, 214, 192, 0.85);
+  }
+  .frame-overlay-boost-yellow {
+    border: 3px solid #ffd166;
+    box-shadow: 0 0 22px rgba(255, 209, 102, 0.85);
+  }
+  .frame-overlay-boost-pink {
+    border: 3px solid #e82e5d;
+    box-shadow: 0 0 22px rgba(232, 46, 93, 0.85);
+  }
+
+  .canvas-frame.boosting-active .frame-overlay-boost-teal {
+    animation: boostTealAnim 1.2s linear infinite;
+  }
+  .canvas-frame.boosting-active .frame-overlay-boost-yellow {
+    animation: boostYellowAnim 1.2s linear infinite;
+  }
+  .canvas-frame.boosting-active .frame-overlay-boost-pink {
+    animation: boostPinkAnim 1.2s linear infinite;
+  }
+
+  @keyframes boostTealAnim {
+    0%, 100% { opacity: 1; }
+    33% { opacity: 0; }
+    66% { opacity: 0; }
+  }
+  @keyframes boostYellowAnim {
+    0%, 100% { opacity: 0; }
+    33% { opacity: 1; }
+    66% { opacity: 0; }
+  }
+  @keyframes boostPinkAnim {
+    0%, 100% { opacity: 0; }
+    33% { opacity: 0; }
+    66% { opacity: 1; }
   }
   canvas {
     width: 100%; height: 100%;
@@ -176,13 +231,33 @@
   }
 
   /* Timer starts pulsing red once time is running low */
+  .timer-chip {
+    position: relative;
+  }
+  .timer-chip::after {
+    content: "";
+    position: absolute;
+    inset: -3px;
+    border-radius: inherit;
+    box-shadow: 0 0 16px rgba(232, 46, 93, 0.65);
+    opacity: 0;
+    pointer-events: none;
+    z-index: -1;
+  }
   .timer-chip.timer-urgent {
-    animation: timerPulse 0.8s ease-in-out infinite;
+    animation: timerPulseScale 0.8s ease-in-out infinite;
     color: #e82e5d;
   }
-  @keyframes timerPulse {
-    0%, 100% { transform: scale(1);     box-shadow: 0 0 0 rgba(232,46,93,0); }
-    50%      { transform: scale(1.14);  box-shadow: 0 0 16px rgba(232,46,93,0.65); }
+  .timer-chip.timer-urgent::after {
+    animation: timerPulseGlow 0.8s ease-in-out infinite;
+  }
+  @keyframes timerPulseScale {
+    0%, 100% { transform: scale(1); }
+    50%      { transform: scale(1.14); }
+  }
+  @keyframes timerPulseGlow {
+    0%, 100% { opacity: 0; }
+    50%      { opacity: 1; }
   }
 
   /* Mute button gives a happy little bounce on click */
@@ -194,16 +269,27 @@
   }
 
   /* Canvas frame reacts to winning / losing the stage */
-  .canvas-frame.flash-win { animation: winFlash 1.5s ease; }
-  @keyframes winFlash {
-    0%   { filter: brightness(1) saturate(1); }
-    25%  { filter: brightness(1.5) saturate(1.7); }
-    100% { filter: brightness(1) saturate(1); }
+  .canvas-frame.flash-win .frame-overlay-win {
+    animation: winOverlayAnim 1.5s ease forwards;
   }
-  .canvas-frame.flash-lose { animation: loseFade 0.9s ease forwards; }
-  @keyframes loseFade {
-    from { filter: grayscale(0) brightness(1); }
-    to   { filter: grayscale(0.45) brightness(0.75); }
+  .frame-overlay-win {
+    background: rgba(255, 255, 255, 0.4);
+  }
+  @keyframes winOverlayAnim {
+    0% { opacity: 0; }
+    25% { opacity: 0.6; }
+    100% { opacity: 0; }
+  }
+  
+  .canvas-frame.flash-lose .frame-overlay-lose {
+    animation: loseOverlayAnim 0.9s ease forwards;
+  }
+  .frame-overlay-lose {
+    background: rgba(20, 25, 35, 0.4);
+  }
+  @keyframes loseOverlayAnim {
+    0% { opacity: 0; }
+    100% { opacity: 1; }
   }
 
   /* Combo streak chip — hidden until the player chains 2+ pickups */
@@ -345,6 +431,12 @@
 
   <div class="brutal-box canvas-frame" id="canvasFrame">
     <canvas id="gameCanvas" width="960" height="600"></canvas>
+    <!-- Overlay divs for smooth hardware-accelerated transitions -->
+    <div class="frame-overlay-win" id="overlayWin"></div>
+    <div class="frame-overlay-lose" id="overlayLose"></div>
+    <div class="frame-overlay-boost-teal" id="overlayBoostTeal"></div>
+    <div class="frame-overlay-boost-yellow" id="overlayBoostYellow"></div>
+    <div class="frame-overlay-boost-pink" id="overlayBoostPink"></div>
   </div>
 
   <!-- Spawning & Speed Controls -->
@@ -437,6 +529,21 @@
 
   var canvas = document.getElementById("gameCanvas");
   var ctx = canvas.getContext("2d");
+  var canvasFrame = document.getElementById("canvasFrame");
+
+  var cachedCanvasRect = null;
+  var cachedFrameRect = null;
+  var rectUpdatedThisFrame = false;
+
+  function updateCanvasRect() {
+    if (canvas) {
+      cachedCanvasRect = canvas.getBoundingClientRect();
+    }
+    if (canvasFrame) {
+      cachedFrameRect = canvasFrame.getBoundingClientRect();
+    }
+    rectUpdatedThisFrame = true;
+  }
   var W = canvas.width, H = canvas.height;
 
   // PERF: these gradients are created ONCE and reused every frame instead of
@@ -527,9 +634,7 @@
     syncMuteBtn();
 
     // happy little bounce on the button itself
-    muteBtn.classList.remove("btn-bounce");
-    void muteBtn.offsetWidth;
-    muteBtn.classList.add("btn-bounce");
+    GOGUi.restartAnimation(muteBtn, "btn-bounce");
   });
 
   // Connect speed value UI displays
@@ -585,7 +690,10 @@
   // Tap/click ripples — pure delight, doesn't affect gameplay input at all
   var ripples = [];
   canvas.addEventListener("pointerdown", function (e) {
-    var rect = canvas.getBoundingClientRect();
+    if (!rectUpdatedThisFrame || !cachedCanvasRect) {
+      updateCanvasRect();
+    }
+    var rect = cachedCanvasRect;
     var px = (e.clientX - rect.left) / rect.width * W;
     var py = (e.clientY - rect.top) / rect.height * H;
     if (ripples.length < 12) {
@@ -672,6 +780,11 @@ async function init() {
     boostReadyAt: 0,    // NEW: when the boost cools down and becomes available again
     slowMoUntil: 0       // NEW: brief bullet-time window on a perfect dodge
   };
+
+  var lastReefValue = null;
+  var lastSproutsValue = null;
+  var reefAnimationDelta = 0;
+  var sproutsGainPending = false;
 
   var dolphin = {
     x: W * 0.5,
@@ -1114,9 +1227,6 @@ async function init() {
 
   function drawSeabedDecorations() {
     ctx.save();
-    ctx.font = "20px sans-serif";
-    ctx.textAlign = "center";
-    ctx.textBaseline = "middle";
     seabedDecorations.forEach(function (d) {
       ctx.save();
       ctx.translate(d.x, d.y);
@@ -1130,7 +1240,8 @@ async function init() {
         var scaleY = 1 + Math.sin(state.elapsed * 1.5 + d.bob) * 0.06;
         ctx.scale(1, scaleY);
       }
-      ctx.fillText(d.glyph, 0, 0);
+      var sprite = EmojiSprite.get(d.glyph, 20);
+      ctx.drawImage(sprite, -sprite.width / 2, -sprite.height / 2);
       ctx.restore();
     });
     ctx.restore();
@@ -1148,7 +1259,6 @@ async function init() {
     ctx.save();
     bgFish.forEach(function (f) {
       ctx.save();
-      ctx.font = Math.round(f.size) + "px sans-serif";
       // Bobbing speed is proportional to their size/type
       var yBob = Math.sin(t * 1.6 + f.bob) * 10;
       ctx.translate(f.x, f.y + yBob);
@@ -1161,9 +1271,8 @@ async function init() {
       }
       
       ctx.globalAlpha = 0.32; // Blend into the water background
-      ctx.textAlign = "center";
-      ctx.textBaseline = "middle";
-      ctx.fillText(f.glyph, 0, 0);
+      var sprite = EmojiSprite.get(f.glyph, Math.round(f.size));
+      ctx.drawImage(sprite, -sprite.width / 2, -sprite.height / 2);
       ctx.restore();
     });
     ctx.restore();
@@ -1204,16 +1313,15 @@ async function init() {
 
   /* ---------------- NEW: camera "punch" for big positive moments ---------------- */
   function triggerZoomPunch() {
-    var frame = document.getElementById("canvasFrame");
-    frame.classList.remove("zoom-punch");
-    void frame.offsetWidth;
-    frame.classList.add("zoom-punch");
+    var frame = canvasFrame;
+    if (!frame) return;
+    GOGUi.restartAnimation(frame, "zoom-punch");
   }
 
   /* ---------------- NEW: perfect-dodge near-miss -> brief bullet-time ---------------- */
   function triggerNearMiss(x, y) {
     particles.burst(x, y, { glyphs: ["💨"], count: 4, life: 350 });
-    GOGUi.floatLabel(document.getElementById("canvasFrame"), canvasXToClient(x), canvasYToClient(y), "Phew!", "#ffd166");
+    GOGUi.floatLabel(canvasFrame, canvasXToClient(x), canvasYToClient(y), "Phew!", "#ffd166");
     state.slowMoUntil = state.elapsed + 0.55;
     triggerZoomPunch();
   }
@@ -1228,9 +1336,7 @@ async function init() {
       comboChip.classList.remove("combo-tier-2", "combo-tier-3");
       if (state.combo >= 10) comboChip.classList.add("combo-tier-3");
       else if (state.combo >= 5) comboChip.classList.add("combo-tier-2");
-      comboChip.classList.remove("chip-pop");
-      void comboChip.offsetWidth;
-      comboChip.classList.add("chip-pop");
+      GOGUi.restartAnimation(comboChip, "chip-pop");
     }
     if (state.combo > 0 && state.combo % 5 === 0) {
       addSprouts(3);
@@ -1253,7 +1359,7 @@ async function init() {
     audio.heal();
     pageFx("heal");
     particles.burst(x, y, { glyphs: ["🎉", "✨", "💙"], count: 16, life: 900 });
-    GOGUi.floatLabel(document.getElementById("canvasFrame"), canvasXToClient(x), canvasYToClient(y), milestoneMessage(percent), "#2E5EE8");
+    GOGUi.floatLabel(canvasFrame, canvasXToClient(x), canvasYToClient(y), milestoneMessage(percent), "#2E5EE8");
     spawnConfettiBurst(12); // rains in from the top across the whole scene
     triggerZoomPunch(); // NEW
   }
@@ -1296,15 +1402,13 @@ async function init() {
     diffChip.style.color = config.color;
 
     // Add bounce animation
-    diffChip.classList.remove("chip-pop");
-    void diffChip.offsetWidth;
-    diffChip.classList.add("chip-pop");
+    GOGUi.restartAnimation(diffChip, "chip-pop");
 
     // Float notification on the screen
     var cx = canvasXToClient(W / 2);
     var cy = canvasYToClient(H / 2) - 40;
     GOGUi.floatLabel(
-      document.getElementById("canvasFrame"),
+      canvasFrame,
       cx,
       cy,
       "⚠️ Danger: " + config.text + "!",
@@ -1357,28 +1461,12 @@ async function init() {
   }
 
   function setReef(delta, originX, originY) {
+    if (delta === 0) return;
     state.reef = Collision.clamp(state.reef + delta, 0, 100);
-    
-    var fillElem = document.getElementById("reefFill");
-    var pctElem = document.getElementById("reefPct");
-    var meterHUD = document.querySelector(".meter");
-
-    fillElem.style.width = state.reef + "%";
-    pctElem.textContent = Math.round(state.reef) + "%";
-
-    // Play HUD Punch Animations
-    if (meterHUD) {
-      meterHUD.classList.remove("meter-pulse-up", "meter-pulse-down");
-      void meterHUD.offsetWidth; // Force element reflow reset
-      if (delta > 0) {
-        meterHUD.classList.add("meter-pulse-up");
-      } else if (delta < 0) {
-        meterHUD.classList.add("meter-pulse-down");
-      }
-    }
+    reefAnimationDelta += delta;
 
     // Generate Dynamic Canvas Expansion Rings
-    if (originX !== undefined && originY !== undefined && delta !== 0) {
+    if (originX !== undefined && originY !== undefined) {
       shockwaves.push({
         x: originX,
         y: originY,
@@ -1414,15 +1502,57 @@ async function init() {
 
   function addSprouts(n) {
     state.sproutsEarned += n;
-    var chip = document.getElementById("sproutsChip");
-    chip.textContent = state.sproutsEarned;
+    sproutsGainPending = true;
+  }
 
-    // NEW: pop the whole sprout chip so the gain feels rewarding
-    var chipParent = chip.parentElement;
-    if (chipParent) {
-      chipParent.classList.remove("chip-pop");
-      void chipParent.offsetWidth;
-      chipParent.classList.add("chip-pop");
+  function flushUIUpdates() {
+    // 1. Reef HUD Update
+    if (lastReefValue !== state.reef) {
+      var fillElem = document.getElementById("reefFill");
+      var pctElem = document.getElementById("reefPct");
+      if (fillElem) fillElem.style.width = state.reef + "%";
+      if (pctElem) pctElem.textContent = Math.round(state.reef) + "%";
+      lastReefValue = state.reef;
+    }
+
+    // 2. Reef Meter Bounce Animation
+    if (reefAnimationDelta !== 0) {
+      var meterHUD = document.querySelector(".meter");
+      if (meterHUD) {
+        meterHUD.classList.remove("meter-pulse-up", "meter-pulse-down");
+        if (typeof meterHUD.getAnimations === 'function') {
+          var animations = meterHUD.getAnimations();
+          if (animations && animations.length > 0) {
+            animations.forEach(function (anim) {
+              anim.cancel();
+            });
+          }
+        } else {
+          void meterHUD.offsetWidth;
+        }
+        if (reefAnimationDelta > 0) {
+          meterHUD.classList.add("meter-pulse-up");
+        } else if (reefAnimationDelta < 0) {
+          meterHUD.classList.add("meter-pulse-down");
+        }
+      }
+      reefAnimationDelta = 0; // reset
+    }
+
+    // 3. Sprouts HUD Update and bounce animation
+    if (lastSproutsValue !== state.sproutsEarned) {
+      var chip = document.getElementById("sproutsChip");
+      if (chip) {
+        chip.textContent = state.sproutsEarned;
+        if (sproutsGainPending) {
+          var chipParent = chip.parentElement;
+          if (chipParent) {
+            GOGUi.restartAnimation(chipParent, "chip-pop");
+          }
+          sproutsGainPending = false;
+        }
+      }
+      lastSproutsValue = state.sproutsEarned;
     }
   }
 
@@ -1494,9 +1624,8 @@ async function init() {
 
     // --- dolphin follows pointer, with keyboard fallback ---
     var boosting = state.elapsed < state.boostUntil; // NEW: Echo Boost in progress
-    var frameElem = document.getElementById("canvasFrame");
-    if (frameElem) {
-      frameElem.classList.toggle("boosting-active", boosting);
+    if (canvasFrame) {
+      canvasFrame.classList.toggle("boosting-active", boosting);
     }
     var prevX = dolphin.x, prevY = dolphin.y;
     var followLerp = boosting ? 0.34 : 0.16;
@@ -1636,7 +1765,7 @@ async function init() {
         particles.burst(it.x, it.y, { glyphs: ["✨", "💧"], count: 7, life: 550 });
         audio.collect();
         pageFx("collect");
-        GOGUi.floatLabel(document.getElementById("canvasFrame"), canvasXToClient(it.x), canvasYToClient(it.y), "Scoop! ♻️ +5 Reef", "#2E5EE8");
+        GOGUi.floatLabel(canvasFrame, canvasXToClient(it.x), canvasYToClient(it.y), "Scoop! ♻️ +5 Reef", "#2E5EE8");
         GOGUi.say("Yum, a piece of trash cleared! 🍃");
         
         // Trigger attack animation
@@ -1655,10 +1784,9 @@ async function init() {
           particles.burst(it.x, it.y, { glyphs: ["😢", "💥"], count: 8, life: 600 });
           audio.oops();
           pageFx("oops");
-          shakeFrame();
           state.hitFlashUntil = state.elapsed + 0.25;
           spawnDizzyStars();
-          GOGUi.floatLabel(document.getElementById("canvasFrame"), canvasXToClient(it.x), canvasYToClient(it.y), "Oops! 🩹 Hurt Turtle! -10 Reef", "#ef4444");
+          GOGUi.floatLabel(canvasFrame, canvasXToClient(it.x), canvasYToClient(it.y), "Oops! 🩹 Hurt Turtle! -10 Reef", "#ef4444");
           GOGUi.say("Oh no! Be careful around our turtle friends! 🩹");
           if (state.turtleAttackCount > 3) {
             GOGUi.say("Too many turtle attacks! The reef needs another chance.");
@@ -1675,7 +1803,7 @@ async function init() {
           audio.heal();
           pageFx("heal");
           state.healFlashUntil = state.elapsed + 0.25;
-          GOGUi.floatLabel(document.getElementById("canvasFrame"), canvasXToClient(it.x), canvasYToClient(it.y), "Heal! 🐢 Turtle saved! +7", "#1aa05e");
+          GOGUi.floatLabel(canvasFrame, canvasXToClient(it.x), canvasYToClient(it.y), "Heal! 🐢 Turtle saved! +7", "#1aa05e");
           GOGUi.say("Yay, you saved a turtle! 🐢");
         }
       } else if (it.type === "pearl") {
@@ -1688,10 +1816,9 @@ async function init() {
           particles.burst(it.x, it.y, { glyphs: ["🪨", "💥"], count: 8, life: 600 });
           audio.oops();
           pageFx("oops");
-          shakeFrame();
           state.hitFlashUntil = state.elapsed + 0.25;
           spawnDizzyStars();
-          GOGUi.floatLabel(document.getElementById("canvasFrame"), canvasXToClient(it.x), canvasYToClient(it.y), "Oops! 🪨 Crushed Pearl! -12 Reef", "#ef4444");
+          GOGUi.floatLabel(canvasFrame, canvasXToClient(it.x), canvasYToClient(it.y), "Oops! 🪨 Crushed Pearl! -12 Reef", "#ef4444");
           GOGUi.say("Oh no! Be careful around treasures! 🩹");
         } else {
           setReef(7, it.x, it.y);
@@ -1703,7 +1830,7 @@ async function init() {
           audio.heal();
           pageFx("heal");
           state.healFlashUntil = state.elapsed + 0.25;
-          GOGUi.floatLabel(document.getElementById("canvasFrame"), canvasXToClient(it.x), canvasYToClient(it.y), "Heal! 🦪 Golden Pearl! +7", "#ffae00");
+          GOGUi.floatLabel(canvasFrame, canvasXToClient(it.x), canvasYToClient(it.y), "Heal! 🦪 Golden Pearl! +7", "#ffae00");
           GOGUi.say("Incredible, a golden pearl! 🦪");
         }
       } else if (it.type === "pufferfish") {
@@ -1731,9 +1858,8 @@ async function init() {
         state.hitFlashUntil = state.elapsed + 0.25; // NEW: brief red screen flash
         audio.oops();
         pageFx("oops");
-        shakeFrame();
         spawnDizzyStars();
-        GOGUi.floatLabel(document.getElementById("canvasFrame"), canvasXToClient(dolphin.x), canvasYToClient(dolphin.y), labelText, "#ef4444");
+        GOGUi.floatLabel(canvasFrame, canvasXToClient(dolphin.x), canvasYToClient(dolphin.y), labelText, "#ef4444");
         GOGUi.say("Oops, a smoggy bump! Shake it off and try again 💪");
 
         // NEW: gentle knockback away from the pufferfish
@@ -1757,23 +1883,26 @@ async function init() {
     if (state.reef >= 100 && !state.won) {
       endWin();
     }
+    flushUIUpdates();
+    rectUpdatedThisFrame = false;
   }
 
   function canvasXToClient(x) {
-    var rect = canvas.getBoundingClientRect();
-    return (x / W) * rect.width;
+    if (!rectUpdatedThisFrame || !cachedCanvasRect) {
+      updateCanvasRect();
+    }
+    return (x / W) * cachedCanvasRect.width;
   }
   function canvasYToClient(y) {
-    var rect = canvas.getBoundingClientRect();
-    return (y / H) * rect.height;
+    if (!rectUpdatedThisFrame || !cachedCanvasRect) {
+      updateCanvasRect();
+    }
+    return (y / H) * cachedCanvasRect.height;
   }
 
   function shakeFrame() {
-    var frame = document.getElementById("canvasFrame");
-    if (!frame) return;
-    frame.classList.remove("shake");
-    void frame.offsetWidth;
-    frame.classList.add("shake");
+    if (!canvasFrame) return;
+    GOGUi.restartAnimation(canvasFrame, "shake");
   }
 
   // NEW: pulses a soft full-page glow (collect / oops / heal) so the feedback
@@ -1783,13 +1912,37 @@ async function init() {
     var el = document.getElementById("pageFx");
     if (!el) return;
     el.classList.remove("fx-collect", "fx-oops", "fx-heal");
-    void el.offsetWidth;
+    if (typeof el.getAnimations === 'function') {
+      var animations = el.getAnimations();
+      if (animations && animations.length > 0) {
+        animations.forEach(function (anim) {
+          anim.cancel();
+        });
+      }
+    } else {
+      void el.offsetWidth;
+    }
     el.classList.add("fx-" + kind);
   }
 
+  var lastDizzyStarAt = 0;
   function spawnDizzyStars() {
-    var frame = document.getElementById("canvasFrame");
-    var rect = frame.getBoundingClientRect();
+    var now = performance.now();
+    if (now - lastDizzyStarAt < 100) {
+      return;
+    }
+    var activeStars = document.querySelectorAll(".dizzyStar");
+    if (activeStars.length >= 9) {
+      for (var i = 0; i < 3; i++) {
+        if (activeStars[i]) activeStars[i].remove();
+      }
+    }
+    lastDizzyStarAt = now;
+
+    if (!rectUpdatedThisFrame || !cachedFrameRect) {
+      updateCanvasRect();
+    }
+    var rect = cachedFrameRect;
     var clientX = rect.left + canvasXToClient(dolphin.x);
     var clientY = rect.top + canvasYToClient(dolphin.y) - 40;
     
@@ -1841,9 +1994,6 @@ async function init() {
     var reefT = state.reef / 100;
     ctx.fillStyle = "rgba(20,40,30," + (0.25 + reefT * 0.3) + ")";
     ctx.fillRect(0, 0, W, coralH);
-    ctx.font = "26px sans-serif";
-    ctx.textAlign = "center";
-    ctx.textBaseline = "middle";
     for (var cx = 20; cx < W; cx += 70) {
       var bloom = (cx / W) < reefT + 0.08;
       ctx.save();
@@ -1858,7 +2008,9 @@ async function init() {
       ctx.scale(scale, scale);
       
       ctx.globalAlpha = bloom ? 1 : 0.22;
-      ctx.fillText(bloom ? "🪸" : "🪨", 0, 0);
+      var glyph = bloom ? "🪸" : "🪨";
+      var sprite = EmojiSprite.get(glyph, 26);
+      ctx.drawImage(sprite, -sprite.width / 2, -sprite.height / 2);
       ctx.restore();
     }
     ctx.globalAlpha = 1;
@@ -1930,10 +2082,8 @@ async function init() {
       );
     } else {
       // Fallback if image not loaded yet
-      ctx.font = "54px sans-serif";
-      ctx.textAlign = "center";
-      ctx.textBaseline = "middle";
-      ctx.fillText("🐬", 0, 0);
+      var sprite = EmojiSprite.get("🐬", 54);
+      ctx.drawImage(sprite, -sprite.width / 2, -sprite.height / 2);
     }
     
     ctx.globalAlpha = 1;
@@ -1941,8 +2091,6 @@ async function init() {
   }
 
   function drawItems() {
-    ctx.textAlign = "center";
-    ctx.textBaseline = "middle";
     items.forEach(function (it) {
       // NEW: items pop in with a little overshoot when they spawn, and wiggle gently
       var growT = Math.min(1, it.age / 0.25);
@@ -1970,8 +2118,9 @@ async function init() {
 
       ctx.rotate(wiggle);
       ctx.scale(growScale, growScale);
-      ctx.font = (it.type === "trash" ? "54px" : "40px") + " sans-serif";
-      ctx.fillText(it.glyph, 0, 0);
+      var size = it.type === "trash" ? 54 : 40;
+      var sprite = EmojiSprite.get(it.glyph, size);
+      ctx.drawImage(sprite, -sprite.width / 2, -sprite.height / 2);
       ctx.restore();
     });
   }
@@ -2015,6 +2164,7 @@ async function init() {
 
     drawHitFlash(); // NEW: brief red vignette when hit by a pufferfish
     drawHealFlash(); // NEW: brief green vignette when a heal/save occurs
+    rectUpdatedThisFrame = false;
   }
 
   // NEW: quick red screen flash when a pufferfish lands a hit
@@ -2050,9 +2200,7 @@ async function init() {
     }
     overlay.classList.add("show");
     if (treeIcon) {
-      treeIcon.classList.remove("pulse");
-      void treeIcon.offsetWidth;
-      treeIcon.classList.add("pulse");
+      GOGUi.restartAnimation(treeIcon, "pulse");
     }
     GOGUi.say("A seed is heading home to the Tree… 🌱");
     

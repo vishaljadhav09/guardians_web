@@ -10,6 +10,27 @@
 (function (global) {
   "use strict";
 
+  var EmojiSprite = (function () {
+    var cache = {};
+    function get(glyph, size) {
+      var rounded = Math.round(size / 2) * 2; // round to nearest 2px to maximize cache hits
+      var key = glyph + "_" + rounded;
+      if (cache[key]) return cache[key];
+      var pad = rounded * 0.4;
+      var c = document.createElement("canvas");
+      c.width = c.height = rounded + pad * 2;
+      var cctx = c.getContext("2d");
+      cctx.font = rounded + "px sans-serif";
+      cctx.textAlign = "center";
+      cctx.textBaseline = "middle";
+      cctx.fillText(glyph, c.width / 2, c.height / 2);
+      cache[key] = c;
+      return c;
+    }
+    return { get: get };
+  })();
+  global.EmojiSprite = EmojiSprite; // expose alongside GOGEngine
+
   /* ---------------- GameLoop ---------------- */
   // Fixed-timestep update with delta-time normalization, RAF-driven.
   function GameLoop(opts) {
@@ -41,6 +62,9 @@
         self.update(self.stepMs / 1000);
         self._acc -= self.stepMs;
         steps++;
+      }
+      if (steps >= self._maxStepsPerFrame && self._acc >= self.stepMs) {
+        self._acc = 0;
       }
       self.draw();
       self._raf = requestAnimationFrame(frame);
@@ -193,10 +217,8 @@
       ctx.globalAlpha = Math.max(0, alpha);
       ctx.translate(p.x, p.y);
       ctx.rotate(p.rotation);
-      ctx.font = p.size + "px sans-serif";
-      ctx.textAlign = "center";
-      ctx.textBaseline = "middle";
-      ctx.fillText(p.text, 0, 0);
+      var sprite = EmojiSprite.get(p.text, p.size);
+      ctx.drawImage(sprite, -sprite.width / 2, -sprite.height / 2);
       ctx.restore();
     }
   };

@@ -1218,9 +1218,7 @@
       // Bloom Sweep Transition
       var sweep = document.getElementById("bloomSweep");
       if (sweep) {
-        sweep.classList.remove("run");
-        void sweep.offsetWidth;
-        sweep.classList.add("run");
+        GOGUi.restartAnimation(sweep, "run");
       }
       // Procedural Sounds
       GaiaAudio.playBloom();

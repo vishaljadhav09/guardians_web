@@ -80,9 +80,22 @@
     setTimeout(function () { el.remove(); }, 180);
   }
 
+  var lastFloatLabelAt = 0;
   // A small floating "+1" / "+seed" style label that drifts up and fades.
   function floatLabel(parentEl, x, y, text, color) {
+    if (!parentEl) return;
+    var now = performance.now();
+    if (now - lastFloatLabelAt < 80) {
+      return;
+    }
+    var activeLabels = parentEl.querySelectorAll(".gog-float-label");
+    if (activeLabels.length >= 10) {
+      activeLabels[0].remove();
+    }
+    lastFloatLabelAt = now;
+
     var el = document.createElement("div");
+    el.className = "gog-float-label";
     el.textContent = text;
     el.style.position = "absolute";
     el.style.left = x + "px";
@@ -106,10 +119,28 @@
   function say(text) {
     var bubble = document.getElementById('guideText');
     if (!bubble) return;
-    bubble.classList.remove('pop');
-    void bubble.offsetWidth;
     bubble.textContent = text;
-    bubble.classList.add('pop');
+    restartAnimation(bubble, 'pop');
+  }
+
+  function restartAnimation(el, className) {
+    if (!el) return;
+    if (className) {
+      el.classList.remove(className);
+    }
+    if (typeof el.getAnimations === 'function') {
+      var animations = el.getAnimations();
+      if (animations && animations.length > 0) {
+        animations.forEach(function (anim) {
+          anim.cancel();
+        });
+      }
+    } else {
+      void el.offsetWidth;
+    }
+    if (className) {
+      el.classList.add(className);
+    }
   }
 
   function confettiAt(x, y, n) {
@@ -148,6 +179,7 @@
     closeOverlay: closeOverlay,
     floatLabel: floatLabel,
     say: say,
-    confettiAt: confettiAt
+    confettiAt: confettiAt,
+    restartAnimation: restartAnimation
   };
 })(window);
