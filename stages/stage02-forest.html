@@ -430,25 +430,89 @@
       </div>
     </div>
 
+    <!-- Seed Returns Cutscene Overlay -->
+    <div class="cutscene-overlay" id="cutscene">
+      <div class="csSeed">🌱</div>
+      <div class="csTree" id="csTreeIcon">🌳</div>
+      <div class="csText">A seed returns to the Tree…</div>
+      <button class="btn small csSkip" id="csSkipBtn">Skip ⏭</button>
+    </div>
+
+    <script src="../data/content.js"></script>
+    <script src="../src/save.js"></script>
+    <script src="../src/engine.js"></script>
+    <script src="../src/ui.js"></script>
+    <script src="GOGStage2.js"></script>
     <script>
       (function () {
         "use strict";
+
+        // Run isolated tests
+        if (typeof GOGStage2 !== "undefined") {
+          GOGStage2.runTests();
+        }
+
+        var STAGE_ID = "stage02";
+        var stageMeta = GOGContent.byId(STAGE_ID);
+        var save = GOGSave.load();
 
         var canvas = document.getElementById("gameCanvas");
         var ctx = canvas.getContext("2d");
         var W = canvas.width;
         var H = canvas.height;
+        var canvasFrame = document.getElementById("canvasFrame");
+
+        var input = new GOGEngine.Input(canvas);
+        var particles = new GOGEngine.ParticleSystem(120);
+        var audio = new GOGEngine.Audio(!save.settings.sound);
+        var calmMode = !!save.settings.calm;
+
+        var treeImg = null;
+        var treeDisImg = null;
+        var growingPlantsImg = null;
+
+        var state = {
+          running: false,
+          elapsed: 0,
+          clouds: [],
+          cloudSpawnTimer: 0,
+          pointerWasDown: false,
+          introPlayed: false,
+          screenShake: 0,
+          desaturateTime: 0,
+          lastSmogCol: 10
+        };
+
+        // UI element caches
+        var canopyFill = document.getElementById("canopyFill");
+        var canopyPct = document.getElementById("canopyPct");
+        var timerChip = document.getElementById("timerChip");
+        var sproutsChip = document.getElementById("sproutsChip");
+        var difficultyChip = document.getElementById("difficultyChip");
+        var muteBtn = document.getElementById("muteBtn");
+        var calmBadge = document.getElementById("calmBadge");
+
+        // Set up sound button
+        muteBtn.textContent = audio.muted ? "🔇" : "🔈";
+        muteBtn.addEventListener("click", function () {
+          audio.setMuted(!audio.muted);
+          save.settings.sound = !audio.muted;
+          GOGSave.save(save);
+          muteBtn.textContent = audio.muted ? "🔇" : "🔈";
+        });
+
+        // Set up calm badge
+        if (calmMode) {
+          calmBadge.textContent = "🌸 Calm Mode Active";
+          timerChip.textContent = "∞";
+        }
 
         /* ---------------- parallax background layers ---------------- */
-        // Same layered-PNG parallax approach as stage01-ocean.html:
-        // 4 tiling images scrolling at different speeds (slow -> fast = far -> near).
-        // Drop your forest artwork at assets/1.png .. assets/4.png next to this
-        // file (same relative path convention stage01 uses).
         var layers = [
-          { img: null, speed: 0, y: 0 }, // Sky/far canopy (slowest)
-          { img: null, speed: 2, y: 0 }, // Far tree line
-          { img: null, speed: 0, y: 0 }, // Mid-ground foliage
-          { img: null, speed: 0, y: 0 }, // Foreground leaves/vines (fastest)
+          { img: null, speed: 0, y: 0 },
+          { img: null, speed: 2, y: 0 },
+          { img: null, speed: 0, y: 0 },
+          { img: null, speed: 0, y: 0 },
         ];
         var scrollX = 0;
 
@@ -456,39 +520,52 @@
           return new Promise(function (resolve, reject) {
             var img = new Image();
             img.onload = function () {
-              console.log("[bg] loaded:", src, img.width + "x" + img.height);
               resolve(img);
             };
             img.onerror = function () {
-              console.error("[bg] FAILED to load:", src);
               reject(new Error("Failed to load image: " + src));
             };
             img.src = src;
           });
         }
 
-        // Pre-load background image assets asynchronously
-        async function init() {
+        async function initBackground() {
           var paths = ["assets/background/stage02/1.png", "assets/background/stage02/2.png", "assets/background/stage02/3.png", "assets/background/stage02/4.png"];
           var results = await Promise.allSettled(paths.map(loadImage));
           results.forEach(function (result, i) {
             if (result.status === "fulfilled") {
               layers[i].img = result.value;
-            } else {
-              console.error("[bg] layer " + (i + 1) + " (" + paths[i] + ") did not load — that layer will stay blank.");
             }
           });
+
+          // Preload Stage 2 sprites
+          try {
+            treeImg = await loadImage("assets/2.png");
+            treeDisImg = await loadImage("assets/2_dis.png");
+            growingPlantsImg = await loadImage("assets/sprites/stage02/GrowingPlants.png");
+            console.log("[sprites] Preloaded forest sprite sheets.");
+          } catch (e) {
+            console.warn("[sprites] Sprites failed to load. Emojis will be used as fallbacks:", e);
+          }
         }
 
         function drawForestBackground(elapsed) {
-          // Clear canvas before drawing layers
-          ctx.clearRect(0, 0, W, H);
+          // Dynamic greyscale/barren background filter depending on wave progress
+          var activeFilter = "none";
+          if (GOGStage2.gameState === "WAVE_ACTIVE" || GOGStage2.gameState === "WAVE_CLEARED") {
+            if (GOGStage2.wave === 1) {
+              activeFilter = "sepia(0.65) hue-rotate(-22deg) saturate(0.8)";
+            } else if (GOGStage2.wave === 2) {
+              activeFilter = "sepia(0.3) hue-rotate(-11deg) saturate(1.0)";
+            }
+          }
 
-          // fallback fill so it never looks "dirty" even before images are ready
-          ctx.fillStyle = "#2f7a4d";
+          ctx.save();
+          ctx.filter = activeFilter;
+
+          ctx.fillStyle = "#1e4d2b"; // fallback fill
           ctx.fillRect(0, 0, W, H);
 
-          // a very gentle shear that drifts back and forth — reads as a soft breeze through the canopy
           var windShear = Math.sin(elapsed * 0.4) * 0.012;
           ctx.save();
           ctx.transform(1, 0, windShear, 1, 0, 0);
@@ -497,39 +574,651 @@
             var img = layer.img;
             var tileW = img.width;
             var x = (scrollX * (layer.speed * 0.1)) % tileW;
-            if (x > 0) x -= tileW; // normalize into (-tileW, 0]
+            if (x > 0) x -= tileW;
             for (var dx = x; dx < W; dx += tileW) {
               ctx.drawImage(img, dx, layer.y, tileW, H);
             }
           });
           ctx.restore();
-
-          // Ravi + forest accents on top, same as before
-          ctx.font = "46px serif";
-          ctx.fillText("🐯", W * 0.48, H * 0.58);
-          ctx.fillText("🌱", W * 0.33, H * 0.78);
-          ctx.fillText("🌳", W * 0.64, H * 0.74);
+          ctx.restore();
         }
 
-        /* ---------------- animation loop ---------------- */
-        var lastTime = null;
-        var elapsed = 0;
-
-        function frame(timestamp) {
-          if (lastTime === null) lastTime = timestamp;
-          var dt = (timestamp - lastTime) / 1000;
-          lastTime = timestamp;
-          elapsed += dt;
-
-          // same scroll speed as stage01 (60px/sec base, scaled per-layer by layer.speed)
-          scrollX += 60 * dt;
-
-          drawForestBackground(elapsed);
-          requestAnimationFrame(frame);
+        /* ---------------- rain clouds spawning ---------------- */
+        function spawnCloud() {
+          var fromLeft = Math.random() < 0.5;
+          var x = fromLeft ? -80 : W + 80;
+          var y = 60 + Math.random() * 120;
+          var vx = (fromLeft ? 1 : -1) * (40 + Math.random() * 50);
+          state.clouds.push({
+            x: x,
+            y: y,
+            vx: vx,
+            vy: (Math.random() - 0.5) * 8,
+            size: 50,
+            active: true
+          });
         }
 
-        init();
-        requestAnimationFrame(frame);
+        function updateClouds(dt) {
+          state.cloudSpawnTimer -= dt;
+          if (state.cloudSpawnTimer <= 0) {
+            spawnCloud();
+            state.cloudSpawnTimer = 3.0 + Math.random() * 3.0;
+          }
+
+          for (var i = state.clouds.length - 1; i >= 0; i--) {
+            var c = state.clouds[i];
+            c.x += c.vx * dt;
+            c.y += c.vy * dt;
+            if ((c.vx > 0 && c.x > W + 100) || (c.vx < 0 && c.x < -100)) {
+              state.clouds.splice(i, 1);
+            }
+          }
+        }
+
+        /* ---------------- cutscene and end states ---------------- */
+        var cutsceneTimer = null;
+        function triggerSeedReturnCutscene(onComplete) {
+          var overlay = document.getElementById("cutscene");
+          var treeIcon = document.getElementById("csTreeIcon");
+          if (!overlay) {
+            onComplete();
+            return;
+          }
+          overlay.classList.add("show");
+          if (treeIcon) {
+            GOGUi.restartAnimation(treeIcon, "pulse");
+          }
+          GOGUi.say("A seed is heading home to the Tree… 🌱");
+
+          function closeCutscene() {
+            overlay.classList.remove("show");
+            if (cutsceneTimer) clearTimeout(cutsceneTimer);
+            onComplete();
+          }
+
+          var skipBtn = document.getElementById("csSkipBtn");
+          if (skipBtn) {
+            var newSkip = skipBtn.cloneNode(true);
+            skipBtn.parentNode.replaceChild(newSkip, skipBtn);
+            newSkip.addEventListener("click", closeCutscene);
+          }
+
+          cutsceneTimer = setTimeout(closeCutscene, 2200);
+        }
+
+        function showIntro() {
+          GOGUi.say("Welcome! Plant trees to shield the rainforest from the Smog! 🌳");
+          var intro = GOGUi.showOverlay({
+            accent: "var(--gog-lime)",
+            title: "🐯 Ravi & the Canopy Call",
+            body: "The Smog is creeping in! Spend saplings to plant trees on the grid. Fully grown trees link together to create a canopy barrier that blocks the smog. Tap passing rain clouds to gather more saplings!",
+            primaryLabel: "Start Wave 1",
+            onPrimary: function () {
+              GOGUi.closeOverlay(intro);
+              startWave(1);
+            }
+          });
+        }
+
+        function startWave(waveNum) {
+          if (waveNum === 1) {
+            GOGStage2.init(6, 10);
+            GOGStage2.saplings = 6;
+          } else {
+            GOGStage2.wave = waveNum;
+            GOGStage2.smogPosition = GOGStage2.cols;
+            GOGStage2.timer = 75;
+            GOGStage2.saplings += 4; // bonus saplings per wave
+            GOGStage2.transitionTo("WAVE_ACTIVE");
+          }
+          state.clouds = [];
+          state.cloudSpawnTimer = 1.0;
+          state.lastSmogCol = GOGStage2.cols;
+          state.running = true;
+          GOGStage2.transitionTo("WAVE_ACTIVE");
+          GOGUi.say("Wave " + waveNum + " starts! Tap clouds and plant trees!");
+        }
+
+        function endWaveCleared() {
+          state.running = false;
+          audio.heal();
+          var nextWave = GOGStage2.wave + 1;
+          var clearedOverlay = GOGUi.showOverlay({
+            accent: "var(--gog-lime)",
+            title: "🌳 Wave " + GOGStage2.wave + " Cleared!",
+            body: "The canopy held! Ravi is recovering, but a stronger smog wave is coming.",
+            primaryLabel: "Start Wave " + nextWave,
+            onPrimary: function () {
+              GOGUi.closeOverlay(clearedOverlay);
+              startWave(nextWave);
+            }
+          });
+        }
+
+        function endWin() {
+          state.running = false;
+          audio.win();
+
+          var connectedCount = 0;
+          var totalCells = GOGStage2.rows * GOGStage2.cols;
+          for (var r = 0; r < GOGStage2.rows; r++) {
+            for (var c = 0; c < GOGStage2.cols; c++) {
+              if (GOGStage2.grid[r][c].state === "tree" && GOGStage2.grid[r][c].connected) {
+                connectedCount++;
+              }
+            }
+          }
+          var canopyPercent = Math.round((connectedCount / totalCells) * 100);
+
+          var stars = 1;
+          if (!calmMode) {
+            if (canopyPercent >= 70) stars = 3;
+            else if (canopyPercent >= 40) stars = 2;
+          }
+
+          var nextSave = GOGSave.recordStageClear(STAGE_ID, {
+            stars: stars,
+            sprouts: 15,
+            smogDrop: 10
+          });
+
+          GOGUi.say("Incredible! You reforested the canopy and saved Ravi! 🐯🎉");
+
+          setTimeout(function () {
+            triggerSeedReturnCutscene(function () {
+              GOGUi.showOverlay({
+                accent: "var(--gog-white)",
+                title: "🌳 Canopy Restored!",
+                body: "Ravi wakes up and a Seed of Life flies back to the Guardian Tree.",
+                stars: stars,
+                factText: stageMeta.fact,
+                primaryLabel: "Back to Map",
+                secondaryLabel: "Play Again",
+                onPrimary: function () {
+                  window.location.href = "../index.html";
+                },
+                onSecondary: function () {
+                  window.location.reload();
+                }
+              });
+            });
+          }, 600);
+        }
+
+        function endLose() {
+          state.running = false;
+          audio.oops();
+          canvasFrame.classList.add("flash-lose");
+          GOGUi.say("The smog broke through! Ravi needs you to try again. 🌫️");
+          GOGUi.showOverlay({
+            title: "🌫️ The forest is cloudy",
+            body: "The Smog crept past the trees. Don't worry, the forest is resilient. Try again!",
+            primaryLabel: "Try Again",
+            secondaryLabel: "Back to Map",
+            onPrimary: function () {
+              window.location.reload();
+            },
+            onSecondary: function () {
+              window.location.href = "../index.html";
+            }
+          });
+        }
+
+        /* ---------------- input handling ---------------- */
+        function updateInputs() {
+          if (!state.running) return;
+
+          if (input.pointer.down) {
+            if (!state.pointerWasDown) {
+              state.pointerWasDown = true;
+              var ptX = input.pointer.x;
+              var ptY = input.pointer.y;
+
+              // 1. Check cloud click
+              var hitCloud = false;
+              for (var i = state.clouds.length - 1; i >= 0; i--) {
+                var c = state.clouds[i];
+                // Enlarge cloud hitbox detection to 60px for kid-friendly touch interaction
+                if (c.active && GOGEngine.Collision.distance(ptX, ptY, c.x, c.y) < 60) {
+                  c.active = false;
+                  hitCloud = true;
+                  GOGStage2.saplings++;
+                  audio.collect();
+                  particles.burst(c.x, c.y, { glyphs: ["💧", "✨"], count: 12, lift: 45 });
+                  GOGUi.floatLabel(canvasFrame, ptX, ptY, "+1 Sapling 🌱", "#2fbf71");
+                  state.clouds.splice(i, 1);
+                  break;
+                }
+              }
+
+              // 2. Check grid click
+              if (!hitCloud) {
+                var cellW = W / GOGStage2.cols;
+                var cellH = H / GOGStage2.rows;
+                var col = Math.floor(ptX / cellW);
+                var row = Math.floor(ptY / cellH);
+
+                if (col >= 0 && col < GOGStage2.cols && row >= 0 && row < GOGStage2.rows) {
+                  // Cell lock: Smog-engulfed column check
+                  if (!calmMode && col >= Math.floor(GOGStage2.smogPosition)) {
+                    audio.blip(180, 150, "sawtooth");
+                    GOGUi.floatLabel(canvasFrame, ptX, ptY, "Engulfed by Smog! 🌫️", "#e82e5d");
+                  } else {
+                    var success = GOGStage2.plant(row, col);
+                    if (success) {
+                      audio.blip(440, 120, "triangle");
+                      var cx = col * cellW + cellW / 2;
+                      var cy = row * cellH + cellH / 2;
+                      particles.burst(cx, cy, { glyphs: ["🌱", "🍃"], count: 8, lift: 30 });
+                      GOGUi.floatLabel(canvasFrame, ptX, ptY, "Planted!", "var(--gog-lime)");
+                    } else if (GOGStage2.saplings <= 0 && GOGStage2.grid[row][col].state === "empty") {
+                      audio.blip(180, 150, "sawtooth");
+                      GOGUi.floatLabel(canvasFrame, ptX, ptY, "No saplings! Tap clouds ☁️", "#e82e5d");
+                    } else if (GOGStage2.grid[row][col].state === "rock") {
+                      audio.blip(180, 150, "sawtooth");
+                      GOGUi.floatLabel(canvasFrame, ptX, ptY, "Cannot plant on rocks! ⛰️", "#e82e5d");
+                    }
+                  }
+                }
+              }
+            }
+          } else {
+            state.pointerWasDown = false;
+          }
+        }
+
+        /* ---------------- update loop ---------------- */
+        function update(dt) {
+          particles.update(dt);
+
+          // Update juice effects
+          state.screenShake = Math.max(0, state.screenShake - dt * 14);
+          state.desaturateTime = Math.max(0, state.desaturateTime - dt);
+
+          if (!state.running) return;
+
+          state.elapsed += dt;
+          scrollX += 45 * dt;
+
+          updateClouds(dt);
+          updateInputs();
+
+          // Advance logic model (growth, smog, timer) and read connection snaps
+          if (GOGStage2.gameState === "WAVE_ACTIVE") {
+            var grown = [];
+            if (calmMode) {
+              grown = GOGStage2.advanceGrowth(dt);
+            } else {
+              grown = GOGStage2.tick(dt);
+            }
+
+            // Connection snaps: Leaf / sparkle burst when tree grows
+            var cellW = W / GOGStage2.cols;
+            var cellH = H / GOGStage2.rows;
+            grown.forEach(function (coord) {
+              var cx = coord.c * cellW + cellW / 2;
+              var cy = coord.r * cellH + cellH / 2;
+              particles.burst(cx, cy, {
+                glyphs: ["🍃", "✨", "🟢"],
+                count: 18,
+                lift: 20
+              });
+              audio.heal();
+            });
+
+            // Smog deflection curls: deflect grey smoke at blocked column boundary
+            if (!calmMode && GOGStage2.smogPosition > 0) {
+              var colIndex = Math.floor(GOGStage2.smogPosition - 0.05);
+              if (GOGStage2.isColumnBlocked(colIndex)) {
+                var bx = GOGStage2.smogPosition * cellW;
+                if (Math.random() < 0.18) {
+                  particles.burst(bx, Math.random() * H, {
+                    glyphs: ["💨", "🌫️"],
+                    count: 1,
+                    lift: 12,
+                    minSpeed: 45,
+                    maxSpeed: 85,
+                    angle: 0, // deflecting rightwards
+                    spread: Math.PI / 4,
+                    life: 500
+                  });
+                }
+              }
+            }
+
+            // Smog breach detection
+            if (!calmMode) {
+              var currSmogCol = Math.floor(GOGStage2.smogPosition);
+              if (currSmogCol < state.lastSmogCol) {
+                if (!GOGStage2.isColumnBlocked(currSmogCol)) {
+                  state.screenShake = 12;
+                  state.desaturateTime = 0.25;
+                  audio.hazard();
+                  GOGUi.say("The Smog broke through a column! 🌫️⚠️");
+                }
+                state.lastSmogCol = currSmogCol;
+              }
+            }
+          }
+
+          // Handle state machine changes
+          if (GOGStage2.gameState === "WAVE_CLEARED") {
+            endWaveCleared();
+          } else if (GOGStage2.gameState === "STAGE_WON") {
+            endWin();
+          } else if (GOGStage2.gameState === "STAGE_LOST") {
+            endLose();
+          }
+
+          // Update HUD
+          var connectedCount = 0;
+          var totalCells = GOGStage2.rows * GOGStage2.cols;
+          for (var r = 0; r < GOGStage2.rows; r++) {
+            for (var c = 0; c < GOGStage2.cols; c++) {
+              if (GOGStage2.grid[r][c].state === "tree" && GOGStage2.grid[r][c].connected) {
+                connectedCount++;
+              }
+            }
+          }
+          var canopyPercent = Math.round((connectedCount / totalCells) * 100);
+          canopyFill.style.width = canopyPercent + "%";
+          canopyPct.textContent = canopyPercent + "%";
+
+          sproutsChip.textContent = GOGStage2.saplings;
+          if (GOGStage2.smogDelay > 0 && !calmMode) {
+            timerChip.textContent = "Prep: " + Math.ceil(GOGStage2.smogDelay) + "s";
+            timerChip.style.backgroundColor = "var(--gog-sun)"; // yellow highlight
+            timerChip.style.color = "var(--gog-ink)";
+          } else {
+            timerChip.textContent = calmMode ? "∞" : Math.ceil(GOGStage2.timer) + "s";
+            timerChip.style.backgroundColor = "";
+            timerChip.style.color = "";
+          }
+          difficultyChip.textContent = "⚡ Wave " + GOGStage2.wave;
+        }
+
+        /* ---------------- draw loop ---------------- */
+        function draw() {
+          var shakeX = 0, shakeY = 0;
+          if (state.screenShake > 0) {
+            shakeX = (Math.random() - 0.5) * state.screenShake;
+            shakeY = (Math.random() - 0.5) * state.screenShake;
+          }
+
+          ctx.save();
+          ctx.translate(shakeX, shakeY);
+
+          // Apply desaturation filter on breach events
+          if (state.desaturateTime > 0) {
+            ctx.filter = "grayscale(1) contrast(1.15)";
+          }
+
+          drawForestBackground(state.elapsed);
+
+          var cellW = W / GOGStage2.cols;
+          var cellH = H / GOGStage2.rows;
+
+          // 1. Draw Grid Cells
+          for (var r = 0; r < GOGStage2.rows; r++) {
+            for (var c = 0; c < GOGStage2.cols; c++) {
+              var cell = GOGStage2.grid[r][c];
+              var x = c * cellW;
+              var y = r * cellH;
+
+              // Grid cell box
+              ctx.strokeStyle = "rgba(40, 60, 40, 0.15)";
+              ctx.lineWidth = 2;
+              ctx.strokeRect(x, y, cellW, cellH);
+
+              // Empty soil tint
+              if (cell.state === "empty") {
+                ctx.fillStyle = "rgba(139, 115, 85, 0.05)";
+                ctx.fillRect(x + 2, y + 2, cellW - 4, cellH - 4);
+              }
+
+              // Rock background tint
+              if (cell.state === "rock") {
+                ctx.fillStyle = "rgba(120, 120, 120, 0.18)";
+                ctx.fillRect(x + 2, y + 2, cellW - 4, cellH - 4);
+              }
+
+              // Connected tree backdrop highlight
+              if (cell.state === "tree" && cell.connected) {
+                ctx.fillStyle = "rgba(47, 191, 113, 0.12)";
+                ctx.fillRect(x + 2, y + 2, cellW - 4, cellH - 4);
+              }
+
+              // Smog locking visualization
+              if (!calmMode && c >= Math.floor(GOGStage2.smogPosition)) {
+                ctx.fillStyle = "rgba(220, 50, 50, 0.08)";
+                ctx.fillRect(x + 2, y + 2, cellW - 4, cellH - 4);
+                ctx.strokeStyle = "rgba(220, 50, 50, 0.18)";
+                ctx.lineWidth = 2;
+                ctx.beginPath();
+                ctx.moveTo(x + 8, y + 8);
+                ctx.lineTo(x + cellW - 8, y + cellH - 8);
+                ctx.stroke();
+              }
+            }
+          }
+
+          // 2. Draw Connectivity Vine Links
+          ctx.strokeStyle = "rgba(47, 191, 113, 0.65)";
+          ctx.lineWidth = 6;
+          ctx.lineCap = "round";
+          for (var r = 0; r < GOGStage2.rows; r++) {
+            for (var c = 0; c < GOGStage2.cols; c++) {
+              var cell = GOGStage2.grid[r][c];
+              if (cell.state === "tree" && cell.connected) {
+                var cx = c * cellW + cellW / 2;
+                var cy = r * cellH + cellH / 2;
+
+                // draw link to right neighbor
+                if (c + 1 < GOGStage2.cols) {
+                  var right = GOGStage2.grid[r][c + 1];
+                  if (right.state === "tree" && right.connected) {
+                    ctx.beginPath();
+                    ctx.moveTo(cx, cy);
+                    ctx.lineTo((c + 1) * cellW + cellW / 2, cy);
+                    ctx.stroke();
+                  }
+                }
+                // draw link to down neighbor
+                if (r + 1 < GOGStage2.rows) {
+                  var down = GOGStage2.grid[r + 1][c];
+                  if (down.state === "tree" && down.connected) {
+                    ctx.beginPath();
+                    ctx.moveTo(cx, cy);
+                    ctx.lineTo(cx, (r + 1) * cellH + cellH / 2);
+                    ctx.stroke();
+                  }
+                }
+              }
+            }
+          }
+
+          // 3. Draw Sprites / Glyphs (Saplings, Rocks and Trees)
+          for (var r = 0; r < GOGStage2.rows; r++) {
+            for (var c = 0; c < GOGStage2.cols; c++) {
+              var cell = GOGStage2.grid[r][c];
+              var cx = c * cellW + cellW / 2;
+              var cy = r * cellH + cellH / 2;
+
+              if (cell.state === "rock") {
+                ctx.save();
+                ctx.font = "30px Arial";
+                ctx.textAlign = "center";
+                ctx.textBaseline = "middle";
+                ctx.fillText("⛰️", cx, cy - 4);
+                ctx.restore();
+              } else if (cell.state === "sapling") {
+                // Growth progress arc
+                var pct = 1 - (cell.growTimer / GOGStage2.growthTime);
+                ctx.strokeStyle = "rgba(47, 191, 113, 0.7)";
+                ctx.lineWidth = 4;
+                ctx.beginPath();
+                ctx.arc(cx, cy + 12, 16, -Math.PI / 2, -Math.PI / 2 + pct * Math.PI * 2);
+                ctx.stroke();
+
+                // Draw growing sprites dynamically from GrowingPlants sheet
+                if (growingPlantsImg && growingPlantsImg.complete && growingPlantsImg.width > 0) {
+                  var totalFrames = 3;
+                  var fW = growingPlantsImg.width / totalFrames;
+                  var fH = growingPlantsImg.height;
+                  var frameIndex = 0;
+                  if (pct > 0.66) frameIndex = 2;
+                  else if (pct > 0.33) frameIndex = 1;
+
+                  var destW = cellW - 16;
+                  var destH = (fH / fW) * destW;
+                  ctx.drawImage(
+                    growingPlantsImg,
+                    frameIndex * fW, 0, fW, fH,
+                    cx - destW / 2, cy - destH / 2, destW, destH
+                  );
+                } else {
+                  ctx.save();
+                  ctx.font = "26px Arial";
+                  ctx.textAlign = "center";
+                  ctx.textBaseline = "middle";
+                  ctx.fillText("🌱", cx, cy);
+                  ctx.restore();
+                }
+              } else if (cell.state === "tree") {
+                if (cell.connected) {
+                  // Connected: Draw Ravi's healthy tree sprite with overlapping canopy
+                  if (treeImg && treeImg.complete && treeImg.width > 0) {
+                    var destW = cellW + 24; // overlaps slightly with neighbors to blend
+                    var destH = (treeImg.height / treeImg.width) * destW;
+                    ctx.drawImage(treeImg, cx - destW / 2, cy - destH / 2 - 10, destW, destH);
+                  } else {
+                    ctx.save();
+                    ctx.font = "38px Arial";
+                    ctx.textAlign = "center";
+                    ctx.textBaseline = "middle";
+                    ctx.fillText("🌳", cx, cy);
+                    ctx.restore();
+                  }
+                } else {
+                  // Disconnected: Draw faded/withered dry tree
+                  if (treeDisImg && treeDisImg.complete && treeDisImg.width > 0) {
+                    var destW = cellW + 10;
+                    var destH = (treeDisImg.height / treeDisImg.width) * destW;
+                    ctx.drawImage(treeDisImg, cx - destW / 2, cy - destH / 2 - 5, destW, destH);
+                  } else {
+                    ctx.save();
+                    ctx.font = "38px Arial";
+                    ctx.textAlign = "center";
+                    ctx.textBaseline = "middle";
+                    ctx.globalAlpha = 0.45;
+                    ctx.fillText("🍂", cx, cy);
+                    ctx.restore();
+                  }
+                }
+              }
+            }
+          }
+
+          // 4. Draw Blossoms & Wildlife in Win/Cleared state (Phase 5 Juice)
+          if (GOGStage2.gameState === "STAGE_WON" || GOGStage2.gameState === "WAVE_CLEARED") {
+            // Draw colorful blossoms on top of connected trees
+            for (var r = 0; r < GOGStage2.rows; r++) {
+              for (var c = 0; c < GOGStage2.cols; c++) {
+                var cell = GOGStage2.grid[r][c];
+                if (cell.state === "tree" && cell.connected) {
+                  var cx = c * cellW + cellW / 2;
+                  var cy = r * cellH + cellH / 2;
+                  ctx.save();
+                  ctx.font = "16px Arial";
+                  ctx.fillText("🌸", cx - 12, cy - 24);
+                  if (c % 2 === 0) ctx.fillText("🌼", cx + 12, cy - 28);
+                  ctx.restore();
+                }
+              }
+            }
+
+            // Draw birds and butterflies returning
+            ctx.save();
+            ctx.font = "24px Arial";
+            var birdX = (state.elapsed * 60) % (W + 200) - 100;
+            ctx.fillText("🐦", birdX, 50);
+            ctx.fillText("🐦", birdX - 35, 75);
+            ctx.fillText("🦋", birdX + 20, 110);
+            ctx.restore();
+          }
+
+          // 5. Draw Rain Clouds and Falling Rain
+          state.clouds.forEach(function (c) {
+            if (!c.active) return;
+            // Rain drops
+            ctx.strokeStyle = "rgba(100, 180, 255, 0.4)";
+            ctx.lineWidth = 2;
+            var rainY = c.y + 14;
+            for (var dx = -18; dx <= 18; dx += 9) {
+              ctx.beginPath();
+              ctx.moveTo(c.x + dx, rainY);
+              ctx.lineTo(c.x + dx - 2, rainY + 20);
+              ctx.stroke();
+            }
+
+            // Vector outlined cloud
+            ctx.fillStyle = "#ffffff";
+            ctx.strokeStyle = "#1e293b";
+            ctx.lineWidth = 3.5;
+            ctx.beginPath();
+            ctx.moveTo(c.x - 20, c.y + 8);
+            ctx.bezierCurveTo(c.x - 38, c.y + 8, c.x - 38, c.y - 12, c.x - 20, c.y - 12);
+            ctx.bezierCurveTo(c.x - 20, c.y - 30, c.x + 20, c.y - 30, c.x + 20, c.y - 12);
+            ctx.bezierCurveTo(c.x + 38, c.y - 12, c.x + 38, c.y + 8, c.x + 20, c.y + 8);
+            ctx.closePath();
+            ctx.fill();
+            ctx.stroke();
+          });
+
+          // 6. Draw creeping Smog
+          if (!calmMode && GOGStage2.smogPosition < GOGStage2.cols) {
+            var smogX = GOGStage2.smogPosition * cellW;
+
+            // Wavy edge boundary
+            ctx.fillStyle = "rgba(110, 110, 110, 0.72)";
+            ctx.fillRect(smogX, 0, W - smogX, H);
+
+            // Fuzzy edge using circles
+            ctx.fillStyle = "rgba(110, 110, 110, 0.88)";
+            var edgeTime = state.elapsed * 2.8;
+            for (var sy = 0; sy <= H; sy += 25) {
+              var waveX = smogX + Math.sin(sy * 0.04 + edgeTime) * 10;
+              ctx.beginPath();
+              ctx.arc(waveX, sy, 20, 0, Math.PI * 2);
+              ctx.fill();
+            }
+
+            // Text tag
+            ctx.save();
+            ctx.fillStyle = "rgba(255, 255, 255, 0.16)";
+            ctx.font = "bold 26px sans-serif";
+            ctx.textAlign = "center";
+            ctx.textBaseline = "middle";
+            ctx.fillText("🌫️ THE SMOG", smogX + (W - smogX) / 2, H / 2);
+            ctx.restore();
+          }
+
+          particles.draw(ctx);
+          ctx.restore();
+        }
+
+        /* ---------------- start ---------------- */
+        var loop = new GOGEngine.GameLoop({
+          update: update,
+          draw: draw,
+        });
+
+        initBackground().finally(function () {
+          loop.start();
+          showIntro();
+        });
+
       })();
     </script>
   </body>

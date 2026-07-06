@@ -31,7 +31,8 @@
       icon: "🐯",
       mapPos: { x: 14, y: 48 },
       fact: "One big tree can soak up about 22 kg of CO\u2082 a year.",
-      playable: false
+      playable: true,
+      href: "stages/stage02-forest.html"
     },
     {
       id: "stage03",
