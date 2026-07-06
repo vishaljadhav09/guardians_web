@@ -1,0 +1,536 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1, viewport-fit=cover"
+    />
+    <title>Ravi & the Canopy Call - Guardians of Gaia</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@500;700;800&family=Quicksand:wght@500;600;700&family=Caveat:wght@600;700&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="../src/styles.css" />
+    <style>
+      .stage-wrap {
+        width: min(1180px, calc(100vw - 28px));
+        max-width: 1180px;
+        margin: 0 auto;
+        padding: 12px 0 32px;
+        animation: pageFadeIn 0.5s ease both;
+      }
+
+      .stage-hud {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 10px;
+        flex-wrap: wrap;
+        margin-bottom: 12px;
+      }
+
+      .stage-title {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+      }
+
+      .stage-title h1 {
+        font-size: 1.25rem;
+      }
+
+      .stage-title small {
+        display: block;
+        font-family: var(--gog-font-hand);
+        font-size: 1rem;
+        color: #4d5c37;
+      }
+
+      .hud-mid {
+        display: flex;
+        align-items: center;
+        gap: 14px;
+        flex-wrap: wrap;
+      }
+
+      .meter {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        background: var(--gog-white);
+        border: 3px solid var(--gog-ink);
+        border-radius: 999px;
+        padding: 6px 14px 6px 10px;
+        box-shadow: var(--gog-shadow-sm);
+        min-width: 168px;
+        position: relative;
+      }
+
+      .meter .label,
+      .meter .meter-track {
+        position: relative;
+        z-index: 2;
+      }
+
+      .meter .label {
+        font-size: 0.78rem;
+        font-weight: 700;
+        white-space: nowrap;
+      }
+
+      .meter-track {
+        flex: 1;
+        height: 10px;
+        border-radius: 999px;
+        background: #dfe8cf;
+        border: 2px solid var(--gog-ink);
+        overflow: hidden;
+      }
+
+      .meter-fill {
+        height: 100%;
+        width: 42%;
+        background: linear-gradient(90deg, #c9f23d, #2fbf71);
+      }
+
+      .timer-chip {
+        font-weight: 700;
+        min-width: 64px;
+        text-align: center;
+      }
+
+      .canvas-frame {
+        position: relative;
+        width: 100%;
+        aspect-ratio: 16 / 10;
+        overflow: hidden;
+        transition:
+          border-color 0.2s,
+          box-shadow 0.2s;
+      }
+
+      canvas {
+        width: 100%;
+        height: 100%;
+        display: block;
+        touch-action: none;
+        cursor: crosshair;
+      }
+
+      .stage-controls {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-top: 12px;
+        gap: 10px;
+        flex-wrap: wrap;
+      }
+
+      .calm-badge {
+        font-size: 0.78rem;
+        font-weight: 700;
+        animation: fadeInUp 0.6s ease both;
+      }
+
+      .icon-btn {
+        width: 42px;
+        height: 42px;
+        min-width: 42px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        background: var(--gog-white);
+        border: 3px solid var(--gog-ink);
+        border-radius: 50%;
+        box-shadow: 3px 3px 0 var(--gog-ink);
+        font-size: 1.15rem;
+        line-height: 1;
+        touch-action: manipulation;
+      }
+
+      @media (max-width: 700px) {
+        .stage-wrap {
+          width: calc(100vw - 12px);
+          max-width: 100%;
+          padding: 6px 0 18px;
+        }
+
+        .stage-hud {
+          display: grid;
+          grid-template-columns: minmax(0, 1fr);
+          gap: 6px;
+          margin-bottom: 8px;
+        }
+
+        .stage-title {
+          gap: 6px;
+          min-width: 0;
+        }
+
+        .stage-title .emoji-float {
+          font-size: 1.35rem !important;
+        }
+
+        .stage-title h1 {
+          font-size: 0.98rem;
+          line-height: 1;
+        }
+
+        .stage-title small {
+          display: none;
+        }
+
+        .hud-mid {
+          display: grid;
+          grid-template-columns: minmax(128px, 1fr) repeat(4, auto);
+          gap: 5px;
+          align-items: center;
+          width: 100%;
+        }
+
+        .meter {
+          min-width: 0;
+          gap: 5px;
+          padding: 4px 8px 4px 7px;
+          border-width: 2px;
+          box-shadow: 2px 2px 0 var(--gog-ink);
+        }
+
+        .meter .label {
+          font-size: 0.66rem;
+        }
+
+        .meter-track {
+          height: 8px;
+          border-width: 2px;
+        }
+
+        .chip {
+          padding: 4px 7px;
+          border-width: 2px;
+          box-shadow: 2px 2px 0 var(--gog-ink);
+          font-size: 0.72rem;
+          min-height: 30px;
+        }
+
+        .timer-chip {
+          min-width: 44px;
+        }
+
+        .icon-btn {
+          width: 32px;
+          height: 32px;
+          min-width: 32px;
+          font-size: 0.92rem;
+          border-width: 2px;
+          box-shadow: 2px 2px 0 var(--gog-ink);
+        }
+
+        .guideBar {
+          gap: 6px;
+          padding: 3px 4px;
+          margin-bottom: 8px;
+          border-width: 2px;
+          border-radius: 8px;
+          box-shadow: 1px 1px 0 var(--gog-ink);
+        }
+
+        .guideAvatar {
+          font-size: 1.25rem;
+        }
+
+        .guideBubble {
+          padding: 5px 8px;
+          border-width: 2px;
+          border-radius: 10px;
+          font-size: 1rem;
+          line-height: 1.1;
+        }
+
+        .canvas-frame {
+          border-width: 3px;
+          border-radius: 12px;
+          box-shadow: 4px 4px 0 var(--gog-ink);
+        }
+
+        .stage-controls {
+          margin-top: 8px;
+          gap: 6px;
+        }
+
+        .stage-controls .brutal-btn {
+          padding: 8px 12px;
+          min-height: 38px;
+          border-width: 3px;
+          border-radius: 10px;
+          font-size: 0.86rem;
+          box-shadow: 3px 3px 0 var(--gog-ink);
+        }
+
+        .calm-badge {
+          font-size: 0.72rem;
+        }
+      }
+
+      @media (max-width: 420px) {
+        .hud-mid {
+          grid-template-columns: minmax(118px, 1fr) repeat(3, auto);
+        }
+
+        #difficultyChip {
+          display: none;
+        }
+      }
+
+      @keyframes pageFadeIn {
+        from {
+          opacity: 0;
+          transform: translateY(10px);
+        }
+        to {
+          opacity: 1;
+          transform: translateY(0);
+        }
+      }
+
+      .emoji-float {
+        display: inline-block;
+        animation: emojiFloat 2.6s ease-in-out infinite;
+      }
+
+      @keyframes emojiFloat {
+        0%,
+        100% {
+          transform: translateY(0) rotate(-4deg);
+        }
+        50% {
+          transform: translateY(-5px) rotate(5deg);
+        }
+      }
+
+      @keyframes fadeInUp {
+        from {
+          opacity: 0;
+          transform: translateY(6px);
+        }
+        to {
+          opacity: 1;
+          transform: translateY(0);
+        }
+      }
+
+      body {
+        position: relative;
+      }
+
+      .page-bg {
+        position: fixed;
+        inset: 0;
+        z-index: -1;
+        overflow: hidden;
+        pointer-events: none;
+        background:
+          radial-gradient(ellipse at 50% -8%, #efffdd 0%, #d4f0bd 42%, #fdf6e6 100%),
+          linear-gradient(180deg, rgba(60, 135, 67, 0.1), rgba(36, 99, 55, 0.16));
+      }
+
+      .page-bubble {
+        position: absolute;
+        bottom: -10vh;
+        border-radius: 999px;
+        background: radial-gradient(circle at 32% 28%, rgba(255,255,255,0.95), rgba(201,242,61,0.14) 70%);
+        opacity: 0;
+        animation: pageBubbleRise linear infinite;
+      }
+
+      @keyframes pageBubbleRise {
+        0% {
+          transform: translateY(0) translateX(0);
+          opacity: 0;
+        }
+        8% {
+          opacity: 0.5;
+        }
+        90% {
+          opacity: 0.35;
+        }
+        100% {
+          transform: translateY(-125vh) translateX(var(--drift, 24px));
+          opacity: 0;
+        }
+      }
+
+      .page-fx {
+        position: fixed;
+        inset: 0;
+        z-index: 5;
+        pointer-events: none;
+        opacity: 0;
+      }
+
+      @media (prefers-reduced-motion: reduce) {
+        .page-bubble {
+          animation: none;
+          opacity: 0;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="page-bg" aria-hidden="true">
+      <span class="page-bubble" style="left:6%; width:14px; height:14px; animation-duration:14s; animation-delay:0s; --drift:18px;"></span>
+      <span class="page-bubble" style="left:18%; width:9px; height:9px; animation-duration:11s; animation-delay:2.4s; --drift:-14px;"></span>
+      <span class="page-bubble" style="left:32%; width:18px; height:18px; animation-duration:17s; animation-delay:5s; --drift:22px;"></span>
+      <span class="page-bubble" style="left:48%; width:11px; height:11px; animation-duration:13s; animation-delay:1.2s; --drift:-10px;"></span>
+      <span class="page-bubble" style="left:64%; width:16px; height:16px; animation-duration:16s; animation-delay:7s; --drift:16px;"></span>
+      <span class="page-bubble" style="left:78%; width:10px; height:10px; animation-duration:12s; animation-delay:3.6s; --drift:-18px;"></span>
+      <span class="page-bubble" style="left:90%; width:13px; height:13px; animation-duration:15s; animation-delay:6.2s; --drift:12px;"></span>
+    </div>
+    <div class="page-fx" id="pageFx" aria-hidden="true"></div>
+
+    <div class="stage-wrap">
+      <div class="stage-hud">
+        <div class="stage-title">
+          <span style="font-size: 1.8rem" class="emoji-float">🐯</span>
+          <div>
+            <h1>Ravi & the Canopy Call</h1>
+            <small>Stage 2 · Rainforest</small>
+          </div>
+        </div>
+        <div class="hud-mid">
+          <div class="meter" title="Canopy Health">
+            <span class="label">CANOPY</span>
+            <div class="meter-track">
+              <div class="meter-fill" id="canopyFill"></div>
+            </div>
+            <span class="label" id="canopyPct">42%</span>
+          </div>
+          <span class="chip timer-chip" id="timerChip">75s</span>
+          <span class="chip" id="difficultyChip" title="Difficulty Level">⚡ Lvl 1</span>
+          <span class="chip">🌱 <span id="sproutsChip">0</span></span>
+          <button class="icon-btn" id="muteBtn" title="Toggle sound" aria-label="Toggle sound">🔈</button>
+          <div class="stage-controls">
+            <a class="brutal-btn ghost" href="../index.html">⬅ Back to Map</a>
+            <span class="hand calm-badge" id="calmBadge"></span>
+          </div>
+        </div>
+      </div>
+
+      <div class="guideBar">
+        <div class="guideAvatar" aria-hidden="true">🦋</div>
+        <div class="guideBubble" id="guideText">
+          Help Ravi grow the canopy and protect the rainforest! 🌳
+        </div>
+      </div>
+
+      <div class="brutal-box canvas-frame" id="canvasFrame">
+        <canvas id="gameCanvas" width="960" height="600"></canvas>
+      </div>
+    </div>
+
+    <script>
+      (function () {
+        "use strict";
+
+        var canvas = document.getElementById("gameCanvas");
+        var ctx = canvas.getContext("2d");
+        var W = canvas.width;
+        var H = canvas.height;
+
+        /* ---------------- parallax background layers ---------------- */
+        // Same layered-PNG parallax approach as stage01-ocean.html:
+        // 4 tiling images scrolling at different speeds (slow -> fast = far -> near).
+        // Drop your forest artwork at assets/1.png .. assets/4.png next to this
+        // file (same relative path convention stage01 uses).
+        var layers = [
+          { img: null, speed: 0, y: 0 }, // Sky/far canopy (slowest)
+          { img: null, speed: 2, y: 0 }, // Far tree line
+          { img: null, speed: 0, y: 0 }, // Mid-ground foliage
+          { img: null, speed: 0, y: 0 }, // Foreground leaves/vines (fastest)
+        ];
+        var scrollX = 0;
+
+        function loadImage(src) {
+          return new Promise(function (resolve, reject) {
+            var img = new Image();
+            img.onload = function () {
+              console.log("[bg] loaded:", src, img.width + "x" + img.height);
+              resolve(img);
+            };
+            img.onerror = function () {
+              console.error("[bg] FAILED to load:", src);
+              reject(new Error("Failed to load image: " + src));
+            };
+            img.src = src;
+          });
+        }
+
+        // Pre-load background image assets asynchronously
+        async function init() {
+          var paths = ["assets/background/stage02/1.png", "assets/background/stage02/2.png", "assets/background/stage02/3.png", "assets/background/stage02/4.png"];
+          var results = await Promise.allSettled(paths.map(loadImage));
+          results.forEach(function (result, i) {
+            if (result.status === "fulfilled") {
+              layers[i].img = result.value;
+            } else {
+              console.error("[bg] layer " + (i + 1) + " (" + paths[i] + ") did not load — that layer will stay blank.");
+            }
+          });
+        }
+
+        function drawForestBackground(elapsed) {
+          // Clear canvas before drawing layers
+          ctx.clearRect(0, 0, W, H);
+
+          // fallback fill so it never looks "dirty" even before images are ready
+          ctx.fillStyle = "#2f7a4d";
+          ctx.fillRect(0, 0, W, H);
+
+          // a very gentle shear that drifts back and forth — reads as a soft breeze through the canopy
+          var windShear = Math.sin(elapsed * 0.4) * 0.012;
+          ctx.save();
+          ctx.transform(1, 0, windShear, 1, 0, 0);
+          layers.forEach(function (layer) {
+            if (!layer.img) return;
+            var img = layer.img;
+            var tileW = img.width;
+            var x = (scrollX * (layer.speed * 0.1)) % tileW;
+            if (x > 0) x -= tileW; // normalize into (-tileW, 0]
+            for (var dx = x; dx < W; dx += tileW) {
+              ctx.drawImage(img, dx, layer.y, tileW, H);
+            }
+          });
+          ctx.restore();
+
+          // Ravi + forest accents on top, same as before
+          ctx.font = "46px serif";
+          ctx.fillText("🐯", W * 0.48, H * 0.58);
+          ctx.fillText("🌱", W * 0.33, H * 0.78);
+          ctx.fillText("🌳", W * 0.64, H * 0.74);
+        }
+
+        /* ---------------- animation loop ---------------- */
+        var lastTime = null;
+        var elapsed = 0;
+
+        function frame(timestamp) {
+          if (lastTime === null) lastTime = timestamp;
+          var dt = (timestamp - lastTime) / 1000;
+          lastTime = timestamp;
+          elapsed += dt;
+
+          // same scroll speed as stage01 (60px/sec base, scaled per-layer by layer.speed)
+          scrollX += 60 * dt;
+
+          drawForestBackground(elapsed);
+          requestAnimationFrame(frame);
+        }
+
+        init();
+        requestAnimationFrame(frame);
+      })();
+    </script>
+  </body>
+</html>
