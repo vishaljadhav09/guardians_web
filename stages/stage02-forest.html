@@ -562,6 +562,7 @@
         var treeImg = null;
         var treeDisImg = null;
         var growingPlantsImg = null;
+        var rockImg = null;
 
         /* ---------------------------------------------------------------
            GOGSpriteSheet — shared sprite-sheet animation helper.
@@ -597,8 +598,14 @@
             var dy = anchor === "bottom" ? cy - destH : cy - destH / 2;
             ctx.drawImage(
               img,
-              frame.x, frame.y, frame.w, frame.h,
-              dx, dy, destW, destH,
+              frame.x,
+              frame.y,
+              frame.w,
+              frame.h,
+              dx,
+              dy,
+              destW,
+              destH,
             );
             return destH;
           },
@@ -638,9 +645,9 @@
         // full 82px height as their ground baseline. Measured directly from
         // the uploaded asset:
         var GROWING_PLANT_FRAMES = [
-          { x: 5,   y: 0, w: 17, h: 82 }, // stage 0: seedling
-          { x: 32,  y: 0, w: 27, h: 82 }, // stage 1: small sapling
-          { x: 73,  y: 0, w: 38, h: 82 }, // stage 2: young bush
+          { x: 5, y: 0, w: 17, h: 82 }, // stage 0: seedling
+          { x: 32, y: 0, w: 27, h: 82 }, // stage 1: small sapling
+          { x: 73, y: 0, w: 38, h: 82 }, // stage 2: young bush
           { x: 132, y: 0, w: 52, h: 82 }, // stage 3: young tree
           { x: 196, y: 0, w: 52, h: 82 }, // stage 4: full tree
         ];
@@ -690,7 +697,7 @@
         /* ---------------- parallax background layers ---------------- */
         var layers = [
           { img: null, speed: 1, y: 0 },
-           { img: null, speed: 2, y: 0 },
+          { img: null, speed: 2, y: 0 },
           { img: null, speed: 0, y: 0 },
           { img: null, speed: 0, y: 0 },
         ];
@@ -730,7 +737,8 @@
             growingPlantsImg = await loadImage(
               "assets/sprites/stage02/GrowingPlants1.png",
             );
-            console.log("[sprites] Preloaded forest sprite sheets.");
+            rockImg = await loadImage("assets/sprites/stage02/rock.png");
+
           } catch (e) {
             console.warn(
               "[sprites] Sprites failed to load. Emojis will be used as fallbacks:",
@@ -1202,9 +1210,10 @@
         }
 
         /* ---------------- draw loop ---------------- */
-      /* ---------------- draw loop ---------------- */
+        /* ---------------- draw loop ---------------- */
         function draw() {
-          var shakeX = 0, shakeY = 0;
+          var shakeX = 0,
+            shakeY = 0;
           if (state.screenShake > 0) {
             shakeX = (Math.random() - 0.5) * state.screenShake;
             shakeY = (Math.random() - 0.5) * state.screenShake;
@@ -1222,9 +1231,9 @@
 
           // Grid dimension recalculations to bound interaction to the bottom half
           var cellW = W / GOGStage2.cols;
-          var gridH = H / 2;                 // Height of the actionable zone
+          var gridH = H / 2; // Height of the actionable zone
           var cellH = gridH / GOGStage2.rows; // Scale rows within the half-screen height
-          var gridYOffset = H / 2;           // Shift everything downwards past the sky
+          var gridYOffset = H / 2; // Shift everything downwards past the sky
 
           // 1. Draw Grid Cells
           for (var r = 0; r < GOGStage2.rows; r++) {
@@ -1246,8 +1255,30 @@
 
               // Rock background tint
               if (cell.state === "rock") {
-                ctx.fillStyle = "rgba(120, 120, 120, 0.18)";
-                ctx.fillRect(x + 2, y + 2, cellW - 4, cellH - 4);
+                // Draw rock image centered in the cell. use cx/cy (cell center)
+                var cx = x + cellW / 2;
+                var cy = y + cellH / 2;
+                if (rockImg && rockImg.complete && rockImg.width > 0) {
+                  var rockScale = Math.min((cellW - 12) / rockImg.width, (cellH - 12) / rockImg.height);
+                  rockScale *= 2;
+                  var destW = rockImg.width * rockScale;
+                  var destH = rockImg.height * rockScale;
+                  ctx.drawImage(
+                    rockImg,
+                    cx - destW / 2,
+                    cy - destH / 2,
+                    destW,
+                    destH,
+                  );
+                } else {
+                  ctx.save();
+                  ctx.font = "24px Arial";
+                  ctx.textAlign = "center";
+                  ctx.textBaseline = "middle";
+                  ctx.fillStyle = "#555"; // visible fallback if image missing
+                  ctx.fillText("⛰️", cx, cy);
+                  ctx.restore();
+                }
               }
 
               // Connected tree backdrop highlight
@@ -1321,24 +1352,38 @@
                 ctx.restore();
               } else if (cell.state === "sapling") {
                 // Growth progress arc
-                var pct = 1 - (cell.growTimer / GOGStage2.growthTime);
+                var pct = 1 - cell.growTimer / GOGStage2.growthTime;
                 ctx.strokeStyle = "rgba(47, 191, 113, 0.7)";
                 ctx.lineWidth = 4;
                 ctx.beginPath();
-                ctx.arc(cx, cy + 12, 16, -Math.PI / 2, -Math.PI / 2 + pct * Math.PI * 2);
+                ctx.arc(
+                  cx,
+                  cy + 12,
+                  16,
+                  -Math.PI / 2,
+                  -Math.PI / 2 + pct * Math.PI * 2,
+                );
                 ctx.stroke();
 
                 // Draw growing sprites dynamically from GrowingPlants1 sheet.
                 // Frame is chosen by grow progress (pct), not by a timer —
                 // see GOGSpriteSheet.progressFrame above.
-                if (growingPlantsImg && growingPlantsImg.complete && growingPlantsImg.width > 0) {
-                  var frame = GOGSpriteSheet.progressFrame(GROWING_PLANT_FRAMES, pct);
+                if (
+                  growingPlantsImg &&
+                  growingPlantsImg.complete &&
+                  growingPlantsImg.width > 0
+                ) {
+                  var frame = GOGSpriteSheet.progressFrame(
+                    GROWING_PLANT_FRAMES,
+                    pct,
+                  );
 
                   // Scale so the final (widest/tallest) growth stage just
                   // fits the cell; earlier stages scale down proportionally,
                   // which is what actually reads as "growing" rather than
                   // every stage stretching to fill the same box.
-                  var lastFrame = GROWING_PLANT_FRAMES[GROWING_PLANT_FRAMES.length - 1];
+                  var lastFrame =
+                    GROWING_PLANT_FRAMES[GROWING_PLANT_FRAMES.length - 1];
                   var plantScale = Math.min(
                     (cellW - 16) / lastFrame.w,
                     (cellH - 10) / lastFrame.h,
@@ -1348,8 +1393,13 @@
                   // Anchor to the bottom of the cell so the plant grows
                   // upward out of the soil instead of from its center.
                   GOGSpriteSheet.drawFrame(
-                    ctx, growingPlantsImg, frame,
-                    cx, cy + cellH / 2 - 6, destW, "bottom",
+                    ctx,
+                    growingPlantsImg,
+                    frame,
+                    cx,
+                    cy + cellH / 2 - 6,
+                    destW,
+                    "bottom",
                   );
                 } else {
                   ctx.save();
@@ -1371,7 +1421,13 @@
                   // Connected: Draw Ravi's healthy tree sprite with overlapping canopy
                   if (treeImg && treeImg.complete && treeImg.width > 0) {
                     var destH = (treeImg.height / treeImg.width) * treeDestW;
-                    ctx.drawImage(treeImg, cx - treeDestW / 2, cy - destH / 2 - 10, treeDestW, destH);
+                    ctx.drawImage(
+                      treeImg,
+                      cx - treeDestW / 2,
+                      cy - destH / 2 - 10,
+                      treeDestW,
+                      destH,
+                    );
                   } else {
                     ctx.save();
                     ctx.font = "52px Arial";
@@ -1384,9 +1440,20 @@
                   // Disconnected: same tree shape, just muted — it should
                   // still clearly read as "a tree" (just not yet linked
                   // into the canopy chain), not as an empty cell.
-                  if (treeDisImg && treeDisImg.complete && treeDisImg.width > 0) {
-                    var destH = (treeDisImg.height / treeDisImg.width) * treeDestW;
-                    ctx.drawImage(treeDisImg, cx - treeDestW / 2, cy - destH / 2 - 10, treeDestW, destH);
+                  if (
+                    treeDisImg &&
+                    treeDisImg.complete &&
+                    treeDisImg.width > 0
+                  ) {
+                    var destH =
+                      (treeDisImg.height / treeDisImg.width) * treeDestW;
+                    ctx.drawImage(
+                      treeDisImg,
+                      cx - treeDestW / 2,
+                      cy - destH / 2 - 10,
+                      treeDestW,
+                      destH,
+                    );
                   } else {
                     ctx.save();
                     ctx.font = "52px Arial";
@@ -1403,7 +1470,10 @@
           }
 
           // 4. Draw Blossoms & Wildlife in Win/Cleared state (Phase 5 Juice)
-          if (GOGStage2.gameState === "STAGE_WON" || GOGStage2.gameState === "WAVE_CLEARED") {
+          if (
+            GOGStage2.gameState === "STAGE_WON" ||
+            GOGStage2.gameState === "WAVE_CLEARED"
+          ) {
             // Draw colorful blossoms on top of connected trees
             for (var r = 0; r < GOGStage2.rows; r++) {
               for (var c = 0; c < GOGStage2.cols; c++) {
@@ -1423,7 +1493,7 @@
             // Draw birds and butterflies returning
             ctx.save();
             ctx.font = "24px Arial";
-            var birdX = (state.elapsed * 60) % (W + 200) - 100;
+            var birdX = ((state.elapsed * 60) % (W + 200)) - 100;
             ctx.fillText("🐦", birdX, 50);
             ctx.fillText("🐦", birdX - 35, 75);
             ctx.fillText("🦋", birdX + 20, 110);
@@ -1450,45 +1520,71 @@
             ctx.lineWidth = 3.5;
             ctx.beginPath();
             ctx.moveTo(c.x - 20, c.y + 8);
-            ctx.bezierCurveTo(c.x - 38, c.y + 8, c.x - 38, c.y - 12, c.x - 20, c.y - 12);
-            ctx.bezierCurveTo(c.x - 20, c.y - 30, c.x + 20, c.y - 30, c.x + 20, c.y - 12);
-            ctx.bezierCurveTo(c.x + 38, c.y - 12, c.x + 38, c.y + 8, c.x + 20, c.y + 8);
+            ctx.bezierCurveTo(
+              c.x - 38,
+              c.y + 8,
+              c.x - 38,
+              c.y - 12,
+              c.x - 20,
+              c.y - 12,
+            );
+            ctx.bezierCurveTo(
+              c.x - 20,
+              c.y - 30,
+              c.x + 20,
+              c.y - 30,
+              c.x + 20,
+              c.y - 12,
+            );
+            ctx.bezierCurveTo(
+              c.x + 38,
+              c.y - 12,
+              c.x + 38,
+              c.y + 8,
+              c.x + 20,
+              c.y + 8,
+            );
             ctx.closePath();
             ctx.fill();
             ctx.stroke();
           });
 
           // 6. Draw creeping Smog (Restricted to bottom half grid zone)
- // 6. Draw creeping Smog (Super Cartoonish & Child-Friendly Rolling Storm Cloud)
+          // 6. Draw creeping Smog (Super Cartoonish & Child-Friendly Rolling Storm Cloud)
           // 6. Draw creeping Smog (Soft cartoon cloud wall theme for children)
           if (!calmMode && GOGStage2.smogPosition < GOGStage2.cols) {
             var smogX = GOGStage2.smogPosition * cellW;
 
             ctx.save();
-            
+
             // --- LAYER A: Soft Pastel Fog Body ---
-            ctx.fillStyle = "rgba(125, 110, 145, 0.75)"; 
+            ctx.fillStyle = "rgba(125, 110, 145, 0.75)";
             ctx.fillRect(smogX, gridYOffset, W - smogX, gridH);
 
             // --- LAYER B: Fluffy Cartoon Cloud Front (No more single circles!) ---
-            var waveTime = state.elapsed * 3.5; 
-            
+            var waveTime = state.elapsed * 3.5;
+
             // We use a slightly wider vertical step to stack big, fluffy compound shapes
             for (var sy = gridYOffset - 15; sy <= H + 40; sy += 35) {
-              
               // Calculate a dynamic, organic wobble for this cloud cluster
               var clusterX = smogX + Math.sin(sy * 0.04 + waveTime) * 14;
               var baseRadius = 42 + Math.cos(sy * 0.08 + waveTime) * 5;
 
               // 1. Draw the Main Central Puff
-              ctx.fillStyle = "rgba(110, 95, 130, 0.92)"; 
+              ctx.fillStyle = "rgba(110, 95, 130, 0.92)";
               ctx.beginPath();
               ctx.arc(clusterX, sy, baseRadius, 0, Math.PI * 2);
               ctx.fill();
 
               // 2. Add an Overlapping Top-Right Secondary Puff (Creates the cartoon cloud cluster effect)
               ctx.beginPath();
-              ctx.arc(clusterX + 15, sy - 15, baseRadius * 0.75, 0, Math.PI * 2);
+              ctx.arc(
+                clusterX + 15,
+                sy - 15,
+                baseRadius * 0.75,
+                0,
+                Math.PI * 2,
+              );
               ctx.fill();
 
               // 3. Add an Overlapping Bottom-Left Puff to break up any straight lines
@@ -1507,7 +1603,7 @@
             ctx.save();
             ctx.textAlign = "center";
             ctx.textBaseline = "middle";
-            
+
             var textCenterX = smogX + (W - smogX) / 2;
 
             // Soft warning text labels inside the body
@@ -1515,7 +1611,7 @@
             ctx.font = "bold 22px sans-serif";
             ctx.fillText("⚠️ OH NO!", textCenterX, gridYOffset + gridH * 0.4);
             ctx.fillText("💨 COUGH!", textCenterX, gridYOffset + gridH * 0.7);
-            
+
             ctx.restore();
             ctx.restore();
           }

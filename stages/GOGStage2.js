@@ -44,16 +44,18 @@
       }
 
       // Add rock obstacles for default 6x10 hillside layout
-      if (this.rows === 6 && this.cols === 10) {
-        var rockCoords = [[1, 3], [2, 7], [4, 2], [4, 8], [3, 5]];
-        var self = this;
-        rockCoords.forEach(function (coord) {
-          var rr = coord[0], cc = coord[1];
-          if (rr >= 0 && rr < self.rows && cc >= 0 && cc < self.cols) {
-            self.grid[rr][cc].state = "rock";
-          }
-        });
-      }
+  // Add rock obstacles for default 6x10 hillside layout[cite: 2]
+if (this.rows === 6 && this.cols === 10) {
+  // Moved rows 1 and 2 down to rows 3, 4, and 5 to sit on the grass field layout
+  var rockCoords = [[3, 1], [3, 7], [4, 3], [5, 5], [5, 8]];
+  var self = this;
+  rockCoords.forEach(function (coord) {
+    var rr = coord[0], cc = coord[1];
+    if (rr >= 0 && rr < self.rows && cc >= 0 && cc < self.cols) {
+      self.grid[rr][cc].state = "rock";
+    }
+  });
+}
 
       this.saplings = 6; // starts with some saplings
       this.wave = 1;
