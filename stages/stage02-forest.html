@@ -332,15 +332,28 @@
         overflow: hidden;
         pointer-events: none;
         background:
-          radial-gradient(ellipse at 50% -8%, #efffdd 0%, #d4f0bd 42%, #fdf6e6 100%),
-          linear-gradient(180deg, rgba(60, 135, 67, 0.1), rgba(36, 99, 55, 0.16));
+          radial-gradient(
+            ellipse at 50% -8%,
+            #efffdd 0%,
+            #d4f0bd 42%,
+            #fdf6e6 100%
+          ),
+          linear-gradient(
+            180deg,
+            rgba(60, 135, 67, 0.1),
+            rgba(36, 99, 55, 0.16)
+          );
       }
 
       .page-bubble {
         position: absolute;
         bottom: -10vh;
         border-radius: 999px;
-        background: radial-gradient(circle at 32% 28%, rgba(255,255,255,0.95), rgba(201,242,61,0.14) 70%);
+        background: radial-gradient(
+          circle at 32% 28%,
+          rgba(255, 255, 255, 0.95),
+          rgba(201, 242, 61, 0.14) 70%
+        );
         opacity: 0;
         animation: pageBubbleRise linear infinite;
       }
@@ -380,13 +393,83 @@
   </head>
   <body>
     <div class="page-bg" aria-hidden="true">
-      <span class="page-bubble" style="left:6%; width:14px; height:14px; animation-duration:14s; animation-delay:0s; --drift:18px;"></span>
-      <span class="page-bubble" style="left:18%; width:9px; height:9px; animation-duration:11s; animation-delay:2.4s; --drift:-14px;"></span>
-      <span class="page-bubble" style="left:32%; width:18px; height:18px; animation-duration:17s; animation-delay:5s; --drift:22px;"></span>
-      <span class="page-bubble" style="left:48%; width:11px; height:11px; animation-duration:13s; animation-delay:1.2s; --drift:-10px;"></span>
-      <span class="page-bubble" style="left:64%; width:16px; height:16px; animation-duration:16s; animation-delay:7s; --drift:16px;"></span>
-      <span class="page-bubble" style="left:78%; width:10px; height:10px; animation-duration:12s; animation-delay:3.6s; --drift:-18px;"></span>
-      <span class="page-bubble" style="left:90%; width:13px; height:13px; animation-duration:15s; animation-delay:6.2s; --drift:12px;"></span>
+      <span
+        class="page-bubble"
+        style="
+          left: 6%;
+          width: 14px;
+          height: 14px;
+          animation-duration: 14s;
+          animation-delay: 0s;
+          --drift: 18px;
+        "
+      ></span>
+      <span
+        class="page-bubble"
+        style="
+          left: 18%;
+          width: 9px;
+          height: 9px;
+          animation-duration: 11s;
+          animation-delay: 2.4s;
+          --drift: -14px;
+        "
+      ></span>
+      <span
+        class="page-bubble"
+        style="
+          left: 32%;
+          width: 18px;
+          height: 18px;
+          animation-duration: 17s;
+          animation-delay: 5s;
+          --drift: 22px;
+        "
+      ></span>
+      <span
+        class="page-bubble"
+        style="
+          left: 48%;
+          width: 11px;
+          height: 11px;
+          animation-duration: 13s;
+          animation-delay: 1.2s;
+          --drift: -10px;
+        "
+      ></span>
+      <span
+        class="page-bubble"
+        style="
+          left: 64%;
+          width: 16px;
+          height: 16px;
+          animation-duration: 16s;
+          animation-delay: 7s;
+          --drift: 16px;
+        "
+      ></span>
+      <span
+        class="page-bubble"
+        style="
+          left: 78%;
+          width: 10px;
+          height: 10px;
+          animation-duration: 12s;
+          animation-delay: 3.6s;
+          --drift: -18px;
+        "
+      ></span>
+      <span
+        class="page-bubble"
+        style="
+          left: 90%;
+          width: 13px;
+          height: 13px;
+          animation-duration: 15s;
+          animation-delay: 6.2s;
+          --drift: 12px;
+        "
+      ></span>
     </div>
     <div class="page-fx" id="pageFx" aria-hidden="true"></div>
 
@@ -408,9 +491,18 @@
             <span class="label" id="canopyPct">42%</span>
           </div>
           <span class="chip timer-chip" id="timerChip">75s</span>
-          <span class="chip" id="difficultyChip" title="Difficulty Level">⚡ Lvl 1</span>
+          <span class="chip" id="difficultyChip" title="Difficulty Level"
+            >⚡ Lvl 1</span
+          >
           <span class="chip">🌱 <span id="sproutsChip">0</span></span>
-          <button class="icon-btn" id="muteBtn" title="Toggle sound" aria-label="Toggle sound">🔈</button>
+          <button
+            class="icon-btn"
+            id="muteBtn"
+            title="Toggle sound"
+            aria-label="Toggle sound"
+          >
+            🔈
+          </button>
           <div class="stage-controls">
             <a class="brutal-btn ghost" href="../index.html">⬅ Back to Map</a>
             <span class="hand calm-badge" id="calmBadge"></span>
@@ -471,6 +563,94 @@
         var treeDisImg = null;
         var growingPlantsImg = null;
 
+        /* ---------------------------------------------------------------
+           GOGSpriteSheet — shared sprite-sheet animation helper.
+
+           Stage 1's dolphin (dolphine_swim.png / dolphine_attack.png) and
+           Stage 2's growing plant (GrowingPlants1.png) both draw "one frame
+           out of a sheet, scaled into a destination rect" every tick — that
+           part is identical and is factored out as drawFrame() below.
+
+           Where they differ is how the *frame to show* gets picked:
+             - The dolphin sheet is a uniform grid (every cell 128x128 or
+               256x256) and steps forward on a timer (fps), looping forever.
+               -> advanceTimeLoop() + gridFrame()
+             - The plant sheet is an irregular atlas (each growth stage is a
+               different pixel width) and picks a frame from 0..1 grow
+               progress, no looping. -> progressFrame()
+
+           Both modes share drawFrame(), so this is one common module rather
+           than two copy-pasted drawing blocks. Recommended home long-term is
+           src/engine.js as GOGEngine.SpriteSheet so Stage 1 can adopt the
+           same helper too; it's kept dependency-free here so it can be
+           pasted there verbatim later.
+        ------------------------------------------------------------------*/
+        var GOGSpriteSheet = {
+          // Draws one source frame {x,y,w,h} scaled to destW (aspect-ratio
+          // preserved) at (cx,cy). anchor "bottom" sits the frame's bottom
+          // edge on cy (good for ground-rooted sprites like plants);
+          // anchor "center" (default) centers it on cy (good for the
+          // free-swimming dolphin).
+          drawFrame: function (ctx, img, frame, cx, cy, destW, anchor) {
+            var destH = (frame.h / frame.w) * destW;
+            var dx = cx - destW / 2;
+            var dy = anchor === "bottom" ? cy - destH : cy - destH / 2;
+            ctx.drawImage(
+              img,
+              frame.x, frame.y, frame.w, frame.h,
+              dx, dy, destW, destH,
+            );
+            return destH;
+          },
+
+          // MODE 1 — uniform grid, time-driven looping (dolphin-style).
+          // anim = {frameIndex, elapsedFrameTime}, mutated in place.
+          advanceTimeLoop: function (anim, dt, fps, totalFrames, onLoop) {
+            anim.elapsedFrameTime += dt;
+            var step = 1 / fps;
+            while (anim.elapsedFrameTime >= step) {
+              anim.frameIndex++;
+              if (anim.frameIndex >= totalFrames) {
+                anim.frameIndex = 0;
+                if (onLoop) onLoop();
+              }
+              anim.elapsedFrameTime -= step;
+            }
+          },
+          gridFrame: function (frameIndex, cols, frameW, frameH) {
+            var col = frameIndex % cols;
+            var row = Math.floor(frameIndex / cols);
+            return { x: col * frameW, y: row * frameH, w: frameW, h: frameH };
+          },
+
+          // MODE 2 — irregular atlas, progress-driven single pass (plant-style).
+          // frames = pre-measured [{x,y,w,h}, ...] in growth order.
+          progressFrame: function (frames, pct) {
+            var idx = Math.floor(pct * frames.length);
+            if (idx < 0) idx = 0;
+            if (idx >= frames.length) idx = frames.length - 1;
+            return frames[idx];
+          },
+        };
+
+        // GrowingPlants1.png is a 259x82 sheet with 5 growth stages of
+        // DIFFERENT pixel widths (not an equal grid), all sharing the sheet's
+        // full 82px height as their ground baseline. Measured directly from
+        // the uploaded asset:
+        var GROWING_PLANT_FRAMES = [
+          { x: 5,   y: 0, w: 17, h: 82 }, // stage 0: seedling
+          { x: 32,  y: 0, w: 27, h: 82 }, // stage 1: small sapling
+          { x: 73,  y: 0, w: 38, h: 82 }, // stage 2: young bush
+          { x: 132, y: 0, w: 52, h: 82 }, // stage 3: young tree
+          { x: 196, y: 0, w: 52, h: 82 }, // stage 4: full tree
+        ];
+
+        // How much bigger the fully-grown "tree" state renders than one grid
+        // cell (1.0 = exactly cellW). Was effectively ~1.2-1.3x before;
+        // bumped up so the finished tree feels like a real payoff and
+        // overlaps neighbors into a proper canopy. Tune freely.
+        var TREE_SIZE_SCALE = 0.7;
+
         var state = {
           running: false,
           elapsed: 0,
@@ -480,7 +660,7 @@
           introPlayed: false,
           screenShake: 0,
           desaturateTime: 0,
-          lastSmogCol: 10
+          lastSmogCol: 10,
         };
 
         // UI element caches
@@ -509,8 +689,8 @@
 
         /* ---------------- parallax background layers ---------------- */
         var layers = [
-          { img: null, speed: 0, y: 0 },
-          { img: null, speed: 2, y: 0 },
+          { img: null, speed: 1, y: 0 },
+           { img: null, speed: 2, y: 0 },
           { img: null, speed: 0, y: 0 },
           { img: null, speed: 0, y: 0 },
         ];
@@ -530,7 +710,12 @@
         }
 
         async function initBackground() {
-          var paths = ["assets/background/stage02/1.png", "assets/background/stage02/2.png", "assets/background/stage02/3.png", "assets/background/stage02/4.png"];
+          var paths = [
+            "assets/background/stage02/1.png",
+            "assets/background/stage02/2.png",
+            "assets/background/stage02/3.png",
+            "assets/background/stage02/4.png",
+          ];
           var results = await Promise.allSettled(paths.map(loadImage));
           results.forEach(function (result, i) {
             if (result.status === "fulfilled") {
@@ -540,19 +725,27 @@
 
           // Preload Stage 2 sprites
           try {
-            treeImg = await loadImage("assets/2.png");
-            treeDisImg = await loadImage("assets/2_dis.png");
-            growingPlantsImg = await loadImage("assets/sprites/stage02/GrowingPlants.png");
+            treeImg = await loadImage("assets/sprites/stage02/canopy.png");
+            treeDisImg = await loadImage("assets/sprites/stage02/branches.png");
+            growingPlantsImg = await loadImage(
+              "assets/sprites/stage02/GrowingPlants1.png",
+            );
             console.log("[sprites] Preloaded forest sprite sheets.");
           } catch (e) {
-            console.warn("[sprites] Sprites failed to load. Emojis will be used as fallbacks:", e);
+            console.warn(
+              "[sprites] Sprites failed to load. Emojis will be used as fallbacks:",
+              e,
+            );
           }
         }
 
         function drawForestBackground(elapsed) {
           // Dynamic greyscale/barren background filter depending on wave progress
           var activeFilter = "none";
-          if (GOGStage2.gameState === "WAVE_ACTIVE" || GOGStage2.gameState === "WAVE_CLEARED") {
+          if (
+            GOGStage2.gameState === "WAVE_ACTIVE" ||
+            GOGStage2.gameState === "WAVE_CLEARED"
+          ) {
             if (GOGStage2.wave === 1) {
               activeFilter = "sepia(0.65) hue-rotate(-22deg) saturate(0.8)";
             } else if (GOGStage2.wave === 2) {
@@ -595,7 +788,7 @@
             vx: vx,
             vy: (Math.random() - 0.5) * 8,
             size: 50,
-            active: true
+            active: true,
           });
         }
 
@@ -648,7 +841,9 @@
         }
 
         function showIntro() {
-          GOGUi.say("Welcome! Plant trees to shield the rainforest from the Smog! 🌳");
+          GOGUi.say(
+            "Welcome! Plant trees to shield the rainforest from the Smog! 🌳",
+          );
           var intro = GOGUi.showOverlay({
             accent: "var(--gog-lime)",
             title: "🐯 Ravi & the Canopy Call",
@@ -657,7 +852,7 @@
             onPrimary: function () {
               GOGUi.closeOverlay(intro);
               startWave(1);
-            }
+            },
           });
         }
 
@@ -692,7 +887,7 @@
             onPrimary: function () {
               GOGUi.closeOverlay(clearedOverlay);
               startWave(nextWave);
-            }
+            },
           });
         }
 
@@ -704,7 +899,10 @@
           var totalCells = GOGStage2.rows * GOGStage2.cols;
           for (var r = 0; r < GOGStage2.rows; r++) {
             for (var c = 0; c < GOGStage2.cols; c++) {
-              if (GOGStage2.grid[r][c].state === "tree" && GOGStage2.grid[r][c].connected) {
+              if (
+                GOGStage2.grid[r][c].state === "tree" &&
+                GOGStage2.grid[r][c].connected
+              ) {
                 connectedCount++;
               }
             }
@@ -720,10 +918,12 @@
           var nextSave = GOGSave.recordStageClear(STAGE_ID, {
             stars: stars,
             sprouts: 15,
-            smogDrop: 10
+            smogDrop: 10,
           });
 
-          GOGUi.say("Incredible! You reforested the canopy and saved Ravi! 🐯🎉");
+          GOGUi.say(
+            "Incredible! You reforested the canopy and saved Ravi! 🐯🎉",
+          );
 
           setTimeout(function () {
             triggerSeedReturnCutscene(function () {
@@ -740,7 +940,7 @@
                 },
                 onSecondary: function () {
                   window.location.reload();
-                }
+                },
               });
             });
           }, 600);
@@ -761,7 +961,7 @@
             },
             onSecondary: function () {
               window.location.href = "../index.html";
-            }
+            },
           });
         }
 
@@ -780,44 +980,99 @@
               for (var i = state.clouds.length - 1; i >= 0; i--) {
                 var c = state.clouds[i];
                 // Enlarge cloud hitbox detection to 60px for kid-friendly touch interaction
-                if (c.active && GOGEngine.Collision.distance(ptX, ptY, c.x, c.y) < 60) {
+                if (
+                  c.active &&
+                  GOGEngine.Collision.distance(ptX, ptY, c.x, c.y) < 60
+                ) {
                   c.active = false;
                   hitCloud = true;
                   GOGStage2.saplings++;
                   audio.collect();
-                  particles.burst(c.x, c.y, { glyphs: ["💧", "✨"], count: 12, lift: 45 });
-                  GOGUi.floatLabel(canvasFrame, ptX, ptY, "+1 Sapling 🌱", "#2fbf71");
+                  particles.burst(c.x, c.y, {
+                    glyphs: ["💧", "✨"],
+                    count: 12,
+                    lift: 45,
+                  });
+                  GOGUi.floatLabel(
+                    canvasFrame,
+                    ptX,
+                    ptY,
+                    "+1 Sapling 🌱",
+                    "#2fbf71",
+                  );
                   state.clouds.splice(i, 1);
                   break;
                 }
               }
 
               // 2. Check grid click
+              // 2. Check grid click
               if (!hitCloud) {
                 var cellW = W / GOGStage2.cols;
-                var cellH = H / GOGStage2.rows;
-                var col = Math.floor(ptX / cellW);
-                var row = Math.floor(ptY / cellH);
+                var gridH = H / 2; // Grid is restricted to the bottom half
+                var cellH = gridH / GOGStage2.rows;
 
-                if (col >= 0 && col < GOGStage2.cols && row >= 0 && row < GOGStage2.rows) {
+                // Shift calculation by subtracting the top half height
+                var col = Math.floor(ptX / cellW);
+                var row = Math.floor((ptY - H / 2) / cellH);
+
+                // Ensure click is inside the bounds of the bottom half grid
+                if (
+                  ptY >= H / 2 &&
+                  col >= 0 &&
+                  col < GOGStage2.cols &&
+                  row >= 0 &&
+                  row < GOGStage2.rows
+                ) {
                   // Cell lock: Smog-engulfed column check
                   if (!calmMode && col >= Math.floor(GOGStage2.smogPosition)) {
                     audio.blip(180, 150, "sawtooth");
-                    GOGUi.floatLabel(canvasFrame, ptX, ptY, "Engulfed by Smog! 🌫️", "#e82e5d");
+                    GOGUi.floatLabel(
+                      canvasFrame,
+                      ptX,
+                      ptY,
+                      "Engulfed by Smog! 🌫️",
+                      "#e82e5d",
+                    );
                   } else {
                     var success = GOGStage2.plant(row, col);
                     if (success) {
                       audio.blip(440, 120, "triangle");
                       var cx = col * cellW + cellW / 2;
-                      var cy = row * cellH + cellH / 2;
-                      particles.burst(cx, cy, { glyphs: ["🌱", "🍃"], count: 8, lift: 30 });
-                      GOGUi.floatLabel(canvasFrame, ptX, ptY, "Planted!", "var(--gog-lime)");
-                    } else if (GOGStage2.saplings <= 0 && GOGStage2.grid[row][col].state === "empty") {
+                      var cy = H / 2 + row * cellH + cellH / 2; // Adjusted particle center
+                      particles.burst(cx, cy, {
+                        glyphs: ["🌱", "🍃"],
+                        count: 8,
+                        lift: 30,
+                      });
+                      GOGUi.floatLabel(
+                        canvasFrame,
+                        ptX,
+                        ptY,
+                        "Planted!",
+                        "var(--gog-lime)",
+                      );
+                    } else if (
+                      GOGStage2.saplings <= 0 &&
+                      GOGStage2.grid[row][col].state === "empty"
+                    ) {
                       audio.blip(180, 150, "sawtooth");
-                      GOGUi.floatLabel(canvasFrame, ptX, ptY, "No saplings! Tap clouds ☁️", "#e82e5d");
+                      GOGUi.floatLabel(
+                        canvasFrame,
+                        ptX,
+                        ptY,
+                        "No saplings! Tap clouds ☁️",
+                        "#e82e5d",
+                      );
                     } else if (GOGStage2.grid[row][col].state === "rock") {
                       audio.blip(180, 150, "sawtooth");
-                      GOGUi.floatLabel(canvasFrame, ptX, ptY, "Cannot plant on rocks! ⛰️", "#e82e5d");
+                      GOGUi.floatLabel(
+                        canvasFrame,
+                        ptX,
+                        ptY,
+                        "Cannot plant on rocks! ⛰️",
+                        "#e82e5d",
+                      );
                     }
                   }
                 }
@@ -854,15 +1109,17 @@
             }
 
             // Connection snaps: Leaf / sparkle burst when tree grows
+            // Connection snaps: Leaf / sparkle burst when tree grows
             var cellW = W / GOGStage2.cols;
-            var cellH = H / GOGStage2.rows;
+            var gridH = H / 2;
+            var cellH = gridH / GOGStage2.rows;
             grown.forEach(function (coord) {
               var cx = coord.c * cellW + cellW / 2;
-              var cy = coord.r * cellH + cellH / 2;
+              var cy = H / 2 + coord.r * cellH + cellH / 2; // Offset to bottom half
               particles.burst(cx, cy, {
                 glyphs: ["🍃", "✨", "🟢"],
                 count: 18,
-                lift: 20
+                lift: 20,
               });
               audio.heal();
             });
@@ -881,7 +1138,7 @@
                     maxSpeed: 85,
                     angle: 0, // deflecting rightwards
                     spread: Math.PI / 4,
-                    life: 500
+                    life: 500,
                   });
                 }
               }
@@ -916,7 +1173,10 @@
           var totalCells = GOGStage2.rows * GOGStage2.cols;
           for (var r = 0; r < GOGStage2.rows; r++) {
             for (var c = 0; c < GOGStage2.cols; c++) {
-              if (GOGStage2.grid[r][c].state === "tree" && GOGStage2.grid[r][c].connected) {
+              if (
+                GOGStage2.grid[r][c].state === "tree" &&
+                GOGStage2.grid[r][c].connected
+              ) {
                 connectedCount++;
               }
             }
@@ -927,11 +1187,14 @@
 
           sproutsChip.textContent = GOGStage2.saplings;
           if (GOGStage2.smogDelay > 0 && !calmMode) {
-            timerChip.textContent = "Prep: " + Math.ceil(GOGStage2.smogDelay) + "s";
+            timerChip.textContent =
+              "Prep: " + Math.ceil(GOGStage2.smogDelay) + "s";
             timerChip.style.backgroundColor = "var(--gog-sun)"; // yellow highlight
             timerChip.style.color = "var(--gog-ink)";
           } else {
-            timerChip.textContent = calmMode ? "∞" : Math.ceil(GOGStage2.timer) + "s";
+            timerChip.textContent = calmMode
+              ? "∞"
+              : Math.ceil(GOGStage2.timer) + "s";
             timerChip.style.backgroundColor = "";
             timerChip.style.color = "";
           }
@@ -939,6 +1202,7 @@
         }
 
         /* ---------------- draw loop ---------------- */
+      /* ---------------- draw loop ---------------- */
         function draw() {
           var shakeX = 0, shakeY = 0;
           if (state.screenShake > 0) {
@@ -956,15 +1220,18 @@
 
           drawForestBackground(state.elapsed);
 
+          // Grid dimension recalculations to bound interaction to the bottom half
           var cellW = W / GOGStage2.cols;
-          var cellH = H / GOGStage2.rows;
+          var gridH = H / 2;                 // Height of the actionable zone
+          var cellH = gridH / GOGStage2.rows; // Scale rows within the half-screen height
+          var gridYOffset = H / 2;           // Shift everything downwards past the sky
 
           // 1. Draw Grid Cells
           for (var r = 0; r < GOGStage2.rows; r++) {
             for (var c = 0; c < GOGStage2.cols; c++) {
               var cell = GOGStage2.grid[r][c];
               var x = c * cellW;
-              var y = r * cellH;
+              var y = gridYOffset + r * cellH;
 
               // Grid cell box
               ctx.strokeStyle = "rgba(40, 60, 40, 0.15)";
@@ -1012,7 +1279,7 @@
               var cell = GOGStage2.grid[r][c];
               if (cell.state === "tree" && cell.connected) {
                 var cx = c * cellW + cellW / 2;
-                var cy = r * cellH + cellH / 2;
+                var cy = gridYOffset + r * cellH + cellH / 2;
 
                 // draw link to right neighbor
                 if (c + 1 < GOGStage2.cols) {
@@ -1030,7 +1297,7 @@
                   if (down.state === "tree" && down.connected) {
                     ctx.beginPath();
                     ctx.moveTo(cx, cy);
-                    ctx.lineTo(cx, (r + 1) * cellH + cellH / 2);
+                    ctx.lineTo(cx, gridYOffset + (r + 1) * cellH + cellH / 2);
                     ctx.stroke();
                   }
                 }
@@ -1043,7 +1310,7 @@
             for (var c = 0; c < GOGStage2.cols; c++) {
               var cell = GOGStage2.grid[r][c];
               var cx = c * cellW + cellW / 2;
-              var cy = r * cellH + cellH / 2;
+              var cy = gridYOffset + r * cellH + cellH / 2;
 
               if (cell.state === "rock") {
                 ctx.save();
@@ -1061,21 +1328,28 @@
                 ctx.arc(cx, cy + 12, 16, -Math.PI / 2, -Math.PI / 2 + pct * Math.PI * 2);
                 ctx.stroke();
 
-                // Draw growing sprites dynamically from GrowingPlants sheet
+                // Draw growing sprites dynamically from GrowingPlants1 sheet.
+                // Frame is chosen by grow progress (pct), not by a timer —
+                // see GOGSpriteSheet.progressFrame above.
                 if (growingPlantsImg && growingPlantsImg.complete && growingPlantsImg.width > 0) {
-                  var totalFrames = 3;
-                  var fW = growingPlantsImg.width / totalFrames;
-                  var fH = growingPlantsImg.height;
-                  var frameIndex = 0;
-                  if (pct > 0.66) frameIndex = 2;
-                  else if (pct > 0.33) frameIndex = 1;
+                  var frame = GOGSpriteSheet.progressFrame(GROWING_PLANT_FRAMES, pct);
 
-                  var destW = cellW - 16;
-                  var destH = (fH / fW) * destW;
-                  ctx.drawImage(
-                    growingPlantsImg,
-                    frameIndex * fW, 0, fW, fH,
-                    cx - destW / 2, cy - destH / 2, destW, destH
+                  // Scale so the final (widest/tallest) growth stage just
+                  // fits the cell; earlier stages scale down proportionally,
+                  // which is what actually reads as "growing" rather than
+                  // every stage stretching to fill the same box.
+                  var lastFrame = GROWING_PLANT_FRAMES[GROWING_PLANT_FRAMES.length - 1];
+                  var plantScale = Math.min(
+                    (cellW - 16) / lastFrame.w,
+                    (cellH - 10) / lastFrame.h,
+                  );
+                  var destW = frame.w * plantScale;
+
+                  // Anchor to the bottom of the cell so the plant grows
+                  // upward out of the soil instead of from its center.
+                  GOGSpriteSheet.drawFrame(
+                    ctx, growingPlantsImg, frame,
+                    cx, cy + cellH / 2 - 6, destW, "bottom",
                   );
                 } else {
                   ctx.save();
@@ -1086,33 +1360,41 @@
                   ctx.restore();
                 }
               } else if (cell.state === "tree") {
+                // Fully grown tree is always visually present at this cell —
+                // connected trees show the healthy sprite, disconnected ones
+                // show a muted/desaturated version, but neither should ever
+                // fade down to "basically invisible" the way the old 0.45-
+                // alpha single leaf glyph did.
+                var treeDestW = cellW * TREE_SIZE_SCALE;
+
                 if (cell.connected) {
                   // Connected: Draw Ravi's healthy tree sprite with overlapping canopy
                   if (treeImg && treeImg.complete && treeImg.width > 0) {
-                    var destW = cellW + 24; // overlaps slightly with neighbors to blend
-                    var destH = (treeImg.height / treeImg.width) * destW;
-                    ctx.drawImage(treeImg, cx - destW / 2, cy - destH / 2 - 10, destW, destH);
+                    var destH = (treeImg.height / treeImg.width) * treeDestW;
+                    ctx.drawImage(treeImg, cx - treeDestW / 2, cy - destH / 2 - 10, treeDestW, destH);
                   } else {
                     ctx.save();
-                    ctx.font = "38px Arial";
+                    ctx.font = "52px Arial";
                     ctx.textAlign = "center";
                     ctx.textBaseline = "middle";
                     ctx.fillText("🌳", cx, cy);
                     ctx.restore();
                   }
                 } else {
-                  // Disconnected: Draw faded/withered dry tree
+                  // Disconnected: same tree shape, just muted — it should
+                  // still clearly read as "a tree" (just not yet linked
+                  // into the canopy chain), not as an empty cell.
                   if (treeDisImg && treeDisImg.complete && treeDisImg.width > 0) {
-                    var destW = cellW + 10;
-                    var destH = (treeDisImg.height / treeDisImg.width) * destW;
-                    ctx.drawImage(treeDisImg, cx - destW / 2, cy - destH / 2 - 5, destW, destH);
+                    var destH = (treeDisImg.height / treeDisImg.width) * treeDestW;
+                    ctx.drawImage(treeDisImg, cx - treeDestW / 2, cy - destH / 2 - 10, treeDestW, destH);
                   } else {
                     ctx.save();
-                    ctx.font = "38px Arial";
+                    ctx.font = "52px Arial";
                     ctx.textAlign = "center";
                     ctx.textBaseline = "middle";
-                    ctx.globalAlpha = 0.45;
-                    ctx.fillText("🍂", cx, cy);
+                    ctx.filter = "grayscale(0.8) brightness(0.85)";
+                    ctx.globalAlpha = 0.9;
+                    ctx.fillText("🌳", cx, cy);
                     ctx.restore();
                   }
                 }
@@ -1128,7 +1410,7 @@
                 var cell = GOGStage2.grid[r][c];
                 if (cell.state === "tree" && cell.connected) {
                   var cx = c * cellW + cellW / 2;
-                  var cy = r * cellH + cellH / 2;
+                  var cy = gridYOffset + r * cellH + cellH / 2;
                   ctx.save();
                   ctx.font = "16px Arial";
                   ctx.fillText("🌸", cx - 12, cy - 24);
@@ -1148,7 +1430,7 @@
             ctx.restore();
           }
 
-          // 5. Draw Rain Clouds and Falling Rain
+          // 5. Draw Rain Clouds and Falling Rain (Unchanged, flows in upper atmosphere)
           state.clouds.forEach(function (c) {
             if (!c.active) return;
             // Rain drops
@@ -1176,38 +1458,71 @@
             ctx.stroke();
           });
 
-          // 6. Draw creeping Smog
+          // 6. Draw creeping Smog (Restricted to bottom half grid zone)
+ // 6. Draw creeping Smog (Super Cartoonish & Child-Friendly Rolling Storm Cloud)
+          // 6. Draw creeping Smog (Soft cartoon cloud wall theme for children)
           if (!calmMode && GOGStage2.smogPosition < GOGStage2.cols) {
             var smogX = GOGStage2.smogPosition * cellW;
 
-            // Wavy edge boundary
-            ctx.fillStyle = "rgba(110, 110, 110, 0.72)";
-            ctx.fillRect(smogX, 0, W - smogX, H);
+            ctx.save();
+            
+            // --- LAYER A: Soft Pastel Fog Body ---
+            ctx.fillStyle = "rgba(125, 110, 145, 0.75)"; 
+            ctx.fillRect(smogX, gridYOffset, W - smogX, gridH);
 
-            // Fuzzy edge using circles
-            ctx.fillStyle = "rgba(110, 110, 110, 0.88)";
-            var edgeTime = state.elapsed * 2.8;
-            for (var sy = 0; sy <= H; sy += 25) {
-              var waveX = smogX + Math.sin(sy * 0.04 + edgeTime) * 10;
+            // --- LAYER B: Fluffy Cartoon Cloud Front (No more single circles!) ---
+            var waveTime = state.elapsed * 3.5; 
+            
+            // We use a slightly wider vertical step to stack big, fluffy compound shapes
+            for (var sy = gridYOffset - 15; sy <= H + 40; sy += 35) {
+              
+              // Calculate a dynamic, organic wobble for this cloud cluster
+              var clusterX = smogX + Math.sin(sy * 0.04 + waveTime) * 14;
+              var baseRadius = 42 + Math.cos(sy * 0.08 + waveTime) * 5;
+
+              // 1. Draw the Main Central Puff
+              ctx.fillStyle = "rgba(110, 95, 130, 0.92)"; 
               ctx.beginPath();
-              ctx.arc(waveX, sy, 20, 0, Math.PI * 2);
+              ctx.arc(clusterX, sy, baseRadius, 0, Math.PI * 2);
+              ctx.fill();
+
+              // 2. Add an Overlapping Top-Right Secondary Puff (Creates the cartoon cloud cluster effect)
+              ctx.beginPath();
+              ctx.arc(clusterX + 15, sy - 15, baseRadius * 0.75, 0, Math.PI * 2);
+              ctx.fill();
+
+              // 3. Add an Overlapping Bottom-Left Puff to break up any straight lines
+              ctx.beginPath();
+              ctx.arc(clusterX - 12, sy + 12, baseRadius * 0.6, 0, Math.PI * 2);
+              ctx.fill();
+
+              // 4. Add a Soft Pastel Highlight layer to give the clusters a friendly, rounded 3D depth
+              ctx.fillStyle = "rgba(150, 135, 170, 0.4)";
+              ctx.beginPath();
+              ctx.arc(clusterX - 5, sy - 5, baseRadius * 0.8, 0, Math.PI * 2);
               ctx.fill();
             }
 
-            // Text tag
+            // --- LAYER C: Child-Friendly Visual Labels ---
             ctx.save();
-            ctx.fillStyle = "rgba(255, 255, 255, 0.16)";
-            ctx.font = "bold 26px sans-serif";
             ctx.textAlign = "center";
             ctx.textBaseline = "middle";
-            ctx.fillText("🌫️ THE SMOG", smogX + (W - smogX) / 2, H / 2);
+            
+            var textCenterX = smogX + (W - smogX) / 2;
+
+            // Soft warning text labels inside the body
+            ctx.fillStyle = "rgba(255, 255, 255, 0.4)";
+            ctx.font = "bold 22px sans-serif";
+            ctx.fillText("⚠️ OH NO!", textCenterX, gridYOffset + gridH * 0.4);
+            ctx.fillText("💨 COUGH!", textCenterX, gridYOffset + gridH * 0.7);
+            
+            ctx.restore();
             ctx.restore();
           }
 
           particles.draw(ctx);
           ctx.restore();
         }
-
         /* ---------------- start ---------------- */
         var loop = new GOGEngine.GameLoop({
           update: update,
@@ -1218,7 +1533,6 @@
           loop.start();
           showIntro();
         });
-
       })();
     </script>
   </body>
