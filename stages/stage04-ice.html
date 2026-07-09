@@ -1,0 +1,1063 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+<title>Penny on Thin Ice</title>
+<style>
+:root {
+  --bg: #FDFBF7;
+  --ink: #111111;
+  --blue: #5AB4FF;
+  --pink: #FF7DB8;
+  --cream: #FFF7E8;
+  --water: #6AB7FF;
+  --waterDeep: #2F6FD0;
+  --yellow: #FFD84D;
+  --shadow: 6px 6px 0 #111111;
+}
+* { box-sizing: border-box; }
+html, body {
+  margin: 0;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  background: linear-gradient(180deg, #FDFBF7 0%, #FFF3E7 100%);
+  font-family: Arial, "Segoe UI Emoji", "Apple Color Emoji", sans-serif;
+  color: var(--ink);
+  touch-action: none;
+}
+body {
+  display: grid;
+  place-items: center;
+}
+.game-shell {
+  width: min(100vw, calc(100vh * 4 / 3));
+  aspect-ratio: 4 / 3;
+  position: relative;
+  border: 4px solid var(--ink);
+  background: var(--bg);
+  box-shadow: 10px 10px 0 var(--ink);
+  overflow: hidden;
+}
+canvas {
+  width: 100%;
+  height: 100%;
+  display: block;
+  background: var(--bg);
+}
+.ui {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+.topbar {
+  position: absolute;
+  inset: 14px 14px auto 14px;
+  display: flex;
+  gap: 12px;
+  justify-content: space-between;
+  align-items: flex-start;
+}
+.panel {
+  pointer-events: auto;
+  background: var(--cream);
+  border: 3px solid var(--ink);
+  box-shadow: var(--shadow);
+  padding: 10px 12px;
+}
+.title-card {
+  max-width: 280px;
+}
+.title-card h1 {
+  margin: 0 0 4px;
+  font-size: 18px;
+  line-height: 1.05;
+}
+.title-card p, .stats p, .overlay p, .fact-card p {
+  margin: 0;
+  font-size: 13px;
+  line-height: 1.35;
+}
+.stats {
+  min-width: 240px;
+}
+.meter-wrap {
+  margin-top: 8px;
+}
+.meter-label {
+  display: flex;
+  justify-content: space-between;
+  font-size: 12px;
+  margin-bottom: 4px;
+  font-weight: 700;
+}
+.meter {
+  height: 18px;
+  border: 3px solid var(--ink);
+  background: #fff;
+  position: relative;
+  overflow: hidden;
+}
+.meter > div {
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: 0%;
+  background: linear-gradient(90deg, var(--blue), var(--pink));
+  border-right: 3px solid var(--ink);
+}
+.hud-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  font-size: 13px;
+  font-weight: 700;
+}
+.badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 8px;
+  background: #fff;
+  border: 3px solid var(--ink);
+}
+.controls {
+  position: absolute;
+  inset: auto 12px 12px 12px;
+  display: flex;
+  justify-content: space-between;
+  align-items: end;
+  pointer-events: none;
+}
+.dpad, .jump-wrap {
+  display: flex;
+  gap: 10px;
+  pointer-events: auto;
+}
+.ctrl-btn {
+  width: 76px;
+  height: 76px;
+  border: 3px solid var(--ink);
+  background: #fff;
+  box-shadow: 5px 5px 0 var(--ink);
+  border-radius: 20px;
+  font-size: 28px;
+  font-weight: 900;
+  color: var(--ink);
+  user-select: none;
+  touch-action: none;
+}
+.ctrl-btn:active, .overlay button:active {
+  transform: translate(4px, 4px);
+  box-shadow: 1px 1px 0 var(--ink);
+}
+.overlay {
+  position: absolute;
+  inset: 0;
+  display: none;
+  place-items: center;
+  padding: 24px;
+  background: rgba(253, 251, 247, 0.78);
+  pointer-events: auto;
+}
+.overlay.show {
+  display: grid;
+}
+.overlay-card, .fact-card {
+  width: min(92%, 540px);
+  background: var(--cream);
+  border: 4px solid var(--ink);
+  box-shadow: 12px 12px 0 var(--ink);
+  padding: 18px;
+}
+.overlay h2, .fact-card h2 {
+  margin: 0 0 10px;
+  font-size: 28px;
+  line-height: 1;
+}
+.overlay button, .fact-card button {
+  margin-top: 14px;
+  border: 3px solid var(--ink);
+  background: var(--yellow);
+  color: var(--ink);
+  padding: 12px 16px;
+  font-weight: 900;
+  font-size: 16px;
+  box-shadow: 5px 5px 0 var(--ink);
+}
+.legend {
+  margin-top: 10px;
+  display: grid;
+  gap: 6px;
+  font-size: 13px;
+}
+.fact-card {
+  display: none;
+  position: absolute;
+  inset: 50% auto auto 50%;
+  transform: translate(-50%, -50%);
+  pointer-events: auto;
+}
+.fact-card.show {
+  display: block;
+}
+@media (min-width: 900px) {
+  .ctrl-btn { opacity: 0.92; }
+}
+@media (hover: hover) and (pointer: fine) {
+  .ctrl-btn { opacity: 0.82; }
+}
+@media (max-width: 700px) {
+  .topbar {
+    inset: 10px 10px auto 10px;
+    flex-direction: column;
+    gap: 8px;
+  }
+  .title-card, .stats { max-width: none; min-width: 0; width: 100%; }
+  .title-card h1 { font-size: 16px; }
+  .stats p, .title-card p { font-size: 12px; }
+  .ctrl-btn {
+    width: 68px;
+    height: 68px;
+    font-size: 24px;
+  }
+}
+</style>
+</head>
+<body>
+<div class="game-shell">
+  <canvas id="game" width="800" height="600" aria-label="Penny on Thin Ice game canvas"></canvas>
+  <div class="ui">
+    <div class="topbar">
+      <div class="panel title-card">
+        <h1>🐧 Penny on Thin Ice</h1>
+        <p>Rescue 5 chicks and carry them back to the safe iceberg before the warm seas rise too far.</p>
+      </div>
+      <div class="panel stats">
+        <div class="hud-row">
+          <div class="badge">🐥 <span id="rescuedText">0 / 5 rescued</span></div>
+          <div class="badge">🧊 <span id="iceText">0 floes left</span></div>
+          <div class="badge">🌊 <span id="seaText">Sea 0%</span></div>
+        </div>
+        <div class="meter-wrap">
+          <div class="meter-label"><span>Warmth Meter</span><span id="warmthText">0%</span></div>
+          <div class="meter"><div id="warmFill"></div></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="controls" aria-hidden="false">
+      <div class="dpad">
+        <button class="ctrl-btn" data-control="left" aria-label="Move left">◀</button>
+        <button class="ctrl-btn" data-control="right" aria-label="Move right">▶</button>
+      </div>
+      <div class="jump-wrap">
+        <button class="ctrl-btn" data-control="action" aria-label="Spin the cooling valve">☸️</button>
+        <button class="ctrl-btn" data-control="jump" aria-label="Jump">▲</button>
+      </div>
+    </div>
+
+    <div class="overlay show" id="startOverlay">
+      <div class="overlay-card">
+        <h2>Stage 4 — Penny on Thin Ice</h2>
+        <p>Penny wakes in a warming polar dream. The floating ice shrinks faster when she stands still, so keep hopping, cool the valve, rescue chicks, and bring them home to the high iceberg.</p>
+        <div class="legend">
+          <p><strong>Move:</strong> Arrow keys or WASD, plus touch buttons.</p>
+          <p><strong>Jump:</strong> Arrow Up, W, or Space.</p>
+          <p><strong>Use Valve:</strong> Stand near the valve, then press E (or tap ☸️) to cool the factory.</p>
+        </div>
+        <button id="startBtn">Start Dream</button>
+      </div>
+    </div>
+
+    <div class="overlay" id="retryOverlay">
+      <div class="overlay-card">
+        <h2>Take Another Glide</h2>
+        <p id="retryReason">The water got too cozy. Try again with quicker rescues and a timely valve spin.</p>
+        <button id="retryBtn">Try Again</button>
+      </div>
+    </div>
+
+    <div class="fact-card" id="factCard">
+      <h2>🌱 Seed of Life #4</h2>
+      <p>Penny wakes completely as the sea calms and the ice reforms.</p>
+      <p style="margin-top:8px; font-weight:700;">Fact Card:</p>
+      <p>As the planet warms, sea ice shrinks - homes for polar animals shrink too.</p>
+      <button id="playAgainBtn">Play Again</button>
+    </div>
+  </div>
+</div>
+<script>
+(() => {
+  const canvas = document.getElementById('game');
+  const ctx = canvas.getContext('2d');
+
+  const ui = {
+    warmFill: document.getElementById('warmFill'),
+    warmthText: document.getElementById('warmthText'),
+    rescuedText: document.getElementById('rescuedText'),
+    iceText: document.getElementById('iceText'),
+    seaText: document.getElementById('seaText'),
+    startOverlay: document.getElementById('startOverlay'),
+    retryOverlay: document.getElementById('retryOverlay'),
+    retryReason: document.getElementById('retryReason'),
+    factCard: document.getElementById('factCard')
+  };
+
+  const WORLD_W = 2000;
+  const WORLD_H = 600;
+  const CAMERA_LERP = 0.12;
+  const TARGET_RESCUES = 5;
+
+  const input = {
+    left: false,
+    right: false,
+    jump: false,
+    jumpPressed: false,
+    actionPressed: false
+  };
+
+  let state;
+  let lastTime = 0;
+  let cameraX = 0;
+  let gameRunning = false;
+
+  function rectsOverlap(a, b) {
+    return a.x < b.x + b.w && a.x + a.w > b.x && a.y < b.y + b.h && a.y + a.h > b.y;
+  }
+
+  function clamp(v, min, max) {
+    return Math.max(min, Math.min(max, v));
+  }
+
+  function createState() {
+    const stableBase = { x: 40, y: 380, w: 240, h: 200, label: 'home' };
+    const valvePlatform = { x: 1040, y: 340, w: 260, h: 30, stable: true, label: 'valveBase' };
+    const meltPlatforms = [
+      { x: 330, y: 396, w: 170, h: 26, baseW: 170, h0: 26, drift: 12, phase: 0.4, shrink: 0.0, gone: false },
+      { x: 560, y: 390, w: 150, h: 24, baseW: 150, h0: 24, drift: 16, phase: 1.8, shrink: 0.0, gone: false },
+      { x: 760, y: 350, w: 140, h: 24, baseW: 140, h0: 24, drift: 10, phase: 3.1, shrink: 0.0, gone: false },
+      { x: 930, y: 420, w: 160, h: 24, baseW: 160, h0: 24, drift: 14, phase: 2.1, shrink: 0.0, gone: false },
+      { x: 1160, y: 280, w: 140, h: 24, baseW: 140, h0: 24, drift: 9, phase: 0.9, shrink: 0.0, gone: false },
+      { x: 1360, y: 360, w: 170, h: 24, baseW: 170, h0: 24, drift: 18, phase: 2.6, shrink: 0.0, gone: false },
+      { x: 1600, y: 300, w: 145, h: 24, baseW: 145, h0: 24, drift: 11, phase: 4.2, shrink: 0.0, gone: false }
+    ];
+
+    const chicks = [
+      { x: 380, y: 380, rescued: false, delivered: false, carrier: false, bob: 0.0 },
+      { x: 600, y: 350, rescued: false, delivered: false, carrier: false, bob: 0.8 },
+      { x: 805, y: 310, rescued: false, delivered: false, carrier: false, bob: 1.4 },
+      { x: 1405, y: 320, rescued: false, delivered: false, carrier: false, bob: 2.1 },
+      { x: 1635, y: 260, rescued: false, delivered: false, carrier: false, bob: 3.3 }
+    ];
+
+    return {
+      time: 0,
+      seaLevel: 560,
+      warmth: 0,
+      coolingTimer: 0,
+      rescuedCount: 0,
+      meltedCount: 0,
+      player: {
+        x: 96,
+        y: 300,
+        w: 42,
+        h: 52,
+        vx: 0,
+        vy: 0,
+        speed: 960,
+        maxSpeed: 255,
+        drag: 0.84,
+        gravity: 1450,
+        jumpPower: 520,
+        onGround: false,
+        facing: 1,
+        carrying: null,
+        spawnX: 96,
+        spawnY: 300
+      },
+      stableBase,
+      valvePlatform,
+      valve: {
+        x: 1145,
+        y: 284,
+        r: 28,
+        coolAmount: 0.28,
+        activeFlash: 0,
+        pulse: 0
+      },
+      meltPlatforms,
+      chicks,
+      particles: [],
+      state: 'playing',
+      endTimer: 0
+    };
+  }
+
+  function resetGame() {
+    state = createState();
+    cameraX = 0;
+    gameRunning = true;
+    ui.retryOverlay.classList.remove('show');
+    ui.factCard.classList.remove('show');
+  }
+
+  function startGame() {
+    ui.startOverlay.classList.remove('show');
+    resetGame();
+  }
+
+  function failGame(reason) {
+    state.state = 'failed';
+    gameRunning = false;
+    ui.retryReason.textContent = reason;
+    ui.retryOverlay.classList.add('show');
+  }
+
+  function winGame() {
+    state.state = 'won';
+    state.endTimer = 0;
+  }
+
+  function update(dt) {
+    if (!state || state.state === 'failed') return;
+
+    state.time += dt;
+    const p = state.player;
+
+    if (state.state === 'won') {
+      state.endTimer += dt;
+      state.seaLevel = Math.min(600, state.seaLevel + 80 * dt);
+      state.warmth = Math.max(0, state.warmth - 0.35 * dt);
+      p.vx *= 0.92;
+      p.vy += p.gravity * dt * 0.25;
+      movePlayer(p, dt, true);
+      if (state.endTimer > 1.1) {
+        gameRunning = false;
+        ui.factCard.classList.add('show');
+      }
+      updateUI();
+      updateParticles(dt);
+      return;
+    }
+
+    const warmingRate = state.coolingTimer > 0 ? 0.022 : 0.042;
+    state.warmth = clamp(state.warmth + warmingRate * dt, 0, 1);
+    if (state.coolingTimer > 0) {
+      state.coolingTimer = Math.max(0, state.coolingTimer - dt);
+      state.valve.activeFlash = Math.max(0, state.valve.activeFlash - dt * 1.7);
+    }
+    state.valve.pulse += dt;
+
+    const seaRise = 6 + state.warmth * 22;
+    state.seaLevel = clamp(state.seaLevel - seaRise * dt, 420, 560);
+
+    const accel = p.speed * dt;
+    if (input.left) {
+      p.vx -= accel;
+      p.facing = -1;
+    }
+    if (input.right) {
+      p.vx += accel;
+      p.facing = 1;
+    }
+    if (!input.left && !input.right) {
+      p.vx *= Math.pow(p.drag, dt * 60);
+      if (Math.abs(p.vx) < 3) p.vx = 0;
+    }
+    p.vx = clamp(p.vx, -p.maxSpeed, p.maxSpeed);
+
+    if (input.jumpPressed && p.onGround) {
+      p.vy = -p.jumpPower;
+      p.onGround = false;
+      spawnBurst(p.x + p.w / 2, p.y + p.h, 8, '#8FD3FF');
+    }
+    input.jumpPressed = false;
+
+    p.vy += p.gravity * dt;
+
+    updatePlatforms(dt);
+    movePlayer(p, dt, false);
+    updateChicks(dt);
+    updateValve(dt);
+    updateParticles(dt);
+    updateCamera(dt);
+    updateUI();
+
+    if (p.y > WORLD_H + 120 || p.y + p.h >= state.seaLevel) {
+      failGame('Penny splashed into the rising water. Try a faster route and cool the valve sooner.');
+      return;
+    }
+
+    const remainingIce = state.meltPlatforms.filter(pl => !pl.gone).length;
+    if (remainingIce <= 1 && state.rescuedCount < TARGET_RESCUES) {
+      failGame('Too much ice melted away before the rescue was complete. Try keeping Penny moving between floes.');
+    }
+  }
+
+  function updatePlatforms(dt) {
+    const p = state.player;
+    for (const pl of state.meltPlatforms) {
+      if (pl.gone) continue;
+      pl.t = (pl.t || 0) + dt;
+      pl.y += Math.sin(state.time * 0.55 + pl.phase) * 4 * dt;
+
+      const topBand = {
+        x: pl.x + pl.shrink * 0.5,
+        y: pl.y,
+        w: pl.baseW - pl.shrink,
+        h: pl.h
+      };
+
+      const standing = p.onGround && p.vy >= -10 && p.x + p.w > topBand.x + 8 && p.x < topBand.x + topBand.w - 8 && Math.abs((p.y + p.h) - topBand.y) < 8;
+      const meltRate = 1.2 + state.warmth * 5 + (standing ? 24 + state.warmth * 36 : 0);
+      pl.shrink += meltRate * dt;
+      pl.w = Math.max(48, pl.baseW - pl.shrink);
+      if (pl.shrink > pl.baseW - 42) {
+        pl.gone = true;
+        state.meltedCount += 1;
+        spawnBurst(pl.x + pl.baseW / 2, pl.y + 6, 12, '#DFF6FF');
+        if (standing) {
+          p.onGround = false;
+        }
+      }
+    }
+  }
+
+  function movePlayer(p, dt, soft) {
+    const prevBottom = p.y + p.h;
+
+    p.x += p.vx * dt;
+    p.x = clamp(p.x, 0, WORLD_W - p.w);
+
+    p.y += p.vy * dt;
+    p.onGround = false;
+
+    const solids = getSolids();
+    for (const s of solids) {
+      if (!rectsOverlap(p, s)) continue;
+      // one-way platform: only land when falling onto the top surface from above.
+      // never block horizontal movement or bump the player off a side face —
+      // these are thin floating ice floes, not walls.
+      if (p.vy >= 0 && prevBottom <= s.y + 6) {
+        p.y = s.y - p.h;
+        p.vy = 0;
+        p.onGround = true;
+      }
+    }
+
+    if (p.onGround && !soft) {
+      const under = solids.find(s => p.x + p.w > s.x && p.x < s.x + s.w && Math.abs((p.y + p.h) - s.y) < 4);
+      if (under && under.drift) {
+        p.x += under.drift * dt;
+      }
+    }
+  }
+
+  function getSolids() {
+    const solids = [
+      { x: state.stableBase.x, y: state.stableBase.y, w: state.stableBase.w, h: state.stableBase.h },
+      { x: state.valvePlatform.x, y: state.valvePlatform.y, w: state.valvePlatform.w, h: state.valvePlatform.h, stable: true }
+    ];
+    for (const pl of state.meltPlatforms) {
+      if (pl.gone) continue;
+      const drift = Math.cos(state.time * 0.55 + pl.phase) * pl.drift;
+      solids.push({ x: pl.x + pl.shrink * 0.5, y: pl.y, w: pl.w, h: pl.h, drift });
+    }
+    return solids;
+  }
+
+  function updateChicks(dt) {
+    const p = state.player;
+    for (const chick of state.chicks) {
+      chick.bob += dt * 3;
+      if (chick.delivered) continue;
+      if (p.carrying === chick) {
+        chick.x = p.x + p.w / 2 - 8;
+        chick.y = p.y - 18;
+        const homeZone = {
+          x: state.stableBase.x + 20,
+          y: state.stableBase.y - 60,
+          w: state.stableBase.w - 40,
+          h: 70
+        };
+        if (rectsOverlap({ x: chick.x, y: chick.y, w: 16, h: 16 }, homeZone) && p.onGround) {
+          chick.delivered = true;
+          chick.rescued = true;
+          p.carrying = null;
+          state.rescuedCount += 1;
+          spawnBurst(chick.x, chick.y, 14, '#FFD84D');
+          if (state.rescuedCount >= TARGET_RESCUES) {
+            winGame();
+          }
+        }
+        continue;
+      }
+      const chickRect = { x: chick.x, y: chick.y, w: 18, h: 18 };
+      if (!chick.rescued && rectsOverlap(p, chickRect)) {
+        chick.rescued = true;
+        p.carrying = chick;
+        spawnBurst(chick.x, chick.y, 10, '#FFE680');
+      }
+      if (chick.y + 16 >= state.seaLevel) {
+        const homeRestock = state.chicks.find(c => !c.rescued && !c.delivered && c !== chick);
+        if (!homeRestock && !chick.delivered && p.carrying !== chick) {
+          failGame('A chick slipped into the water. Try shorter rescue routes and keep the floes from vanishing under you.');
+          return;
+        }
+      }
+    }
+  }
+
+  function updateValve(dt) {
+    const p = state.player;
+    const dx = (p.x + p.w / 2) - state.valve.x;
+    const dy = (p.y + p.h / 2) - state.valve.y;
+    const near = Math.hypot(dx, dy) < 78;
+    if (near && input.actionPressed) {
+      state.warmth = Math.max(0, state.warmth - state.valve.coolAmount);
+      state.coolingTimer = 8;
+      state.valve.activeFlash = 1;
+      spawnBurst(state.valve.x, state.valve.y, 16, '#87E1FF');
+    }
+    input.actionPressed = false;
+  }
+
+  function updateParticles(dt) {
+    for (let i = state.particles.length - 1; i >= 0; i--) {
+      const pt = state.particles[i];
+      pt.life -= dt;
+      pt.x += pt.vx * dt;
+      pt.y += pt.vy * dt;
+      pt.vy += 180 * dt;
+      if (pt.life <= 0) state.particles.splice(i, 1);
+    }
+  }
+
+  function updateCamera(dt) {
+    const target = clamp(state.player.x - 240, 0, WORLD_W - canvas.width);
+    cameraX += (target - cameraX) * Math.min(1, CAMERA_LERP * dt * 60);
+  }
+
+  function updateUI() {
+    ui.warmFill.style.width = (state.warmth * 100).toFixed(0) + '%';
+    ui.warmthText.textContent = (state.warmth * 100).toFixed(0) + '%';
+    ui.rescuedText.textContent = state.rescuedCount + ' / ' + TARGET_RESCUES + ' rescued';
+    ui.iceText.textContent = state.meltPlatforms.filter(pl => !pl.gone).length + ' floes left';
+    const seaPct = Math.round(((560 - state.seaLevel) / 140) * 100);
+    ui.seaText.textContent = 'Sea ' + Math.max(0, seaPct) + '%';
+  }
+
+  function spawnBurst(x, y, count, color) {
+    for (let i = 0; i < count; i++) {
+      const angle = Math.random() * Math.PI * 2;
+      const speed = 40 + Math.random() * 130;
+      state.particles.push({
+        x, y,
+        vx: Math.cos(angle) * speed,
+        vy: Math.sin(angle) * speed - 30,
+        life: 0.4 + Math.random() * 0.45,
+        color,
+        size: 4 + Math.random() * 5
+      });
+    }
+  }
+
+  function render() {
+    if (!state) {
+      drawIdleScene();
+      return;
+    }
+
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    drawBackground();
+    ctx.save();
+    ctx.translate(-cameraX, 0);
+    drawSmogFactory();
+    drawHomeBase();
+    drawValvePlatform();
+    drawPlatforms();
+    drawChicks();
+    drawPlayer();
+    drawParticles();
+    ctx.restore();
+    drawWater();
+    drawWorldHud();
+  }
+
+  function drawIdleScene() {
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    drawBackground();
+    ctx.save();
+    drawWater();
+    ctx.restore();
+  }
+
+  function drawBackground() {
+    ctx.fillStyle = '#FDFBF7';
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+    ctx.fillStyle = '#FFE6F2';
+    circle(120, 95, 52, true);
+    ctx.fillStyle = '#DFF2FF';
+    circle(700, 90, 58, true);
+
+    drawCloud(160, 110, 0.9);
+    drawCloud(620, 145, 1.15);
+    drawCloud(390, 80, 0.7);
+
+    ctx.fillStyle = '#B7D9FF';
+    ctx.strokeStyle = '#111';
+    ctx.lineWidth = 3;
+    roundedRect(-50, 445, 500, 120, 22, true, true);
+    roundedRect(420, 455, 540, 110, 22, true, true);
+    roundedRect(930, 430, 520, 140, 22, true, true);
+  }
+
+  function drawSmogFactory() {
+    const x = 1720;
+    const y = 150;
+    ctx.fillStyle = '#FF9BC7';
+    roundedRect(x, y + 120, 160, 130, 10, true, false);
+    ctx.strokeStyle = '#111';
+    ctx.lineWidth = 4;
+    roundedRect(x, y + 120, 160, 130, 10, false, true);
+
+    ctx.fillStyle = '#7A869A';
+    roundedRect(x + 24, y + 30, 42, 100, 8, true, false);
+    roundedRect(x + 88, y, 42, 130, 8, true, false);
+    ctx.strokeStyle = '#111';
+    roundedRect(x + 24, y + 30, 42, 100, 8, false, true);
+    roundedRect(x + 88, y, 42, 130, 8, false, true);
+
+    ctx.font = '900 44px Arial';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillStyle = '#111';
+    ctx.fillText('🏭', x + 80, y + 185);
+
+    const smokePuffs = 3 + Math.floor(state.warmth * 5);
+    for (let i = 0; i < smokePuffs; i++) {
+      const sx = x + 46 + i * 20 + Math.sin(state.time * 1.4 + i) * 10;
+      const sy = y + 20 - i * 10 - Math.cos(state.time * 1.5 + i * 0.5) * 8;
+      ctx.globalAlpha = 0.18 + state.warmth * 0.22;
+      ctx.fillStyle = '#666';
+      circle(sx, sy, 18 + i * 3, true);
+      ctx.globalAlpha = 1;
+    }
+  }
+
+  function drawHomeBase() {
+    const b = state.stableBase;
+    ctx.fillStyle = '#DDF5FF';
+    roundedRect(b.x, b.y, b.w, b.h, 20, true, false);
+    ctx.strokeStyle = '#111';
+    ctx.lineWidth = 4;
+    roundedRect(b.x, b.y, b.w, b.h, 20, false, true);
+
+    ctx.fillStyle = '#fff';
+    roundedRect(b.x + 22, b.y - 38, 150, 36, 8, true, false);
+    ctx.strokeStyle = '#111';
+    roundedRect(b.x + 22, b.y - 38, 150, 36, 8, false, true);
+    ctx.fillStyle = '#111';
+    ctx.font = '900 18px Arial';
+    ctx.textAlign = 'left';
+    ctx.textBaseline = 'middle';
+    ctx.fillText('SAFE ICEBERG', b.x + 36, b.y - 20);
+
+    const delivered = state.chicks.filter(c => c.delivered);
+    delivered.forEach((c, i) => {
+      drawEmoji('🐥', b.x + 52 + i * 28, b.y - 6 - (i % 2) * 6, 22);
+    });
+  }
+
+  function drawValvePlatform() {
+    const p = state.valvePlatform;
+    ctx.fillStyle = '#CFEFFF';
+    roundedRect(p.x, p.y, p.w, p.h, 12, true, false);
+    ctx.strokeStyle = '#111';
+    ctx.lineWidth = 4;
+    roundedRect(p.x, p.y, p.w, p.h, 12, false, true);
+
+    ctx.save();
+    ctx.translate(state.valve.x, state.valve.y);
+    const spin = state.valve.pulse * 1.3 + state.valve.activeFlash * 2.8;
+    ctx.rotate(spin);
+    ctx.fillStyle = state.coolingTimer > 0 ? '#87E1FF' : '#FFD84D';
+    circle(0, 0, state.valve.r, true);
+    ctx.strokeStyle = '#111';
+    ctx.lineWidth = 4;
+    circle(0, 0, state.valve.r, false);
+    for (let i = 0; i < 4; i++) {
+      ctx.rotate(Math.PI / 2);
+      ctx.fillRect(-4, -state.valve.r - 12, 8, 22);
+      ctx.strokeRect(-4, -state.valve.r - 12, 8, 22);
+    }
+    circle(0, 0, 8, true);
+    circle(0, 0, 8, false);
+    ctx.restore();
+
+    ctx.fillStyle = '#fff';
+    roundedRect(p.x + 105, p.y - 48, 120, 34, 8, true, false);
+    ctx.strokeStyle = '#111';
+    roundedRect(p.x + 105, p.y - 48, 120, 34, 8, false, true);
+    ctx.fillStyle = '#111';
+    ctx.font = '900 16px Arial';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText(state.coolingTimer > 0 ? 'COOLING!' : 'SPIN VALVE', p.x + 165, p.y - 31);
+  }
+
+  function drawPlatforms() {
+    for (const pl of state.meltPlatforms) {
+      if (pl.gone) continue;
+      const x = pl.x + pl.shrink * 0.5;
+      const meltRatio = 1 - pl.w / pl.baseW;
+      ctx.fillStyle = meltRatio > 0.55 ? '#B7E2FF' : '#DDF6FF';
+      roundedRect(x, pl.y, pl.w, pl.h, 12, true, false);
+      ctx.strokeStyle = '#111';
+      ctx.lineWidth = 4;
+      roundedRect(x, pl.y, pl.w, pl.h, 12, false, true);
+      for (let i = 0; i < Math.max(2, Math.floor(pl.w / 38)); i++) {
+        drawEmoji('🧊', x + 22 + i * 32, pl.y + pl.h / 2 + Math.sin(i + state.time * 2) * 2, 18);
+      }
+    }
+  }
+
+  function drawChicks() {
+    for (const chick of state.chicks) {
+      if (chick.delivered) continue;
+      const bob = Math.sin(chick.bob) * 3;
+      drawEmoji('🐥', chick.x + 8, chick.y + 8 + bob, 22);
+    }
+  }
+
+  function drawPlayer() {
+    const p = state.player;
+    const x = p.x;
+    const y = p.y;
+    ctx.save();
+    ctx.translate(x + p.w / 2, y + p.h / 2);
+    ctx.scale(p.facing, 1);
+
+    ctx.fillStyle = '#111';
+    ctx.strokeStyle = '#111';
+    ctx.lineWidth = 3;
+    ellipse(0, 8, 18, 20, true, false);
+    ctx.fillStyle = '#87D0FF';
+    ellipse(0, 0, 20, 22, true, false);
+    ctx.strokeStyle = '#111';
+    ellipse(0, 0, 20, 22, false, true);
+
+    ctx.fillStyle = '#fff';
+    ellipse(0, 6, 11, 14, true, false);
+    ctx.strokeStyle = '#111';
+    ellipse(0, 6, 11, 14, false, true);
+
+    ctx.fillStyle = '#111';
+    circle(-6, -8, 2.3, true);
+    circle(6, -8, 2.3, true);
+
+    ctx.fillStyle = '#FFB44D';
+    ctx.beginPath();
+    ctx.moveTo(0, -2);
+    ctx.lineTo(10, 2);
+    ctx.lineTo(0, 6);
+    ctx.closePath();
+    ctx.fill();
+    ctx.stroke();
+
+    ctx.fillStyle = '#FFB44D';
+    roundedRect(-13, 20, 9, 8, 4, true, false);
+    roundedRect(4, 20, 9, 8, 4, true, false);
+    ctx.strokeStyle = '#111';
+    roundedRect(-13, 20, 9, 8, 4, false, true);
+    roundedRect(4, 20, 9, 8, 4, false, true);
+
+    ctx.restore();
+
+    if (p.carrying) {
+      drawEmoji('🐥', x + p.w / 2, y - 8, 20);
+    }
+  }
+
+  function drawParticles() {
+    for (const pt of state.particles) {
+      ctx.globalAlpha = Math.max(0, pt.life / 0.8);
+      ctx.fillStyle = pt.color;
+      ctx.strokeStyle = '#111';
+      ctx.lineWidth = 2;
+      roundedRect(pt.x, pt.y, pt.size, pt.size, 3, true, false);
+      roundedRect(pt.x, pt.y, pt.size, pt.size, 3, false, true);
+      ctx.globalAlpha = 1;
+    }
+  }
+
+  function drawWater() {
+    const top = state.seaLevel;
+    ctx.save();
+    ctx.fillStyle = '#7CC6FF';
+    ctx.beginPath();
+    ctx.moveTo(0, canvas.height);
+    ctx.lineTo(0, top);
+    for (let x = 0; x <= canvas.width; x += 16) {
+      const y = top + Math.sin(state.time * 2.8 + x * 0.02) * 7;
+      ctx.lineTo(x, y);
+    }
+    ctx.lineTo(canvas.width, canvas.height);
+    ctx.closePath();
+    ctx.fill();
+    ctx.strokeStyle = '#111';
+    ctx.lineWidth = 4;
+    ctx.stroke();
+
+    ctx.globalAlpha = 0.28;
+    ctx.fillStyle = '#2F6FD0';
+    ctx.fillRect(0, top + 12, canvas.width, canvas.height - top);
+    ctx.globalAlpha = 1;
+    ctx.restore();
+  }
+
+  function drawWorldHud() {
+    const nearValve = Math.hypot((state.player.x + state.player.w / 2) - state.valve.x, (state.player.y + state.player.h / 2) - state.valve.y) < 78;
+    if (nearValve && state.state === 'playing') {
+      const sx = state.valve.x - cameraX;
+      const sy = state.valve.y - 70;
+      ctx.fillStyle = '#FFF7E8';
+      roundedRect(sx - 58, sy - 18, 116, 32, 8, true, false);
+      ctx.strokeStyle = '#111';
+      ctx.lineWidth = 3;
+      roundedRect(sx - 58, sy - 18, 116, 32, 8, false, true);
+      ctx.fillStyle = '#111';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.font = '900 15px Arial';
+      ctx.fillText('Press E to cool', sx, sy - 1);
+    }
+  }
+
+  function drawCloud(x, y, scale) {
+    ctx.save();
+    ctx.translate(x, y);
+    ctx.scale(scale, scale);
+    ctx.fillStyle = '#fff';
+    ctx.strokeStyle = '#111';
+    ctx.lineWidth = 3;
+    circle(-26, 2, 20, true);
+    circle(0, -10, 25, true);
+    circle(28, 2, 18, true);
+    roundedRect(-42, 0, 84, 24, 12, true, false);
+    circle(-26, 2, 20, false);
+    circle(0, -10, 25, false);
+    circle(28, 2, 18, false);
+    roundedRect(-42, 0, 84, 24, 12, false, true);
+    ctx.restore();
+  }
+
+  function roundedRect(x, y, w, h, r, fill, stroke) {
+    ctx.beginPath();
+    ctx.moveTo(x + r, y);
+    ctx.lineTo(x + w - r, y);
+    ctx.quadraticCurveTo(x + w, y, x + w, y + r);
+    ctx.lineTo(x + w, y + h - r);
+    ctx.quadraticCurveTo(x + w, y + h, x + w - r, y + h);
+    ctx.lineTo(x + r, y + h);
+    ctx.quadraticCurveTo(x, y + h, x, y + h - r);
+    ctx.lineTo(x, y + r);
+    ctx.quadraticCurveTo(x, y, x + r, y);
+    if (fill) ctx.fill();
+    if (stroke) ctx.stroke();
+  }
+
+  function circle(x, y, r, fill) {
+    ctx.beginPath();
+    ctx.arc(x, y, r, 0, Math.PI * 2);
+    if (fill) ctx.fill();
+    else ctx.stroke();
+  }
+
+  function ellipse(x, y, rx, ry, fill, stroke) {
+    ctx.beginPath();
+    ctx.ellipse(x, y, rx, ry, 0, 0, Math.PI * 2);
+    if (fill) ctx.fill();
+    if (stroke) ctx.stroke();
+  }
+
+  function drawEmoji(emoji, x, y, size) {
+    ctx.save();
+    ctx.font = size + 'px "Segoe UI Emoji", "Apple Color Emoji", Arial';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.lineWidth = 3;
+    ctx.strokeStyle = '#111';
+    ctx.strokeText(emoji, x, y);
+    ctx.fillText(emoji, x, y);
+    ctx.restore();
+  }
+
+  function setControl(name, isDown) {
+    if (name === 'left') input.left = isDown;
+    if (name === 'right') input.right = isDown;
+    if (name === 'jump') {
+      if (isDown && !input.jump) input.jumpPressed = true;
+      input.jump = isDown;
+    }
+    if (name === 'action' && isDown) input.actionPressed = true;
+  }
+
+  window.addEventListener('keydown', (e) => {
+    const k = e.key.toLowerCase();
+    if (["arrowleft","arrowright","arrowup"," ","a","d","w","e"].includes(k)) e.preventDefault();
+    if (k === 'arrowleft' || k === 'a') input.left = true;
+    if (k === 'arrowright' || k === 'd') input.right = true;
+    if ((k === 'arrowup' || k === 'w' || k === ' ') && !input.jump) {
+      input.jump = true;
+      input.jumpPressed = true;
+    }
+    if (k === 'e') input.actionPressed = true;
+  }, { passive: false });
+
+  window.addEventListener('keyup', (e) => {
+    const k = e.key.toLowerCase();
+    if (k === 'arrowleft' || k === 'a') input.left = false;
+    if (k === 'arrowright' || k === 'd') input.right = false;
+    if (k === 'arrowup' || k === 'w' || k === ' ') input.jump = false;
+  });
+
+  document.querySelectorAll('[data-control]').forEach(btn => {
+    const name = btn.getAttribute('data-control');
+    const onDown = (e) => { e.preventDefault(); setControl(name, true); };
+    const onUp = (e) => { e.preventDefault(); setControl(name, false); };
+    btn.addEventListener('pointerdown', onDown);
+    btn.addEventListener('pointerup', onUp);
+    btn.addEventListener('pointercancel', onUp);
+    btn.addEventListener('pointerleave', onUp);
+  });
+
+  document.getElementById('startBtn').addEventListener('click', startGame);
+  document.getElementById('retryBtn').addEventListener('click', () => {
+    ui.retryOverlay.classList.remove('show');
+    resetGame();
+  });
+  document.getElementById('playAgainBtn').addEventListener('click', () => {
+    ui.factCard.classList.remove('show');
+    resetGame();
+  });
+
+  function frame(ts) {
+    if (!lastTime) lastTime = ts;
+    const dt = Math.min(0.033, (ts - lastTime) / 1000);
+    lastTime = ts;
+    if (gameRunning) update(dt);
+    render();
+    requestAnimationFrame(frame);
+  }
+
+  state = createState();
+  updateUI();
+  render();
+  requestAnimationFrame(frame);
+})();
+</script>
+</body>
+</html>

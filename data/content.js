@@ -46,7 +46,8 @@
       icon: "🐝",
       mapPos: { x: 24, y: 20 },
       fact: "About 1 in 3 bites of our food depends on pollinators like bees.",
-      playable: false
+      playable: true,
+      href: "stages/stage03-food.html"
     },
     {
       id: "stage04",

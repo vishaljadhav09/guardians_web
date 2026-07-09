@@ -1,0 +1,1272 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Buzz &amp; the Last Blooms — Guardians of Gaia</title>
+<style>
+  :root{
+    --cream:#FDFBF7;
+    --ink:#111111;
+    --pink:#FF007F;
+    --pink-deep:#C4005F;
+    --green:#3F8F29;
+    --leaf:#7CB342;
+    --leaf-dark:#5b8a2a;
+    --gray:#9E9E9E;
+    --gray-dark:#6b6b6b;
+    --yellow:#FFD23F;
+    --sky:#CFEBFF;
+    --border-w:4px;
+  }
+
+  *{ box-sizing:border-box; }
+
+  html,body{
+    margin:0; padding:0; height:100%;
+    background:var(--cream);
+    background-image:
+      radial-gradient(circle at 1px 1px, rgba(17,17,17,0.05) 1px, transparent 0);
+    background-size:14px 14px;
+    font-family:'Segoe UI', Verdana, sans-serif;
+    color:var(--ink);
+    overflow:hidden;
+    -webkit-tap-highlight-color:transparent;
+  }
+
+  .brutal{
+    border:var(--border-w) solid var(--ink);
+    border-radius:16px;
+    box-shadow:7px 7px 0 var(--ink);
+    background:#fff;
+  }
+
+  .display-text{
+    font-family:'Arial Black','Segoe UI Black', Impact, sans-serif;
+    letter-spacing:0.5px;
+    -webkit-text-stroke:2px var(--ink);
+    text-stroke:2px var(--ink);
+    color:#fff;
+    text-shadow:4px 4px 0 var(--ink);
+  }
+
+  #app{
+    width:100%;
+    height:100%;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    padding:14px;
+  }
+
+  #stageWrap{
+    position:relative;
+    width:min(96vw, 1000px);
+    aspect-ratio: 4 / 3;
+    max-height:94vh;
+  }
+
+  #stage{
+    position:relative;
+    width:100%;
+    height:100%;
+    overflow:hidden;
+    background:var(--cream);
+  }
+
+  #gameCanvas{
+    position:absolute;
+    top:0; left:0;
+    width:100%;
+    height:100%;
+    display:block;
+    touch-action:none;
+    cursor:crosshair;
+  }
+
+  /* ---------- HUD ---------- */
+  #hud{
+    position:absolute;
+    top:14px; left:14px; right:14px;
+    display:flex;
+    justify-content:space-between;
+    align-items:flex-start;
+    pointer-events:none;
+    z-index:5;
+    gap:10px;
+  }
+
+  .hud-pill{
+    background:#fff;
+    border:3px solid var(--ink);
+    border-radius:12px;
+    box-shadow:4px 4px 0 var(--ink);
+    padding:6px 12px;
+    font-weight:800;
+    font-size:14px;
+    display:flex;
+    align-items:center;
+    gap:6px;
+    white-space:nowrap;
+  }
+
+  .hud-left{ display:flex; flex-direction:column; gap:8px; }
+  .hud-right{ display:flex; flex-direction:column; gap:8px; align-items:flex-end; }
+
+  #comboPill{ color:var(--pink-deep); }
+  #comboPill.pop{ animation:comboPop 0.28s ease; }
+  @keyframes comboPop{
+    0%{ transform:scale(1); }
+    40%{ transform:scale(1.35) rotate(-4deg); }
+    100%{ transform:scale(1); }
+  }
+
+  #progressWrap{
+    width:170px;
+  }
+  #progressTrack{
+    width:100%;
+    height:16px;
+    background:#fff;
+    border:3px solid var(--ink);
+    border-radius:10px;
+    overflow:hidden;
+    box-shadow:3px 3px 0 var(--ink);
+  }
+  #progressFill{
+    height:100%;
+    width:0%;
+    background:repeating-linear-gradient(45deg, var(--pink), var(--pink) 8px, var(--pink-deep) 8px, var(--pink-deep) 16px);
+    transition:width 0.25s ease;
+  }
+  #progressLabel{
+    font-size:11px; font-weight:800; text-align:center; margin-top:3px;
+  }
+
+  #muteBtn{
+    pointer-events:auto;
+    cursor:pointer;
+    background:#fff;
+    border:3px solid var(--ink);
+    border-radius:10px;
+    box-shadow:3px 3px 0 var(--ink);
+    font-size:16px;
+    padding:5px 9px;
+    line-height:1;
+  }
+  #muteBtn:active{ box-shadow:1px 1px 0 var(--ink); transform:translate(2px,2px); }
+
+  #timerPill.low{ color:#B00020; animation:tick 0.5s infinite; }
+  @keyframes tick{ 0%,100%{ transform:scale(1); } 50%{ transform:scale(1.12); } }
+
+  /* ---------- Overlays ---------- */
+  .overlay{
+    position:absolute;
+    inset:0;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    z-index:20;
+    background:rgba(253,251,247,0.92);
+    transition:opacity 0.25s ease;
+  }
+  .overlay.hidden{
+    opacity:0;
+    pointer-events:none;
+  }
+
+  .card{
+    max-width:88%;
+    text-align:center;
+    padding:26px 28px;
+    background:#fff;
+  }
+
+  .card h1{
+    font-size:clamp(20px, 4.2vw, 34px);
+    margin:0 0 6px 0;
+  }
+  .card p{
+    font-size:clamp(12px, 2.4vw, 16px);
+    font-weight:600;
+    margin:8px 0 18px 0;
+    max-width:420px;
+  }
+
+  .bigEmoji{
+    font-size:clamp(38px, 8vw, 64px);
+    margin-bottom:6px;
+    display:block;
+  }
+
+  .brutalBtn{
+    font-family:'Arial Black','Segoe UI Black', Impact, sans-serif;
+    font-size:clamp(14px, 2.6vw, 18px);
+    letter-spacing:0.5px;
+    background:var(--pink);
+    color:#fff;
+    border:3px solid var(--ink);
+    border-radius:12px;
+    box-shadow:5px 5px 0 var(--ink);
+    padding:12px 26px;
+    cursor:pointer;
+    -webkit-text-stroke:1px var(--ink);
+  }
+  .brutalBtn:active{
+    box-shadow:1px 1px 0 var(--ink);
+    transform:translate(4px,4px);
+  }
+
+  .factCard{
+    margin:10px auto 18px auto;
+    max-width:380px;
+    background:var(--yellow);
+    border:3px solid var(--ink);
+    border-radius:12px;
+    box-shadow:4px 4px 0 var(--ink);
+    padding:12px 14px;
+    font-size:13px;
+    font-weight:700;
+    text-align:left;
+  }
+
+  .howto{
+    text-align:left;
+    font-size:12px;
+    font-weight:600;
+    background:var(--sky);
+    border:3px solid var(--ink);
+    border-radius:12px;
+    box-shadow:4px 4px 0 var(--ink);
+    padding:10px 14px;
+    margin:0 0 18px 0;
+    max-width:400px;
+  }
+  .howto li{ margin:4px 0; }
+
+  @media (max-width:520px){
+    .hud-pill{ font-size:11px; padding:5px 8px; }
+    #progressWrap{ width:110px; }
+  }
+</style>
+</head>
+<body>
+<div id="app">
+  <div id="stageWrap" class="brutal">
+    <div id="stage">
+      <canvas id="gameCanvas" width="800" height="600"></canvas>
+
+      <div id="hud">
+        <div class="hud-left">
+          <div class="hud-pill">🌼 <span id="scorePill">0</span></div>
+          <div class="hud-pill" id="comboPill">🔥 x<span id="comboVal">0</span></div>
+        </div>
+        <div class="hud-left" style="align-items:center;">
+          <div id="progressWrap">
+            <div id="progressTrack"><div id="progressFill"></div></div>
+            <div id="progressLabel"><span id="progressVal">0</span> / 15 bloomed</div>
+          </div>
+        </div>
+        <div class="hud-right">
+          <button id="muteBtn" title="Toggle sound">🔊</button>
+          <div class="hud-pill" id="timerPill">⏱ <span id="timeVal">90</span>s</div>
+        </div>
+      </div>
+
+      <!-- START OVERLAY -->
+      <div class="overlay" id="startOverlay">
+        <div class="card brutal">
+          <span class="bigEmoji">🐝🌱</span>
+          <h1 class="display-text">Buzz &amp; the Last Blooms</h1>
+          <p>Trace flight paths between blooming flowers before they wilt. Keep Buzz busy, and watch the whole meadow come alive.</p>
+          <ul class="howto brutal">
+            <li>🌱 A new flower appears on every beat — it wilts in 3 seconds!</li>
+            <li>🖱️ Drag from one glowing flower to another to fly Buzz between them.</li>
+            <li>🌸 Both flowers bloom, drop fruit, and feed a hungry critter.</li>
+            <li>💨 Miss 3 in a row and the meadow gets smoggy — no bees, no food.</li>
+            <li>🎯 Pollinate 15 flowers to make the whole meadow bloom!</li>
+          </ul>
+          <button class="brutalBtn" id="startBtn">Start Buzzing ▶</button>
+        </div>
+      </div>
+
+      <!-- WIN OVERLAY -->
+      <div class="overlay hidden" id="winOverlay">
+        <div class="card brutal">
+          <span class="bigEmoji">🌼🐝🌸</span>
+          <h1 class="display-text">The Meadow Blooms!</h1>
+          <p>Buzz did it — every last flower is blooming again.</p>
+          <div class="factCard">🌍 Fun fact: about <b>1 in 3 bites</b> of the food we eat depends on pollinators like bees!</div>
+          <button class="brutalBtn" id="playAgainBtn">Play Again ▶</button>
+        </div>
+      </div>
+
+      <!-- FAIL OVERLAY -->
+      <div class="overlay hidden" id="failOverlay">
+        <div class="card brutal">
+          <span class="bigEmoji">🐝💤</span>
+          <h1 class="display-text">Buzz Needs a Rest</h1>
+          <p>The meadow's still a little sleepy — some flowers didn't get visited in time. Buzz would love another go!</p>
+          <button class="brutalBtn" id="tryAgainBtn">Try Again ▶</button>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+<script>
+/* ============================================================
+   GUARDIANS OF GAIA — SHARED ENGINE  (embedded verbatim)
+   ============================================================ */
+(function (global) {
+  "use strict";
+
+  var EmojiSprite = (function () {
+    var cache = {};
+    function get(glyph, size) {
+      var rounded = Math.round(size / 2) * 2; // round to nearest 2px to maximize cache hits
+      var key = glyph + "_" + rounded;
+      if (cache[key]) return cache[key];
+      var pad = rounded * 0.4;
+      var c = document.createElement("canvas");
+      c.width = c.height = rounded + pad * 2;
+      var cctx = c.getContext("2d");
+      cctx.font = rounded + "px sans-serif";
+      cctx.textAlign = "center";
+      cctx.textBaseline = "middle";
+      cctx.fillText(glyph, c.width / 2, c.height / 2);
+      cache[key] = c;
+      return c;
+    }
+    return { get: get };
+  })();
+  global.EmojiSprite = EmojiSprite; // expose alongside GOGEngine
+
+  /* ---------------- GameLoop ---------------- */
+  function GameLoop(opts) {
+    this.update = opts.update || function () {};
+    this.draw = opts.draw || function () {};
+    this.stepMs = opts.stepMs || (1000 / 60);
+    this._acc = 0;
+    this._last = 0;
+    this._running = false;
+    this._raf = null;
+    this._maxStepsPerFrame = 5; // avoid spiral-of-death on tab-resume
+    this._onVisibility = this._onVisibility.bind(this);
+  }
+
+  GameLoop.prototype.start = function () {
+    if (this._running) return;
+    this._running = true;
+    this._last = performance.now();
+    document.addEventListener("visibilitychange", this._onVisibility);
+    var self = this;
+    function frame(now) {
+      if (!self._running) return;
+      var dtMs = now - self._last;
+      self._last = now;
+      if (dtMs > 250) dtMs = 250; // clamp huge gaps (tab was hidden)
+      self._acc += dtMs;
+      var steps = 0;
+      while (self._acc >= self.stepMs && steps < self._maxStepsPerFrame) {
+        self.update(self.stepMs / 1000);
+        self._acc -= self.stepMs;
+        steps++;
+      }
+      if (steps >= self._maxStepsPerFrame && self._acc >= self.stepMs) {
+        self._acc = 0;
+      }
+      self.draw();
+      self._raf = requestAnimationFrame(frame);
+    }
+    this._raf = requestAnimationFrame(frame);
+  };
+
+  GameLoop.prototype.stop = function () {
+    this._running = false;
+    if (this._raf) cancelAnimationFrame(this._raf);
+    document.removeEventListener("visibilitychange", this._onVisibility);
+  };
+
+  GameLoop.prototype._onVisibility = function () {
+    if (!document.hidden) this._last = performance.now();
+  };
+
+  /* ---------------- Input ---------------- */
+  function Input(canvas) {
+    this.canvas = canvas;
+    this.pointer = { x: 0, y: 0, down: false, active: false };
+    this.keys = {};
+    this._bind();
+  }
+
+  Input.prototype._toCanvasXY = function (clientX, clientY) {
+    var rect = this.canvas.getBoundingClientRect();
+    var scaleX = this.canvas.width / rect.width;
+    var scaleY = this.canvas.height / rect.height;
+    return {
+      x: (clientX - rect.left) * scaleX,
+      y: (clientY - rect.top) * scaleY
+    };
+  };
+
+  Input.prototype._bind = function () {
+    var self = this;
+    function setFromEvent(e, down) {
+      var point = e.touches && e.touches[0] ? e.touches[0] : e;
+      var xy = self._toCanvasXY(point.clientX, point.clientY);
+      self.pointer.x = xy.x;
+      self.pointer.y = xy.y;
+      self.pointer.active = true;
+      if (down !== undefined) self.pointer.down = down;
+    }
+    this.canvas.addEventListener("mousemove", function (e) { setFromEvent(e); });
+    this.canvas.addEventListener("mousedown", function (e) { setFromEvent(e, true); });
+    window.addEventListener("mouseup", function () { self.pointer.down = false; });
+    this.canvas.addEventListener("touchstart", function (e) { e.preventDefault(); setFromEvent(e, true); }, { passive: false });
+    this.canvas.addEventListener("touchmove", function (e) { e.preventDefault(); setFromEvent(e); }, { passive: false });
+    this.canvas.addEventListener("touchend", function (e) { e.preventDefault(); self.pointer.down = false; }, { passive: false });
+    window.addEventListener("keydown", function (e) { self.keys[e.key] = true; });
+    window.addEventListener("keyup", function (e) { self.keys[e.key] = false; });
+  };
+
+  Input.prototype.isDown = function (key) { return !!this.keys[key]; };
+
+  /* ---------------- Collision helpers ---------------- */
+  var Collision = {
+    circleHit: function (ax, ay, ar, bx, by, br) {
+      var dx = ax - bx, dy = ay - by;
+      var rr = ar + br;
+      return (dx * dx + dy * dy) <= (rr * rr);
+    },
+    distance: function (ax, ay, bx, by) {
+      var dx = ax - bx, dy = ay - by;
+      return Math.sqrt(dx * dx + dy * dy);
+    },
+    clamp: function (v, min, max) { return Math.max(min, Math.min(max, v)); },
+    lerp: function (a, b, t) { return a + (b - a) * t; }
+  };
+
+  /* ---------------- Particles ---------------- */
+  function ParticleSystem(maxParticles) {
+    this.max = maxParticles || 120;
+    this.pool = [];
+    for (var i = 0; i < this.max; i++) this.pool.push(this._fresh());
+  }
+
+  ParticleSystem.prototype._fresh = function () {
+    return { active: false, x: 0, y: 0, vx: 0, vy: 0, life: 0, maxLife: 1, text: "", size: 16, rotation: 0, vr: 0 };
+  };
+
+  ParticleSystem.prototype.burst = function (x, y, opts) {
+    opts = opts || {};
+    var count = opts.count || 8;
+    for (var i = 0; i < count; i++) {
+      var p = null;
+      for (var j = 0; j < this.pool.length; j++) {
+        if (!this.pool[j].active) { p = this.pool[j]; break; }
+      }
+      if (!p) return;
+      var angle = (opts.angle != null ? opts.angle : Math.random() * Math.PI * 2);
+      var spread = opts.spread != null ? opts.spread : Math.PI * 2;
+      var a = angle + (Math.random() - 0.5) * spread;
+      var speed = (opts.minSpeed || 40) + Math.random() * ((opts.maxSpeed || 140) - (opts.minSpeed || 40));
+      p.active = true;
+      p.x = x; p.y = y;
+      p.vx = Math.cos(a) * speed;
+      p.vy = Math.sin(a) * speed - (opts.lift || 60);
+      p.life = 0;
+      p.maxLife = (opts.life || 700) / 1000;
+      p.text = Array.isArray(opts.glyphs) ? opts.glyphs[Math.floor(Math.random() * opts.glyphs.length)] : (opts.glyph || "\u2728");
+      p.size = (opts.minSize || 14) + Math.random() * ((opts.maxSize || 22) - (opts.minSize || 14));
+      p.rotation = Math.random() * Math.PI;
+      p.vr = (Math.random() - 0.5) * 6;
+      p.gravity = opts.gravity != null ? opts.gravity : 220;
+    }
+  };
+
+  ParticleSystem.prototype.update = function (dt) {
+    for (var i = 0; i < this.pool.length; i++) {
+      var p = this.pool[i];
+      if (!p.active) continue;
+      p.life += dt;
+      if (p.life >= p.maxLife) { p.active = false; continue; }
+      p.vy += p.gravity * dt;
+      p.x += p.vx * dt;
+      p.y += p.vy * dt;
+      p.rotation += p.vr * dt;
+    }
+  };
+
+  ParticleSystem.prototype.draw = function (ctx) {
+    for (var i = 0; i < this.pool.length; i++) {
+      var p = this.pool[i];
+      if (!p.active) continue;
+      var t = p.life / p.maxLife;
+      var alpha = 1 - t;
+      ctx.save();
+      ctx.globalAlpha = Math.max(0, alpha);
+      ctx.translate(p.x, p.y);
+      ctx.rotate(p.rotation);
+      var sprite = EmojiSprite.get(p.text, p.size);
+      ctx.drawImage(sprite, -sprite.width / 2, -sprite.height / 2);
+      ctx.restore();
+    }
+  };
+
+  var hasUserGesture = false;
+  function registerUserGesture() {
+    hasUserGesture = true;
+    if (global.document) {
+      ["click", "keydown", "pointerdown", "touchstart"].forEach(function (e) {
+        global.document.removeEventListener(e, registerUserGesture, { capture: true });
+      });
+    }
+  }
+  if (global.document) {
+    ["click", "keydown", "pointerdown", "touchstart"].forEach(function (e) {
+      global.document.addEventListener(e, registerUserGesture, { capture: true, passive: true });
+    });
+  }
+
+  function Audio(muted) {
+    this.muted = !!muted;
+    this._ctx = null;
+  }
+
+  Audio.prototype._ensureCtx = function () {
+    var activated = false;
+    if (global.navigator && global.navigator.userActivation) {
+      activated = global.navigator.userActivation.hasBeenActive;
+    } else {
+      activated = hasUserGesture;
+    }
+    if (!activated) return null;
+    if (!this._ctx) {
+      var AC = global.AudioContext || global.webkitAudioContext;
+      if (AC) this._ctx = new AC();
+    }
+    if (this._ctx && this._ctx.state === "suspended") {
+      this._ctx.resume().catch(function(){});
+    }
+    return this._ctx;
+  };
+
+  Audio.prototype.setMuted = function (muted) { this.muted = muted; };
+
+  Audio.prototype.tone = function (freq, dur, type, peak, glideTo, delay) {
+    if (this.muted) return;
+    var ctx = this._ensureCtx();
+    if (!ctx) return;
+    var t0 = ctx.currentTime + (delay || 0);
+    var osc = ctx.createOscillator();
+    var g = ctx.createGain();
+    osc.type = type || "sine";
+    osc.frequency.setValueAtTime(freq, t0);
+    if (glideTo) osc.frequency.exponentialRampToValueAtTime(glideTo, t0 + dur);
+    var p = peak != null ? peak : 0.05;
+    g.gain.setValueAtTime(0.0001, t0);
+    g.gain.exponentialRampToValueAtTime(p, t0 + Math.min(0.02, dur * 0.15));
+    g.gain.exponentialRampToValueAtTime(0.0001, t0 + dur);
+    osc.connect(g);
+    g.connect(ctx.destination);
+    osc.start(t0);
+    osc.stop(t0 + dur + 0.03);
+    osc.onended = function () { osc.disconnect(); g.disconnect(); };
+  };
+
+  Audio.prototype.blip = function (freq, durationMs, type) {
+    this.tone(freq || 660, (durationMs || 140) / 1000, type || "sine");
+  };
+
+  Audio.prototype.collect = function () {
+    this.tone(660, 0.14, 'triangle', 0.1, 880);
+    this.tone(990, 0.13, 'triangle', 0.08, 1200, 0.06);
+  };
+  Audio.prototype.hazard = function () { this.tone(180, 0.22, 'sawtooth', 0.06, 110); };
+  Audio.prototype.oops = function () {
+    this.tone(300, 0.15, 'sawtooth', 0.08, 150);
+    this.tone(200, 0.22, 'sawtooth', 0.07, 100, 0.08);
+  };
+  Audio.prototype.heal = function () {
+    this.tone(440, 0.12, 'sine', 0.08, 660);
+    this.tone(554, 0.12, 'sine', 0.08, 880, 0.06);
+    this.tone(659, 0.16, 'sine', 0.06, 1100, 0.12);
+  };
+  Audio.prototype.grow = function () { this.tone(160, 0.5, 'sine', 0.1, 420); };
+  Audio.prototype.fly = function () { this.tone(500, 0.35, 'sine', 0.08, 900); };
+  Audio.prototype.bloom = function () {
+    var self = this;
+    [523, 659, 784, 1046].forEach(function (f, i) {
+      self.tone(f, 0.22, 'triangle', 0.08, null, i * 0.09);
+    });
+  };
+  Audio.prototype.win = function () { this.bloom(); };
+
+  global.GOGEngine = {
+    GameLoop: GameLoop,
+    Input: Input,
+    Collision: Collision,
+    ParticleSystem: ParticleSystem,
+    Audio: Audio
+  };
+})(window);
+</script>
+
+<script>
+/* ============================================================
+   STAGE 3 — BUZZ & THE LAST BLOOMS
+   Rhythm-tracing pollination mini-game built on GOGEngine.
+   ============================================================ */
+(function () {
+  "use strict";
+
+  var canvas = document.getElementById("gameCanvas");
+  var ctx = canvas.getContext("2d");
+  var W = canvas.width, H = canvas.height;
+
+  var Collision = window.GOGEngine.Collision;
+  var particles = new window.GOGEngine.ParticleSystem(160);
+  var audio = new window.GOGEngine.Audio(false);
+  var EmojiSprite = window.EmojiSprite;
+
+  /* ---------------- DOM refs ---------------- */
+  var stageWrap = document.getElementById("stageWrap");
+  var startOverlay = document.getElementById("startOverlay");
+  var winOverlay = document.getElementById("winOverlay");
+  var failOverlay = document.getElementById("failOverlay");
+  var startBtn = document.getElementById("startBtn");
+  var playAgainBtn = document.getElementById("playAgainBtn");
+  var tryAgainBtn = document.getElementById("tryAgainBtn");
+  var muteBtn = document.getElementById("muteBtn");
+
+  var scorePill = document.getElementById("scorePill");
+  var comboPill = document.getElementById("comboPill");
+  var comboVal = document.getElementById("comboVal");
+  var progressFill = document.getElementById("progressFill");
+  var progressVal = document.getElementById("progressVal");
+  var timeVal = document.getElementById("timeVal");
+  var timerPill = document.getElementById("timerPill");
+
+  /* ---------------- Constants ---------------- */
+  var WIN_TARGET = 15;
+  var SESSION_MS = 90000;
+  var WILT_MS = 3000;
+  var BEAT_MS = 2000;
+  var BEAT_JITTER = 300;
+  var MAX_ACTIVE_FLOWERS = 4;
+  var SMOG_MISS_THRESHOLD = 3;
+  var FAIL_MISS_THRESHOLD = 6;
+  var GROUND_Y = H - 78;
+  var FLOWER_R = 32;
+
+  var CRITTERS = ["🐸", "🐰"];
+  var FRUITS = ["🍎", "🍇", "🍒", "🍓", "🍑"];
+
+  /* ---------------- Mutable game state ---------------- */
+  var gameState = "idle"; // idle | playing | winning | win | fail
+  var flowers = [];
+  var fruits = [];
+  var critters = [];
+  var flowerIdSeq = 1;
+
+  var score = 0, combo = 0, pollinatedCount = 0, consecutiveMisses = 0;
+  var beatTimer = 0, nextBeatMs = BEAT_MS;
+  var sessionTimeLeft = SESSION_MS;
+  var smogActive = false, smogTimer = 0, smogAlpha = 0;
+  var smogClouds = [];
+  var flightPaths = [];
+
+  var dragging = false;
+  var dragSourceId = null;
+  var dragTrail = [];
+  var dragCurrent = { x: 0, y: 0 };
+  var hoverTargetId = null;
+
+  var ambientBee = { x: W * 0.5, y: H * 0.22, t: Math.random() * 100 };
+
+  var winWipeRadius = 0;
+  var winWipeMax = Math.hypot(W, H) * 0.6;
+
+  /* ---------------- Helpers ---------------- */
+  function rand(min, max) { return min + Math.random() * (max - min); }
+
+  function canvasPointFromEvent(e) {
+    var rect = canvas.getBoundingClientRect();
+    var scaleX = W / rect.width;
+    var scaleY = H / rect.height;
+    return {
+      x: (e.clientX - rect.left) * scaleX,
+      y: (e.clientY - rect.top) * scaleY
+    };
+  }
+
+  function activeFlowers() {
+    return flowers.filter(function (f) { return f.state === "active"; });
+  }
+
+  function findFlowerAt(x, y, excludeId) {
+    var list = flowers;
+    var best = null, bestDist = Infinity;
+    for (var i = 0; i < list.length; i++) {
+      var f = list[i];
+      if (f.state !== "active") continue;
+      if (excludeId != null && f.id === excludeId) continue;
+      var d = Collision.distance(x, y, f.x, f.y);
+      if (d <= f.r + 12 && d < bestDist) { best = f; bestDist = d; }
+    }
+    return best;
+  }
+
+  function spawnFlower() {
+    if (activeFlowers().length >= MAX_ACTIVE_FLOWERS) return;
+    var x, y, ok, tries = 0;
+    do {
+      x = rand(70, W - 70);
+      y = rand(130, GROUND_Y - 40);
+      ok = true;
+      for (var i = 0; i < flowers.length; i++) {
+        if (Collision.distance(x, y, flowers[i].x, flowers[i].y) < 100) { ok = false; break; }
+      }
+      tries++;
+    } while (!ok && tries < 24);
+
+    flowers.push({
+      id: flowerIdSeq++,
+      x: x, y: y, r: FLOWER_R,
+      state: "active",
+      timeLeft: WILT_MS,
+      bornAt: performance.now(),
+      showUntil: 0
+    });
+  }
+
+  function popFruitAt(x, y) {
+    fruits.push({
+      x: x, y: y,
+      vx: rand(-30, 30),
+      vy: rand(-260, -200),
+      emoji: FRUITS[Math.floor(Math.random() * FRUITS.length)],
+      size: 26,
+      rotation: 0
+    });
+  }
+
+  function pollinate(flower) {
+    if (!flower || flower.state !== "active") return;
+    flower.state = "pollinated";
+    flower.showUntil = performance.now() + 650;
+    pollinatedCount++;
+    combo++;
+    consecutiveMisses = 0;
+    var gain = 50 + combo * 5;
+    score += gain;
+    audio.collect();
+    particles.burst(flower.x, flower.y - 6, { glyphs: ["✨", "💮", "🌟"], count: 10, life: 620, minSpeed: 40, maxSpeed: 150, gravity: 120 });
+    popFruitAt(flower.x, flower.y);
+    pulseCombo();
+    if (pollinatedCount >= WIN_TARGET) triggerWin();
+  }
+
+  function wiltFlower(flower) {
+    flower.state = "wilted";
+    flower.showUntil = performance.now() + 850;
+    consecutiveMisses++;
+    combo = 0;
+    audio.oops();
+    particles.burst(flower.x, flower.y, { glyphs: ["💨"], count: 6, life: 500, minSpeed: 20, maxSpeed: 60, gravity: 30 });
+    if (consecutiveMisses === SMOG_MISS_THRESHOLD) triggerSmog();
+    if (consecutiveMisses >= FAIL_MISS_THRESHOLD) triggerFail();
+  }
+
+  function triggerSmog() {
+    smogActive = true;
+    smogTimer = 2500;
+    critters = []; // "no bees, no food" — helpers vanish
+    smogClouds = [];
+    for (var i = 0; i < 6; i++) {
+      smogClouds.push({
+        x: rand(0, W), y: rand(60, GROUND_Y),
+        r: rand(70, 140),
+        vx: rand(-24, 24), vy: rand(-6, 6)
+      });
+    }
+  }
+
+  function pulseCombo() {
+    comboPill.classList.remove("pop");
+    void comboPill.offsetWidth;
+    comboPill.classList.add("pop");
+  }
+
+  function spawnCritter(fruit) {
+    var fromLeft = fruit.x < W / 2;
+    critters.push({
+      type: CRITTERS[Math.floor(Math.random() * CRITTERS.length)],
+      x: fromLeft ? -30 : W + 30,
+      y: GROUND_Y,
+      targetX: fruit.x,
+      phase: "approach",
+      hop: Math.random() * Math.PI * 2,
+      life: 0,
+      maxLife: 1.6
+    });
+  }
+
+  /* ---------------- State transitions ---------------- */
+  function resetGame() {
+    flowers = []; fruits = []; critters = [];
+    score = 0; combo = 0; pollinatedCount = 0; consecutiveMisses = 0;
+    beatTimer = 0; nextBeatMs = BEAT_MS;
+    sessionTimeLeft = SESSION_MS;
+    smogActive = false; smogTimer = 0; smogAlpha = 0; smogClouds = []; flightPaths = [];
+    dragging = false; dragSourceId = null; dragTrail = [];
+    winWipeRadius = 0;
+    gameState = "playing";
+    startOverlay.classList.add("hidden");
+    winOverlay.classList.add("hidden");
+    failOverlay.classList.add("hidden");
+    // give the player two flowers immediately instead of waiting out two full beats
+    spawnFlower();
+    spawnFlower();
+  }
+
+  function triggerWin() {
+    if (gameState !== "playing") return;
+    gameState = "winning";
+    winWipeRadius = 0;
+    audio.win();
+  }
+
+  function triggerFail() {
+    if (gameState !== "playing") return;
+    gameState = "fail";
+    dragging = false; dragTrail = [];
+    failOverlay.classList.remove("hidden");
+  }
+
+  /* ---------------- Update ---------------- */
+  function update(dt) {
+    var dtMs = dt * 1000;
+    var now = performance.now();
+
+    ambientBee.t += dt;
+
+    if (gameState === "playing") {
+      // session timer
+      sessionTimeLeft -= dtMs;
+      if (sessionTimeLeft <= 0) {
+        sessionTimeLeft = 0;
+        if (pollinatedCount < WIN_TARGET) triggerFail();
+      }
+
+      // beat / spawn
+      beatTimer += dtMs;
+      if (beatTimer >= nextBeatMs) {
+        beatTimer = 0;
+        nextBeatMs = BEAT_MS + rand(-BEAT_JITTER, BEAT_JITTER);
+        spawnFlower();
+      }
+
+      // flower timers
+      for (var i = flowers.length - 1; i >= 0; i--) {
+        var f = flowers[i];
+        if (f.state === "active") {
+          f.timeLeft -= dtMs;
+          if (f.timeLeft <= 0) wiltFlower(f);
+        } else if (f.state === "wilted" || f.state === "pollinated") {
+          if (now >= f.showUntil) flowers.splice(i, 1);
+        }
+      }
+
+      // smog timer
+      if (smogActive) {
+        smogTimer -= dtMs;
+        if (smogTimer <= 0) { smogActive = false; }
+      }
+      var targetSmogAlpha = smogActive ? 0.34 : 0;
+      smogAlpha += (targetSmogAlpha - smogAlpha) * Math.min(1, dt * 4);
+
+      if (smogClouds.length) {
+        for (var sc = 0; sc < smogClouds.length; sc++) {
+          var cl = smogClouds[sc];
+          cl.x += cl.vx * dt;
+          cl.y += cl.vy * dt;
+          if (cl.x < -cl.r) cl.x = W + cl.r;
+          if (cl.x > W + cl.r) cl.x = -cl.r;
+          cl.y = Collision.clamp(cl.y, 40, GROUND_Y - 20);
+        }
+        if (!smogActive && smogAlpha <= 0.01) smogClouds = [];
+      }
+
+      // fading flight-path lines
+      for (var fp = flightPaths.length - 1; fp >= 0; fp--) {
+        flightPaths[fp].life += dt;
+        if (flightPaths[fp].life >= flightPaths[fp].maxLife) flightPaths.splice(fp, 1);
+      }
+
+      // fruits falling
+      for (var j = fruits.length - 1; j >= 0; j--) {
+        var fr = fruits[j];
+        fr.vy += 480 * dt;
+        fr.x += fr.vx * dt;
+        fr.y += fr.vy * dt;
+        fr.rotation += dt * 2;
+        if (fr.y >= GROUND_Y) {
+          fr.y = GROUND_Y;
+          if (!smogActive && critters.length < 3) spawnCritter(fr);
+          particles.burst(fr.x, GROUND_Y, { glyphs: ["🍃"], count: 4, life: 400, minSpeed: 10, maxSpeed: 40 });
+          fruits.splice(j, 1);
+        }
+      }
+
+      // critters
+      for (var k = critters.length - 1; k >= 0; k--) {
+        var c = critters[k];
+        c.life += dt;
+        c.hop += dt * 8;
+        if (c.phase === "approach") {
+          var dir = c.targetX > c.x ? 1 : -1;
+          c.x += dir * 90 * dt;
+          if (Math.abs(c.targetX - c.x) < 6) { c.phase = "eat"; c.eatUntil = c.life + 0.6; }
+        } else if (c.phase === "eat") {
+          if (c.life >= c.eatUntil) { c.phase = "leave"; }
+        } else if (c.phase === "leave") {
+          var awayDir = c.x < W / 2 ? -1 : 1;
+          c.x += awayDir * 110 * dt;
+        }
+        if (c.life >= c.maxLife + 1 || c.x < -60 || c.x > W + 60) critters.splice(k, 1);
+      }
+    }
+
+    if (gameState === "winning") {
+      winWipeRadius += dt * winWipeMax * 1.6;
+      if (winWipeRadius >= winWipeMax) {
+        gameState = "win";
+        winOverlay.classList.remove("hidden");
+      }
+    }
+
+    particles.update(dt);
+    updateHUD();
+  }
+
+  function updateHUD() {
+    scorePill.textContent = score;
+    comboVal.textContent = combo;
+    progressVal.textContent = Math.min(pollinatedCount, WIN_TARGET);
+    progressFill.style.width = Math.min(100, (pollinatedCount / WIN_TARGET) * 100) + "%";
+    var secs = Math.ceil(sessionTimeLeft / 1000);
+    timeVal.textContent = Math.max(0, secs);
+    timerPill.classList.toggle("low", secs <= 15 && gameState === "playing");
+  }
+
+  /* ---------------- Draw ---------------- */
+  function drawBackground() {
+    ctx.fillStyle = "#FDFBF7";
+    ctx.fillRect(0, 0, W, H);
+
+    // sky wash
+    var skyGrad = ctx.createLinearGradient(0, 0, 0, GROUND_Y);
+    skyGrad.addColorStop(0, "rgba(207,235,255,0.55)");
+    skyGrad.addColorStop(1, "rgba(207,235,255,0.05)");
+    ctx.fillStyle = skyGrad;
+    ctx.fillRect(0, 0, W, GROUND_Y);
+
+    // ground
+    ctx.fillStyle = "#7CB342";
+    ctx.fillRect(0, GROUND_Y, W, H - GROUND_Y);
+    ctx.fillStyle = "#5b8a2a";
+    for (var i = 0; i < W; i += 26) {
+      ctx.fillRect(i, GROUND_Y, 3, 10);
+    }
+    ctx.strokeStyle = "#111";
+    ctx.lineWidth = 4;
+    ctx.beginPath();
+    ctx.moveTo(0, GROUND_Y);
+    ctx.lineTo(W, GROUND_Y);
+    ctx.stroke();
+  }
+
+  function drawAmbientBee() {
+    if (gameState !== "playing" && gameState !== "winning") return;
+    var x = W * 0.5 + Math.sin(ambientBee.t * 0.6) * 220;
+    var y = H * 0.16 + Math.cos(ambientBee.t * 1.3) * 22;
+    var sprite = EmojiSprite.get("🐝", 22);
+    ctx.save();
+    ctx.globalAlpha = 0.85;
+    ctx.translate(x, y);
+    ctx.rotate(Math.sin(ambientBee.t * 3) * 0.15);
+    ctx.drawImage(sprite, -sprite.width / 2, -sprite.height / 2);
+    ctx.restore();
+  }
+
+  function drawFlowerRing(f) {
+    var t = Collision.clamp(f.timeLeft / WILT_MS, 0, 1);
+    var col = t > 0.5 ? "#3F8F29" : (t > 0.22 ? "#FFD23F" : "#E23B3B");
+    ctx.save();
+    ctx.lineWidth = 5;
+    ctx.strokeStyle = col;
+    ctx.beginPath();
+    ctx.arc(f.x, f.y, f.r + 10, -Math.PI / 2, -Math.PI / 2 + t * Math.PI * 2);
+    ctx.stroke();
+    ctx.restore();
+  }
+
+  function drawFlightPaths() {
+    for (var i = 0; i < flightPaths.length; i++) {
+      var p = flightPaths[i];
+      var t = p.life / p.maxLife;
+      ctx.save();
+      ctx.globalAlpha = Math.max(0, 1 - t) * 0.8;
+      ctx.strokeStyle = "#FF007F";
+      ctx.lineWidth = 6 * (1 - t) + 1.5;
+      ctx.lineCap = "round";
+      ctx.setLineDash([2, 14]);
+      ctx.lineDashOffset = -t * 40;
+      ctx.beginPath();
+      ctx.moveTo(p.x1, p.y1);
+      ctx.lineTo(p.x2, p.y2);
+      ctx.stroke();
+      ctx.restore();
+    }
+  }
+
+  function drawFlowers() {
+    for (var i = 0; i < flowers.length; i++) {
+      var f = flowers[i];
+      var glyph, scale = 1, alpha = 1;
+
+      if (f.state === "active") {
+        glyph = "🌱";
+        var isHover = hoverTargetId === f.id;
+        var isSource = dragSourceId === f.id;
+        ctx.save();
+        ctx.beginPath();
+        ctx.arc(f.x, f.y, f.r + 6, 0, Math.PI * 2);
+        ctx.fillStyle = "#fff";
+        ctx.fill();
+        ctx.lineWidth = 4;
+        ctx.strokeStyle = "#111";
+        ctx.stroke();
+        if (isHover || isSource) {
+          ctx.beginPath();
+          ctx.arc(f.x, f.y, f.r + 14, 0, Math.PI * 2);
+          ctx.strokeStyle = "#FF007F";
+          ctx.lineWidth = 4;
+          ctx.setLineDash([6, 6]);
+          ctx.stroke();
+          ctx.setLineDash([]);
+        }
+        ctx.restore();
+        drawFlowerRing(f);
+      } else if (f.state === "pollinated") {
+        glyph = "🌸";
+        var pT = 1 - Collision.clamp((f.showUntil - performance.now()) / 650, 0, 1);
+        scale = 1 + Math.sin(pT * Math.PI) * 0.35;
+      } else if (f.state === "wilted") {
+        glyph = "🥀";
+        alpha = Collision.clamp((f.showUntil - performance.now()) / 850, 0.35, 1);
+      }
+
+      var sprite = EmojiSprite.get(glyph, f.r * 1.5 * scale);
+      ctx.save();
+      ctx.globalAlpha = alpha;
+      ctx.translate(f.x, f.y);
+      ctx.drawImage(sprite, -sprite.width / 2, -sprite.height / 2);
+      ctx.restore();
+    }
+  }
+
+  function drawDragTrail() {
+    if (!dragging || dragTrail.length < 2) return;
+    ctx.save();
+    ctx.lineJoin = "round";
+    ctx.lineCap = "round";
+    ctx.shadowColor = "#FF007F";
+    ctx.shadowBlur = 22;
+    ctx.strokeStyle = "#FF007F";
+    ctx.lineWidth = 12;
+    ctx.beginPath();
+    ctx.moveTo(dragTrail[0].x, dragTrail[0].y);
+    for (var i = 1; i < dragTrail.length; i++) ctx.lineTo(dragTrail[i].x, dragTrail[i].y);
+    ctx.stroke();
+
+    ctx.shadowBlur = 0;
+    ctx.strokeStyle = "#ffffff";
+    ctx.lineWidth = 4;
+    ctx.globalAlpha = 0.85;
+    ctx.stroke();
+    ctx.restore();
+
+    // bee riding the trail head
+    var head = dragTrail[dragTrail.length - 1];
+    var sprite = EmojiSprite.get("🐝", 26);
+    ctx.save();
+    ctx.translate(head.x, head.y);
+    ctx.drawImage(sprite, -sprite.width / 2, -sprite.height / 2);
+    ctx.restore();
+  }
+
+  function drawFruits() {
+    for (var i = 0; i < fruits.length; i++) {
+      var fr = fruits[i];
+      var sprite = EmojiSprite.get(fr.emoji, fr.size);
+      ctx.save();
+      ctx.translate(fr.x, fr.y);
+      ctx.rotate(fr.rotation);
+      ctx.drawImage(sprite, -sprite.width / 2, -sprite.height / 2);
+      ctx.restore();
+    }
+  }
+
+  function drawCritters() {
+    for (var i = 0; i < critters.length; i++) {
+      var c = critters[i];
+      var hopOffset = c.phase === "approach" ? Math.abs(Math.sin(c.hop)) * 16 : 0;
+      var sprite = EmojiSprite.get(c.type, 40);
+      ctx.save();
+      ctx.globalAlpha = c.phase === "leave" ? Collision.clamp(1 - (c.life - c.maxLife) / 1, 0, 1) : 1;
+      ctx.translate(c.x, c.y - hopOffset);
+      if (c.x > W / 2) ctx.scale(-1, 1);
+      ctx.drawImage(sprite, -sprite.width / 2, -sprite.height);
+      ctx.restore();
+    }
+  }
+
+  function drawSmog() {
+    if (smogAlpha <= 0.001) return;
+    ctx.save();
+    ctx.globalAlpha = smogAlpha;
+    var grad = ctx.createRadialGradient(W / 2, H / 2, 40, W / 2, H / 2, W * 0.7);
+    grad.addColorStop(0, "#8a8a8a");
+    grad.addColorStop(1, "#4a4a4a");
+    ctx.fillStyle = grad;
+    ctx.fillRect(0, 0, W, H);
+
+    for (var i = 0; i < smogClouds.length; i++) {
+      var cl = smogClouds[i];
+      var cg = ctx.createRadialGradient(cl.x, cl.y, 0, cl.x, cl.y, cl.r);
+      cg.addColorStop(0, "rgba(60,60,60,0.65)");
+      cg.addColorStop(1, "rgba(60,60,60,0)");
+      ctx.fillStyle = cg;
+      ctx.beginPath();
+      ctx.arc(cl.x, cl.y, cl.r, 0, Math.PI * 2);
+      ctx.fill();
+    }
+    ctx.restore();
+  }
+
+  function drawWinWipe() {
+    if (gameState !== "winning" && gameState !== "win") return;
+    var r = gameState === "win" ? winWipeMax : winWipeRadius;
+    ctx.save();
+    ctx.beginPath();
+    ctx.arc(W / 2, H / 2, r, 0, Math.PI * 2);
+    ctx.clip();
+    var grad = ctx.createRadialGradient(W / 2, H / 2, 0, W / 2, H / 2, r || 1);
+    grad.addColorStop(0, "#FFD23F");
+    grad.addColorStop(0.55, "#FF9FC7");
+    grad.addColorStop(1, "#7CB342");
+    ctx.globalAlpha = 0.85;
+    ctx.fillStyle = grad;
+    ctx.fillRect(0, 0, W, H);
+    ctx.restore();
+
+    // ring edge for juice
+    if (gameState === "winning") {
+      ctx.save();
+      ctx.beginPath();
+      ctx.arc(W / 2, H / 2, r, 0, Math.PI * 2);
+      ctx.lineWidth = 6;
+      ctx.strokeStyle = "#111";
+      ctx.stroke();
+      ctx.restore();
+    }
+  }
+
+  function draw() {
+    drawBackground();
+    drawAmbientBee();
+    drawFruits();
+    drawCritters();
+    drawFlightPaths();
+    drawFlowers();
+    drawDragTrail();
+    particles.draw(ctx);
+    drawSmog();
+    drawWinWipe();
+  }
+
+  /* ---------------- Pointer / input ---------------- */
+  canvas.addEventListener("pointerdown", function (e) {
+    if (gameState !== "playing") return;
+    var p = canvasPointFromEvent(e);
+    var f = findFlowerAt(p.x, p.y, null);
+    if (f) {
+      dragging = true;
+      dragSourceId = f.id;
+      dragTrail = [{ x: f.x, y: f.y }];
+      dragCurrent = { x: p.x, y: p.y };
+      try { canvas.setPointerCapture(e.pointerId); } catch (err) {}
+    }
+    e.preventDefault();
+  }, { passive: false });
+
+  canvas.addEventListener("pointermove", function (e) {
+    if (!dragging) return;
+    var p = canvasPointFromEvent(e);
+    dragCurrent = p;
+    dragTrail.push({ x: p.x, y: p.y });
+    if (dragTrail.length > 24) dragTrail.shift();
+
+    var target = findFlowerAt(p.x, p.y, dragSourceId);
+    hoverTargetId = target ? target.id : null;
+    e.preventDefault();
+  }, { passive: false });
+
+  function endDrag(e) {
+    if (!dragging) return;
+    var p = e ? canvasPointFromEvent(e) : dragCurrent;
+    var target = findFlowerAt(p.x, p.y, dragSourceId);
+    var source = flowers.filter(function (f) { return f.id === dragSourceId; })[0];
+
+    if (target && source && source.state === "active" && target.state === "active") {
+      flightPaths.push({ x1: source.x, y1: source.y, x2: target.x, y2: target.y, life: 0, maxLife: 0.55 });
+      pollinate(source);
+      pollinate(target);
+    } else {
+      // missed connection — small fizzle so the drag doesn't feel like it silently failed
+      particles.burst(p.x, p.y, { glyphs: ["💫"], count: 4, life: 350, minSpeed: 30, maxSpeed: 70, gravity: 60 });
+    }
+
+    dragging = false;
+    dragSourceId = null;
+    dragTrail = [];
+    hoverTargetId = null;
+  }
+
+  canvas.addEventListener("pointerup", function (e) { endDrag(e); e.preventDefault(); }, { passive: false });
+  canvas.addEventListener("pointercancel", function (e) { endDrag(e); });
+  window.addEventListener("blur", function () { dragging = false; dragTrail = []; });
+
+  /* ---------------- UI buttons ---------------- */
+  startBtn.addEventListener("click", function () { resetGame(); });
+  playAgainBtn.addEventListener("click", function () { resetGame(); });
+  tryAgainBtn.addEventListener("click", function () { resetGame(); });
+
+  var muted = false;
+  muteBtn.addEventListener("click", function () {
+    muted = !muted;
+    audio.setMuted(muted);
+    muteBtn.textContent = muted ? "🔇" : "🔊";
+  });
+
+  /* ---------------- Boot ---------------- */
+  var loop = new window.GOGEngine.GameLoop({ update: update, draw: draw, stepMs: 1000 / 60 });
+  loop.start();
+})();
+</script>
+</body>
+</html>
