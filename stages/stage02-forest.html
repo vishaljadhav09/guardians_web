@@ -1131,7 +1131,7 @@ if (this.rows === 6 && this.cols === 10) {
         ------------------------------------------------------------------*/
         // Ambient flutter/flight population caps for the canopy — see
         // updateAmbientCreatures()/drawAmbientCreatures() below.
-        var BUTTERFLY_MAX = 5;
+        var BUTTERFLY_MAX = 3;
         var BIRD_MAX = 3;
 
         var WILDLIFE_DEFS = [
@@ -1203,18 +1203,12 @@ if (this.rows === 6 && this.cols === 10) {
           desaturateTime: 0,
           lastSmogCol: 10,
           canopyPercent: 0,
-          // A single active-animal slot — which def it points at swaps
-          // automatically with GOGStage2.wave inside updateWildlife().
-          wildlife: {
-            defIndex: -1,
-            visible: false,
-            placed: false,
-            revealed: false,
-            x: 0,
-            y: 0,
-            dir: 1,
-            anim: { frameIndex: 0, elapsedFrameTime: 0 },
-          },
+          ambientButterflyCount: 0,
+          ambientBirdCount: 0,
+          // Multiple active animals slot — spawn 2-3 of the same def
+          // which move independently within the connected canopy.
+          wildlife: [],
+          wildlifeCount: 0,
           // Ambient life that flutters/glides over the connected canopy —
           // purely decorative, population scales up with canopy progress.
           butterflies: initialButterflies,
@@ -1367,49 +1361,69 @@ if (this.rows === 6 && this.cols === 10) {
         // ever placed and moved within the horizontal span of columns
         // that currently have connected, grown trees. No connected trees
         // yet ⇒ no animal on screen.
-        function getConnectedCanopyBounds() {
-          var minCol = null;
-          var maxCol = null;
-          var minRow = null;
-          for (var r = 0; r < GOGStage2.rows; r++) {
-            for (var c = 0; c < GOGStage2.cols; c++) {
-              var cell = GOGStage2.grid[r][c];
-              if (cell.state === "tree" && cell.connected) {
-                if (minCol === null || c < minCol) minCol = c;
-                if (maxCol === null || c > maxCol) maxCol = c;
-                if (minRow === null || r < minRow) minRow = r;
-              }
-            }
-          }
-          if (minCol === null) return null;
-          return { minCol: minCol, maxCol: maxCol, minRow: minRow };
-        }
+function getConnectedCanopyBounds() {
+  var minCol = null;
+  var maxCol = null;
+  var minRow = null;
+  var maxRow = null;
+
+  for (var r = 0; r < GOGStage2.rows; r++) {
+    for (var c = 0; c < GOGStage2.cols; c++) {
+      var cell = GOGStage2.grid[r][c];
+
+      if (cell.state === "tree" && cell.connected) {
+        if (minCol === null || c < minCol) minCol = c;
+        if (maxCol === null || c > maxCol) maxCol = c;
+        if (minRow === null || r < minRow) minRow = r;
+        if (maxRow === null || r > maxRow) maxRow = r;
+      }
+    }
+  }
+
+  if (minCol === null) return null;
+
+  return {
+    minCol: minCol,
+    maxCol: maxCol,
+    minRow: minRow,
+    maxRow: maxRow
+  };
+}
 
         function updateWildlife(dt) {
-          var w = state.wildlife;
-          var waveIdx = Math.min(
-            Math.max(GOGStage2.wave, 1),
-            WILDLIFE_DEFS.length,
-          ) - 1;
-
-          if (w.defIndex !== waveIdx) {
-            // The active wave changed — swap in the new animal fresh.
-            w.defIndex = waveIdx;
-            w.revealed = false;
-            w.placed = false;
-            w.dir = Math.random() < 0.5 ? 1 : -1;
-            w.anim.frameIndex = 0;
-            w.anim.elapsedFrameTime = 0;
-          }
-
-          var def = WILDLIFE_DEFS[w.defIndex];
-          GOGSpriteSheet.advanceTimeLoop(w.anim, dt, def.fps, 6);
+          var waveIdx = Math.min(Math.max(GOGStage2.wave, 1), WILDLIFE_DEFS.length) - 1;
 
           var bounds = getConnectedCanopyBounds();
-          w.visible = !!bounds;
           if (!bounds) {
-            w.placed = false;
+            // Hide/park all animals while nothing is connected
+            state.wildlife.forEach(function (w) {
+              w.visible = false;
+              w.placed = false;
+            });
             return;
+          }
+
+          // Decide how many animals to show (2-3) when canopy first appears
+          if (state.wildlifeCount === 0) {
+            state.wildlifeCount = 2 + Math.floor(Math.random() * 2);
+          }
+
+          // Ensure wildlife array is populated
+          while (state.wildlife.length < state.wildlifeCount) {
+            state.wildlife.push({
+              defIndex: waveIdx,
+              visible: false,
+              placed: false,
+              revealed: false,
+              x: 0,
+              y: 0,
+              dir: Math.random() < 0.5 ? 1 : -1,
+              vPhase: Math.random() * Math.PI * 2,
+              row: 0,
+              targetRow: 0,
+              rowMoveTimer: 1 + Math.random() * 3,
+              anim: { frameIndex: 0, elapsedFrameTime: 0 },
+            });
           }
 
           var cellW = W / GOGStage2.cols;
@@ -1417,97 +1431,149 @@ if (this.rows === 6 && this.cols === 10) {
           var cellH = gridH / GOGStage2.rows;
           var gridYOffset = H / 2;
 
-          var destW = cellW * def.widthScale;
-          var margin = destW * 0.5 + 8;
-          var rangeMinX = bounds.minCol * cellW + margin;
-          var rangeMaxX = (bounds.maxCol + 1) * cellW - margin;
-          if (rangeMaxX < rangeMinX) {
-            var mid = ((bounds.minCol + bounds.maxCol + 1) / 2) * cellW;
-            rangeMinX = mid;
-            rangeMaxX = mid;
-          }
+          var def = WILDLIFE_DEFS[waveIdx];
 
-          // Feet rest near the base of the top-most connected row, so the
-          // animal reads as standing right in that patch of canopy.
-          w.y = gridYOffset + bounds.minRow * cellH + cellH * 0.85;
+          state.wildlife.forEach(function (w, idx) {
+            if (w.defIndex !== waveIdx) {
+              w.defIndex = waveIdx;
+              w.revealed = false;
+              w.placed = false;
+              w.dir = Math.random() < 0.5 ? 1 : -1;
+              w.anim.frameIndex = 0;
+              w.anim.elapsedFrameTime = 0;
+            }
 
-          if (!w.placed) {
-            w.x = (rangeMinX + rangeMaxX) / 2;
-            w.placed = true;
-          }
+            var defLocal = WILDLIFE_DEFS[w.defIndex];
+            GOGSpriteSheet.advanceTimeLoop(w.anim, dt, defLocal.fps, 6);
 
-          if (!w.revealed) {
-            w.revealed = true;
-            GOGUi.say(def.revealMsg);
-            audio.collect();
-            particles.burst(w.x, w.y, {
-              glyphs: [def.revealGlyph, "✨"],
-              count: 10,
-              lift: 22,
-            });
-          }
+            var destW = cellW * defLocal.widthScale;
+            var margin = destW * 0.5 + 8;
+            var rangeMinX = bounds.minCol * cellW + margin;
+            var rangeMaxX = (bounds.maxCol + 1) * cellW - margin;
+            if (rangeMaxX < rangeMinX) {
+              var mid = ((bounds.minCol + bounds.maxCol + 1) / 2) * cellW;
+              rangeMinX = mid;
+              rangeMaxX = mid;
+            }
 
-          w.x += w.dir * def.speed * dt;
-          if (w.x > rangeMaxX) {
-            w.x = rangeMaxX;
-            w.dir = -1;
-          }
-          if (w.x < rangeMinX) {
-            w.x = rangeMinX;
-            w.dir = 1;
-          }
+            w.visible = true;
+            // Vertical movement spanning the full connected canopy rows
+            var minY = gridYOffset + bounds.minRow * cellH + cellH * 0.25;
+            var maxY = gridYOffset + (bounds.maxRow + 1) * cellH - cellH * 0.25;
+            // update vertical phase and compute smooth oscillation within bounds
+           // Decide every few seconds whether to change row
+w.rowMoveTimer -= dt;
+
+if (w.rowMoveTimer <= 0) {
+    w.rowMoveTimer = 2 + Math.random() * 3;
+
+    var dir = Math.random() < 0.5 ? -1 : 1;
+    w.targetRow = Math.max(
+        bounds.minRow,
+        Math.min(bounds.maxRow, w.row + dir)
+    );
+}
+
+// Smoothly move toward the target row
+var targetY =
+    gridYOffset +
+    w.targetRow * cellH +
+    cellH * 0.5;
+
+w.y += (targetY - w.y) * 4 * dt;
+
+if (Math.abs(w.y - targetY) < 2) {
+    w.y = targetY;
+    w.row = w.targetRow;
+}
+
+            if (!w.placed) {
+              // Place each animal at a random X within the canopy span
+                  w.x = rangeMinX + Math.random() * (rangeMaxX - rangeMinX);
+
+    w.row = Math.floor(
+      bounds.minRow + Math.random() * (bounds.maxRow - bounds.minRow + 1)
+    );
+
+    w.targetRow = w.row;
+    // initialize vertical position to the chosen row
+    w.y = gridYOffset + w.row * cellH + cellH * 0.85;
+    // initialize timer for next potential row move
+    w.rowMoveTimer = 2 + Math.random() * 3;
+    w.placed = true;
+            }
+
+            if (!w.revealed) {
+              w.revealed = true;
+              GOGUi.say(defLocal.revealMsg);
+              audio.collect();
+              particles.burst(w.x, w.y, {
+                glyphs: [defLocal.revealGlyph, "✨"],
+                count: 10,
+                lift: 22,
+              });
+            }
+
+            w.x += w.dir * defLocal.speed * dt;
+            if (w.x > rangeMaxX) {
+              w.x = rangeMaxX;
+              w.dir = -1;
+            }
+            if (w.x < rangeMinX) {
+              w.x = rangeMinX;
+              w.dir = 1;
+            }
+          });
         }
 
         function drawWildlife() {
-          var w = state.wildlife;
-          if (!w.visible || w.defIndex < 0) return;
-
-          var def = WILDLIFE_DEFS[w.defIndex];
-          var img = def.getImg();
-          if (!img || !img.complete || img.width === 0) return;
-
-          // All three animal sheets are a fixed 2-column x 3-row grid of
-          // 6 equal frames (confirmed from the actual assets), read in
-          // row-major order: (0,0) (0,1) / (1,0) (1,1) / (2,0) (2,1).
-          var cols = 2;
-          var rows = 3;
-          var frameW = img.width / cols;
-          var frameH = img.height / rows;
-          var frame = GOGSpriteSheet.gridFrame(
-            w.anim.frameIndex,
-            cols,
-            frameW,
-            frameH,
-          );
+          if (!state.wildlife || state.wildlife.length === 0) return;
 
           var cellW = W / GOGStage2.cols;
-          var destW = cellW * def.widthScale;
-          var destH = (frameH / frameW) * destW;
-          var flip = w.dir < 0;
 
-          ctx.save();
-          // Soft grounded shadow so the animal reads as standing among the
-          // trees rather than floating over them.
-          ctx.fillStyle = "rgba(20, 30, 15, 0.28)";
-          ctx.beginPath();
-          ctx.ellipse(w.x, w.y + 4, destW * 0.32, 6, 0, 0, Math.PI * 2);
-          ctx.fill();
+          state.wildlife.forEach(function (w) {
+            if (!w.visible || w.defIndex < 0) return;
 
-          ctx.translate(w.x, w.y);
-          if (flip) ctx.scale(-1, 1);
-          // Bottom-anchored: feet sit at (w.x, w.y).
-          ctx.drawImage(
-            img,
-            frame.x,
-            frame.y,
-            frame.w,
-            frame.h,
-            -destW / 2,
-            -destH,
-            destW,
-            destH,
-          );
-          ctx.restore();
+            var def = WILDLIFE_DEFS[w.defIndex];
+            var img = def.getImg();
+            if (!img || !img.complete || img.width === 0) return;
+
+            var cols = 2;
+            var rows = 3;
+            var frameW = img.width / cols;
+            var frameH = img.height / rows;
+            var frame = GOGSpriteSheet.gridFrame(
+              w.anim.frameIndex,
+              cols,
+              frameW,
+              frameH,
+            );
+
+            var destW = cellW * def.widthScale;
+            var destH = (frameH / frameW) * destW;
+            var flip = w.dir < 0;
+
+            ctx.save();
+            ctx.fillStyle = "rgba(20, 30, 15, 0.28)";
+            ctx.beginPath();
+            ctx.ellipse(w.x, w.y + 4, destW * 0.32, 6, 0, 0, Math.PI * 2);
+            ctx.fill();
+
+            ctx.translate(w.x, w.y);
+            if (flip) ctx.scale(-1, 1);
+            ctx.drawImage(
+              img,
+              frame.x,
+              frame.y,
+              frame.w,
+              frame.h,
+              -destW / 2,
+              -destH,
+              destW,
+              destH,
+            );
+            ctx.restore();
+          });
         }
 
         /* ---------------- ambient butterflies & birds ---------------- */
@@ -1537,14 +1603,15 @@ if (this.rows === 6 && this.cols === 10) {
           var spanMaxX = (bounds.maxCol + 1) * cellW;
           var canopyTopY = gridYOffset + bounds.minRow * cellH;
 
-          var butterflyUnlocked = Math.min(
-            BUTTERFLY_MAX,
-            Math.ceil((pct / 100) * BUTTERFLY_MAX) + 1,
-          );
-          var birdUnlocked =
-            pct >= 15
-              ? Math.min(BIRD_MAX, 1 + Math.floor((pct - 15) / 25))
-              : 0;
+          if (state.ambientButterflyCount === 0) {
+            state.ambientButterflyCount = 2 + Math.floor(Math.random() * 2);
+          }
+          if (state.ambientBirdCount === 0) {
+            state.ambientBirdCount = 2 + Math.floor(Math.random() * 2);
+          }
+
+          var butterflyUnlocked = Math.min(BUTTERFLY_MAX, state.ambientButterflyCount);
+          var birdUnlocked = Math.min(BIRD_MAX, state.ambientBirdCount);
 
           state.butterflies.forEach(function (b, i) {
             if (i >= butterflyUnlocked) {
@@ -1554,14 +1621,14 @@ if (this.rows === 6 && this.cols === 10) {
             b.active = true;
             b.phase += dt * (1.6 + b.speedMul);
             b.wingPhase += dt * 13;
-            var slotFrac = (i + 0.5) / BUTTERFLY_MAX;
+            var slotFrac = (i + 0.5) / Math.max(1, butterflyUnlocked);
             var homeX = spanMinX + slotFrac * (spanMaxX - spanMinX);
-            var homeY = canopyTopY - 6;
+            var homeY = canopyTopY - 6 + Math.sin(b.phase * 0.7 + i) * 8;
             b.x =
               homeX +
-              Math.sin(b.phase * 0.6) * 34 +
-              Math.cos(b.phase * 0.37) * 14;
-            b.y = homeY + Math.sin(b.phase * 0.9 + i) * 16;
+              Math.sin(b.phase * 0.6) * 28 +
+              Math.cos(b.phase * 0.37 + i) * 16;
+            b.y = homeY + Math.sin(b.phase * 0.9 + i) * 14;
           });
 
           state.birds.forEach(function (bird, i) {
@@ -1572,9 +1639,9 @@ if (this.rows === 6 && this.cols === 10) {
             var rangeMinX = spanMinX - 50;
             var rangeMaxX = spanMaxX + 50;
             if (bird.x === null) {
-              bird.x = rangeMinX;
-              bird.y = canopyTopY - 34 - i * 14;
-              bird.vx = 34 + i * 8;
+              bird.x = rangeMinX + Math.random() * (rangeMaxX - rangeMinX);
+              bird.y = canopyTopY - 34 - i * 14 + Math.random() * 8;
+              bird.vx = (Math.random() < 0.5 ? 1 : -1) * (30 + i * 8 + Math.random() * 10);
             }
             bird.phase += dt * 2.2;
             bird.x += bird.vx * dt;
@@ -1583,7 +1650,7 @@ if (this.rows === 6 && this.cols === 10) {
             } else if (bird.vx < 0 && bird.x < rangeMinX) {
               bird.x = rangeMaxX;
             }
-            bird.y = canopyTopY - 34 - i * 14 + Math.sin(bird.phase) * 8;
+            bird.y = canopyTopY - 34 - i * 14 + Math.sin(bird.phase) * 8 + Math.cos(bird.phase * 0.7 + i) * 4;
           });
         }
 
