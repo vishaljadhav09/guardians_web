@@ -1,618 +1,229 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-<title>Buzz &amp; the Last Blooms — Guardians of Gaia</title>
-<style>
-  :root{
-    --cream:#FDFBF7;
-    --ink:#111111;
-    --pink:#FF007F;
-    --pink-deep:#C4005F;
-    --green:#3F8F29;
-    --leaf:#7CB342;
-    --leaf-dark:#5b8a2a;
-    --gray:#9E9E9E;
-    --gray-dark:#6b6b6b;
-    --yellow:#FFD23F;
-    --sky:#CFEBFF;
-    --border-w:4px;
-  }
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>Buzz &amp; the Last Blooms — Guardians of Gaia</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link
+    href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@500;700;800&family=Quicksand:wght@500;600;700&family=Caveat:wght@600;700&display=swap"
+    rel="stylesheet"
+  />
+  <link rel="stylesheet" href="../src/styles.css" />
+  <style>
+    .stage-wrap {
+      width: min(1180px, calc(100vw - 28px));
+      max-width: 1180px;
+      margin: 0 auto;
+      padding: 12px 0 32px;
+      animation: pageFadeIn 0.5s ease both;
+    }
 
-  *{ box-sizing:border-box; }
+    .stage-hud {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      flex-wrap: wrap;
+      margin-bottom: 12px;
+    }
 
-  html,body{
-    margin:0; padding:0; height:100%;
-    background:var(--cream);
-    background-image:
-      radial-gradient(circle at 1px 1px, rgba(17,17,17,0.05) 1px, transparent 0);
-    background-size:14px 14px;
-    font-family:'Segoe UI', Verdana, sans-serif;
-    color:var(--ink);
-    overflow:hidden;
-    -webkit-tap-highlight-color:transparent;
-  }
+    .stage-title {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
 
-  .brutal{
-    border:var(--border-w) solid var(--ink);
-    border-radius:16px;
-    box-shadow:7px 7px 0 var(--ink);
-    background:#fff;
-  }
+    .stage-title h1 {
+      font-size: 1.25rem;
+    }
 
-  .display-text{
-    font-family:'Arial Black','Segoe UI Black', Impact, sans-serif;
-    letter-spacing:0.5px;
-    -webkit-text-stroke:2px var(--ink);
-    text-stroke:2px var(--ink);
-    color:#fff;
-    text-shadow:4px 4px 0 var(--ink);
-  }
+    .stage-title small {
+      display: block;
+      font-family: var(--gog-font-hand);
+      font-size: 1rem;
+      color: #72624c;
+    }
 
-  #app{
-    width:100%;
-    height:100%;
-    display:flex;
-    align-items:center;
-    justify-content:center;
-    padding:14px;
-  }
+    .hud-mid {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      flex-wrap: wrap;
+    }
 
-  #stageWrap{
-    position:relative;
-    width:min(96vw, 1000px);
-    aspect-ratio: 4 / 3;
-    max-height:94vh;
-  }
+    .meter {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      background: var(--gog-white);
+      border: 3px solid var(--gog-ink);
+      border-radius: 999px;
+      padding: 6px 14px 6px 10px;
+      box-shadow: var(--gog-shadow-sm);
+      min-width: 168px;
+      position: relative;
+    }
 
-  #stage{
-    position:relative;
-    width:100%;
-    height:100%;
-    overflow:hidden;
-    background:var(--cream);
-  }
+    .meter .label,
+    .meter .meter-track {
+      position: relative;
+      z-index: 2;
+    }
 
-  #gameCanvas{
-    position:absolute;
-    top:0; left:0;
-    width:100%;
-    height:100%;
-    display:block;
-    touch-action:none;
-    cursor:crosshair;
-  }
+    .meter .label {
+      font-size: 0.78rem;
+      font-weight: 700;
+      white-space: nowrap;
+    }
 
-  /* ---------- HUD ---------- */
-  #hud{
-    position:absolute;
-    top:14px; left:14px; right:14px;
-    display:flex;
-    justify-content:space-between;
-    align-items:flex-start;
-    pointer-events:none;
-    z-index:5;
-    gap:10px;
-  }
+    .meter-track {
+      flex: 1;
+      height: 10px;
+      border-radius: 999px;
+      background: #fdf5e6;
+      border: 2px solid var(--gog-ink);
+      overflow: hidden;
+    }
 
-  .hud-pill{
-    background:#fff;
-    border:3px solid var(--ink);
-    border-radius:12px;
-    box-shadow:4px 4px 0 var(--ink);
-    padding:6px 12px;
-    font-weight:800;
-    font-size:14px;
-    display:flex;
-    align-items:center;
-    gap:6px;
-    white-space:nowrap;
-  }
+    .meter-fill {
+      height: 100%;
+      width: 0%;
+      background: linear-gradient(90deg, #ffd23f, var(--gog-tangerine));
+      transition: width 0.35s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+    }
 
-  .hud-left{ display:flex; flex-direction:column; gap:8px; }
-  .hud-right{ display:flex; flex-direction:column; gap:8px; align-items:flex-end; }
+    .timer-chip {
+      font-weight: 700;
+      min-width: 64px;
+      text-align: center;
+    }
 
-  #comboPill{ color:var(--pink-deep); }
-  #comboPill.pop{ animation:comboPop 0.28s ease; }
-  @keyframes comboPop{
-    0%{ transform:scale(1); }
-    40%{ transform:scale(1.35) rotate(-4deg); }
-    100%{ transform:scale(1); }
-  }
+    .canvas-frame {
+      position: relative;
+      width: min(100%, calc((100vh - 220px) * 1.333));
+      max-height: calc(100vh - 220px);
+      aspect-ratio: 4 / 3;
+      margin: 0 auto;
+      overflow: hidden;
+      transition:
+        border-color 0.2s,
+        box-shadow 0.2s;
+    }
 
-  #progressWrap{
-    width:170px;
-  }
-  #progressTrack{
-    width:100%;
-    height:16px;
-    background:#fff;
-    border:3px solid var(--ink);
-    border-radius:10px;
-    overflow:hidden;
-    box-shadow:3px 3px 0 var(--ink);
-  }
-  #progressFill{
-    height:100%;
-    width:0%;
-    background:repeating-linear-gradient(45deg, var(--pink), var(--pink) 8px, var(--pink-deep) 8px, var(--pink-deep) 16px);
-    transition:width 0.25s ease;
-  }
-  #progressLabel{
-    font-size:11px; font-weight:800; text-align:center; margin-top:3px;
-  }
+    canvas {
+      width: 100%;
+      height: 100%;
+      display: block;
+      touch-action: none;
+      cursor: crosshair;
+    }
 
-  #muteBtn{
-    pointer-events:auto;
-    cursor:pointer;
-    background:#fff;
-    border:3px solid var(--ink);
-    border-radius:10px;
-    box-shadow:3px 3px 0 var(--ink);
-    font-size:16px;
-    padding:5px 9px;
-    line-height:1;
-  }
-  #muteBtn:active{ box-shadow:1px 1px 0 var(--ink); transform:translate(2px,2px); }
+    .stage-controls {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-top: 12px;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
 
-  #timerPill.low{ color:#B00020; animation:tick 0.5s infinite; }
-  @keyframes tick{ 0%,100%{ transform:scale(1); } 50%{ transform:scale(1.12); } }
+    @keyframes pageFadeIn {
+      from {
+        opacity: 0;
+        transform: translateY(10px);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
 
-  /* ---------- Overlays ---------- */
-  .overlay{
-    position:absolute;
-    inset:0;
-    display:flex;
-    align-items:center;
-    justify-content:center;
-    z-index:20;
-    background:rgba(253,251,247,0.92);
-    transition:opacity 0.25s ease;
-  }
-  .overlay.hidden{
-    opacity:0;
-    pointer-events:none;
-  }
+    .emoji-float {
+      display: inline-block;
+      animation: emojiFloat 2.6s ease-in-out infinite;
+    }
 
-  .card{
-    max-width:88%;
-    text-align:center;
-    padding:26px 28px;
-    background:#fff;
-  }
+    @keyframes emojiFloat {
+      0%,
+      100% {
+        transform: translateY(0) rotate(-4deg);
+      }
+      50% {
+        transform: translateY(-5px) rotate(5deg);
+      }
+    }
 
-  .card h1{
-    font-size:clamp(20px, 4.2vw, 34px);
-    margin:0 0 6px 0;
-  }
-  .card p{
-    font-size:clamp(12px, 2.4vw, 16px);
-    font-weight:600;
-    margin:8px 0 18px 0;
-    max-width:420px;
-  }
-
-  .bigEmoji{
-    font-size:clamp(38px, 8vw, 64px);
-    margin-bottom:6px;
-    display:block;
-  }
-
-  .brutalBtn{
-    font-family:'Arial Black','Segoe UI Black', Impact, sans-serif;
-    font-size:clamp(14px, 2.6vw, 18px);
-    letter-spacing:0.5px;
-    background:var(--pink);
-    color:#fff;
-    border:3px solid var(--ink);
-    border-radius:12px;
-    box-shadow:5px 5px 0 var(--ink);
-    padding:12px 26px;
-    cursor:pointer;
-    -webkit-text-stroke:1px var(--ink);
-  }
-  .brutalBtn:active{
-    box-shadow:1px 1px 0 var(--ink);
-    transform:translate(4px,4px);
-  }
-
-  .factCard{
-    margin:10px auto 18px auto;
-    max-width:380px;
-    background:var(--yellow);
-    border:3px solid var(--ink);
-    border-radius:12px;
-    box-shadow:4px 4px 0 var(--ink);
-    padding:12px 14px;
-    font-size:13px;
-    font-weight:700;
-    text-align:left;
-  }
-
-  .howto{
-    text-align:left;
-    font-size:12px;
-    font-weight:600;
-    background:var(--sky);
-    border:3px solid var(--ink);
-    border-radius:12px;
-    box-shadow:4px 4px 0 var(--ink);
-    padding:10px 14px;
-    margin:0 0 18px 0;
-    max-width:400px;
-  }
-  .howto li{ margin:4px 0; }
-
-  @media (max-width:520px){
-    .hud-pill{ font-size:11px; padding:5px 8px; }
-    #progressWrap{ width:110px; }
-  }
-</style>
+    @keyframes comboPop {
+      0% { transform: scale(1); }
+      40% { transform: scale(1.35) rotate(-4deg); }
+      100% { transform: scale(1); }
+    }
+    .combo-pop {
+      animation: comboPop 0.28s ease;
+    }
+  </style>
 </head>
 <body>
-<div id="app">
-  <div id="stageWrap" class="brutal">
-    <div id="stage">
-      <canvas id="gameCanvas" width="800" height="600"></canvas>
-
-      <div id="hud">
-        <div class="hud-left">
-          <div class="hud-pill">🌼 <span id="scorePill">0</span></div>
-          <div class="hud-pill" id="comboPill">🔥 x<span id="comboVal">0</span></div>
+  <div class="stage-wrap">
+    <div class="stage-hud">
+      <div class="stage-title">
+        <span style="font-size: 1.8rem" class="emoji-float">🐝</span>
+        <div>
+          <h1>Buzz &amp; the Last Blooms</h1>
+          <small>Stage 3 · Meadow</small>
         </div>
-        <div class="hud-left" style="align-items:center;">
-          <div id="progressWrap">
-            <div id="progressTrack"><div id="progressFill"></div></div>
-            <div id="progressLabel"><span id="progressVal">0</span> / 15 bloomed</div>
+      </div>
+      <div class="hud-mid">
+        <div class="meter" title="Meadow Blooms">
+          <span class="label">BLOOMED</span>
+          <div class="meter-track">
+            <div class="meter-fill" id="progressFill"></div>
           </div>
+          <span class="label"><span id="progressVal">0</span> / 15</span>
         </div>
-        <div class="hud-right">
-          <button id="muteBtn" title="Toggle sound">🔊</button>
-          <div class="hud-pill" id="timerPill">⏱ <span id="timeVal">90</span>s</div>
-        </div>
-      </div>
-
-      <!-- START OVERLAY -->
-      <div class="overlay" id="startOverlay">
-        <div class="card brutal">
-          <span class="bigEmoji">🐝🌱</span>
-          <h1 class="display-text">Buzz &amp; the Last Blooms</h1>
-          <p>Trace flight paths between blooming flowers before they wilt. Keep Buzz busy, and watch the whole meadow come alive.</p>
-          <ul class="howto brutal">
-            <li>🌱 A new flower appears on every beat — it wilts in 3 seconds!</li>
-            <li>🖱️ Drag from one glowing flower to another to fly Buzz between them.</li>
-            <li>🌸 Both flowers bloom, drop fruit, and feed a hungry critter.</li>
-            <li>💨 Miss 3 in a row and the meadow gets smoggy — no bees, no food.</li>
-            <li>🎯 Pollinate 15 flowers to make the whole meadow bloom!</li>
-          </ul>
-          <button class="brutalBtn" id="startBtn">Start Buzzing ▶</button>
+        <span class="chip timer-chip" id="timerChip">90s</span>
+        <span class="chip">🌼 <span id="scoreChip">0</span></span>
+        <span class="chip combo-chip" id="comboChip">🔥 x0</span>
+        <button
+          class="icon-btn"
+          id="muteBtn"
+          title="Toggle sound"
+          aria-label="Toggle sound"
+        >
+          🔊
+        </button>
+        <div class="stage-controls">
+          <a class="brutal-btn ghost" href="../index.html">⬅ Back to Map</a>
         </div>
       </div>
+    </div>
 
-      <!-- WIN OVERLAY -->
-      <div class="overlay hidden" id="winOverlay">
-        <div class="card brutal">
-          <span class="bigEmoji">🌼🐝🌸</span>
-          <h1 class="display-text">The Meadow Blooms!</h1>
-          <p>Buzz did it — every last flower is blooming again.</p>
-          <div class="factCard">🌍 Fun fact: about <b>1 in 3 bites</b> of the food we eat depends on pollinators like bees!</div>
-          <button class="brutalBtn" id="playAgainBtn">Play Again ▶</button>
-        </div>
+    <!-- Mascot Guide Bar -->
+    <div class="guideBar">
+      <div class="guideAvatar" aria-hidden="true">🐝</div>
+      <div class="guideBubble" id="guideText">
+        Help Buzz pollinate flowers and feed the forest critters! 🌸
       </div>
+    </div>
 
-      <!-- FAIL OVERLAY -->
-      <div class="overlay hidden" id="failOverlay">
-        <div class="card brutal">
-          <span class="bigEmoji">🐝💤</span>
-          <h1 class="display-text">Buzz Needs a Rest</h1>
-          <p>The meadow's still a little sleepy — some flowers didn't get visited in time. Buzz would love another go!</p>
-          <button class="brutalBtn" id="tryAgainBtn">Try Again ▶</button>
-        </div>
-      </div>
-
+    <div class="brutal-box canvas-frame" id="canvasFrame">
+      <canvas id="gameCanvas" width="800" height="600" style="width: 100%; height: 100%; display: block; touch-action: none; cursor: crosshair;"></canvas>
     </div>
   </div>
-</div>
 
-<script>
-/* ============================================================
-   GUARDIANS OF GAIA — SHARED ENGINE  (embedded verbatim)
-   ============================================================ */
-(function (global) {
-  "use strict";
+  <!-- Seed Returns Cutscene Overlay -->
+  <div class="cutscene-overlay" id="cutscene">
+    <div class="csSeed">🌱</div>
+    <div class="csTree" id="csTreeIcon">🌳</div>
+    <div class="csText">A seed returns to the Tree…</div>
+    <button class="btn small csSkip" id="csSkipBtn">Skip ⏭</button>
+  </div>
 
-  var EmojiSprite = (function () {
-    var cache = {};
-    function get(glyph, size) {
-      var rounded = Math.round(size / 2) * 2; // round to nearest 2px to maximize cache hits
-      var key = glyph + "_" + rounded;
-      if (cache[key]) return cache[key];
-      var pad = rounded * 0.4;
-      var c = document.createElement("canvas");
-      c.width = c.height = rounded + pad * 2;
-      var cctx = c.getContext("2d");
-      cctx.font = rounded + "px sans-serif";
-      cctx.textAlign = "center";
-      cctx.textBaseline = "middle";
-      cctx.fillText(glyph, c.width / 2, c.height / 2);
-      cache[key] = c;
-      return c;
-    }
-    return { get: get };
-  })();
-  global.EmojiSprite = EmojiSprite; // expose alongside GOGEngine
-
-  /* ---------------- GameLoop ---------------- */
-  function GameLoop(opts) {
-    this.update = opts.update || function () {};
-    this.draw = opts.draw || function () {};
-    this.stepMs = opts.stepMs || (1000 / 60);
-    this._acc = 0;
-    this._last = 0;
-    this._running = false;
-    this._raf = null;
-    this._maxStepsPerFrame = 5; // avoid spiral-of-death on tab-resume
-    this._onVisibility = this._onVisibility.bind(this);
-  }
-
-  GameLoop.prototype.start = function () {
-    if (this._running) return;
-    this._running = true;
-    this._last = performance.now();
-    document.addEventListener("visibilitychange", this._onVisibility);
-    var self = this;
-    function frame(now) {
-      if (!self._running) return;
-      var dtMs = now - self._last;
-      self._last = now;
-      if (dtMs > 250) dtMs = 250; // clamp huge gaps (tab was hidden)
-      self._acc += dtMs;
-      var steps = 0;
-      while (self._acc >= self.stepMs && steps < self._maxStepsPerFrame) {
-        self.update(self.stepMs / 1000);
-        self._acc -= self.stepMs;
-        steps++;
-      }
-      if (steps >= self._maxStepsPerFrame && self._acc >= self.stepMs) {
-        self._acc = 0;
-      }
-      self.draw();
-      self._raf = requestAnimationFrame(frame);
-    }
-    this._raf = requestAnimationFrame(frame);
-  };
-
-  GameLoop.prototype.stop = function () {
-    this._running = false;
-    if (this._raf) cancelAnimationFrame(this._raf);
-    document.removeEventListener("visibilitychange", this._onVisibility);
-  };
-
-  GameLoop.prototype._onVisibility = function () {
-    if (!document.hidden) this._last = performance.now();
-  };
-
-  /* ---------------- Input ---------------- */
-  function Input(canvas) {
-    this.canvas = canvas;
-    this.pointer = { x: 0, y: 0, down: false, active: false };
-    this.keys = {};
-    this._bind();
-  }
-
-  Input.prototype._toCanvasXY = function (clientX, clientY) {
-    var rect = this.canvas.getBoundingClientRect();
-    var scaleX = this.canvas.width / rect.width;
-    var scaleY = this.canvas.height / rect.height;
-    return {
-      x: (clientX - rect.left) * scaleX,
-      y: (clientY - rect.top) * scaleY
-    };
-  };
-
-  Input.prototype._bind = function () {
-    var self = this;
-    function setFromEvent(e, down) {
-      var point = e.touches && e.touches[0] ? e.touches[0] : e;
-      var xy = self._toCanvasXY(point.clientX, point.clientY);
-      self.pointer.x = xy.x;
-      self.pointer.y = xy.y;
-      self.pointer.active = true;
-      if (down !== undefined) self.pointer.down = down;
-    }
-    this.canvas.addEventListener("mousemove", function (e) { setFromEvent(e); });
-    this.canvas.addEventListener("mousedown", function (e) { setFromEvent(e, true); });
-    window.addEventListener("mouseup", function () { self.pointer.down = false; });
-    this.canvas.addEventListener("touchstart", function (e) { e.preventDefault(); setFromEvent(e, true); }, { passive: false });
-    this.canvas.addEventListener("touchmove", function (e) { e.preventDefault(); setFromEvent(e); }, { passive: false });
-    this.canvas.addEventListener("touchend", function (e) { e.preventDefault(); self.pointer.down = false; }, { passive: false });
-    window.addEventListener("keydown", function (e) { self.keys[e.key] = true; });
-    window.addEventListener("keyup", function (e) { self.keys[e.key] = false; });
-  };
-
-  Input.prototype.isDown = function (key) { return !!this.keys[key]; };
-
-  /* ---------------- Collision helpers ---------------- */
-  var Collision = {
-    circleHit: function (ax, ay, ar, bx, by, br) {
-      var dx = ax - bx, dy = ay - by;
-      var rr = ar + br;
-      return (dx * dx + dy * dy) <= (rr * rr);
-    },
-    distance: function (ax, ay, bx, by) {
-      var dx = ax - bx, dy = ay - by;
-      return Math.sqrt(dx * dx + dy * dy);
-    },
-    clamp: function (v, min, max) { return Math.max(min, Math.min(max, v)); },
-    lerp: function (a, b, t) { return a + (b - a) * t; }
-  };
-
-  /* ---------------- Particles ---------------- */
-  function ParticleSystem(maxParticles) {
-    this.max = maxParticles || 120;
-    this.pool = [];
-    for (var i = 0; i < this.max; i++) this.pool.push(this._fresh());
-  }
-
-  ParticleSystem.prototype._fresh = function () {
-    return { active: false, x: 0, y: 0, vx: 0, vy: 0, life: 0, maxLife: 1, text: "", size: 16, rotation: 0, vr: 0 };
-  };
-
-  ParticleSystem.prototype.burst = function (x, y, opts) {
-    opts = opts || {};
-    var count = opts.count || 8;
-    for (var i = 0; i < count; i++) {
-      var p = null;
-      for (var j = 0; j < this.pool.length; j++) {
-        if (!this.pool[j].active) { p = this.pool[j]; break; }
-      }
-      if (!p) return;
-      var angle = (opts.angle != null ? opts.angle : Math.random() * Math.PI * 2);
-      var spread = opts.spread != null ? opts.spread : Math.PI * 2;
-      var a = angle + (Math.random() - 0.5) * spread;
-      var speed = (opts.minSpeed || 40) + Math.random() * ((opts.maxSpeed || 140) - (opts.minSpeed || 40));
-      p.active = true;
-      p.x = x; p.y = y;
-      p.vx = Math.cos(a) * speed;
-      p.vy = Math.sin(a) * speed - (opts.lift || 60);
-      p.life = 0;
-      p.maxLife = (opts.life || 700) / 1000;
-      p.text = Array.isArray(opts.glyphs) ? opts.glyphs[Math.floor(Math.random() * opts.glyphs.length)] : (opts.glyph || "\u2728");
-      p.size = (opts.minSize || 14) + Math.random() * ((opts.maxSize || 22) - (opts.minSize || 14));
-      p.rotation = Math.random() * Math.PI;
-      p.vr = (Math.random() - 0.5) * 6;
-      p.gravity = opts.gravity != null ? opts.gravity : 220;
-    }
-  };
-
-  ParticleSystem.prototype.update = function (dt) {
-    for (var i = 0; i < this.pool.length; i++) {
-      var p = this.pool[i];
-      if (!p.active) continue;
-      p.life += dt;
-      if (p.life >= p.maxLife) { p.active = false; continue; }
-      p.vy += p.gravity * dt;
-      p.x += p.vx * dt;
-      p.y += p.vy * dt;
-      p.rotation += p.vr * dt;
-    }
-  };
-
-  ParticleSystem.prototype.draw = function (ctx) {
-    for (var i = 0; i < this.pool.length; i++) {
-      var p = this.pool[i];
-      if (!p.active) continue;
-      var t = p.life / p.maxLife;
-      var alpha = 1 - t;
-      ctx.save();
-      ctx.globalAlpha = Math.max(0, alpha);
-      ctx.translate(p.x, p.y);
-      ctx.rotate(p.rotation);
-      var sprite = EmojiSprite.get(p.text, p.size);
-      ctx.drawImage(sprite, -sprite.width / 2, -sprite.height / 2);
-      ctx.restore();
-    }
-  };
-
-  var hasUserGesture = false;
-  function registerUserGesture() {
-    hasUserGesture = true;
-    if (global.document) {
-      ["click", "keydown", "pointerdown", "touchstart"].forEach(function (e) {
-        global.document.removeEventListener(e, registerUserGesture, { capture: true });
-      });
-    }
-  }
-  if (global.document) {
-    ["click", "keydown", "pointerdown", "touchstart"].forEach(function (e) {
-      global.document.addEventListener(e, registerUserGesture, { capture: true, passive: true });
-    });
-  }
-
-  function Audio(muted) {
-    this.muted = !!muted;
-    this._ctx = null;
-  }
-
-  Audio.prototype._ensureCtx = function () {
-    var activated = false;
-    if (global.navigator && global.navigator.userActivation) {
-      activated = global.navigator.userActivation.hasBeenActive;
-    } else {
-      activated = hasUserGesture;
-    }
-    if (!activated) return null;
-    if (!this._ctx) {
-      var AC = global.AudioContext || global.webkitAudioContext;
-      if (AC) this._ctx = new AC();
-    }
-    if (this._ctx && this._ctx.state === "suspended") {
-      this._ctx.resume().catch(function(){});
-    }
-    return this._ctx;
-  };
-
-  Audio.prototype.setMuted = function (muted) { this.muted = muted; };
-
-  Audio.prototype.tone = function (freq, dur, type, peak, glideTo, delay) {
-    if (this.muted) return;
-    var ctx = this._ensureCtx();
-    if (!ctx) return;
-    var t0 = ctx.currentTime + (delay || 0);
-    var osc = ctx.createOscillator();
-    var g = ctx.createGain();
-    osc.type = type || "sine";
-    osc.frequency.setValueAtTime(freq, t0);
-    if (glideTo) osc.frequency.exponentialRampToValueAtTime(glideTo, t0 + dur);
-    var p = peak != null ? peak : 0.05;
-    g.gain.setValueAtTime(0.0001, t0);
-    g.gain.exponentialRampToValueAtTime(p, t0 + Math.min(0.02, dur * 0.15));
-    g.gain.exponentialRampToValueAtTime(0.0001, t0 + dur);
-    osc.connect(g);
-    g.connect(ctx.destination);
-    osc.start(t0);
-    osc.stop(t0 + dur + 0.03);
-    osc.onended = function () { osc.disconnect(); g.disconnect(); };
-  };
-
-  Audio.prototype.blip = function (freq, durationMs, type) {
-    this.tone(freq || 660, (durationMs || 140) / 1000, type || "sine");
-  };
-
-  Audio.prototype.collect = function () {
-    this.tone(660, 0.14, 'triangle', 0.1, 880);
-    this.tone(990, 0.13, 'triangle', 0.08, 1200, 0.06);
-  };
-  Audio.prototype.hazard = function () { this.tone(180, 0.22, 'sawtooth', 0.06, 110); };
-  Audio.prototype.oops = function () {
-    this.tone(300, 0.15, 'sawtooth', 0.08, 150);
-    this.tone(200, 0.22, 'sawtooth', 0.07, 100, 0.08);
-  };
-  Audio.prototype.heal = function () {
-    this.tone(440, 0.12, 'sine', 0.08, 660);
-    this.tone(554, 0.12, 'sine', 0.08, 880, 0.06);
-    this.tone(659, 0.16, 'sine', 0.06, 1100, 0.12);
-  };
-  Audio.prototype.grow = function () { this.tone(160, 0.5, 'sine', 0.1, 420); };
-  Audio.prototype.fly = function () { this.tone(500, 0.35, 'sine', 0.08, 900); };
-  Audio.prototype.bloom = function () {
-    var self = this;
-    [523, 659, 784, 1046].forEach(function (f, i) {
-      self.tone(f, 0.22, 'triangle', 0.08, null, i * 0.09);
-    });
-  };
-  Audio.prototype.win = function () { this.bloom(); };
-
-  global.GOGEngine = {
-    GameLoop: GameLoop,
-    Input: Input,
-    Collision: Collision,
-    ParticleSystem: ParticleSystem,
-    Audio: Audio
-  };
-})(window);
-</script>
+  <script src="../data/content.js"></script>
+  <script src="../src/save.js"></script>
+  <script src="../src/engine.js"></script>
+  <script src="../src/ui.js"></script>
 
 <script>
 /* ============================================================
@@ -632,22 +243,42 @@
   var EmojiSprite = window.EmojiSprite;
 
   /* ---------------- DOM refs ---------------- */
-  var stageWrap = document.getElementById("stageWrap");
-  var startOverlay = document.getElementById("startOverlay");
-  var winOverlay = document.getElementById("winOverlay");
-  var failOverlay = document.getElementById("failOverlay");
-  var startBtn = document.getElementById("startBtn");
-  var playAgainBtn = document.getElementById("playAgainBtn");
-  var tryAgainBtn = document.getElementById("tryAgainBtn");
-  var muteBtn = document.getElementById("muteBtn");
-
-  var scorePill = document.getElementById("scorePill");
-  var comboPill = document.getElementById("comboPill");
-  var comboVal = document.getElementById("comboVal");
+  var scoreChip = document.getElementById("scoreChip");
+  var comboChip = document.getElementById("comboChip");
   var progressFill = document.getElementById("progressFill");
   var progressVal = document.getElementById("progressVal");
-  var timeVal = document.getElementById("timeVal");
-  var timerPill = document.getElementById("timerPill");
+  var timerChip = document.getElementById("timerChip");
+  var muteBtn = document.getElementById("muteBtn");
+
+  /* ---------------- Save & Sound State ---------------- */
+  var STAGE_ID = "stage03";
+  var save = window.GOGSave ? window.GOGSave.load() : { settings: { sound: true } };
+  var muted = save.settings ? !save.settings.sound : false;
+  audio.setMuted(muted);
+  muteBtn.textContent = muted ? "🔇" : "🔊";
+
+  var activeOverlay = null;
+
+  function showIntro() {
+    activeOverlay = GOGUi.showOverlay({
+      accent: "var(--gog-tangerine)",
+      title: "🐝 Buzz & the Last Blooms",
+      body: '<p>Trace flight paths between blooming flowers before they wilt. Keep Buzz busy, and watch the whole meadow come alive.</p>' +
+            '<ul style="text-align:left;font-size:0.9rem;margin:10px 0;padding-left:20px;">' +
+            '<li>🌱 A new flower appears on every beat — it wilts in 3 seconds!</li>' +
+            '<li>🖱️ Drag from one glowing flower to another to fly Buzz between them.</li>' +
+            '<li>🌸 Both flowers bloom, drop fruit, and feed a hungry critter.</li>' +
+            '<li>💨 Miss 3 in a row and the meadow gets smoggy — no bees, no food.</li>' +
+            '<li>🎯 Pollinate 15 flowers to make the whole meadow bloom!</li>' +
+            '</ul>',
+      primaryLabel: "Start Buzzing ▶",
+      onPrimary: function () {
+        GOGUi.closeOverlay(activeOverlay);
+        activeOverlay = null;
+        resetGame();
+      }
+    });
+  }
 
   /* ---------------- Constants ---------------- */
   var WIN_TARGET = 15;
@@ -664,12 +295,29 @@
   var CRITTERS = ["🐸", "🐰"];
   var FRUITS = ["🍎", "🍇", "🍒", "🍓", "🍑"];
 
+  /* ---------------- Sprites preloading ---------------- */
+  var boarImg = new Image();
+  boarImg.src = "assets/sprites/stage03/Boar_Run_with_shadow.png";
+
+  var deerImg = new Image();
+  deerImg.src = "assets/sprites/stage03/Deer_Run_with_shadow.png";
+
+  var hareImg = new Image();
+  hareImg.src = "assets/sprites/stage03/Hare_Run_with_shadow.png";
+
+  var CRITTER_DEFS = {
+    boar: { img: boarImg, frames: 5, emoji: "🐗", defaultFacing: -1 },
+    deer: { img: deerImg, frames: 6, emoji: "🦌", defaultFacing: 1 },
+    hare: { img: hareImg, frames: 6, emoji: "🐇", defaultFacing: -1 }
+  };
+
   /* ---------------- Mutable game state ---------------- */
   var gameState = "idle"; // idle | playing | winning | win | fail
   var flowers = [];
   var fruits = [];
   var critters = [];
   var flowerIdSeq = 1;
+  var fruitIdSeq = 1;
 
   var score = 0, combo = 0, pollinatedCount = 0, consecutiveMisses = 0;
   var beatTimer = 0, nextBeatMs = BEAT_MS;
@@ -744,12 +392,14 @@
 
   function popFruitAt(x, y) {
     fruits.push({
+      id: fruitIdSeq++,
       x: x, y: y,
       vx: rand(-30, 30),
       vy: rand(-260, -200),
       emoji: FRUITS[Math.floor(Math.random() * FRUITS.length)],
       size: 26,
-      rotation: 0
+      rotation: 0,
+      state: "falling"
     });
   }
 
@@ -795,22 +445,26 @@
   }
 
   function pulseCombo() {
-    comboPill.classList.remove("pop");
-    void comboPill.offsetWidth;
-    comboPill.classList.add("pop");
+    if (window.GOGUi) {
+      window.GOGUi.restartAnimation(comboChip, 'combo-pop');
+    }
   }
 
   function spawnCritter(fruit) {
     var fromLeft = fruit.x < W / 2;
+    var types = ["boar", "deer", "hare"];
+    var selectedType = types[Math.floor(Math.random() * types.length)];
     critters.push({
-      type: CRITTERS[Math.floor(Math.random() * CRITTERS.length)],
+      type: selectedType,
       x: fromLeft ? -30 : W + 30,
       y: GROUND_Y,
       targetX: fruit.x,
+      targetFruitId: fruit.id,
       phase: "approach",
       hop: Math.random() * Math.PI * 2,
       life: 0,
-      maxLife: 1.6
+      maxLife: 1.6,
+      facing: fromLeft ? 1 : -1
     });
   }
 
@@ -824,9 +478,11 @@
     dragging = false; dragSourceId = null; dragTrail = [];
     winWipeRadius = 0;
     gameState = "playing";
-    startOverlay.classList.add("hidden");
-    winOverlay.classList.add("hidden");
-    failOverlay.classList.add("hidden");
+    fruitIdSeq = 1;
+    if (activeOverlay) {
+      GOGUi.closeOverlay(activeOverlay);
+      activeOverlay = null;
+    }
     // give the player two flowers immediately instead of waiting out two full beats
     spawnFlower();
     spawnFlower();
@@ -837,13 +493,67 @@
     gameState = "winning";
     winWipeRadius = 0;
     audio.win();
+
+    if (window.GOGSave) {
+      GOGSave.recordStageClear(STAGE_ID, {
+        stars: 3,
+        sprouts: 15,
+        smogDrop: 10
+      });
+    }
+    GOGUi.say("Buzz has saved the meadow! 🌸🎉");
   }
 
   function triggerFail() {
     if (gameState !== "playing") return;
     gameState = "fail";
     dragging = false; dragTrail = [];
-    failOverlay.classList.remove("hidden");
+    
+    activeOverlay = GOGUi.showOverlay({
+      accent: "var(--gog-tangerine)",
+      title: "🐝 Buzz Needs a Rest",
+      body: "The meadow's still a little sleepy — some flowers didn't get visited in time. Buzz would love another go!",
+      primaryLabel: "Try Again ▶",
+      onPrimary: function () {
+        GOGUi.closeOverlay(activeOverlay);
+        activeOverlay = null;
+        resetGame();
+      },
+      secondaryLabel: "Back to Map",
+      onSecondary: function () {
+        window.location.href = "../index.html";
+      }
+    });
+  }
+
+  var cutsceneTimer = null;
+  function triggerSeedReturnCutscene(onComplete) {
+    var overlay = document.getElementById("cutscene");
+    var treeIcon = document.getElementById("csTreeIcon");
+    if (!overlay) {
+      onComplete();
+      return;
+    }
+    overlay.classList.add("show");
+    if (treeIcon) {
+      GOGUi.restartAnimation(treeIcon, "pulse");
+    }
+    GOGUi.say("A seed is heading home to the Tree… 🌱");
+
+    function closeCutscene() {
+      overlay.classList.remove("show");
+      if (cutsceneTimer) clearTimeout(cutsceneTimer);
+      onComplete();
+    }
+
+    var skipBtn = document.getElementById("csSkipBtn");
+    if (skipBtn) {
+      var newSkip = skipBtn.cloneNode(true);
+      skipBtn.parentNode.replaceChild(newSkip, skipBtn);
+      newSkip.addEventListener("click", closeCutscene);
+    }
+
+    cutsceneTimer = setTimeout(closeCutscene, 2200);
   }
 
   /* ---------------- Update ---------------- */
@@ -909,15 +619,23 @@
       // fruits falling
       for (var j = fruits.length - 1; j >= 0; j--) {
         var fr = fruits[j];
-        fr.vy += 480 * dt;
-        fr.x += fr.vx * dt;
-        fr.y += fr.vy * dt;
-        fr.rotation += dt * 2;
-        if (fr.y >= GROUND_Y) {
-          fr.y = GROUND_Y;
-          if (!smogActive && critters.length < 3) spawnCritter(fr);
-          particles.burst(fr.x, GROUND_Y, { glyphs: ["🍃"], count: 4, life: 400, minSpeed: 10, maxSpeed: 40 });
-          fruits.splice(j, 1);
+        if (fr.state === "falling") {
+          fr.vy += 480 * dt;
+          fr.x += fr.vx * dt;
+          fr.y += fr.vy * dt;
+          fr.rotation += dt * 2;
+          if (fr.y >= GROUND_Y) {
+            fr.y = GROUND_Y;
+            fr.vx = 0;
+            fr.vy = 0;
+            if (!smogActive && critters.length < 6) {
+              fr.state = "onGround";
+              spawnCritter(fr);
+            } else {
+              particles.burst(fr.x, GROUND_Y, { glyphs: ["🍃"], count: 4, life: 400, minSpeed: 10, maxSpeed: 40 });
+              fruits.splice(j, 1);
+            }
+          }
         }
       }
 
@@ -929,14 +647,28 @@
         if (c.phase === "approach") {
           var dir = c.targetX > c.x ? 1 : -1;
           c.x += dir * 90 * dt;
-          if (Math.abs(c.targetX - c.x) < 6) { c.phase = "eat"; c.eatUntil = c.life + 0.6; }
+          if (Math.abs(c.targetX - c.x) < 6) {
+            c.phase = "eat";
+            c.eatUntil = c.life + 0.6;
+            // Eat the fruit: find it and remove it
+            for (var fIdx = 0; fIdx < fruits.length; fIdx++) {
+              if (fruits[fIdx].id === c.targetFruitId) {
+                particles.burst(fruits[fIdx].x, GROUND_Y, { glyphs: ["🍃"], count: 4, life: 400, minSpeed: 10, maxSpeed: 40 });
+                fruits.splice(fIdx, 1);
+                break;
+              }
+            }
+          }
         } else if (c.phase === "eat") {
-          if (c.life >= c.eatUntil) { c.phase = "leave"; }
+          if (c.life >= c.eatUntil) {
+            c.phase = "leave";
+          }
         } else if (c.phase === "leave") {
           var awayDir = c.x < W / 2 ? -1 : 1;
           c.x += awayDir * 110 * dt;
+          c.facing = awayDir;
         }
-        if (c.life >= c.maxLife + 1 || c.x < -60 || c.x > W + 60) critters.splice(k, 1);
+        if ((c.phase === "leave" && (c.x < -60 || c.x > W + 60)) || c.life > 15) critters.splice(k, 1);
       }
     }
 
@@ -944,7 +676,25 @@
       winWipeRadius += dt * winWipeMax * 1.6;
       if (winWipeRadius >= winWipeMax) {
         gameState = "win";
-        winOverlay.classList.remove("hidden");
+        
+        triggerSeedReturnCutscene(function () {
+          activeOverlay = GOGUi.showOverlay({
+            accent: "var(--gog-tangerine)",
+            title: "🌼 The Meadow Blooms!",
+            body: "Buzz did it — every last flower is blooming again.",
+            factText: "About 1 in 3 bites of the food we eat depends on pollinators like bees!",
+            primaryLabel: "Play Again ▶",
+            onPrimary: function () {
+              GOGUi.closeOverlay(activeOverlay);
+              activeOverlay = null;
+              resetGame();
+            },
+            secondaryLabel: "Back to Map",
+            onSecondary: function () {
+              window.location.href = "../index.html";
+            }
+          });
+        });
       }
     }
 
@@ -953,13 +703,13 @@
   }
 
   function updateHUD() {
-    scorePill.textContent = score;
-    comboVal.textContent = combo;
+    scoreChip.textContent = score;
+    comboChip.textContent = "🔥 x" + combo;
     progressVal.textContent = Math.min(pollinatedCount, WIN_TARGET);
     progressFill.style.width = Math.min(100, (pollinatedCount / WIN_TARGET) * 100) + "%";
     var secs = Math.ceil(sessionTimeLeft / 1000);
-    timeVal.textContent = Math.max(0, secs);
-    timerPill.classList.toggle("low", secs <= 15 && gameState === "playing");
+    timerChip.textContent = Math.max(0, secs) + "s";
+    timerChip.style.color = (secs <= 15 && gameState === "playing") ? "#e82e5d" : "";
   }
 
   /* ---------------- Draw ---------------- */
@@ -1102,7 +852,7 @@
 
     // bee riding the trail head
     var head = dragTrail[dragTrail.length - 1];
-    var sprite = EmojiSprite.get("🐝", 26);
+    var sprite = EmojiSprite.get("🐝", 52);
     ctx.save();
     ctx.translate(head.x, head.y);
     ctx.drawImage(sprite, -sprite.width / 2, -sprite.height / 2);
@@ -1124,13 +874,46 @@
   function drawCritters() {
     for (var i = 0; i < critters.length; i++) {
       var c = critters[i];
-      var hopOffset = c.phase === "approach" ? Math.abs(Math.sin(c.hop)) * 16 : 0;
-      var sprite = EmojiSprite.get(c.type, 40);
+      var def = CRITTER_DEFS[c.type];
+      if (!def) continue;
+
       ctx.save();
       ctx.globalAlpha = c.phase === "leave" ? Collision.clamp(1 - (c.life - c.maxLife) / 1, 0, 1) : 1;
-      ctx.translate(c.x, c.y - hopOffset);
-      if (c.x > W / 2) ctx.scale(-1, 1);
-      ctx.drawImage(sprite, -sprite.width / 2, -sprite.height);
+
+      var img = def.img;
+      var hasImage = img.complete && img.naturalWidth > 0;
+
+      if (hasImage) {
+        var totalFrames = def.frames;
+        var frameIndex = 0;
+        if (c.phase === "approach" || c.phase === "leave") {
+          var fps = 12;
+          frameIndex = Math.floor(c.life * fps) % totalFrames;
+        } else {
+          frameIndex = 0;
+        }
+
+        var sw = 32;
+        var sh = 32;
+        var sx = frameIndex * sw;
+        var sy = 0;
+
+        var dw = 64;
+        var dh = 64;
+
+        ctx.translate(c.x, c.y);
+        ctx.scale(c.facing * def.defaultFacing, 1);
+
+        // drawImage(image, sx, sy, sWidth, sHeight, dx, dy, dWidth, dHeight)
+        // With dh = 64, the feet are ~8px up from bottom of frame, so -dh + 8 aligns it nicely on ground
+        ctx.drawImage(img, sx, sy, sw, sh, -dw / 2, -dh + 8, dw, dh);
+      } else {
+        var sprite = EmojiSprite.get(def.emoji, 40);
+        var hopOffset = c.phase === "approach" ? Math.abs(Math.sin(c.hop)) * 16 : 0;
+        ctx.translate(c.x, c.y - hopOffset);
+        if (c.facing === -1) ctx.scale(-1, 1);
+        ctx.drawImage(sprite, -sprite.width / 2, -sprite.height);
+      }
       ctx.restore();
     }
   }
@@ -1252,20 +1035,19 @@
   window.addEventListener("blur", function () { dragging = false; dragTrail = []; });
 
   /* ---------------- UI buttons ---------------- */
-  startBtn.addEventListener("click", function () { resetGame(); });
-  playAgainBtn.addEventListener("click", function () { resetGame(); });
-  tryAgainBtn.addEventListener("click", function () { resetGame(); });
-
-  var muted = false;
   muteBtn.addEventListener("click", function () {
     muted = !muted;
     audio.setMuted(muted);
     muteBtn.textContent = muted ? "🔇" : "🔊";
+    if (window.GOGSave) {
+      GOGSave.patch({ settings: { sound: !muted } });
+    }
   });
 
   /* ---------------- Boot ---------------- */
   var loop = new window.GOGEngine.GameLoop({ update: update, draw: draw, stepMs: 1000 / 60 });
   loop.start();
+  showIntro();
 })();
 </script>
 </body>
