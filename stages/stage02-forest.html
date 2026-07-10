@@ -584,7 +584,7 @@
   // Add rock obstacles for default 6x10 hillside layout[cite: 2]
 if (this.rows === 6 && this.cols === 10) {
   // Moved rows 1 and 2 down to rows 3, 4, and 5 to sit on the grass field layout
-  var rockCoords = [[3, 1], [3, 7],  [5, 5], [5, 8],[0,3] ,[0,4],[0,5],[0,6]];
+  var rockCoords = [[3, 1], [3, 7], [4, 3], [5, 5], [5, 8]];
   var self = this;
   rockCoords.forEach(function (coord) {
     var rr = coord[0], cc = coord[1];
@@ -1129,6 +1129,11 @@ if (this.rows === 6 && this.cols === 10) {
            widthScale is relative to one grid cell's width, so animals stay
            sized to fit among the trees instead of towering over them.
         ------------------------------------------------------------------*/
+        // Ambient flutter/flight population caps for the canopy — see
+        // updateAmbientCreatures()/drawAmbientCreatures() below.
+        var BUTTERFLY_MAX = 5;
+        var BIRD_MAX = 3;
+
         var WILDLIFE_DEFS = [
           {
             id: "deer",
@@ -1165,6 +1170,28 @@ if (this.rows === 6 && this.cols === 10) {
           },
         ];
 
+        var initialButterflies = [];
+        for (var bfi = 0; bfi < BUTTERFLY_MAX; bfi++) {
+          initialButterflies.push({
+            phase: Math.random() * Math.PI * 2,
+            wingPhase: Math.random() * Math.PI * 2,
+            speedMul: 0.8 + Math.random() * 0.5,
+            active: false,
+            x: 0,
+            y: 0,
+          });
+        }
+
+        var initialBirds = [];
+        for (var bdi = 0; bdi < BIRD_MAX; bdi++) {
+          initialBirds.push({
+            x: null,
+            y: 0,
+            vx: 0,
+            phase: Math.random() * Math.PI * 2,
+          });
+        }
+
         var state = {
           running: false,
           elapsed: 0,
@@ -1188,6 +1215,10 @@ if (this.rows === 6 && this.cols === 10) {
             dir: 1,
             anim: { frameIndex: 0, elapsedFrameTime: 0 },
           },
+          // Ambient life that flutters/glides over the connected canopy —
+          // purely decorative, population scales up with canopy progress.
+          butterflies: initialButterflies,
+          birds: initialBirds,
         };
 
 
@@ -1479,6 +1510,112 @@ if (this.rows === 6 && this.cols === 10) {
           ctx.restore();
         }
 
+        /* ---------------- ambient butterflies & birds ---------------- */
+        // Purely decorative flutter/flight over the connected canopy —
+        // population scales up with canopy progress so the scene feels
+        // more alive the more trees a child reconnects. Confined to the
+        // same connected-tree bounds as the big wildlife, so they read as
+        // part of that canopy rather than generic screen-wide decoration.
+        function updateAmbientCreatures(dt) {
+          var bounds = getConnectedCanopyBounds();
+          var pct = state.canopyPercent;
+
+          if (!bounds) {
+            // Nothing connected yet — park everyone off screen.
+            state.birds.forEach(function (bird) {
+              bird.x = null;
+            });
+            return;
+          }
+
+          var cellW = W / GOGStage2.cols;
+          var gridH = H / 2;
+          var cellH = gridH / GOGStage2.rows;
+          var gridYOffset = H / 2;
+
+          var spanMinX = bounds.minCol * cellW;
+          var spanMaxX = (bounds.maxCol + 1) * cellW;
+          var canopyTopY = gridYOffset + bounds.minRow * cellH;
+
+          var butterflyUnlocked = Math.min(
+            BUTTERFLY_MAX,
+            Math.ceil((pct / 100) * BUTTERFLY_MAX) + 1,
+          );
+          var birdUnlocked =
+            pct >= 15
+              ? Math.min(BIRD_MAX, 1 + Math.floor((pct - 15) / 25))
+              : 0;
+
+          state.butterflies.forEach(function (b, i) {
+            if (i >= butterflyUnlocked) {
+              b.active = false;
+              return;
+            }
+            b.active = true;
+            b.phase += dt * (1.6 + b.speedMul);
+            b.wingPhase += dt * 13;
+            var slotFrac = (i + 0.5) / BUTTERFLY_MAX;
+            var homeX = spanMinX + slotFrac * (spanMaxX - spanMinX);
+            var homeY = canopyTopY - 6;
+            b.x =
+              homeX +
+              Math.sin(b.phase * 0.6) * 34 +
+              Math.cos(b.phase * 0.37) * 14;
+            b.y = homeY + Math.sin(b.phase * 0.9 + i) * 16;
+          });
+
+          state.birds.forEach(function (bird, i) {
+            if (i >= birdUnlocked) {
+              bird.x = null;
+              return;
+            }
+            var rangeMinX = spanMinX - 50;
+            var rangeMaxX = spanMaxX + 50;
+            if (bird.x === null) {
+              bird.x = rangeMinX;
+              bird.y = canopyTopY - 34 - i * 14;
+              bird.vx = 34 + i * 8;
+            }
+            bird.phase += dt * 2.2;
+            bird.x += bird.vx * dt;
+            if (bird.vx > 0 && bird.x > rangeMaxX) {
+              bird.x = rangeMinX;
+            } else if (bird.vx < 0 && bird.x < rangeMinX) {
+              bird.x = rangeMaxX;
+            }
+            bird.y = canopyTopY - 34 - i * 14 + Math.sin(bird.phase) * 8;
+          });
+        }
+
+        function drawAmbientCreatures() {
+          ctx.save();
+          ctx.textAlign = "center";
+          ctx.textBaseline = "middle";
+
+          ctx.font = "20px Arial";
+          state.butterflies.forEach(function (b) {
+            if (!b.active) return;
+            var flap = Math.sin(b.wingPhase);
+            ctx.save();
+            ctx.translate(b.x, b.y);
+            ctx.rotate(flap * 0.2);
+            ctx.scale(1, 0.72 + Math.abs(flap) * 0.28);
+            ctx.fillText("🦋", 0, 0);
+            ctx.restore();
+          });
+
+          ctx.font = "22px Arial";
+          state.birds.forEach(function (bird) {
+            if (bird.x === null) return;
+            ctx.save();
+            ctx.translate(bird.x, bird.y);
+            if (bird.vx < 0) ctx.scale(-1, 1);
+            ctx.fillText("🐦", 0, 0);
+            ctx.restore();
+          });
+
+          ctx.restore();
+        }
 
         /* ---------------- rain clouds spawning ---------------- */
         function spawnCloud() {
@@ -1940,6 +2077,7 @@ if (this.rows === 6 && this.cols === 10) {
           canopyPct.textContent = canopyPercent + "%";
           state.canopyPercent = canopyPercent;
           updateWildlife(dt);
+          updateAmbientCreatures(dt);
 
           sproutsChip.textContent = GOGStage2.saplings;
           if (GOGStage2.smogDelay > 0 && !calmMode) {
@@ -2243,6 +2381,7 @@ scale *= scalePct;
           // trees so it visibly stands within the connected canopy patch,
           // not floating over the whole scene.
           drawWildlife();
+          drawAmbientCreatures();
 
           // 4. Draw Blossoms & Wildlife in Win/Cleared state (Phase 5 Juice)
           if (
