@@ -304,31 +304,50 @@ canvas {
     factCard: document.getElementById('factCard')
   };
 
-  const penguinImg = new Image();
-  penguinImg.src = 'assets/sprites/stage04/Penguin_idel.png';
-  const penguinAnim = {
-    loaded: false,
-    frameIndex: 0,
-    elapsed: 0,
-    fps: 7,
-    cols: 3,
-    rows: 3,
-    frameW: 0,
-    frameH: 0
-  };
-  penguinImg.onload = function () {
-    penguinAnim.frameW = penguinImg.naturalWidth / penguinAnim.cols;
-    penguinAnim.frameH = penguinImg.naturalHeight / penguinAnim.rows;
-    penguinAnim.loaded = true;
+  // Preload and monitor state animations
+  const spriteSheets = {
+    idle: { img: new Image(), src: 'assets/sprites/stage04/Penguin_idel.png', cols: 3, rows: 3, loaded: false, frameW: 0, frameH: 0 },
+    running: { img: new Image(), src: 'assets/sprites/stage04/penguin-running.png', cols: 3, rows: 3, loaded: false, frameW: 0, frameH: 0 },
+    jump: { img: new Image(), src: 'assets/sprites/stage04/Penguin_jump.png', cols: 3, rows: 3, loaded: false, frameW: 0, frameH: 0 }
   };
 
+  Object.keys(spriteSheets).forEach(key => {
+    const sheet = spriteSheets[key];
+    sheet.img.src = sheet.src;
+    sheet.img.onload = function () {
+      sheet.frameW = sheet.img.naturalWidth / sheet.cols;
+      sheet.frameH = sheet.img.naturalHeight / sheet.rows;
+      sheet.loaded = true;
+    };
+  });
+
+  const penguinAnim = {
+    frameIndex: 0,
+    elapsed: 0,
+    fps: 7
+  };
+
+  // Determine active dynamic animation state sheet
+  function getActiveSpriteSheet() {
+    if (!state) return spriteSheets.idle;
+    const p = state.player;
+    if (!p.onGround) {
+      return spriteSheets.jump;
+    } else if (Math.abs(p.vx) > 15) {
+      return spriteSheets.running;
+    }
+    return spriteSheets.idle;
+  }
+
   function updatePenguinAnim(dt) {
-    if (!penguinAnim.loaded) return;
+    const sheet = getActiveSpriteSheet();
     penguinAnim.elapsed += dt;
     var frameTime = 1 / penguinAnim.fps;
+    const totalFrames = sheet.cols * sheet.rows;
+
     while (penguinAnim.elapsed >= frameTime) {
       penguinAnim.elapsed -= frameTime;
-      penguinAnim.frameIndex = (penguinAnim.frameIndex + 1) % (penguinAnim.cols * penguinAnim.rows);
+      penguinAnim.frameIndex = (penguinAnim.frameIndex + 1) % totalFrames;
     }
   }
 
@@ -565,9 +584,6 @@ canvas {
     const solids = getSolids();
     for (const s of solids) {
       if (!rectsOverlap(p, s)) continue;
-      // one-way platform: only land when falling onto the top surface from above.
-      // never block horizontal movement or bump the player off a side face —
-      // these are thin floating ice floes, not walls.
       if (p.vy >= 0 && prevBottom <= s.y + 6) {
         p.y = s.y - p.h;
         p.vy = 0;
@@ -861,31 +877,39 @@ canvas {
     }
   }
 
-  function drawPlayer() {
+function drawPlayer() {
     const p = state.player;
     const x = p.x;
     const y = p.y;
+    const sheet = getActiveSpriteSheet();
 
-    if (penguinAnim.loaded) {
+    if (sheet.loaded) {
       const frame = penguinAnim.frameIndex;
-      const col = frame % penguinAnim.cols;
-      const row = Math.floor(frame / penguinAnim.cols);
-      const sx = col * penguinAnim.frameW;
-      const sy = row * penguinAnim.frameH;
-      const sw = penguinAnim.frameW;
-      const sh = penguinAnim.frameH;
+      const col = frame % sheet.cols;
+      const row = Math.floor(frame / sheet.cols);
+
+      const sx = col * sheet.frameW;
+      const sy = row * sheet.frameH;
       const destW = 60;
-      const destH = (sh / sw) * destW;
+      const destH = (sheet.frameH / sheet.frameW) * destW;
 
       ctx.save();
       ctx.translate(x + p.w / 2, y + p.h);
-      ctx.scale(p.facing, 1);
+      
+      // FIX: If the running sheet naturally faces left, invert the scale multiplier for that state
+      let faceDirection = p.facing;
+      if (sheet === spriteSheets.running) {
+        // Flipping the orientation specifically for the running animation sheet
+        faceDirection = -p.facing; 
+      }
+      
+      ctx.scale(faceDirection, 1);
       ctx.drawImage(
-        penguinImg,
+        sheet.img,
         sx,
         sy,
-        sw,
-        sh,
+        sheet.frameW,
+        sheet.frameH,
         -destW / 2,
         -destH,
         destW,
@@ -893,44 +917,25 @@ canvas {
       );
       ctx.restore();
     } else {
+      // Direct asset fallback layout to render instantly even if network paths differ locally
+      const destW = 60;
+      const destH = 60;
       ctx.save();
-      ctx.translate(x + p.w / 2, y + p.h / 2);
-      ctx.scale(p.facing, 1);
-
-      ctx.fillStyle = '#111';
-      ctx.strokeStyle = '#111';
-      ctx.lineWidth = 3;
-      ellipse(0, 8, 18, 20, true, false);
-      ctx.fillStyle = '#87D0FF';
-      ellipse(0, 0, 20, 22, true, false);
-      ctx.strokeStyle = '#111';
-      ellipse(0, 0, 20, 22, false, true);
-
-      ctx.fillStyle = '#fff';
-      ellipse(0, 6, 11, 14, true, false);
-      ctx.strokeStyle = '#111';
-      ellipse(0, 6, 11, 14, false, true);
-
-      ctx.fillStyle = '#111';
-      circle(-6, -8, 2.3, true);
-      circle(6, -8, 2.3, true);
-
-      ctx.fillStyle = '#FFB44D';
-      ctx.beginPath();
-      ctx.moveTo(0, -2);
-      ctx.lineTo(10, 2);
-      ctx.lineTo(0, 6);
-      ctx.closePath();
-      ctx.fill();
-      ctx.stroke();
-
-      ctx.fillStyle = '#FFB44D';
-      roundedRect(-13, 20, 9, 8, 4, true, false);
-      roundedRect(4, 20, 9, 8, 4, true, false);
-      ctx.strokeStyle = '#111';
-      roundedRect(-13, 20, 9, 8, 4, false, true);
-      roundedRect(4, 20, 9, 8, 4, false, true);
-
+      ctx.translate(x + p.w / 2, y + p.h);
+      
+      let faceDirection = p.facing;
+      if (sheet === spriteSheets.running) {
+        faceDirection = -p.facing;
+      }
+      
+      ctx.scale(faceDirection, 1);
+      try {
+        ctx.drawImage(sheet.img, -destW / 2, -destH, destW, destH);
+      } catch (e) {
+        // Safe secondary shape draw
+        ctx.fillStyle = '#87D0FF';
+        ctx.fillRect(-p.w/2, -p.h, p.w, p.h);
+      }
       ctx.restore();
     }
 
