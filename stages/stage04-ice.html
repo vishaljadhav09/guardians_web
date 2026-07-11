@@ -304,6 +304,34 @@ canvas {
     factCard: document.getElementById('factCard')
   };
 
+  const penguinImg = new Image();
+  penguinImg.src = 'assets/sprites/stage04/Penguin_idel.png';
+  const penguinAnim = {
+    loaded: false,
+    frameIndex: 0,
+    elapsed: 0,
+    fps: 7,
+    cols: 3,
+    rows: 3,
+    frameW: 0,
+    frameH: 0
+  };
+  penguinImg.onload = function () {
+    penguinAnim.frameW = penguinImg.naturalWidth / penguinAnim.cols;
+    penguinAnim.frameH = penguinImg.naturalHeight / penguinAnim.rows;
+    penguinAnim.loaded = true;
+  };
+
+  function updatePenguinAnim(dt) {
+    if (!penguinAnim.loaded) return;
+    penguinAnim.elapsed += dt;
+    var frameTime = 1 / penguinAnim.fps;
+    while (penguinAnim.elapsed >= frameTime) {
+      penguinAnim.elapsed -= frameTime;
+      penguinAnim.frameIndex = (penguinAnim.frameIndex + 1) % (penguinAnim.cols * penguinAnim.rows);
+    }
+  }
+
   const WORLD_W = 2000;
   const WORLD_H = 600;
   const CAMERA_LERP = 0.12;
@@ -423,6 +451,7 @@ canvas {
     if (!state || state.state === 'failed') return;
 
     state.time += dt;
+    updatePenguinAnim(dt);
     const p = state.player;
 
     if (state.state === 'won') {
@@ -836,45 +865,74 @@ canvas {
     const p = state.player;
     const x = p.x;
     const y = p.y;
-    ctx.save();
-    ctx.translate(x + p.w / 2, y + p.h / 2);
-    ctx.scale(p.facing, 1);
 
-    ctx.fillStyle = '#111';
-    ctx.strokeStyle = '#111';
-    ctx.lineWidth = 3;
-    ellipse(0, 8, 18, 20, true, false);
-    ctx.fillStyle = '#87D0FF';
-    ellipse(0, 0, 20, 22, true, false);
-    ctx.strokeStyle = '#111';
-    ellipse(0, 0, 20, 22, false, true);
+    if (penguinAnim.loaded) {
+      const frame = penguinAnim.frameIndex;
+      const col = frame % penguinAnim.cols;
+      const row = Math.floor(frame / penguinAnim.cols);
+      const sx = col * penguinAnim.frameW;
+      const sy = row * penguinAnim.frameH;
+      const sw = penguinAnim.frameW;
+      const sh = penguinAnim.frameH;
+      const destW = 60;
+      const destH = (sh / sw) * destW;
 
-    ctx.fillStyle = '#fff';
-    ellipse(0, 6, 11, 14, true, false);
-    ctx.strokeStyle = '#111';
-    ellipse(0, 6, 11, 14, false, true);
+      ctx.save();
+      ctx.translate(x + p.w / 2, y + p.h);
+      ctx.scale(p.facing, 1);
+      ctx.drawImage(
+        penguinImg,
+        sx,
+        sy,
+        sw,
+        sh,
+        -destW / 2,
+        -destH,
+        destW,
+        destH
+      );
+      ctx.restore();
+    } else {
+      ctx.save();
+      ctx.translate(x + p.w / 2, y + p.h / 2);
+      ctx.scale(p.facing, 1);
 
-    ctx.fillStyle = '#111';
-    circle(-6, -8, 2.3, true);
-    circle(6, -8, 2.3, true);
+      ctx.fillStyle = '#111';
+      ctx.strokeStyle = '#111';
+      ctx.lineWidth = 3;
+      ellipse(0, 8, 18, 20, true, false);
+      ctx.fillStyle = '#87D0FF';
+      ellipse(0, 0, 20, 22, true, false);
+      ctx.strokeStyle = '#111';
+      ellipse(0, 0, 20, 22, false, true);
 
-    ctx.fillStyle = '#FFB44D';
-    ctx.beginPath();
-    ctx.moveTo(0, -2);
-    ctx.lineTo(10, 2);
-    ctx.lineTo(0, 6);
-    ctx.closePath();
-    ctx.fill();
-    ctx.stroke();
+      ctx.fillStyle = '#fff';
+      ellipse(0, 6, 11, 14, true, false);
+      ctx.strokeStyle = '#111';
+      ellipse(0, 6, 11, 14, false, true);
 
-    ctx.fillStyle = '#FFB44D';
-    roundedRect(-13, 20, 9, 8, 4, true, false);
-    roundedRect(4, 20, 9, 8, 4, true, false);
-    ctx.strokeStyle = '#111';
-    roundedRect(-13, 20, 9, 8, 4, false, true);
-    roundedRect(4, 20, 9, 8, 4, false, true);
+      ctx.fillStyle = '#111';
+      circle(-6, -8, 2.3, true);
+      circle(6, -8, 2.3, true);
 
-    ctx.restore();
+      ctx.fillStyle = '#FFB44D';
+      ctx.beginPath();
+      ctx.moveTo(0, -2);
+      ctx.lineTo(10, 2);
+      ctx.lineTo(0, 6);
+      ctx.closePath();
+      ctx.fill();
+      ctx.stroke();
+
+      ctx.fillStyle = '#FFB44D';
+      roundedRect(-13, 20, 9, 8, 4, true, false);
+      roundedRect(4, 20, 9, 8, 4, true, false);
+      ctx.strokeStyle = '#111';
+      roundedRect(-13, 20, 9, 8, 4, false, true);
+      roundedRect(4, 20, 9, 8, 4, false, true);
+
+      ctx.restore();
+    }
 
     if (p.carrying) {
       drawEmoji('🐥', x + p.w / 2, y - 8, 20);
@@ -1048,7 +1106,11 @@ canvas {
     if (!lastTime) lastTime = ts;
     const dt = Math.min(0.033, (ts - lastTime) / 1000);
     lastTime = ts;
-    if (gameRunning) update(dt);
+    if (gameRunning) {
+      update(dt);
+    } else {
+      updatePenguinAnim(dt);
+    }
     render();
     requestAnimationFrame(frame);
   }
