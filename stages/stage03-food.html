@@ -242,6 +242,16 @@
   var audio = new window.GOGEngine.Audio(false);
   var EmojiSprite = window.EmojiSprite;
 
+  // Buzz's body sprite is fetched ONCE at a fixed pixel size and reused every
+  // frame. Squash/stretch/scale is applied with ctx.scale() at draw time
+  // instead of re-requesting new sprite sizes, so this never touches the
+  // EmojiSprite cache during gameplay (zero per-frame allocations).
+  var buzzSpriteImg = EmojiSprite.get("🐝", 56);
+
+  // Same fetch-once-scale-at-draw-time pattern for background ambient life.
+  var butterflySpriteImg = EmojiSprite.get("🦋", 22);
+  var ladybugSpriteImg = EmojiSprite.get("🐞", 16);
+
   /* ---------------- DOM refs ---------------- */
   var scoreChip = document.getElementById("scoreChip");
   var comboChip = document.getElementById("comboChip");
@@ -291,6 +301,22 @@
   var FAIL_MISS_THRESHOLD = 6;
   var GROUND_Y = H - 78;
   var FLOWER_R = 32;
+
+  // --- Buzz (the player bee) tuning -------------------------------------
+  var BUZZ_TRAIL_MAX = 20;       // sampled ribbon points while dragging
+  var BUZZ_TRAIL_LIFE = 0.35;    // seconds a motion-blur dot stays visible
+  var BUZZ_LAND_MS = 0.22;       // landing squash duration
+  var BUZZ_TAKEOFF_MS = 0.22;    // takeoff stretch duration
+  var BUZZ_EMIT_INTERVAL = 0.07; // spark particle spacing while flying
+
+  // --- Ambient background tuning -----------------------------------------
+  var CLOUD_COUNT = 4;
+  var POLLEN_COUNT = 16;
+  var FIREFLY_COUNT = 8;
+  var PETAL_COUNT = 8;
+  var BG_BUTTERFLY_COUNT = 3;
+  var BG_LADYBUG_COUNT = 2;
+  var GRASS_SPACING = 22;
 
   var CRITTERS = ["🐸", "🐰"];
   var FRUITS = ["🍎", "🍇", "🍒", "🍓", "🍑"];
@@ -361,8 +387,75 @@ function getFlowerSpriteSheet(f) {
 
   var ambientBee = { x: W * 0.5, y: H * 0.22, t: Math.random() * 100 };
 
+  // Buzz — the player-controlled bee. This is a persistent character that
+  // exists in EVERY state (idle hover, mid-flight, landing), not just while
+  // a drag is active. See updateBuzz()/drawBuzz() for behavior.
+  var buzz = {
+    x: W * 0.5, y: GROUND_Y - 160,     // current smoothed screen position
+    restX: W * 0.5, restY: GROUND_Y - 160, // idle hover anchor point
+    vx: 0, vy: 0,                       // velocity, drives bank angle
+    angle: 0,                           // current bank/rotation (radians)
+    wingPhase: 0,                       // wing-flap oscillation phase
+    scaleX: 1, scaleY: 1,               // squash & stretch
+    state: "idle",                      // idle | flying | landing
+    landTimer: 0,
+    takeoffTimer: 0,
+    idleT: Math.random() * 10,
+    emitTimer: 0,
+    trail: []                           // {x,y,age} buzzing motion-blur trail
+  };
+
   var winWipeRadius = 0;
   var winWipeMax = Math.hypot(W, H) * 0.6;
+
+  /* ---------------- Ambient background state ----------------
+     All of these are decorative, gameplay-independent, and live for the
+     lifetime of the page (not reset per game) — the meadow should never
+     look empty, even on the intro/win/fail overlays. Pools are small,
+     fixed-size, and built once here; nothing here allocates per frame. */
+  var windPhase = 0;          // shared clock driving grass sway + light drift
+  var ambientVividness = 1;   // 1 = full life, fades toward 0 as smog rises
+
+  function makeCloud() {
+    return { x: rand(-100, W + 100), y: rand(30, 110), scale: rand(0.7, 1.3), speed: rand(6, 14) };
+  }
+  var clouds = [];
+  for (var ci = 0; ci < CLOUD_COUNT; ci++) clouds.push(makeCloud());
+
+  function makePollenMote() {
+    return { x: rand(0, W), y: rand(0, GROUND_Y), vy: -rand(8, 20), swayPhase: rand(0, Math.PI * 2), r: rand(1.5, 3) };
+  }
+  var pollenMotes = [];
+  for (var pi = 0; pi < POLLEN_COUNT; pi++) pollenMotes.push(makePollenMote());
+
+  function makeFirefly() {
+    return { x: rand(0, W), y: rand(GROUND_Y * 0.4, GROUND_Y - 10), pulsePhase: rand(0, Math.PI * 2), driftPhase: rand(0, Math.PI * 2), speed: rand(6, 14) };
+  }
+  var fireflies = [];
+  for (var fj = 0; fj < FIREFLY_COUNT; fj++) fireflies.push(makeFirefly());
+
+  function makePetal() {
+    return { x: rand(0, W), y: rand(-GROUND_Y, 0), vy: rand(26, 46), rot: rand(0, Math.PI * 2), rotSpeed: rand(-1.4, 1.4), swayPhase: rand(0, Math.PI * 2), size: rand(6, 10) };
+  }
+  var petals = [];
+  for (var pk = 0; pk < PETAL_COUNT; pk++) petals.push(makePetal());
+
+  function makeBgButterfly() {
+    return { x: rand(60, W - 60), y: rand(90, GROUND_Y - 60), phase: rand(0, Math.PI * 2), speed: rand(0.5, 0.9), wingPhase: rand(0, 10) };
+  }
+  var bgButterflies = [];
+  for (var bb = 0; bb < BG_BUTTERFLY_COUNT; bb++) bgButterflies.push(makeBgButterfly());
+
+  function makeBgLadybug() {
+    return { x: rand(60, W - 60), y: GROUND_Y - rand(4, 14), dir: Math.random() < 0.5 ? 1 : -1, pauseTimer: rand(1, 3), walking: true };
+  }
+  var bgLadybugs = [];
+  for (var lb = 0; lb < BG_LADYBUG_COUNT; lb++) bgLadybugs.push(makeBgLadybug());
+
+  // Bird flocks are occasional, not continuous — a single reusable object,
+  // spawned on a timer, rather than a pool.
+  var birdFlock = null;
+  var birdSpawnTimer = rand(8, 16);
 
   /* ---------------- Helpers ---------------- */
   function rand(min, max) { return min + Math.random() * (max - min); }
@@ -379,6 +472,190 @@ function getFlowerSpriteSheet(f) {
 
   function activeFlowers() {
     return flowers.filter(function (f) { return f.state === "active"; });
+  }
+
+  /* ---------------- Buzz (player bee) ---------------- */
+  // Call when the player grabs a flower and starts a drag: snaps Buzz to the
+  // source flower and kicks off a takeoff "stretch" so launches feel springy.
+  function buzzTakeoff(x, y) {
+    buzz.x = x; buzz.y = y;
+    buzz.state = "flying";
+    buzz.takeoffTimer = BUZZ_TAKEOFF_MS;
+    buzz.trail = [];
+    buzz.emitTimer = 0;
+  }
+
+  // Call when a drag ends. `success` triggers a landing squash; a miss just
+  // eases Buzz back into idle hover from wherever he currently is.
+  function buzzArrive(success) {
+    buzz.state = success ? "landing" : "idle";
+    buzz.landTimer = success ? BUZZ_LAND_MS : 0;
+    buzz.restX = buzz.x;
+    buzz.restY = buzz.y;
+  }
+
+  // Frame-rate independent exponential ease: returns the fraction of the
+  // remaining distance to close this frame, given a "half-life"-ish rate.
+  function easeAmount(dt, rate) {
+    return 1 - Math.pow(0.001, dt * rate);
+  }
+
+  function updateBuzz(dt) {
+    // Wings flap continuously regardless of state — a resting bee still
+    // flutters. ~7-8 visible flaps/sec at this multiplier.
+    buzz.wingPhase += dt * 46;
+
+    if (dragging) {
+      buzz.state = "flying";
+      var prevX = buzz.x, prevY = buzz.y;
+      // Ease toward the pointer instead of snapping to it — this is what
+      // makes the flight path curve naturally (the trail below samples
+      // this eased position, not the raw pointer).
+      var ease = easeAmount(dt, 9);
+      buzz.x += (dragCurrent.x - buzz.x) * ease;
+      buzz.y += (dragCurrent.y - buzz.y) * ease;
+      buzz.vx = (buzz.x - prevX) / Math.max(dt, 0.0001);
+      buzz.vy = (buzz.y - prevY) / Math.max(dt, 0.0001);
+
+      // Bank into turns based on horizontal velocity, clamped so Buzz never
+      // flips past a believable roll angle.
+      var targetAngle = Collision.clamp(buzz.vx * 0.0025, -0.6, 0.6);
+      buzz.angle += (targetAngle - buzz.angle) * Math.min(1, dt * 10);
+
+      // Sample the buzzing/motion-blur trail from the EASED position.
+      buzz.trail.push({ x: buzz.x, y: buzz.y, age: 0 });
+      if (buzz.trail.length > BUZZ_TRAIL_MAX) buzz.trail.shift();
+
+      // Also feed the ribbon polyline (dragTrail) from the same eased
+      // position — this is what gives the ribbon its natural curve, since
+      // Buzz always lags slightly behind the raw pointer.
+      dragTrail.push({ x: buzz.x, y: buzz.y });
+      if (dragTrail.length > BUZZ_TRAIL_MAX) dragTrail.shift();
+
+      // Periodic spark particles along the flight path (pooled system).
+      buzz.emitTimer -= dt;
+      if (buzz.emitTimer <= 0) {
+        buzz.emitTimer = BUZZ_EMIT_INTERVAL;
+        particles.burst(buzz.x, buzz.y, { glyphs: ["✨"], count: 1, life: 320, minSpeed: 15, maxSpeed: 45, gravity: 30 });
+      }
+    } else if (buzz.state === "landing") {
+      buzz.landTimer -= dt;
+      var lt = Collision.clamp(buzz.landTimer / BUZZ_LAND_MS, 0, 1);
+      buzz.scaleY = 1 - Math.sin(lt * Math.PI) * 0.4; // squash flat on arrival
+      buzz.scaleX = 1 + Math.sin(lt * Math.PI) * 0.3; // ...and bulge sideways
+      buzz.angle *= 0.85;
+      if (buzz.landTimer <= 0) {
+        buzz.state = "idle";
+        buzz.scaleX = 1; buzz.scaleY = 1;
+      }
+    } else {
+      // Idle hover: a gentle figure-eight (Lissajous curve) around the rest
+      // point, so Buzz never looks frozen while waiting for the next move.
+      buzz.state = "idle";
+      buzz.idleT += dt;
+      var fx = Math.sin(buzz.idleT * 1.1) * 22;
+      var fy = Math.sin(buzz.idleT * 2.2) * 10;
+      buzz.x += (buzz.restX + fx - buzz.x) * Math.min(1, dt * 4);
+      buzz.y += (buzz.restY + fy - buzz.y) * Math.min(1, dt * 4);
+      buzz.angle *= 0.9;
+      buzz.scaleX += (1 - buzz.scaleX) * Math.min(1, dt * 6);
+      buzz.scaleY += (1 - buzz.scaleY) * Math.min(1, dt * 6);
+    }
+
+    // Takeoff stretch layers on top of whichever branch just ran.
+    if (buzz.takeoffTimer > 0) {
+      buzz.takeoffTimer -= dt;
+      var tt = Collision.clamp(buzz.takeoffTimer / BUZZ_TAKEOFF_MS, 0, 1);
+      buzz.scaleY = 1 + Math.sin(tt * Math.PI) * 0.35; // stretch tall
+      buzz.scaleX = 1 - Math.sin(tt * Math.PI) * 0.25; // ...and thin
+    }
+
+    // Age out and cull the motion-blur trail.
+    for (var bt = buzz.trail.length - 1; bt >= 0; bt--) {
+      buzz.trail[bt].age += dt;
+      if (buzz.trail[bt].age > BUZZ_TRAIL_LIFE) buzz.trail.splice(bt, 1);
+    }
+  }
+
+  /* ---------------- Ambient background ----------------
+     Runs every frame REGARDLESS of gameState — the meadow stays alive
+     behind the intro/win/fail overlays instead of freezing. Every loop
+     here walks a small fixed-size pool; nothing is created or destroyed
+     per frame (elements wrap/respawn in place instead). */
+  function updateAmbient(dt) {
+    windPhase += dt;
+
+    // Smog scares off the delicate stuff and mutes the rest — ties into
+    // the existing smogAlpha value so this reacts to Stage 3's smog waves
+    // without needing to know how smog itself is implemented.
+    ambientVividness = 1 - Collision.clamp(smogAlpha / 0.34, 0, 1);
+
+    for (var i = 0; i < clouds.length; i++) {
+      var c = clouds[i];
+      c.x += c.speed * dt;
+      if (c.x - 90 * c.scale > W + 40) c.x = -90 * c.scale - 40;
+    }
+
+    for (var p = 0; p < pollenMotes.length; p++) {
+      var m = pollenMotes[p];
+      m.y += m.vy * dt;
+      m.swayPhase += dt * 1.4;
+      if (m.y < -10) { m.y = GROUND_Y + rand(0, 20); m.x = rand(0, W); }
+    }
+
+    for (var fI = 0; fI < fireflies.length; fI++) {
+      var fl = fireflies[fI];
+      fl.driftPhase += dt * fl.speed * 0.12;
+      fl.pulsePhase += dt * 2.4;
+      fl.x += Math.sin(fl.driftPhase) * 8 * dt;
+      fl.y += Math.cos(fl.driftPhase * 1.3) * 6 * dt;
+      fl.x = Collision.clamp(fl.x, 10, W - 10);
+      fl.y = Collision.clamp(fl.y, GROUND_Y * 0.35, GROUND_Y - 6);
+    }
+
+    for (var pe = 0; pe < petals.length; pe++) {
+      var pt2 = petals[pe];
+      pt2.y += pt2.vy * dt;
+      pt2.rot += pt2.rotSpeed * dt;
+      pt2.swayPhase += dt * 1.8;
+      if (pt2.y > GROUND_Y) { pt2.y = rand(-80, -10); pt2.x = rand(0, W); }
+    }
+
+    for (var bI = 0; bI < bgButterflies.length; bI++) {
+      var bf = bgButterflies[bI];
+      bf.phase += dt * bf.speed;
+      bf.wingPhase += dt * 18;
+    }
+
+    // Ladybugs walk a few steps, pause, and turn around at random — no
+    // pathfinding needed, just enough randomness to not look mechanical.
+    for (var lI = 0; lI < bgLadybugs.length; lI++) {
+      var lg = bgLadybugs[lI];
+      if (lg.walking) {
+        lg.x += lg.dir * 12 * dt;
+        if (Math.random() < 0.01) { lg.walking = false; lg.pauseTimer = rand(0.6, 2); }
+        if (lg.x < 40 || lg.x > W - 40) lg.dir *= -1;
+      } else {
+        lg.pauseTimer -= dt;
+        if (lg.pauseTimer <= 0) { lg.walking = true; lg.dir = Math.random() < 0.5 ? 1 : -1; }
+      }
+    }
+
+    // Occasional bird flock crossing the upper sky (paused during smog).
+    if (!birdFlock) {
+      birdSpawnTimer -= dt;
+      if (birdSpawnTimer <= 0 && ambientVividness > 0.5) {
+        var fromLeft = Math.random() < 0.5;
+        birdFlock = { x: fromLeft ? -60 : W + 60, y: rand(40, 100), dir: fromLeft ? 1 : -1, speed: rand(70, 100), flapPhase: 0 };
+      }
+    } else {
+      birdFlock.x += birdFlock.dir * birdFlock.speed * dt;
+      birdFlock.flapPhase += dt * 10;
+      if (birdFlock.x < -80 || birdFlock.x > W + 80) {
+        birdFlock = null;
+        birdSpawnTimer = rand(14, 26);
+      }
+    }
   }
 
   function findFlowerAt(x, y, excludeId) {
@@ -509,6 +786,13 @@ flowers.push({
     sessionTimeLeft = SESSION_MS;
     smogActive = false; smogTimer = 0; smogAlpha = 0; smogClouds = []; flightPaths = [];
     dragging = false; dragSourceId = null; dragTrail = [];
+    // reset Buzz to a calm idle hover in the middle of the meadow
+    buzz.x = buzz.restX = W * 0.5;
+    buzz.y = buzz.restY = GROUND_Y - 160;
+    buzz.vx = 0; buzz.vy = 0; buzz.angle = 0;
+    buzz.scaleX = 1; buzz.scaleY = 1;
+    buzz.state = "idle"; buzz.landTimer = 0; buzz.takeoffTimer = 0;
+    buzz.trail = []; buzz.emitTimer = 0;
     winWipeRadius = 0;
     gameState = "playing";
     fruitIdSeq = 1;
@@ -595,6 +879,7 @@ flowers.push({
     var now = performance.now();
 
     ambientBee.t += dt;
+    updateAmbient(dt); // meadow stays alive behind overlays too — no empty frames
 
     if (gameState === "playing") {
       // session timer
@@ -642,6 +927,9 @@ flowers.push({
         }
         if (!smogActive && smogAlpha <= 0.01) smogClouds = [];
       }
+
+      // Buzz: idle hover, in-flight easing/banking, landing squash, trail
+      updateBuzz(dt);
 
       // fading flight-path lines
       for (var fp = flightPaths.length - 1; fp >= 0; fp--) {
@@ -746,30 +1034,231 @@ flowers.push({
   }
 
   /* ---------------- Draw ---------------- */
+  // Static gradients are built ONCE and reused — only the sun glow below is
+  // rebuilt per frame, because its center actually drifts. This is the same
+  // lesson from Stage 1: per-frame gradient object creation causes GC
+  // stutter, so anything that doesn't change gets cached.
+  var skyGradientCache = null;
+  function getSkyGradient() {
+    if (!skyGradientCache) {
+      skyGradientCache = ctx.createLinearGradient(0, 0, 0, GROUND_Y);
+      skyGradientCache.addColorStop(0, "rgba(207,235,255,0.55)");
+      skyGradientCache.addColorStop(1, "rgba(207,235,255,0.05)");
+    }
+    return skyGradientCache;
+  }
+
+  var depthFogGradientCache = null;
+  function getDepthFogGradient() {
+    if (!depthFogGradientCache) {
+      depthFogGradientCache = ctx.createLinearGradient(0, GROUND_Y - 90, 0, GROUND_Y);
+      depthFogGradientCache.addColorStop(0, "rgba(255,255,255,0)");
+      depthFogGradientCache.addColorStop(1, "rgba(255,255,255,0.28)");
+    }
+    return depthFogGradientCache;
+  }
+
+  function drawSunlight() {
+    // A soft glow that drifts slowly across the sky, plus three faint
+    // sweeping rays — cheap (one radial gradient + three low-alpha rects).
+    var sx = W * 0.78 + Math.sin(windPhase * 0.05) * 40;
+    var sy = 70 + Math.cos(windPhase * 0.04) * 12;
+    var glow = ctx.createRadialGradient(sx, sy, 0, sx, sy, 190);
+    glow.addColorStop(0, "rgba(255,246,200,0.55)");
+    glow.addColorStop(1, "rgba(255,246,200,0)");
+    ctx.save();
+    ctx.globalAlpha = ambientVividness;
+    ctx.fillStyle = glow;
+    ctx.fillRect(0, 0, W, GROUND_Y);
+    ctx.restore();
+
+    ctx.save();
+    ctx.globalAlpha = 0.06 * ambientVividness;
+    ctx.fillStyle = "#fff";
+    for (var r = 0; r < 3; r++) {
+      var rx = sx - 60 + r * 70 + Math.sin(windPhase * 0.06 + r) * 20;
+      ctx.save();
+      ctx.translate(rx, 0);
+      ctx.rotate(0.18);
+      ctx.fillRect(-14, -20, 28, GROUND_Y + 40);
+      ctx.restore();
+    }
+    ctx.restore();
+  }
+
+  function drawClouds() {
+    ctx.save();
+    ctx.globalAlpha = 0.8 * ambientVividness + 0.2;
+    ctx.fillStyle = "#ffffff";
+    for (var i = 0; i < clouds.length; i++) {
+      var c = clouds[i];
+      ctx.beginPath();
+      ctx.arc(c.x, c.y, 22 * c.scale, 0, Math.PI * 2);
+      ctx.arc(c.x + 26 * c.scale, c.y + 6 * c.scale, 26 * c.scale, 0, Math.PI * 2);
+      ctx.arc(c.x - 24 * c.scale, c.y + 8 * c.scale, 18 * c.scale, 0, Math.PI * 2);
+      ctx.arc(c.x + 6 * c.scale, c.y - 8 * c.scale, 16 * c.scale, 0, Math.PI * 2);
+      ctx.fill();
+    }
+    ctx.restore();
+  }
+
+  function drawCloudShadows() {
+    ctx.save();
+    ctx.globalAlpha = 0.10 * ambientVividness;
+    ctx.fillStyle = "#2c3a1f";
+    for (var i = 0; i < clouds.length; i++) {
+      var c = clouds[i];
+      ctx.beginPath();
+      ctx.ellipse(c.x, GROUND_Y + 14, 46 * c.scale, 9 * c.scale, 0, 0, Math.PI * 2);
+      ctx.fill();
+    }
+    ctx.restore();
+  }
+
+  function drawGrass() {
+    // Wind-swaying blades replace the old static tick marks — same visual
+    // budget (one blade per former tick), just animated off a shared clock.
+    ctx.save();
+    ctx.strokeStyle = "#5b8a2a";
+    ctx.lineWidth = 3;
+    ctx.lineCap = "round";
+    for (var x = 6; x < W; x += GRASS_SPACING) {
+      var bend = Math.sin(windPhase * 1.6 + x * 0.06) * 5;
+      ctx.beginPath();
+      ctx.moveTo(x, GROUND_Y + 10);
+      ctx.quadraticCurveTo(x + bend * 0.6, GROUND_Y + 3, x + bend, GROUND_Y - 6);
+      ctx.stroke();
+    }
+    ctx.restore();
+  }
+
+  function drawDepthFog() {
+    ctx.save();
+    ctx.fillStyle = getDepthFogGradient();
+    ctx.fillRect(0, GROUND_Y - 90, W, 90);
+    ctx.restore();
+  }
+
   function drawBackground() {
     ctx.fillStyle = "#FDFBF7";
     ctx.fillRect(0, 0, W, H);
 
-    // sky wash
-    var skyGrad = ctx.createLinearGradient(0, 0, 0, GROUND_Y);
-    skyGrad.addColorStop(0, "rgba(207,235,255,0.55)");
-    skyGrad.addColorStop(1, "rgba(207,235,255,0.05)");
-    ctx.fillStyle = skyGrad;
+    ctx.fillStyle = getSkyGradient();
     ctx.fillRect(0, 0, W, GROUND_Y);
+
+    drawSunlight();
+    drawClouds();
 
     // ground
     ctx.fillStyle = "#7CB342";
     ctx.fillRect(0, GROUND_Y, W, H - GROUND_Y);
-    ctx.fillStyle = "#5b8a2a";
-    for (var i = 0; i < W; i += 26) {
-      ctx.fillRect(i, GROUND_Y, 3, 10);
-    }
+
+    drawCloudShadows();
+    drawGrass();
+    drawDepthFog();
+
     ctx.strokeStyle = "#111";
     ctx.lineWidth = 4;
     ctx.beginPath();
     ctx.moveTo(0, GROUND_Y);
     ctx.lineTo(W, GROUND_Y);
     ctx.stroke();
+  }
+
+  /* ---------------- Ambient background drawing ---------------- */
+  function drawPollenMotes() {
+    ctx.save();
+    ctx.fillStyle = "#FFE9A8";
+    for (var i = 0; i < pollenMotes.length; i++) {
+      var m = pollenMotes[i];
+      var sway = Math.sin(m.swayPhase) * 10;
+      ctx.globalAlpha = 0.5 * ambientVividness;
+      ctx.beginPath();
+      ctx.arc(m.x + sway, m.y, m.r, 0, Math.PI * 2);
+      ctx.fill();
+    }
+    ctx.restore();
+  }
+
+  function drawFireflies() {
+    ctx.save();
+    for (var i = 0; i < fireflies.length; i++) {
+      var f = fireflies[i];
+      var pulse = 0.35 + Math.sin(f.pulsePhase) * 0.35 + 0.35; // roughly 0..1
+      ctx.globalAlpha = pulse * 0.7 * ambientVividness;
+      ctx.fillStyle = "#FFD23F";
+      ctx.shadowColor = "#FFD23F";
+      ctx.shadowBlur = 8;
+      ctx.beginPath();
+      ctx.arc(f.x, f.y, 2.4, 0, Math.PI * 2);
+      ctx.fill();
+    }
+    ctx.restore();
+  }
+
+  function drawFallingPetals() {
+    ctx.save();
+    ctx.fillStyle = "#FF9FC7";
+    for (var i = 0; i < petals.length; i++) {
+      var p = petals[i];
+      var sway = Math.sin(p.swayPhase) * 14;
+      ctx.save();
+      ctx.globalAlpha = 0.75 * ambientVividness;
+      ctx.translate(p.x + sway, p.y);
+      ctx.rotate(p.rot);
+      ctx.beginPath();
+      ctx.ellipse(0, 0, p.size, p.size * 0.5, 0, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.restore();
+    }
+    ctx.restore();
+  }
+
+  function drawBgButterflies() {
+    for (var i = 0; i < bgButterflies.length; i++) {
+      var b = bgButterflies[i];
+      var x = b.x + Math.sin(b.phase) * 60;
+      var y = b.y + Math.sin(b.phase * 2.3) * 24;
+      var flap = 0.6 + Math.abs(Math.sin(b.wingPhase)) * 0.4;
+      ctx.save();
+      ctx.globalAlpha = 0.85 * ambientVividness;
+      ctx.translate(x, y);
+      ctx.scale(flap, 1); // cheap "wing flap" via horizontal squash, no re-fetch
+      ctx.drawImage(butterflySpriteImg, -butterflySpriteImg.width / 2, -butterflySpriteImg.height / 2);
+      ctx.restore();
+    }
+  }
+
+  function drawBgLadybugs() {
+    for (var i = 0; i < bgLadybugs.length; i++) {
+      var l = bgLadybugs[i];
+      ctx.save();
+      ctx.globalAlpha = 0.9 * ambientVividness;
+      ctx.translate(l.x, l.y);
+      if (l.dir < 0) ctx.scale(-1, 1);
+      ctx.drawImage(ladybugSpriteImg, -ladybugSpriteImg.width / 2, -ladybugSpriteImg.height / 2);
+      ctx.restore();
+    }
+  }
+
+  function drawBirdFlock() {
+    if (!birdFlock) return;
+    ctx.save();
+    ctx.globalAlpha = 0.55 * ambientVividness;
+    ctx.strokeStyle = "#3a3a3a";
+    ctx.lineWidth = 2;
+    ctx.lineCap = "round";
+    for (var i = 0; i < 4; i++) {
+      var ox = birdFlock.x - i * 16 * birdFlock.dir;
+      var oy = birdFlock.y + i * 7;
+      var flap = Math.sin(birdFlock.flapPhase + i * 0.6) * 5;
+      ctx.beginPath();
+      ctx.moveTo(ox - 8, oy + flap);
+      ctx.lineTo(ox, oy - 3);
+      ctx.lineTo(ox + 8, oy + flap);
+      ctx.stroke();
+    }
+    ctx.restore();
   }
 
   function drawAmbientBee() {
@@ -797,22 +1286,53 @@ flowers.push({
     ctx.restore();
   }
 
+  // Point on a quadratic bezier at t in [0,1]. Pure/allocation-light: reused
+  // by both the flight-path arcs and (in a later patch) other ribbon FX.
+  function bezierPoint(t, x1, y1, cx, cy, x2, y2) {
+    var mt = 1 - t;
+    return {
+      x: mt * mt * x1 + 2 * mt * t * cx + t * t * x2,
+      y: mt * mt * y1 + 2 * mt * t * cy + t * t * y2
+    };
+  }
+
   function drawFlightPaths() {
     for (var i = 0; i < flightPaths.length; i++) {
       var p = flightPaths[i];
       var t = p.life / p.maxLife;
+      var fade = Math.max(0, 1 - t);
+
+      // Glowing pollen-ribbon arc (quadratic bezier, not a straight line —
+      // this is the "swoop" a bee actually flies between two flowers).
       ctx.save();
-      ctx.globalAlpha = Math.max(0, 1 - t) * 0.8;
-      ctx.strokeStyle = "#FF007F";
-      ctx.lineWidth = 6 * (1 - t) + 1.5;
+      ctx.globalAlpha = fade * 0.85;
       ctx.lineCap = "round";
-      ctx.setLineDash([2, 14]);
-      ctx.lineDashOffset = -t * 40;
+      ctx.shadowColor = "#FF9FC7";
+      ctx.shadowBlur = 16;
+      ctx.strokeStyle = "#FF007F";
+      ctx.lineWidth = 5 * fade + 1.5;
       ctx.beginPath();
       ctx.moveTo(p.x1, p.y1);
-      ctx.lineTo(p.x2, p.y2);
+      ctx.quadraticCurveTo(p.cx, p.cy, p.x2, p.y2);
       ctx.stroke();
       ctx.restore();
+
+      // Three staggered glowing dots travel along the curve as it fades,
+      // tracing the path Buzz just flew.
+      for (var d = 0; d < 3; d++) {
+        var dt2 = Collision.clamp(t * 1.4 - d * 0.18, 0, 1);
+        if (dt2 <= 0 || dt2 >= 1) continue;
+        var pos = bezierPoint(dt2, p.x1, p.y1, p.cx, p.cy, p.x2, p.y2);
+        ctx.save();
+        ctx.globalAlpha = fade;
+        ctx.fillStyle = "#FFD23F";
+        ctx.shadowColor = "#FFD23F";
+        ctx.shadowBlur = 10;
+        ctx.beginPath();
+        ctx.arc(pos.x, pos.y, 4, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.restore();
+      }
     }
   }
 
@@ -886,33 +1406,79 @@ flowers.push({
     }
   }
 
-  function drawDragTrail() {
+  // Live "pollen ribbon" while actively dragging. Drawn as short segments
+  // (not one long stroke) so each segment can fade independently by age —
+  // dragTrail is capped at BUZZ_TRAIL_MAX points, so this is at most ~19
+  // segments × 2 stroke calls, only while a drag is in progress.
+  function drawFlightRibbon() {
     if (!dragging || dragTrail.length < 2) return;
     ctx.save();
-    ctx.lineJoin = "round";
     ctx.lineCap = "round";
-    ctx.shadowColor = "#FF007F";
-    ctx.shadowBlur = 22;
-    ctx.strokeStyle = "#FF007F";
-    ctx.lineWidth = 12;
-    ctx.beginPath();
-    ctx.moveTo(dragTrail[0].x, dragTrail[0].y);
-    for (var i = 1; i < dragTrail.length; i++) ctx.lineTo(dragTrail[i].x, dragTrail[i].y);
-    ctx.stroke();
+    ctx.lineJoin = "round";
+    var n = dragTrail.length;
+    for (var i = 1; i < n; i++) {
+      var a = i / n; // 0 = oldest/tail (faded), 1 = newest/head (bright)
+      var p0 = dragTrail[i - 1], p1 = dragTrail[i];
 
-    ctx.shadowBlur = 0;
-    ctx.strokeStyle = "#ffffff";
-    ctx.lineWidth = 4;
-    ctx.globalAlpha = 0.85;
-    ctx.stroke();
+      // outer glow pass
+      ctx.globalAlpha = a * 0.5;
+      ctx.shadowColor = "#FF9FC7";
+      ctx.shadowBlur = 18;
+      ctx.strokeStyle = "#FF007F";
+      ctx.lineWidth = 10 * a + 2;
+      ctx.beginPath();
+      ctx.moveTo(p0.x, p0.y);
+      ctx.lineTo(p1.x, p1.y);
+      ctx.stroke();
+
+      // bright pollen-gold core on top, no glow (keeps it readable)
+      ctx.shadowBlur = 0;
+      ctx.globalAlpha = a * 0.9;
+      ctx.strokeStyle = "#FFD23F";
+      ctx.lineWidth = 3 * a + 1;
+      ctx.stroke();
+    }
+    ctx.restore();
+  }
+
+  // Buzz himself: motion-blur trail dots, flapping wings, and the body
+  // sprite — all transformed with a single translate/rotate/scale so
+  // banking + squash/stretch apply consistently to every part.
+  function drawBuzz() {
+    if (gameState !== "playing") return;
+
+    for (var i = 0; i < buzz.trail.length; i++) {
+      var pt = buzz.trail[i];
+      var a = 1 - pt.age / BUZZ_TRAIL_LIFE;
+      ctx.save();
+      ctx.globalAlpha = a * 0.35;
+      ctx.fillStyle = "#FFD23F";
+      ctx.beginPath();
+      ctx.arc(pt.x, pt.y, 5 * a, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.restore();
+    }
+
+    ctx.save();
+    ctx.translate(buzz.x, buzz.y);
+    ctx.rotate(buzz.angle);
+    ctx.scale(buzz.scaleX, buzz.scaleY);
+
+    // wings: simple flapping ellipses, cheap vector shapes (no extra sprite)
+    var flap = Math.abs(Math.sin(buzz.wingPhase));
+    ctx.save();
+    ctx.globalAlpha = 0.55;
+    ctx.fillStyle = "#ffffff";
+    ctx.beginPath();
+    ctx.ellipse(-6, -14, 12 * (0.4 + flap * 0.6), 7, -0.3, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.beginPath();
+    ctx.ellipse(10, -14, 12 * (0.4 + flap * 0.6), 7, 0.3, 0, Math.PI * 2);
+    ctx.fill();
     ctx.restore();
 
-    // bee riding the trail head
-    var head = dragTrail[dragTrail.length - 1];
-    var sprite = EmojiSprite.get("🐝", 52);
-    ctx.save();
-    ctx.translate(head.x, head.y);
-    ctx.drawImage(sprite, -sprite.width / 2, -sprite.height / 2);
+    // body — cached sprite, scaled via the transform above (see buzzSpriteImg)
+    ctx.drawImage(buzzSpriteImg, -buzzSpriteImg.width / 2, -buzzSpriteImg.height / 2);
     ctx.restore();
   }
 
@@ -1027,13 +1593,20 @@ flowers.push({
   }
 
   function draw() {
-    drawBackground();
+    drawBackground();    // sky, sun glow, light rays, clouds+shadows, ground, wind grass, depth fog
+    drawFireflies();
+    drawPollenMotes();
+    drawFallingPetals();
+    drawBgButterflies();
+    drawBgLadybugs();
+    drawBirdFlock();
     drawAmbientBee();
     drawFruits();
     drawCritters();
-    drawFlightPaths();
+    drawFlightPaths();   // completed pollination arcs (bezier + traveling dots)
     drawFlowers();
-    drawDragTrail();
+    drawFlightRibbon();  // live drag ribbon while actively pollinating
+    drawBuzz();          // Buzz himself, always drawn on top
     particles.draw(ctx);
     drawSmog();
     drawWinWipe();
@@ -1049,6 +1622,7 @@ flowers.push({
       dragSourceId = f.id;
       dragTrail = [{ x: f.x, y: f.y }];
       dragCurrent = { x: p.x, y: p.y };
+      buzzTakeoff(f.x, f.y); // Buzz launches from the source flower with a takeoff stretch
       try { canvas.setPointerCapture(e.pointerId); } catch (err) {}
     }
     e.preventDefault();
@@ -1057,9 +1631,11 @@ flowers.push({
   canvas.addEventListener("pointermove", function (e) {
     if (!dragging) return;
     var p = canvasPointFromEvent(e);
+    // Only the target point is recorded here — the actual ribbon trail is
+    // sampled from Buzz's EASED position inside updateBuzz(), once per
+    // animation frame, so the path curves naturally instead of jittering
+    // with raw pointer-event frequency.
     dragCurrent = p;
-    dragTrail.push({ x: p.x, y: p.y });
-    if (dragTrail.length > 24) dragTrail.shift();
 
     var target = findFlowerAt(p.x, p.y, dragSourceId);
     hoverTargetId = target ? target.id : null;
@@ -1071,15 +1647,23 @@ flowers.push({
     var p = e ? canvasPointFromEvent(e) : dragCurrent;
     var target = findFlowerAt(p.x, p.y, dragSourceId);
     var source = flowers.filter(function (f) { return f.id === dragSourceId; })[0];
+    var success = !!(target && source && source.state === "active" && target.state === "active");
 
-    if (target && source && source.state === "active" && target.state === "active") {
-      flightPaths.push({ x1: source.x, y1: source.y, x2: target.x, y2: target.y, life: 0, maxLife: 0.55 });
+    if (success) {
+      // Arc the flight path upward like a real bee swoop, not a straight
+      // line — cx/cy is the quadratic bezier control point.
+      var cx = (source.x + target.x) / 2;
+      var cy = (source.y + target.y) / 2 - rand(30, 70);
+      flightPaths.push({ x1: source.x, y1: source.y, cx: cx, cy: cy, x2: target.x, y2: target.y, life: 0, maxLife: 0.65 });
+      particles.burst(cx, cy, { glyphs: ["🍃"], count: 2, life: 700, minSpeed: 10, maxSpeed: 40, gravity: 20 });
       pollinate(source);
       pollinate(target);
     } else {
       // missed connection — small fizzle so the drag doesn't feel like it silently failed
       particles.burst(p.x, p.y, { glyphs: ["💫"], count: 4, life: 350, minSpeed: 30, maxSpeed: 70, gravity: 60 });
     }
+
+    buzzArrive(success);
 
     dragging = false;
     dragSourceId = null;
@@ -1089,7 +1673,11 @@ flowers.push({
 
   canvas.addEventListener("pointerup", function (e) { endDrag(e); e.preventDefault(); }, { passive: false });
   canvas.addEventListener("pointercancel", function (e) { endDrag(e); });
-  window.addEventListener("blur", function () { dragging = false; dragTrail = []; });
+  window.addEventListener("blur", function () {
+    dragging = false;
+    dragTrail = [];
+    buzzArrive(false); // interrupted mid-flight — ease back to idle, no crash-land
+  });
 
   /* ---------------- UI buttons ---------------- */
   muteBtn.addEventListener("click", function () {
