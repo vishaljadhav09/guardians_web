@@ -305,6 +305,33 @@
   var hareImg = new Image();
   hareImg.src = "assets/sprites/stage03/Hare_Run_with_shadow.png";
 
+  var flowerSpriteFrames = [];
+  var FLOWER_SPRITE_CROP = { x: 1248, y: 864, w: 1376, h: 1504 };
+  for (var frameIndex = 0; frameIndex < 3; frameIndex++) {
+    var flowerImg = new Image();
+    flowerImg.src = "assets/sprites/stage03/sprites_" + frameIndex + ".png";
+    flowerSpriteFrames.push(flowerImg);
+  }
+
+function getFlowerSpriteSheet(f) {
+  if (!flowerSpriteFrames.length) return null;
+
+  if (!f.spriteAnimDone) {
+    var frameDuration = 220;
+
+    var frame = Math.floor((performance.now() - f.bornAt) / frameDuration);
+
+    if (frame >= flowerSpriteFrames.length - 1) {
+      frame = flowerSpriteFrames.length - 1;
+      f.spriteAnimDone = true;
+    }
+
+    f.spriteFrame = frame;
+  }
+
+  return flowerSpriteFrames[f.spriteFrame];
+}
+
   var CRITTER_DEFS = {
     boar: { img: boarImg, frames: 5, emoji: "🐗", defaultFacing: -1 },
     deer: { img: deerImg, frames: 6, emoji: "🦌", defaultFacing: 1 },
@@ -380,14 +407,20 @@
       tries++;
     } while (!ok && tries < 24);
 
-    flowers.push({
-      id: flowerIdSeq++,
-      x: x, y: y, r: FLOWER_R,
-      state: "active",
-      timeLeft: WILT_MS,
-      bornAt: performance.now(),
-      showUntil: 0
-    });
+flowers.push({
+  id: flowerIdSeq++,
+  x: x,
+  y: y,
+  r: FLOWER_R,
+  state: "active",
+  timeLeft: WILT_MS,
+  bornAt: performance.now(),
+  showUntil: 0,
+
+  // sprite animation
+  spriteFrame: 0,
+  spriteAnimDone: false
+});
   }
 
   function popFruitAt(x, y) {
@@ -789,7 +822,6 @@
       var glyph, scale = 1, alpha = 1;
 
       if (f.state === "active") {
-        glyph = "🌱";
         var isHover = hoverTargetId === f.id;
         var isSource = dragSourceId === f.id;
         ctx.save();
@@ -811,6 +843,31 @@
         }
         ctx.restore();
         drawFlowerRing(f);
+
+        var sheet = getFlowerSpriteSheet(f);
+        if (sheet && sheet.complete && sheet.naturalWidth > 0) {
+          var spriteScale = f.r * 2;
+          var spriteAspect = FLOWER_SPRITE_CROP.h / FLOWER_SPRITE_CROP.w;
+          var dw = spriteScale;
+          var dh = spriteScale * spriteAspect;
+          ctx.save();
+          ctx.translate(f.x, f.y);
+          ctx.drawImage(
+            sheet,
+            FLOWER_SPRITE_CROP.x,
+            FLOWER_SPRITE_CROP.y,
+            FLOWER_SPRITE_CROP.w,
+            FLOWER_SPRITE_CROP.h,
+            -dw / 2,
+            -dh / 2,
+            dw,
+            dh
+          );
+          ctx.restore();
+          continue;
+        }
+
+        glyph = "🌱";
       } else if (f.state === "pollinated") {
         glyph = "🌸";
         var pT = 1 - Collision.clamp((f.showUntil - performance.now()) / 650, 0, 1);
