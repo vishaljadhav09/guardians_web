@@ -489,7 +489,12 @@
   // ---------------------------------------------------------------
   // GAME STATE
   // ---------------------------------------------------------------
-  let gameState = 'start'; // start | playing | win | fail
+  let gameState = 'start'; // start | playing | winning | win | fail
+
+  let winWipeRadius = 0;
+  let winWipeMax = Math.hypot(W, H) * 0.6;
+  let winWipeDone = false;
+
   let lastTime = 0;
 
   const GROUND_Y = 520; // top of skyline band
@@ -797,8 +802,12 @@
   }
 
   function triggerWin(){
-    gameState = 'win';
+    gameState = 'winning';
+    winWipeRadius = 0;
     sfxWin();
+  }
+  function finishWin(){
+    gameState = 'win';
     winOverlay.classList.remove('hidden');
   }
   function triggerFail(){
@@ -1081,6 +1090,34 @@
     drawParticles();
     drawPlayer();
     drawSmokeVignette();
+    drawWinWipe();
+  }
+
+  function drawWinWipe(){
+    if(gameState !== 'winning' && gameState !== 'win') return;
+    const r = winWipeDone ? winWipeMax : winWipeRadius;
+    ctx.save();
+    ctx.beginPath();
+    ctx.arc(W/2, H/2, r, 0, Math.PI*2);
+    ctx.clip();
+    const grad = ctx.createRadialGradient(W/2, H/2, 0, W/2, H/2, r || 1);
+    grad.addColorStop(0, '#FFD23F');
+    grad.addColorStop(0.55, '#A6C9FF');
+    grad.addColorStop(1, '#2C4BFF');
+    ctx.globalAlpha = 0.85;
+    ctx.fillStyle = grad;
+    ctx.fillRect(0,0,W,H);
+    ctx.restore();
+
+    if(gameState === 'winning'){
+      ctx.save();
+      ctx.beginPath();
+      ctx.arc(W/2, H/2, r, 0, Math.PI*2);
+      ctx.lineWidth = 6;
+      ctx.strokeStyle = '#111';
+      ctx.stroke();
+      ctx.restore();
+    }
   }
 
   // ---------------------------------------------------------------
@@ -1098,6 +1135,13 @@
       // idle background motion on start/win/fail screens
       bgOffset1 = (bgOffset1 + 0.4*dt) % W;
       bgOffset2 = (bgOffset2 + 0.8*dt) % W;
+    }
+    if(gameState === 'winning'){
+      winWipeRadius += dt * (winWipeMax * 1.6 / 60);
+      if(winWipeRadius >= winWipeMax){
+        winWipeDone = true;
+        finishWin();
+      }
     }
     render(ts);
     requestAnimationFrame(loop);

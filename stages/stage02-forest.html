@@ -1119,6 +1119,12 @@
         var H = canvas.height;
         var canvasFrame = document.getElementById("canvasFrame");
 
+        var winWipeRadius = 0;
+        var winWipeMax = Math.hypot(W, H) * 0.6;
+        var winWiping = false;
+        var winWipeDone = false;
+
+
         var input = new GOGEngine.Input(canvas);
         var particles = new GOGEngine.ParticleSystem(120);
         var audio = new GOGEngine.Audio(!save.settings.sound);
@@ -1959,9 +1965,14 @@
         }
 
         function endWin() {
+          if (winWiping || winWipeDone) return;
           state.running = false;
           audio.win();
+          winWipeRadius = 0;
+          winWiping = true;
+        }
 
+        function finishWin() {
           var connectedCount = 0;
           var totalCells = GOGStage2.rows * GOGStage2.cols;
           for (var r = 0; r < GOGStage2.rows; r++) {
@@ -2162,6 +2173,15 @@
           state.screenShake = Math.max(0, state.screenShake - dt * 14);
           state.desaturateTime = Math.max(0, state.desaturateTime - dt);
 
+          if (winWiping) {
+            winWipeRadius += dt * winWipeMax * 1.6;
+            if (winWipeRadius >= winWipeMax) {
+              winWiping = false;
+              winWipeDone = true;
+              finishWin();
+            }
+          }
+
           if (!state.running) return;
 
           state.elapsed += dt;
@@ -2277,6 +2297,33 @@
 
         /* ---------------- draw loop ---------------- */
         /* ---------------- draw loop ---------------- */
+        function drawWinWipe() {
+          if (!winWiping && !winWipeDone) return;
+          var r = winWipeDone ? winWipeMax : winWipeRadius;
+          ctx.save();
+          ctx.beginPath();
+          ctx.arc(W / 2, H / 2, r, 0, Math.PI * 2);
+          ctx.clip();
+          var grad = ctx.createRadialGradient(W / 2, H / 2, 0, W / 2, H / 2, r || 1);
+          grad.addColorStop(0, "#FFD23F");
+          grad.addColorStop(0.55, "#a3e635");
+          grad.addColorStop(1, "#2E7D32");
+          ctx.globalAlpha = 0.85;
+          ctx.fillStyle = grad;
+          ctx.fillRect(0, 0, W, H);
+          ctx.restore();
+
+          if (winWiping) {
+            ctx.save();
+            ctx.beginPath();
+            ctx.arc(W / 2, H / 2, r, 0, Math.PI * 2);
+            ctx.lineWidth = 6;
+            ctx.strokeStyle = "#111";
+            ctx.stroke();
+            ctx.restore();
+          }
+        }
+
         function draw() {
           var shakeX = 0,
             shakeY = 0;
@@ -2805,6 +2852,7 @@
           }
 
           particles.draw(ctx);
+          drawWinWipe();
           ctx.restore();
         }
         /* ---------------- start ---------------- */

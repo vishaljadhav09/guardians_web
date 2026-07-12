@@ -1145,6 +1145,12 @@
         var W = canvas.width,
           H = canvas.height;
 
+        var winWipeRadius = 0;
+        var winWipeMax = Math.hypot(W, H) * 0.6;
+        var winWiping = false;
+        var winWipeDone = false;
+        var pendingStars = 1;
+
         // PERF: these gradients are created ONCE and reused every frame instead of
         // being rebuilt 60 times a second. Re-creating gradients per-frame was the
         // single biggest cause of the intermittent stutter — it forces the browser
@@ -2272,6 +2278,15 @@
           updateSeabedDecorations(dt); // Crawling crabs, snails, seashells wiggles
           particles.update(dt);
 
+          if (winWiping) {
+            winWipeRadius += dt * winWipeMax * 1.6;
+            if (winWipeRadius >= winWipeMax) {
+              winWiping = false;
+              winWipeDone = true;
+              finishWin();
+            }
+          }
+
           if (!state.running) return;
 
           // NEW: brief bullet-time window after a perfect dodge. Ambient FX above
@@ -3013,7 +3028,35 @@
 
           drawHitFlash(); // NEW: brief red vignette when hit by a pufferfish
           drawHealFlash(); // NEW: brief green vignette when a heal/save occurs
+          drawWinWipe();
           rectUpdatedThisFrame = false;
+        }
+
+        function drawWinWipe() {
+          if (!winWiping && !winWipeDone) return;
+          var r = winWipeDone ? winWipeMax : winWipeRadius;
+          ctx.save();
+          ctx.beginPath();
+          ctx.arc(W / 2, H / 2, r, 0, Math.PI * 2);
+          ctx.clip();
+          var grad = ctx.createRadialGradient(W / 2, H / 2, 0, W / 2, H / 2, r || 1);
+          grad.addColorStop(0, "#FFFFFF");
+          grad.addColorStop(0.55, "#7FD8FF");
+          grad.addColorStop(1, "#2C4BFF");
+          ctx.globalAlpha = 0.85;
+          ctx.fillStyle = grad;
+          ctx.fillRect(0, 0, W, H);
+          ctx.restore();
+
+          if (winWiping) {
+            ctx.save();
+            ctx.beginPath();
+            ctx.arc(W / 2, H / 2, r, 0, Math.PI * 2);
+            ctx.lineWidth = 6;
+            ctx.strokeStyle = "#111";
+            ctx.stroke();
+            ctx.restore();
+          }
         }
 
         // NEW: quick red screen flash when a pufferfish lands a hit
@@ -3080,7 +3123,13 @@
           state.won = true;
           state.running = false;
           audio.win();
-          var stars = computeStars();
+          pendingStars = computeStars();
+          winWipeRadius = 0;
+          winWiping = true;
+        }
+
+        function finishWin() {
+          var stars = pendingStars;
           var nextSave = GOGSave.recordStageClear(STAGE_ID, {
             stars: stars,
             sprouts: state.sproutsEarned,

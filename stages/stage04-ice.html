@@ -706,6 +706,12 @@
         let cameraX = 0;
         let gameRunning = false;
 
+        let winWipeRadius = 0;
+        let winWipeMax = Math.hypot(canvas.width, canvas.height) * 0.6;
+        let winWiping = false;
+        let winWipeDone = false;
+
+
         function rectsOverlap(a, b) {
           return (
             a.x < b.x + b.w &&
@@ -1007,6 +1013,56 @@
           audio.win();
         }
 
+        let pendingStars = 1;
+
+        function finishWinIce() {
+          gameRunning = false;
+
+          const nextSave = GOGSave.recordStageClear(STAGE_ID, {
+            stars: pendingStars,
+            sprouts: 15,
+            smogDrop: 10,
+          });
+          save = nextSave;
+
+          if (ui.canvasFrame) {
+            ui.canvasFrame.classList.add("flash-win");
+          }
+
+          GOGUi.say("You did it! A seed is heading home to the Tree… 🌱");
+
+          let confettiBursts = 0;
+          const confettiInterval = setInterval(function () {
+            GOGUi.confettiAt(
+              window.innerWidth / 2,
+              window.innerHeight / 2,
+              16,
+            );
+            confettiBursts++;
+            if (confettiBursts >= 3) clearInterval(confettiInterval);
+          }, 220);
+
+          setTimeout(function () {
+            triggerSeedReturnCutscene(function () {
+              activeOverlay = GOGUi.showOverlay({
+                accent: "var(--gog-white)",
+                title: "❄️ Polar Ice Restored!",
+                body: "Penny wakes completely as the sea calms and the ice reforms.",
+                stars: pendingStars,
+                factText: stageMeta.fact,
+                primaryLabel: "Back to Map",
+                secondaryLabel: "Play Again",
+                onPrimary: function () {
+                  window.location.href = "../index.html";
+                },
+                onSecondary: function () {
+                  window.location.reload();
+                },
+              });
+            });
+          }, 750);
+        }
+
         function update(dt) {
           if (!state || state.state === "failed") return;
 
@@ -1021,58 +1077,24 @@
             p.vx *= 0.92;
             p.vy += p.gravity * dt * 0.25;
             movePlayer(p, dt, true);
-            if (state.endTimer > 1.1) {
-              gameRunning = false;
-
+            if (state.endTimer > 1.1 && !winWiping && !winWipeDone) {
               let stars = 1;
               if (!calmMode) {
                 if (state.warmth <= 0.25) stars = 3;
                 else if (state.warmth <= 0.6) stars = 2;
               }
-
-              const nextSave = GOGSave.recordStageClear(STAGE_ID, {
-                stars: stars,
-                sprouts: 15,
-                smogDrop: 10,
-              });
-              save = nextSave;
-
-              if (ui.canvasFrame) {
-                ui.canvasFrame.classList.add("flash-win");
+              pendingStars = stars;
+              audio.win();
+              winWipeRadius = 0;
+              winWiping = true;
+            }
+            if (winWiping) {
+              winWipeRadius += dt * winWipeMax * 1.6;
+              if (winWipeRadius >= winWipeMax) {
+                winWiping = false;
+                winWipeDone = true;
+                finishWinIce();
               }
-
-              GOGUi.say("You did it! A seed is heading home to the Tree… 🌱");
-
-              let confettiBursts = 0;
-              const confettiInterval = setInterval(function () {
-                GOGUi.confettiAt(
-                  window.innerWidth / 2,
-                  window.innerHeight / 2,
-                  16,
-                );
-                confettiBursts++;
-                if (confettiBursts >= 3) clearInterval(confettiInterval);
-              }, 220);
-
-              setTimeout(function () {
-                triggerSeedReturnCutscene(function () {
-                  activeOverlay = GOGUi.showOverlay({
-                    accent: "var(--gog-white)",
-                    title: "❄️ Polar Ice Restored!",
-                    body: "Penny wakes completely as the sea calms and the ice reforms.",
-                    stars: stars,
-                    factText: stageMeta.fact,
-                    primaryLabel: "Back to Map",
-                    secondaryLabel: "Play Again",
-                    onPrimary: function () {
-                      window.location.href = "../index.html";
-                    },
-                    onSecondary: function () {
-                      window.location.reload();
-                    },
-                  });
-                });
-              }, 750);
             }
             updateUI();
             updateParticles(dt);
@@ -1390,6 +1412,36 @@
           ctx.restore();
           drawWater();
           drawWorldHud();
+          drawWinWipe();
+        }
+
+        function drawWinWipe() {
+          if (!winWiping && !winWipeDone) return;
+          const r = winWipeDone ? winWipeMax : winWipeRadius;
+          const cx = canvas.width / 2;
+          const cy = canvas.height / 2;
+          ctx.save();
+          ctx.beginPath();
+          ctx.arc(cx, cy, r, 0, Math.PI * 2);
+          ctx.clip();
+          const grad = ctx.createRadialGradient(cx, cy, 0, cx, cy, r || 1);
+          grad.addColorStop(0, "#FFFFFF");
+          grad.addColorStop(0.55, "#B9E3FF");
+          grad.addColorStop(1, "#2C4BFF");
+          ctx.globalAlpha = 0.85;
+          ctx.fillStyle = grad;
+          ctx.fillRect(0, 0, canvas.width, canvas.height);
+          ctx.restore();
+
+          if (winWiping) {
+            ctx.save();
+            ctx.beginPath();
+            ctx.arc(cx, cy, r, 0, Math.PI * 2);
+            ctx.lineWidth = 6;
+            ctx.strokeStyle = "#111";
+            ctx.stroke();
+            ctx.restore();
+          }
         }
 
         function drawIdleScene() {
