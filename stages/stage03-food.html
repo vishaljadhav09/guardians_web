@@ -101,7 +101,7 @@
 
     .canvas-frame {
       position: relative;
-      width: min(100%, calc((100vh - 220px) * 1.333));
+      width: 100%;
       max-height: calc(100vh - 220px);
       aspect-ratio: 4 / 3;
       margin: 0 auto;
@@ -162,9 +162,247 @@
     .combo-pop {
       animation: comboPop 0.28s ease;
     }
+
+    .calm-badge {
+      font-size: 0.78rem;
+      font-weight: 700;
+      animation: fadeInUp 0.6s ease both;
+    }
+
+    .icon-btn {
+      width: 42px;
+      height: 42px;
+      min-width: 42px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      background: var(--gog-white);
+      border: 3px solid var(--gog-ink);
+      border-radius: 50%;
+      box-shadow: 3px 3px 0 var(--gog-ink);
+      font-size: 1.15rem;
+      line-height: 1;
+      touch-action: manipulation;
+    }
+
+    @media (max-width: 700px) {
+      .stage-wrap {
+        width: calc(100vw - 12px);
+        max-width: 100%;
+        padding: 6px 0 18px;
+      }
+
+      .stage-hud {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr);
+        gap: 6px;
+        margin-bottom: 8px;
+      }
+
+      .stage-title {
+        gap: 6px;
+        min-width: 0;
+      }
+
+      .stage-title .emoji-float {
+        font-size: 1.35rem !important;
+      }
+
+      .stage-title h1 {
+        font-size: 0.98rem;
+        line-height: 1;
+      }
+
+      .stage-title small {
+        display: none;
+      }
+
+      .hud-mid {
+        display: grid;
+        grid-template-columns: minmax(128px, 1fr) repeat(4, auto);
+        gap: 5px;
+        align-items: center;
+        width: 100%;
+      }
+
+      .meter {
+        min-width: 0;
+        gap: 5px;
+        padding: 4px 8px 4px 7px;
+        border-width: 2px;
+        box-shadow: 2px 2px 0 var(--gog-ink);
+      }
+
+      .meter .label {
+        font-size: 0.66rem;
+      }
+
+      .meter-track {
+        height: 8px;
+        border-width: 2px;
+      }
+
+      .chip {
+        padding: 4px 7px;
+        border-width: 2px;
+        box-shadow: 2px 2px 0 var(--gog-ink);
+        font-size: 0.72rem;
+        min-height: 30px;
+      }
+
+      .timer-chip {
+        min-width: 44px;
+      }
+
+      .icon-btn {
+        width: 32px;
+        height: 32px;
+        min-width: 32px;
+        font-size: 0.92rem;
+        border-width: 2px;
+        box-shadow: 2px 2px 0 var(--gog-ink);
+      }
+
+      .guideBar {
+        gap: 6px;
+        padding: 3px 4px;
+        margin-bottom: 8px;
+        border-width: 2px;
+        border-radius: 8px;
+        box-shadow: 1px 1px 0 var(--gog-ink);
+      }
+
+      .guideAvatar {
+        font-size: 1.25rem;
+      }
+
+      .guideBubble {
+        padding: 5px 8px;
+        border-width: 2px;
+        border-radius: 10px;
+        font-size: 1rem;
+        line-height: 1.1;
+      }
+
+      .canvas-frame {
+        border-width: 3px;
+        border-radius: 12px;
+        box-shadow: 4px 4px 0 var(--gog-ink);
+      }
+
+      .stage-controls {
+        margin-top: 8px;
+        gap: 6px;
+      }
+
+      .stage-controls .brutal-btn {
+        padding: 8px 12px;
+        min-height: 38px;
+        border-width: 3px;
+        border-radius: 10px;
+        font-size: 0.86rem;
+        box-shadow: 3px 3px 0 var(--gog-ink);
+      }
+
+      .calm-badge {
+        font-size: 0.72rem;
+      }
+    }
+
+    @keyframes fadeInUp {
+      from {
+        opacity: 0;
+        transform: translateY(6px);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+
+    body {
+      position: relative;
+    }
+
+    .page-bg {
+      position: fixed;
+      inset: 0;
+      z-index: -1;
+      overflow: hidden;
+      pointer-events: none;
+      background:
+        radial-gradient(
+          ellipse at 50% -8%,
+          #efffdd 0%,
+          #d4f0bd 42%,
+          #fdf6e6 100%
+        ),
+        linear-gradient(
+          180deg,
+          rgba(60, 135, 67, 0.1),
+          rgba(36, 99, 55, 0.16)
+        );
+    }
+
+    .page-bubble {
+      position: absolute;
+      bottom: -10vh;
+      border-radius: 999px;
+      background: radial-gradient(
+        circle at 32% 28%,
+        rgba(255, 255, 255, 0.95),
+        rgba(201, 242, 61, 0.14) 70%
+      );
+      opacity: 0;
+      animation: pageBubbleRise linear infinite;
+    }
+
+    @keyframes pageBubbleRise {
+      0% {
+        transform: translateY(0) translateX(0);
+        opacity: 0;
+      }
+      8% {
+        opacity: 0.5;
+      }
+      90% {
+        opacity: 0.35;
+      }
+      100% {
+        transform: translateY(-125vh) translateX(var(--drift, 24px));
+        opacity: 0;
+      }
+    }
+
+    .page-fx {
+      position: fixed;
+      inset: 0;
+      z-index: 5;
+      pointer-events: none;
+      opacity: 0;
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      .page-bubble {
+        animation: none;
+        opacity: 0;
+      }
+    }
   </style>
+
 </head>
 <body>
+    <div class="page-bg" aria-hidden="true">
+      <span class="page-bubble" style="left: 6%; width: 14px; height: 14px; animation-duration: 14s; animation-delay: 0s; --drift: 18px;"></span>
+      <span class="page-bubble" style="left: 18%; width: 9px; height: 9px; animation-duration: 11s; animation-delay: 2.4s; --drift: -14px;"></span>
+      <span class="page-bubble" style="left: 32%; width: 18px; height: 18px; animation-duration: 17s; animation-delay: 5s; --drift: 22px;"></span>
+      <span class="page-bubble" style="left: 48%; width: 11px; height: 11px; animation-duration: 13s; animation-delay: 1.2s; --drift: -10px;"></span>
+      <span class="page-bubble" style="left: 64%; width: 16px; height: 16px; animation-duration: 16s; animation-delay: 7s; --drift: 16px;"></span>
+      <span class="page-bubble" style="left: 78%; width: 10px; height: 10px; animation-duration: 12s; animation-delay: 3.6s; --drift: -18px;"></span>
+      <span class="page-bubble" style="left: 90%; width: 13px; height: 13px; animation-duration: 15s; animation-delay: 6.2s; --drift: 12px;"></span>
+    </div>
+    <div class="page-fx" id="pageFx" aria-hidden="true"></div>
+
   <div class="stage-wrap">
     <div class="stage-hud">
       <div class="stage-title">
@@ -195,6 +433,7 @@
         </button>
         <div class="stage-controls">
           <a class="brutal-btn ghost" href="../index.html">⬅ Back to Map</a>
+          <span class="hand calm-badge" id="calmBadge"></span>
         </div>
       </div>
     </div>

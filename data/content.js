@@ -61,7 +61,8 @@
       icon: "🐧",
       mapPos: { x: 50, y: 10 },
       fact: "As the planet warms, sea ice shrinks \u2014 homes for polar animals shrink too.",
-      playable: false
+      playable: true,
+      href: "stages/stage04-ice.html"
     },
     {
       id: "stage05",
