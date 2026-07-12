@@ -548,6 +548,19 @@
   const CAMERA_LERP = 0.12;
   const TARGET_RESCUES = 5;
 
+  const clouds = [
+    // Far/Back clouds (slow, semi-transparent)
+    { x: 80, y: 60, scale: 0.6, speed: 3, layer: 'back' },
+    { x: 300, y: 90, scale: 0.7, speed: 4, layer: 'back' },
+    { x: 580, y: 50, scale: 0.5, speed: 2.5, layer: 'back' },
+    { x: 780, y: 80, scale: 0.65, speed: 3.5, layer: 'back' },
+
+    // Near/Front clouds (faster, outline style)
+    { x: 160, y: 110, scale: 0.9, speed: 8, layer: 'front' },
+    { x: 620, y: 145, scale: 1.15, speed: 6, layer: 'front' },
+    { x: 390, y: 80, scale: 0.7, speed: 10, layer: 'front' }
+  ];
+
   const input = {
     left: false,
     right: false,
@@ -611,7 +624,7 @@
         jumpPower: 520,
         onGround: false,
         facing: 1,
-        carrying: null,
+        carrying: [],
         spawnX: 96,
         spawnY: 300
       },
@@ -639,7 +652,7 @@
   function showIntro() {
     GOGUi.say("Help Penny rescue the chicks and bring them home to the safe iceberg! 🐧");
     activeOverlay = GOGUi.showOverlay({
-      accent: "var(--gog-cobalt)",
+      accent: "var(--gog-lime)",
       title: "🐧 Penny on Thin Ice",
       body: "Penny wakes in a warming polar dream. The floating ice shrinks faster when she stands still, so keep hopping, cool the valve, rescue chicks, and bring them home to the safe iceberg.<br><br><strong>Move:</strong> Arrow keys / WASD or touch buttons.<br><strong>Jump:</strong> Up / W / Space.<br><strong>Cool Valve:</strong> Stand near the valve, press E (or tap ☸️).",
       primaryLabel: "Start Dream",
@@ -800,7 +813,7 @@
       return;
     }
 
-    const warmingRate = calmMode ? 0 : (state.coolingTimer > 0 ? 0.022 : 0.042);
+    const warmingRate = calmMode ? 0 : (state.coolingTimer > 0 ? 0.005 : 0.012);
     state.warmth = clamp(state.warmth + warmingRate * dt, 0, 1);
     if (state.coolingTimer > 0) {
       state.coolingTimer = Math.max(0, state.coolingTimer - dt);
@@ -808,8 +821,8 @@
     }
     state.valve.pulse += dt;
 
-    const seaRise = calmMode ? 0 : (6 + state.warmth * 22);
-    state.seaLevel = clamp(state.seaLevel - seaRise * dt, 420, 560);
+    const seaRise = calmMode ? 0 : (1.5 + state.warmth * 5);
+    state.seaLevel = clamp(state.seaLevel - seaRise * dt, 480, 560);
 
     const accel = p.speed * dt;
     if (input.left) {
@@ -848,17 +861,22 @@
       failGame('Penny splashed into the rising water. Try a faster route and cool the valve sooner.');
       return;
     }
-
-    const remainingIce = state.meltPlatforms.filter(pl => !pl.gone).length;
-    if (remainingIce <= 1 && state.rescuedCount < TARGET_RESCUES) {
-      failGame('Too much ice melted away before the rescue was complete. Try keeping Penny moving between floes.');
-    }
   }
 
   function updatePlatforms(dt) {
     const p = state.player;
     for (const pl of state.meltPlatforms) {
-      if (pl.gone) continue;
+      if (pl.gone) {
+        pl.refreezeTimer = (pl.refreezeTimer || 0) + dt;
+        if (pl.refreezeTimer > 4.0) {
+          pl.gone = false;
+          pl.shrink = 0;
+          pl.w = pl.baseW;
+          pl.refreezeTimer = 0;
+          spawnBurst(pl.x + pl.baseW / 2, pl.y + 6, 8, '#A0E0FF');
+        }
+        continue;
+      }
       pl.t = (pl.t || 0) + dt;
       pl.y += Math.sin(state.time * 0.55 + pl.phase) * 4 * dt;
 
@@ -871,12 +889,13 @@
 
       const standing = p.onGround && p.vy >= -10 && p.x + p.w > topBand.x + 8 && p.x < topBand.x + topBand.w - 8 && Math.abs((p.y + p.h) - topBand.y) < 8;
       const meltRate = calmMode 
-        ? (standing ? 3 : 0)
-        : (1.2 + state.warmth * 5 + (standing ? 24 + state.warmth * 36 : 0));
+        ? (standing ? 1 : 0)
+        : (0.1 + state.warmth * 0.4 + (standing ? 3 + state.warmth * 5 : 0));
       pl.shrink += meltRate * dt;
       pl.w = Math.max(48, pl.baseW - pl.shrink);
       if (pl.shrink > pl.baseW - 42) {
         pl.gone = true;
+        pl.refreezeTimer = 0;
         state.meltedCount += 1;
         spawnBurst(pl.x + pl.baseW / 2, pl.y + 6, 12, '#DFF6FF');
         if (standing) {
@@ -931,19 +950,21 @@
     for (const chick of state.chicks) {
       chick.bob += dt * 3;
       if (chick.delivered) continue;
-      if (p.carrying === chick) {
+
+      const carryIndex = p.carrying.indexOf(chick);
+      if (carryIndex !== -1) {
         chick.x = p.x + p.w / 2 - 8;
-        chick.y = p.y - 18;
+        chick.y = p.y - 18 - carryIndex * 14;
         const homeZone = {
-          x: state.stableBase.x + 20,
-          y: state.stableBase.y - 60,
-          w: state.stableBase.w - 40,
-          h: 70
+          x: state.stableBase.x,
+          y: state.stableBase.y - 100,
+          w: state.stableBase.w,
+          h: 200
         };
-        if (rectsOverlap({ x: chick.x, y: chick.y, w: 16, h: 16 }, homeZone) && p.onGround) {
+        if (rectsOverlap(p, homeZone) && p.onGround) {
           chick.delivered = true;
           chick.rescued = true;
-          p.carrying = null;
+          p.carrying = p.carrying.filter(c => c !== chick);
           state.rescuedCount += 1;
           audio.heal();
           spawnBurst(chick.x, chick.y, 14, '#FFD84D');
@@ -956,13 +977,13 @@
       const chickRect = { x: chick.x, y: chick.y, w: 18, h: 18 };
       if (!chick.rescued && rectsOverlap(p, chickRect)) {
         chick.rescued = true;
-        p.carrying = chick;
+        p.carrying.push(chick);
         audio.collect();
         spawnBurst(chick.x, chick.y, 10, '#FFE680');
       }
       if (chick.y + 16 >= state.seaLevel) {
         const homeRestock = state.chicks.find(c => !c.rescued && !c.delivered && c !== chick);
-        if (!homeRestock && !chick.delivered && p.carrying !== chick) {
+        if (!homeRestock && !chick.delivered && !p.carrying.includes(chick)) {
           failGame('A chick slipped into the water. Try shorter rescue routes and keep the floes from vanishing under you.');
           return;
         }
@@ -1064,9 +1085,9 @@
     ctx.fillStyle = '#DFF2FF';
     circle(700, 90, 58, true);
 
-    drawCloud(160, 110, 0.9);
-    drawCloud(620, 145, 1.15);
-    drawCloud(390, 80, 0.7);
+    for (const cloud of clouds) {
+      drawCloud(cloud.x, cloud.y, cloud.scale, cloud.layer);
+    }
 
     ctx.fillStyle = '#B7D9FF';
     ctx.strokeStyle = '#111';
@@ -1256,8 +1277,10 @@ function drawPlayer() {
       ctx.restore();
     }
 
-    if (p.carrying) {
-      drawEmoji('🐥', x + p.w / 2, y - 8, 20);
+    if (p.carrying && p.carrying.length > 0) {
+      p.carrying.forEach((chick, index) => {
+        drawEmoji('🐥', x + p.w / 2, y - 8 - index * 14, 20);
+      });
     }
   }
 
@@ -1316,21 +1339,29 @@ function drawPlayer() {
     }
   }
 
-  function drawCloud(x, y, scale) {
+  function drawCloud(x, y, scale, layer) {
     ctx.save();
     ctx.translate(x, y);
     ctx.scale(scale, scale);
-    ctx.fillStyle = '#fff';
-    ctx.strokeStyle = '#111';
-    ctx.lineWidth = 3;
-    circle(-26, 2, 20, true);
-    circle(0, -10, 25, true);
-    circle(28, 2, 18, true);
-    roundedRect(-42, 0, 84, 24, 12, true, false);
-    circle(-26, 2, 20, false);
-    circle(0, -10, 25, false);
-    circle(28, 2, 18, false);
-    roundedRect(-42, 0, 84, 24, 12, false, true);
+    if (layer === 'back') {
+      ctx.fillStyle = 'rgba(255, 255, 255, 0.55)';
+      circle(-26, 2, 20, true);
+      circle(0, -10, 25, true);
+      circle(28, 2, 18, true);
+      roundedRect(-42, 0, 84, 24, 12, true, false);
+    } else {
+      ctx.fillStyle = '#fff';
+      ctx.strokeStyle = '#111';
+      ctx.lineWidth = 3;
+      circle(-26, 2, 20, true);
+      circle(0, -10, 25, true);
+      circle(28, 2, 18, true);
+      roundedRect(-42, 0, 84, 24, 12, true, false);
+      circle(-26, 2, 20, false);
+      circle(0, -10, 25, false);
+      circle(28, 2, 18, false);
+      roundedRect(-42, 0, 84, 24, 12, false, true);
+    }
     ctx.restore();
   }
 
@@ -1418,6 +1449,15 @@ function drawPlayer() {
     if (!lastTime) lastTime = ts;
     const dt = Math.min(0.033, (ts - lastTime) / 1000);
     lastTime = ts;
+    
+    // Update background clouds position
+    for (const cloud of clouds) {
+      cloud.x += cloud.speed * dt;
+      if (cloud.x > 800 + 120) {
+        cloud.x = -120;
+      }
+    }
+
     if (gameRunning) {
       update(dt);
     } else {

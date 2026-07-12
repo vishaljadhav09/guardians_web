@@ -57,7 +57,7 @@
       biome: "Polar ice",
       concept: "Melting ice / sea level",
       mechanic: "Physics platformer on shifting ice",
-      color: "var(--gog-cobalt)",
+      color: "var(--gog-lime)",
       icon: "🐧",
       mapPos: { x: 50, y: 10 },
       fact: "As the planet warms, sea ice shrinks \u2014 homes for polar animals shrink too.",
