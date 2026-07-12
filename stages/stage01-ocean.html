@@ -1,0 +1,3156 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1, viewport-fit=cover"
+    />
+    <title>Splash & the Plastic Tide — Guardians of Gaia</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@500;700;800&family=Quicksand:wght@500;600;700&family=Caveat:wght@600;700&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="../src/styles.css" />
+    <style>
+      .stage-wrap {
+        width: min(1180px, calc(100vw - 28px));
+        max-width: 1180px;
+        margin: 0 auto;
+        padding: 12px 0 32px;
+        animation: pageFadeIn 0.5s ease both;
+      }
+      .stage-hud {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 10px;
+        flex-wrap: wrap;
+        margin-bottom: 12px;
+      }
+      .stage-title {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+      }
+      .stage-title h1 {
+        font-size: 1.25rem;
+      }
+      .stage-title small {
+        display: block;
+        font-family: var(--gog-font-hand);
+        font-size: 1rem;
+        color: #5b5347;
+      }
+
+      .hud-mid {
+        display: flex;
+        align-items: center;
+        gap: 14px;
+        flex-wrap: wrap;
+      }
+      .meter {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        background: var(--gog-white);
+        border: 3px solid var(--gog-ink);
+        border-radius: 999px;
+        padding: 6px 14px 6px 10px;
+        box-shadow: var(--gog-shadow-sm);
+        min-width: 168px;
+        transition: transform 0.15s ease;
+        position: relative;
+      }
+      .meter .label,
+      .meter .meter-track {
+        position: relative;
+        z-index: 2;
+      }
+      .meter::after {
+        content: "";
+        position: absolute;
+        inset: -3px; /* Align with parent border */
+        border-radius: inherit;
+        opacity: 0;
+        pointer-events: none;
+        z-index: 1;
+      }
+      .meter .label {
+        font-size: 0.78rem;
+        font-weight: 700;
+        white-space: nowrap;
+      }
+      .meter-track {
+        flex: 1;
+        height: 10px;
+        border-radius: 999px;
+        background: #d8e8f5;
+        border: 2px solid var(--gog-ink);
+        overflow: hidden;
+      }
+      .meter-fill {
+        height: 100%;
+        background: linear-gradient(90deg, #3dd6c0, #2e5ee8);
+        width: 0%;
+        transition: width 0.35s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+      }
+      .timer-chip {
+        font-weight: 700;
+        min-width: 64px;
+        text-align: center;
+      }
+
+      /* Smooth HUD Punch Animations */
+      .meter-pulse-up {
+        animation: meterScaleUp 0.4s ease-out forwards;
+      }
+      .meter-pulse-down {
+        animation: meterScaleDown 0.4s ease-out forwards;
+      }
+      .meter-pulse-up::after {
+        background-color: #e6fbf7;
+        border: 3px solid #3dd6c0;
+        box-shadow: 0 0 25px rgba(61, 214, 192, 0.8);
+        animation: glowFadeUp 0.4s ease-out forwards;
+      }
+      .meter-pulse-down::after {
+        background-color: #ffeef2;
+        border: 3px solid #e82e5d;
+        box-shadow: 0 0 25px rgba(232, 46, 93, 0.8);
+        animation: glowFadeDown 0.4s ease-out forwards;
+      }
+
+      @keyframes meterScaleUp {
+        0% {
+          transform: scale(1);
+        }
+        30% {
+          transform: scale(1.15);
+        }
+        100% {
+          transform: scale(1);
+        }
+      }
+
+      @keyframes meterScaleDown {
+        0% {
+          transform: scale(1);
+        }
+        30% {
+          transform: scale(0.9);
+        }
+        100% {
+          transform: scale(1);
+        }
+      }
+
+      @keyframes glowFadeUp {
+        0% {
+          opacity: 0;
+        }
+        30% {
+          opacity: 1;
+        }
+        100% {
+          opacity: 0;
+        }
+      }
+
+      @keyframes glowFadeDown {
+        0% {
+          opacity: 0;
+        }
+        30% {
+          opacity: 1;
+        }
+        100% {
+          opacity: 0;
+        }
+      }
+
+      .canvas-frame {
+        position: relative;
+        width: 100%;
+        aspect-ratio: 16 / 10;
+        overflow: hidden;
+        transition:
+          border-color 0.2s,
+          box-shadow 0.2s;
+      }
+      .canvas-frame.boosting-active {
+        /* No direct animation on the frame itself to prevent expensive repaints */
+      }
+      .frame-overlay-win,
+      .frame-overlay-lose,
+      .frame-overlay-boost-teal,
+      .frame-overlay-boost-yellow,
+      .frame-overlay-boost-pink {
+        position: absolute;
+        inset: 0;
+        pointer-events: none;
+        opacity: 0;
+        z-index: 10; /* Render on top of canvas */
+      }
+      .frame-overlay-boost-teal,
+      .frame-overlay-boost-yellow,
+      .frame-overlay-boost-pink {
+        inset: -3px; /* Align with parent border */
+        border-radius: inherit;
+        z-index: 11;
+      }
+      .frame-overlay-boost-teal {
+        border: 3px solid #3dd6c0;
+        box-shadow: 0 0 22px rgba(61, 214, 192, 0.85);
+      }
+      .frame-overlay-boost-yellow {
+        border: 3px solid #ffd166;
+        box-shadow: 0 0 22px rgba(255, 209, 102, 0.85);
+      }
+      .frame-overlay-boost-pink {
+        border: 3px solid #e82e5d;
+        box-shadow: 0 0 22px rgba(232, 46, 93, 0.85);
+      }
+
+      .canvas-frame.boosting-active .frame-overlay-boost-teal {
+        animation: boostTealAnim 1.2s linear infinite;
+      }
+      .canvas-frame.boosting-active .frame-overlay-boost-yellow {
+        animation: boostYellowAnim 1.2s linear infinite;
+      }
+      .canvas-frame.boosting-active .frame-overlay-boost-pink {
+        animation: boostPinkAnim 1.2s linear infinite;
+      }
+
+      @keyframes boostTealAnim {
+        0%,
+        100% {
+          opacity: 1;
+        }
+        33% {
+          opacity: 0;
+        }
+        66% {
+          opacity: 0;
+        }
+      }
+      @keyframes boostYellowAnim {
+        0%,
+        100% {
+          opacity: 0;
+        }
+        33% {
+          opacity: 1;
+        }
+        66% {
+          opacity: 0;
+        }
+      }
+      @keyframes boostPinkAnim {
+        0%,
+        100% {
+          opacity: 0;
+        }
+        33% {
+          opacity: 0;
+        }
+        66% {
+          opacity: 1;
+        }
+      }
+      canvas {
+        width: 100%;
+        height: 100%;
+        display: block;
+        touch-action: none;
+        cursor: crosshair;
+      }
+
+      .stage-controls {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-top: 12px;
+        gap: 10px;
+        flex-wrap: wrap;
+      }
+
+      .tuning-controls {
+        display: none;
+      }
+
+      .calm-badge {
+        font-size: 0.78rem;
+        font-weight: 700;
+        animation: fadeInUp 0.6s ease both;
+      }
+
+      .icon-btn {
+        width: 42px;
+        height: 42px;
+        min-width: 42px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        background: var(--gog-white);
+        border: 3px solid var(--gog-ink);
+        border-radius: 50%;
+        box-shadow: 3px 3px 0 var(--gog-ink);
+        font-size: 1.15rem;
+        line-height: 1;
+        touch-action: manipulation;
+      }
+
+      @media (max-width: 700px) {
+        .stage-wrap {
+          width: calc(100vw - 12px);
+          max-width: 100%;
+          padding: 6px 0 18px;
+        }
+
+        .stage-hud {
+          display: grid;
+          grid-template-columns: minmax(0, 1fr);
+          gap: 6px;
+          margin-bottom: 8px;
+        }
+
+        .stage-title {
+          gap: 6px;
+          min-width: 0;
+        }
+
+        .stage-title .emoji-float {
+          font-size: 1.35rem !important;
+        }
+
+        .stage-title h1 {
+          font-size: 0.98rem;
+          line-height: 1;
+        }
+
+        .stage-title small {
+          display: none;
+        }
+
+        .hud-mid {
+          display: grid;
+          grid-template-columns: minmax(128px, 1fr) repeat(5, auto);
+          gap: 5px;
+          align-items: center;
+          align-
+          width: 100%;
+        }
+
+        .meter {
+          min-width: 0;
+          gap: 5px;
+          padding: 4px 8px 4px 7px;
+          border-width: 2px;
+          box-shadow: 2px 2px 0 var(--gog-ink);
+        }
+
+        .meter .label {
+          font-size: 0.66rem;
+        }
+
+        .meter-track {
+          height: 8px;
+          border-width: 2px;
+        }
+
+        .chip {
+          padding: 4px 7px;
+          border-width: 2px;
+          box-shadow: 2px 2px 0 var(--gog-ink);
+          font-size: 0.72rem;
+          min-height: 30px;
+        }
+
+        .timer-chip {
+          min-width: 44px;
+        }
+
+        .icon-btn {
+          width: 32px;
+          height: 32px;
+          min-width: 32px;
+          font-size: 0.92rem;
+          border-width: 2px;
+          box-shadow: 2px 2px 0 var(--gog-ink);
+        }
+
+        .guideBar {
+          gap: 6px;
+          padding: 3px 4px;
+          margin-bottom: 8px;
+          border-width: 2px;
+          border-radius: 8px;
+          box-shadow: 1px 1px 0 var(--gog-ink);
+        }
+
+        .guideAvatar {
+          font-size: 1.25rem;
+        }
+
+        .guideBubble {
+          padding: 5px 8px;
+          border-width: 2px;
+          border-radius: 10px;
+          font-size: 1rem;
+          line-height: 1.1;
+        }
+
+        .canvas-frame {
+          border-width: 3px;
+          border-radius: 12px;
+          box-shadow: 4px 4px 0 var(--gog-ink);
+        }
+
+        .stage-controls {
+          margin-top: 8px;
+          gap: 6px;
+        }
+
+        .stage-controls .brutal-btn {
+          padding: 8px 12px;
+          min-height: 38px;
+          border-width: 3px;
+          border-radius: 10px;
+          font-size: 0.86rem;
+          box-shadow: 3px 3px 0 var(--gog-ink);
+        }
+
+        .calm-badge {
+          font-size: 0.72rem;
+        }
+      }
+
+      @media (max-width: 420px) {
+        .hud-mid {
+          grid-template-columns: minmax(118px, 1fr) repeat(3, auto);
+        }
+
+        #difficultyChip {
+          display: none;
+        }
+
+        .combo-chip:not(.combo-visible) {
+          display: none;
+        }
+      }
+
+      /* =========================================================
+     NEW: kid-friendly delight animations
+     ========================================================= */
+
+      /* Whole page gently settles in on load */
+      @keyframes pageFadeIn {
+        from {
+          opacity: 0;
+          transform: translateY(10px);
+        }
+        to {
+          opacity: 1;
+          transform: translateY(0);
+        }
+      }
+
+      /* Title dolphin icon bobs & wiggles forever */
+      .emoji-float {
+        display: inline-block;
+        animation: emojiFloat 2.6s ease-in-out infinite;
+      }
+      @keyframes emojiFloat {
+        0%,
+        100% {
+          transform: translateY(0) rotate(-4deg);
+        }
+        50% {
+          transform: translateY(-5px) rotate(5deg);
+        }
+      }
+
+      /* Calm-mode badge slides up into place */
+      @keyframes fadeInUp {
+        from {
+          opacity: 0;
+          transform: translateY(6px);
+        }
+        to {
+          opacity: 1;
+          transform: translateY(0);
+        }
+      }
+
+      /* Sprout chip "pops" every time it goes up */
+      .chip-pop {
+        animation: chipPop 0.45s ease-out;
+      }
+      @keyframes chipPop {
+        0% {
+          transform: scale(1) rotate(0deg);
+        }
+        35% {
+          transform: scale(1.35) rotate(-8deg);
+        }
+        65% {
+          transform: scale(0.95) rotate(5deg);
+        }
+        100% {
+          transform: scale(1) rotate(0deg);
+        }
+      }
+
+      /* Timer starts pulsing red once time is running low */
+      .timer-chip {
+        position: relative;
+      }
+      .timer-chip::after {
+        content: "";
+        position: absolute;
+        inset: -3px;
+        border-radius: inherit;
+        box-shadow: 0 0 16px rgba(232, 46, 93, 0.65);
+        opacity: 0;
+        pointer-events: none;
+        z-index: -1;
+      }
+      .timer-chip.timer-urgent {
+        animation: timerPulseScale 0.8s ease-in-out infinite;
+        color: #e82e5d;
+      }
+      .timer-chip.timer-urgent::after {
+        animation: timerPulseGlow 0.8s ease-in-out infinite;
+      }
+      @keyframes timerPulseScale {
+        0%,
+        100% {
+          transform: scale(1);
+        }
+        50% {
+          transform: scale(1.14);
+        }
+      }
+      @keyframes timerPulseGlow {
+        0%,
+        100% {
+          opacity: 0;
+        }
+        50% {
+          opacity: 1;
+        }
+      }
+
+      /* Mute button gives a happy little bounce on click */
+      .btn-bounce {
+        animation: btnBounce 0.4s ease;
+      }
+      @keyframes btnBounce {
+        0% {
+          transform: scale(1) rotate(0deg);
+        }
+        40% {
+          transform: scale(1.3) rotate(-12deg);
+        }
+        100% {
+          transform: scale(1) rotate(0deg);
+        }
+      }
+
+      /* Canvas frame reacts to winning / losing the stage */
+      .canvas-frame.flash-win .frame-overlay-win {
+        animation: winOverlayAnim 1.5s ease forwards;
+      }
+      .frame-overlay-win {
+        background: rgba(255, 255, 255, 0.4);
+      }
+      @keyframes winOverlayAnim {
+        0% {
+          opacity: 0;
+        }
+        25% {
+          opacity: 0.6;
+        }
+        100% {
+          opacity: 0;
+        }
+      }
+
+      .canvas-frame.flash-lose .frame-overlay-lose {
+        animation: loseOverlayAnim 0.9s ease forwards;
+      }
+      .frame-overlay-lose {
+        background: rgba(20, 25, 35, 0.4);
+      }
+      @keyframes loseOverlayAnim {
+        0% {
+          opacity: 0;
+        }
+        100% {
+          opacity: 1;
+        }
+      }
+
+      /* Combo streak chip — hidden until the player chains 2+ pickups */
+      .combo-chip {
+        display: none;
+        font-weight: 700;
+        color: #2e5ee8;
+      }
+      .combo-chip.combo-visible {
+        display: inline-flex;
+        align-items: center;
+        gap: 4px;
+      }
+      .combo-chip.combo-tier-2 {
+        color: #e8830e;
+      }
+      .combo-chip.combo-tier-3 {
+        color: #e82e5d;
+      }
+
+      /* Boost button shows a faded, disabled look while on cooldown */
+      #boostBtn.boost-cooldown {
+        opacity: 0.5;
+        font-size: 0.75rem;
+        font-weight: 700;
+        pointer-events: none;
+      }
+
+      /* Camera "punch" for big positive moments (turtle save, milestones, combos, near-miss) */
+      .canvas-frame.zoom-punch {
+        animation: zoomPunch 0.35s ease;
+      }
+      @keyframes zoomPunch {
+        0% {
+          transform: scale(1);
+        }
+        35% {
+          transform: scale(1.045);
+        }
+        100% {
+          transform: scale(1);
+        }
+      }
+
+      /* =========================================================
+     NEW: ambient ocean backdrop for the page itself (outside
+     the canvas) — ties the HUD/controls into the same underwater
+     world instead of sitting on a flat, unrelated background.
+     ========================================================= */
+      body {
+        position: relative;
+      }
+      .page-bg {
+        position: fixed;
+        inset: 0;
+        z-index: -1;
+        overflow: hidden;
+        pointer-events: none;
+        background: radial-gradient(
+          ellipse at 50% -8%,
+          #eaf7ff 0%,
+          #d7ecf8 42%,
+          #fdf6e6 100%
+        );
+      }
+      .page-bubble {
+        position: absolute;
+        bottom: -10vh;
+        border-radius: 50%;
+        background: radial-gradient(
+          circle at 32% 28%,
+          rgba(255, 255, 255, 0.95),
+          rgba(255, 255, 255, 0.05) 70%
+        );
+        opacity: 0;
+        animation: pageBubbleRise linear infinite;
+      }
+      @keyframes pageBubbleRise {
+        0% {
+          transform: translateY(0) translateX(0);
+          opacity: 0;
+        }
+        8% {
+          opacity: 0.5;
+        }
+        90% {
+          opacity: 0.35;
+        }
+        100% {
+          transform: translateY(-125vh) translateX(var(--drift, 24px));
+          opacity: 0;
+        }
+      }
+
+      /* =========================================================
+     NEW: collect / oops / heal feedback that bleeds past the
+     canvas frame into the surrounding page, so the big moments
+     are felt across the whole screen — not just inside the box.
+     ========================================================= */
+      .page-fx {
+        position: fixed;
+        inset: 0;
+        z-index: 5;
+        pointer-events: none;
+        opacity: 0;
+      }
+      .page-fx.fx-collect {
+        background: radial-gradient(
+          ellipse at 50% 50%,
+          transparent 40%,
+          rgba(46, 94, 232, 0.3) 150%
+        );
+        animation: pageFxPulse 0.5s ease-out;
+      }
+      .page-fx.fx-oops {
+        background: radial-gradient(
+          ellipse at 50% 50%,
+          transparent 30%,
+          rgba(232, 46, 93, 0.42) 150%
+        );
+        animation: pageFxPulse 0.5s ease-out;
+      }
+      .page-fx.fx-heal {
+        background: radial-gradient(
+          ellipse at 50% 50%,
+          transparent 32%,
+          rgba(61, 214, 192, 0.38) 150%
+        );
+        animation: pageFxPulse 0.65s ease-out;
+      }
+      @keyframes pageFxPulse {
+        0% {
+          opacity: 0;
+        }
+        22% {
+          opacity: 1;
+        }
+        100% {
+          opacity: 0;
+        }
+      }
+
+      @media (prefers-reduced-motion: reduce) {
+        .page-bubble {
+          animation: none;
+          opacity: 0;
+        }
+        .page-fx.fx-collect,
+        .page-fx.fx-oops,
+        .page-fx.fx-heal {
+          animation-duration: 0.01s;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <!-- NEW: ambient ocean backdrop + page-wide collect/oops/heal glow, both outside the canvas -->
+    <div class="page-bg" aria-hidden="true">
+      <span
+        class="page-bubble"
+        style="
+          left: 6%;
+          width: 14px;
+          height: 14px;
+          animation-duration: 14s;
+          animation-delay: 0s;
+          --drift: 18px;
+        "
+      ></span>
+      <span
+        class="page-bubble"
+        style="
+          left: 18%;
+          width: 9px;
+          height: 9px;
+          animation-duration: 11s;
+          animation-delay: 2.4s;
+          --drift: -14px;
+        "
+      ></span>
+      <span
+        class="page-bubble"
+        style="
+          left: 32%;
+          width: 18px;
+          height: 18px;
+          animation-duration: 17s;
+          animation-delay: 5s;
+          --drift: 22px;
+        "
+      ></span>
+      <span
+        class="page-bubble"
+        style="
+          left: 48%;
+          width: 11px;
+          height: 11px;
+          animation-duration: 13s;
+          animation-delay: 1.2s;
+          --drift: -10px;
+        "
+      ></span>
+      <span
+        class="page-bubble"
+        style="
+          left: 64%;
+          width: 16px;
+          height: 16px;
+          animation-duration: 16s;
+          animation-delay: 7s;
+          --drift: 16px;
+        "
+      ></span>
+      <span
+        class="page-bubble"
+        style="
+          left: 78%;
+          width: 10px;
+          height: 10px;
+          animation-duration: 12s;
+          animation-delay: 3.6s;
+          --drift: -18px;
+        "
+      ></span>
+      <span
+        class="page-bubble"
+        style="
+          left: 90%;
+          width: 13px;
+          height: 13px;
+          animation-duration: 15s;
+          animation-delay: 6.2s;
+          --drift: 12px;
+        "
+      ></span>
+    </div>
+    <div class="page-fx" id="pageFx" aria-hidden="true"></div>
+
+    <div class="stage-wrap">
+      <div class="stage-hud">
+        <div class="stage-title">
+          <span style="font-size: 1.8rem" class="emoji-float">🐬</span>
+          <div>
+            <h1>Splash & the Plastic Tide</h1>
+            <small>Stage 1 · Ocean</small>
+          </div>
+        </div>
+        <div class="hud-mid">
+          <div class="meter" title="Reef Health">
+            <span class="label">REEF</span>
+            <div class="meter-track">
+              <div class="meter-fill" id="reefFill"></div>
+            </div>
+            <span class="label" id="reefPct">0%</span>
+          </div>
+          <span class="chip timer-chip" id="timerChip">75s</span>
+          <span
+            class="chip"
+            id="difficultyChip"
+            title="Difficulty Level (increases over time)"
+            style="
+              background: var(--gog-white);
+              border-color: var(--gog-ink);
+              color: var(--gog-ink);
+              transition:
+                background-color 0.3s,
+                color 0.3s;
+              font-weight: 800;
+            "
+            >⚡ Lvl 1</span
+          >
+          <span class="chip">🌱 <span id="sproutsChip">0</span></span>
+          <span class="chip combo-chip" id="comboChip">🔥 x0</span>
+          <button
+            class="icon-btn"
+            id="boostBtn"
+            title="Echo Boost — dash & break through trash"
+            aria-label="Echo Boost"
+          >
+            💨
+          </button>
+          <button
+            class="icon-btn"
+            id="muteBtn"
+            title="Toggle sound"
+            aria-label="Toggle sound"
+          >
+            🔈
+          </button>
+          <div class="stage-controls">
+            <a class="brutal-btn ghost" href="../index.html">⬅ Back to Map</a>
+            <span class="hand calm-badge" id="calmBadge"></span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Spika Mascot Guide Bar -->
+      <div class="guideBar">
+        <div class="guideAvatar" aria-hidden="true">🦋</div>
+        <div class="guideBubble" id="guideText">
+          Help Splash collect the plastic trash! 🐬
+        </div>
+      </div>
+
+      <div class="brutal-box canvas-frame" id="canvasFrame">
+        <canvas id="gameCanvas" width="960" height="600"></canvas>
+        <!-- Overlay divs for smooth hardware-accelerated transitions -->
+        <div class="frame-overlay-win" id="overlayWin"></div>
+        <div class="frame-overlay-lose" id="overlayLose"></div>
+        <div class="frame-overlay-boost-teal" id="overlayBoostTeal"></div>
+        <div class="frame-overlay-boost-yellow" id="overlayBoostYellow"></div>
+        <div class="frame-overlay-boost-pink" id="overlayBoostPink"></div>
+      </div>
+
+      <!-- Spawning & Speed Controls -->
+      <div
+        class="brutal-box tuning-controls"
+        style="
+          margin: 20px auto 0;
+          padding: 20px;
+          background: var(--gog-white);
+          border-radius: 18px;
+        "
+      >
+        <h3
+          style="
+            margin-top: 0;
+            margin-bottom: 12px;
+            font-family: var(--gog-font-head);
+            font-size: 1.35rem;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+          "
+        >
+          ⚙️ Spawning & Speed Controls
+        </h3>
+        <div
+          style="
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+            gap: 16px;
+            align-items: center;
+          "
+        >
+          <!-- Toggle: Spawn Right Only -->
+          <div style="display: flex; align-items: center; gap: 10px">
+            <input
+              type="checkbox"
+              id="spawnRightOnly"
+              checked
+              style="
+                width: 22px;
+                height: 22px;
+                cursor: pointer;
+                accent-color: var(--gog-cobalt);
+              "
+            />
+            <label
+              for="spawnRightOnly"
+              style="
+                font-weight: 700;
+                cursor: pointer;
+                font-size: 0.95rem;
+                user-select: none;
+              "
+            >
+              Always Spawn From Right Side
+            </label>
+          </div>
+
+          <!-- Trash Quantity Slider -->
+          <div style="display: flex; flex-direction: column; gap: 4px">
+            <div
+              style="
+                display: flex;
+                justify-content: space-between;
+                font-weight: 700;
+                font-size: 0.9rem;
+              "
+            >
+              <span>📦 Trash Quantity</span>
+              <span
+                id="trashQtyVal"
+                style="color: var(--gog-cobalt); font-family: monospace"
+                >Normal (1.0x)</span
+              >
+            </div>
+            <input
+              type="range"
+              id="trashQtyMult"
+              min="0.2"
+              max="2.0"
+              step="0.2"
+              value="0.4"
+              style="cursor: pointer; accent-color: var(--gog-cobalt)"
+            />
+          </div>
+
+          <!-- Trash Speed Slider -->
+          <div style="display: flex; flex-direction: column; gap: 4px">
+            <div
+              style="
+                display: flex;
+                justify-content: space-between;
+                font-weight: 700;
+                font-size: 0.9rem;
+              "
+            >
+              <span>🍶/🛍️ Trash Speed</span>
+              <span
+                id="trashSpeedVal"
+                style="color: var(--gog-cobalt); font-family: monospace"
+                >1.0x</span
+              >
+            </div>
+            <input
+              type="range"
+              id="trashSpeedMult"
+              min="0.2"
+              max="3.0"
+              step="0.1"
+              value="3.0"
+              style="cursor: pointer; accent-color: var(--gog-cobalt)"
+            />
+          </div>
+
+          <!-- Turtle Speed Slider -->
+          <div style="display: flex; flex-direction: column; gap: 4px">
+            <div
+              style="
+                display: flex;
+                justify-content: space-between;
+                font-weight: 700;
+                font-size: 0.9rem;
+              "
+            >
+              <span>🐢 Turtle Speed</span>
+              <span
+                id="turtleSpeedVal"
+                style="color: var(--gog-cobalt); font-family: monospace"
+                >1.0x</span
+              >
+            </div>
+            <input
+              type="range"
+              id="turtleSpeedMult"
+              min="0.2"
+              max="3.0"
+              step="0.1"
+              value="1.0"
+              style="cursor: pointer; accent-color: var(--gog-cobalt)"
+            />
+          </div>
+
+          <!-- Pufferfish Speed Slider -->
+          <div style="display: flex; flex-direction: column; gap: 4px">
+            <div
+              style="
+                display: flex;
+                justify-content: space-between;
+                font-weight: 700;
+                font-size: 0.9rem;
+              "
+            >
+              <span>🐡 Pufferfish Speed</span>
+              <span
+                id="pufferSpeedVal"
+                style="color: var(--gog-cobalt); font-family: monospace"
+                >1.0x</span
+              >
+            </div>
+            <input
+              type="range"
+              id="pufferSpeedMult"
+              min="0.2"
+              max="3.0"
+              step="0.1"
+              value="1.0"
+              style="cursor: pointer; accent-color: var(--gog-cobalt)"
+            />
+          </div>
+
+          <!-- Pearl Speed Slider -->
+          <div style="display: flex; flex-direction: column; gap: 4px">
+            <div
+              style="
+                display: flex;
+                justify-content: space-between;
+                font-weight: 700;
+                font-size: 0.9rem;
+              "
+            >
+              <span>🦪 Pearl Speed</span>
+              <span
+                id="pearlSpeedVal"
+                style="color: var(--gog-cobalt); font-family: monospace"
+                >1.0x</span
+              >
+            </div>
+            <input
+              type="range"
+              id="pearlSpeedMult"
+              min="0.2"
+              max="3.0"
+              step="0.1"
+              value="1.0"
+              style="cursor: pointer; accent-color: var(--gog-cobalt)"
+            />
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Seed Returns Cutscene Overlay -->
+    <div class="cutscene-overlay" id="cutscene">
+      <div class="csSeed">🌱</div>
+      <div class="csTree" id="csTreeIcon">🌳</div>
+      <div class="csText">A seed returns to the Tree…</div>
+      <button class="btn small csSkip" id="csSkipBtn">Skip ⏭</button>
+    </div>
+
+    <script src="../data/content.js"></script>
+    <script src="../src/save.js"></script>
+    <script src="../src/engine.js"></script>
+    <script src="../src/ui.js"></script>
+    <script>
+      (function () {
+        "use strict";
+
+        var STAGE_ID = "stage01";
+        var stageMeta = GOGContent.byId(STAGE_ID);
+        var save = GOGSave.load();
+
+        var canvas = document.getElementById("gameCanvas");
+        var ctx = canvas.getContext("2d");
+        var canvasFrame = document.getElementById("canvasFrame");
+
+        var cachedCanvasRect = null;
+        var cachedFrameRect = null;
+        var rectUpdatedThisFrame = false;
+
+        function updateCanvasRect() {
+          if (canvas) {
+            cachedCanvasRect = canvas.getBoundingClientRect();
+          }
+          if (canvasFrame) {
+            cachedFrameRect = canvasFrame.getBoundingClientRect();
+          }
+          rectUpdatedThisFrame = true;
+        }
+        var W = canvas.width,
+          H = canvas.height;
+
+        // PERF: these gradients are created ONCE and reused every frame instead of
+        // being rebuilt 60 times a second. Re-creating gradients per-frame was the
+        // single biggest cause of the intermittent stutter — it forces the browser
+        // to allocate + garbage-collect a new object on every draw call.
+        var pollutionHazeGradient = ctx.createLinearGradient(0, 0, 0, H);
+        pollutionHazeGradient.addColorStop(0, "rgba(70,60,40,0.6)");
+        pollutionHazeGradient.addColorStop(1, "rgba(40,50,40,0.2)");
+
+        var causticRayGradient = ctx.createLinearGradient(0, 0, 70, H);
+        causticRayGradient.addColorStop(0, "rgba(255,255,255,0.4)");
+        causticRayGradient.addColorStop(1, "rgba(255,255,255,0)");
+
+        var input = new GOGEngine.Input(canvas);
+        var particles = new GOGEngine.ParticleSystem(140);
+        var audio = new GOGEngine.Audio(!save.settings.sound);
+
+        // Background music & ambient sound
+        var bgMusic = new Audio("assets/audio/stage01/underwater.mp3");
+        bgMusic.loop = true;
+        bgMusic.volume = 0.35;
+        bgMusic.preload = "auto";
+
+        var ambientMusic = new Audio("assets/audio/stage01/bombinsound.mp3");
+        ambientMusic.loop = true;
+        ambientMusic.volume = 0.35;
+        ambientMusic.preload = "auto";
+
+        function playBackgroundMusic() {
+          if (audio.muted) return;
+          bgMusic.volume = 0;
+          bgMusic.currentTime = 0;
+          ambientMusic.volume = 0;
+          ambientMusic.currentTime = 0;
+
+          var p1 = bgMusic.play();
+          var p2 = ambientMusic.play();
+
+          Promise.all([p1, p2])
+            .then(function () {
+              var v = 0;
+              var fade = setInterval(function () {
+                v += 0.02;
+                bgMusic.volume = Math.min(v, 0.35);
+                ambientMusic.volume = Math.min(v, 0.35);
+                if (v >= 0.35) clearInterval(fade);
+              }, 120);
+            })
+            .catch(() => {});
+        }
+
+        function stopBackgroundMusic() {
+          bgMusic.pause();
+          bgMusic.currentTime = 0;
+          ambientMusic.pause();
+          ambientMusic.currentTime = 0;
+        }
+
+        document.addEventListener("visibilitychange", function () {
+          if (document.hidden) {
+            bgMusic.pause();
+            ambientMusic.pause();
+          } else if (!audio.muted) {
+            bgMusic.play().catch(() => {});
+            ambientMusic.play().catch(() => {});
+          }
+        });
+        var Collision = GOGEngine.Collision;
+
+        var calmMode = !!save.settings.calmMode;
+        document.getElementById("calmBadge").textContent = calmMode
+          ? "🧘 Calm mode is on — no timer pressure."
+          : "";
+
+        var muteBtn = document.getElementById("muteBtn");
+        function syncMuteBtn() {
+          muteBtn.textContent = audio.muted ? "🔇" : "🔈";
+        }
+        syncMuteBtn();
+        muteBtn.addEventListener("click", function () {
+          var nowMuted = !audio.muted;
+          audio.setMuted(nowMuted);
+          if (nowMuted) {
+            bgMusic.pause();
+            ambientMusic.pause();
+          } else {
+            bgMusic.play().catch(() => {});
+            ambientMusic.play().catch(() => {});
+          }
+          save = GOGSave.patch({ settings: { sound: !nowMuted } });
+          syncMuteBtn();
+
+          // happy little bounce on the button itself
+          GOGUi.restartAnimation(muteBtn, "btn-bounce");
+        });
+
+        // Connect speed value UI displays
+        (function setupSpeedControls() {
+          var speedTypes = ["trash", "turtle", "puffer", "pearl"];
+          speedTypes.forEach(function (type) {
+            var slider = document.getElementById(type + "SpeedMult");
+            var label = document.getElementById(type + "SpeedVal");
+            if (slider && label) {
+              slider.addEventListener("input", function () {
+                label.textContent = parseFloat(slider.value).toFixed(1) + "x";
+              });
+            }
+          });
+
+          var qtySlider = document.getElementById("trashQtyMult");
+          var qtyLabel = document.getElementById("trashQtyVal");
+          if (qtySlider && qtyLabel) {
+            qtySlider.addEventListener("input", function () {
+              var val = parseFloat(qtySlider.value);
+              var text = "";
+              if (val <= 0.3) text = "Very Low";
+              else if (val <= 0.7) text = "Low";
+              else if (val <= 1.1) text = "Normal";
+              else if (val <= 1.6) text = "High";
+              else text = "Max";
+              qtyLabel.textContent = text + " (" + val.toFixed(1) + "x)";
+            });
+          }
+        })();
+
+        // Resume AudioContext & start bgMusic on first user interaction
+        function resumeAudioOnGesture() {
+          if (audio && typeof audio._ensureCtx === "function") {
+            var ctx = audio._ensureCtx();
+            if (ctx && ctx.state === "suspended") {
+              ctx.resume();
+            }
+          }
+          if (!audio.muted) {
+            if (bgMusic && bgMusic.paused) bgMusic.play().catch(function () {});
+            if (ambientMusic && ambientMusic.paused)
+              ambientMusic.play().catch(function () {});
+          }
+          // Remove listeners once done
+          document.removeEventListener("click", resumeAudioOnGesture);
+          document.removeEventListener("keydown", resumeAudioOnGesture);
+          document.removeEventListener("pointerdown", resumeAudioOnGesture);
+        }
+        document.addEventListener("click", resumeAudioOnGesture);
+        document.addEventListener("keydown", resumeAudioOnGesture);
+        document.addEventListener("pointerdown", resumeAudioOnGesture);
+
+        // Tap/click ripples — pure delight, doesn't affect gameplay input at all
+        var ripples = [];
+        canvas.addEventListener("pointerdown", function (e) {
+          if (!rectUpdatedThisFrame || !cachedCanvasRect) {
+            updateCanvasRect();
+          }
+          var rect = cachedCanvasRect;
+          var px = ((e.clientX - rect.left) / rect.width) * W;
+          var py = ((e.clientY - rect.top) / rect.height) * H;
+          if (ripples.length < 12) {
+            ripples.push({ x: px, y: py, radius: 4, alpha: 0.55 });
+          }
+        });
+
+        // NEW: Echo Boost — a short dash with invincibility, on a cooldown.
+        // Implemented as a HUD button (rather than a key/hold gesture) so it works
+        // identically for mouse, touch, and keyboard players.
+        var BOOST_DURATION = 1.1;
+        var BOOST_COOLDOWN = 5;
+        var boostBtn = document.getElementById("boostBtn");
+        boostBtn.addEventListener("click", function () {
+          if (!state.running || state.elapsed < state.boostReadyAt) return;
+          state.boostUntil = state.elapsed + BOOST_DURATION;
+          state.boostReadyAt = state.elapsed + BOOST_COOLDOWN;
+          state.invulnUntil = Math.max(state.invulnUntil, state.boostUntil);
+          audio.collect();
+          pageFx("collect");
+          particles.burst(dolphin.x, dolphin.y, {
+            glyphs: ["💨", "✨"],
+            count: 10,
+            life: 500,
+          });
+          triggerZoomPunch();
+          boostBtn.classList.add("boost-cooldown");
+          GOGUi.say("Zooooom! Dash through the water! 💨");
+        });
+
+        /* ---------------- parallax background layers ---------------- */
+        var layers = [
+          { img: null, speed: 10, y: 0 }, // Sky/Deep background (slowest)
+          { img: null, speed: 20, y: 0 }, // Far elements
+          { img: null, speed: 40, y: 0 }, // Mid-ground
+          { img: null, speed: 60, y: 0 }, // Foreground elements (fastest)
+        ];
+        var scrollX = 0;
+
+        function loadImage(src) {
+          return new Promise(function (resolve) {
+            var img = new Image();
+            img.onload = function () {
+              resolve(img);
+            };
+            img.src = src;
+          });
+        }
+
+        var dolphinImg = null;
+        var dolphinAttackImg = null;
+
+        // Pre-load background image assets asynchronously
+        async function init() {
+          try {
+            var loaded = await Promise.all([
+              loadImage("assets/1.png"),
+              loadImage("assets/2.png"),
+              loadImage("assets/3.png"),
+              loadImage("assets/4.png"),
+              loadImage("assets/sprites/stage01/dolphine_swim.png"),
+              loadImage("assets/sprites/stage01/dolphine_attack.png"),
+            ]);
+            layers.forEach(function (layer, i) {
+              layer.img = loaded[i];
+            });
+            dolphinImg = loaded[4];
+            dolphinAttackImg = loaded[5];
+            playBackgroundMusic();
+          } catch (e) {
+            console.error("Background load failed:", e);
+          }
+        }
+
+        /* ---------------- game state ---------------- */
+        var TOTAL_TIME = 75; // seconds
+        var state = {
+          running: true,
+          won: false,
+          reef: 0, // 0..100
+          sproutsEarned: 0,
+          hits: 0,
+          turtleAttackCount: 0,
+          timeLeft: TOTAL_TIME,
+          invulnUntil: 0,
+          elapsed: 0,
+          hitFlashUntil: 0, // NEW: red vignette timer when hit by a pufferfish
+          healFlashUntil: 0, // NEW: green vignette timer when a heal/save occurs
+          introPlayed: false, // NEW: plays a one-time splash burst when the stage opens
+          combo: 0, // NEW: consecutive pickups without getting hit
+          boostUntil: 0, // NEW: Echo Boost dash end time
+          boostReadyAt: 0, // NEW: when the boost cools down and becomes available again
+          slowMoUntil: 0, // NEW: brief bullet-time window on a perfect dodge
+        };
+
+        var lastReefValue = null;
+        var lastSproutsValue = null;
+        var reefAnimationDelta = 0;
+        var sproutsGainPending = false;
+
+        var dolphin = {
+          x: W * 0.5,
+          y: H * 0.5,
+          r: 30,
+          facing: 1,
+          wobble: 0,
+          state: "swim", // "swim" or "attack"
+          frameIndex: 0,
+          elapsedFrameTime: 0,
+          fps: 15,
+        };
+
+        var items = []; // {type, x,y,vx,vy,r,glyph,dead}
+        var shockwaves = []; // {x, y, radius, maxRadius, alpha, color}
+
+        // NEW: ambient + celebratory FX systems
+        var bubbles = []; // rising background bubbles for underwater atmosphere
+        var trail = []; // little bubbles left behind the dolphin as it swims
+        var confetti = []; // confetti rectangles for milestones / win
+        var milestonesHit = { 25: false, 50: false, 75: false };
+        var trailTimer = 0;
+        var idleTimer = 0; // NEW: how long the dolphin has been roughly still
+
+        // NEW: movement & dash FX
+        var speedLines = [];
+        var speedLineTimer = 0;
+
+        // NEW: ambient kelp + background fish — set up once, animated procedurally (cheap: no images)
+        var kelpStalks = [];
+        (function initKelp() {
+          var count = 7;
+          for (var k = 0; k < count; k++) {
+            kelpStalks.push({
+              baseX: (k + 0.5) * (W / count) + rand(-20, 20),
+              height: rand(70, 130),
+              phase: rand(0, Math.PI * 2),
+              speed: rand(0.6, 1.1),
+              hue: rand(150, 170),
+            });
+          }
+        })();
+
+        var bgFish = [];
+        (function initBgFish() {
+          var glyphs = ["🐟", "🐠", "🐡", "🐙", "🦑", "🦐"];
+          for (var f = 0; f < 9; f++) {
+            bgFish.push({
+              x: rand(0, W),
+              y: rand(40, H - 120),
+              dir: Math.random() < 0.5 ? 1 : -1,
+              speed: rand(14, 32),
+              glyph: glyphs[Math.floor(Math.random() * glyphs.length)],
+              bob: rand(0, Math.PI * 2),
+              size: rand(16, 28),
+            });
+          }
+        })();
+
+        // NEW: seabed decorations (crabs crawling, seashells, starfish)
+        var seabedDecorations = [];
+        (function initSeabedDecorations() {
+          var count = 5;
+          var glyphs = ["🦀", "🐚", "🐌", "🐚"];
+          for (var i = 0; i < count; i++) {
+            seabedDecorations.push({
+              x: rand(50, W - 50),
+              y: H - 15,
+              glyph: glyphs[Math.floor(Math.random() * glyphs.length)],
+              speed: rand(10, 22),
+              dir: Math.random() < 0.5 ? 1 : -1,
+              bob: rand(0, Math.PI * 2),
+            });
+          }
+        })();
+
+        function rand(min, max) {
+          return min + Math.random() * (max - min);
+        }
+
+        function spawnTrash() {
+          var glyphs = ["🍶", "🛍️", "🥤", "🧴"];
+          var fromLeft = Math.random() < 0.5;
+          var rightOnly = document.getElementById("spawnRightOnly")?.checked;
+          var x, vx;
+          if (rightOnly) {
+            x = W + 30;
+            vx = -1 * rand(40, 80);
+          } else {
+            x = fromLeft ? -30 : W + 30;
+            vx = (fromLeft ? 1 : -1) * rand(40, 80);
+          }
+
+          items.push({
+            type: "trash",
+            x: x,
+            y: rand(60, H - 60),
+            vx: vx,
+            vy: rand(-12, 12),
+            r: 28,
+            glyph: glyphs[Math.floor(Math.random() * glyphs.length)],
+            bob: Math.random() * Math.PI * 2,
+            age: 0,
+          });
+        }
+
+        function spawnTurtle() {
+          var fromLeft = Math.random() < 0.5;
+          var rightOnly = document.getElementById("spawnRightOnly")?.checked;
+          var x, vx;
+          if (rightOnly) {
+            x = W + 40;
+            vx = -1 * rand(30, 55);
+          } else {
+            x = fromLeft ? -40 : W + 40;
+            vx = (fromLeft ? 1 : -1) * rand(30, 55);
+          }
+
+          items.push({
+            type: "turtle",
+            x: x,
+            y: rand(80, H - 80),
+            vx: vx,
+            vy: rand(-8, 8),
+            r: 26,
+            glyph: "🐢",
+            bob: Math.random() * Math.PI * 2,
+            age: 0,
+          });
+        }
+
+        function spawnPuffer() {
+          var fromTop = Math.random() < 0.5;
+          var rightOnly = document.getElementById("spawnRightOnly")?.checked;
+          var x, y, vx, vy;
+          if (rightOnly) {
+            x = W + 30;
+            y = rand(60, H - 60);
+            vx = -1 * rand(45, 85);
+            vy = rand(-12, 12);
+          } else {
+            x = rand(60, W - 60);
+            y = fromTop ? -30 : H + 30;
+            vx = rand(-20, 20);
+            vy = (fromTop ? 1 : -1) * rand(45, 85);
+          }
+
+          items.push({
+            type: "pufferfish",
+            x: x,
+            y: y,
+            vx: vx,
+            vy: vy,
+            r: 24,
+            glyph: "🐡",
+            bob: Math.random() * Math.PI * 2,
+            age: 0,
+            armed: false, // NEW: telegraphed for 0.5s before it can actually hurt the dolphin
+            nearMissFired: false, // NEW: ensures the "Phew!" near-miss only fires once per puffer
+          });
+        }
+
+        // NEW: a rare, extra-valuable pickup — sells the "ocean has treasures too" feeling
+        function spawnPearl() {
+          var fromLeft = Math.random() < 0.5;
+          var rightOnly = document.getElementById("spawnRightOnly")?.checked;
+          var x, vx;
+          if (rightOnly) {
+            x = W + 40;
+            vx = -1 * rand(25, 45);
+          } else {
+            x = fromLeft ? -40 : W + 40;
+            vx = (fromLeft ? 1 : -1) * rand(25, 45);
+          }
+
+          items.push({
+            type: "pearl",
+            x: x,
+            y: rand(100, H - 100),
+            vx: vx,
+            vy: rand(-6, 6),
+            r: 24,
+            glyph: "🦪",
+            bob: Math.random() * Math.PI * 2,
+            age: 0,
+          });
+        }
+
+        /* ---------------- NEW: ambient bubbles ---------------- */
+        function spawnBubble() {
+          bubbles.push({
+            x: rand(0, W),
+            y: H + rand(0, 40),
+            r: rand(3, 9),
+            speed: rand(30, 70),
+            wobbleSpeed: rand(1, 3),
+            wobbleAmt: rand(6, 18),
+            phase: Math.random() * Math.PI * 2,
+            alpha: rand(0.22, 0.55),
+          });
+        }
+        var bubbleTimer = 0;
+        function updateBubbles(dt) {
+          bubbleTimer -= dt;
+          if (bubbleTimer <= 0 && bubbles.length < 40) {
+            spawnBubble();
+            bubbleTimer = rand(0.2, 0.45);
+          }
+          for (var i = bubbles.length - 1; i >= 0; i--) {
+            var b = bubbles[i];
+            b.y -= b.speed * dt;
+            b.phase += b.wobbleSpeed * dt;
+            if (b.y < -20) bubbles.splice(i, 1);
+          }
+        }
+        function drawBubbles() {
+          // PERF: one fill per bubble, no stroke — visually almost identical, half the canvas calls
+          ctx.save();
+          bubbles.forEach(function (b) {
+            var bx = b.x + Math.sin(b.phase) * b.wobbleAmt;
+            ctx.globalAlpha = b.alpha;
+            ctx.beginPath();
+            ctx.arc(bx, b.y, b.r, 0, Math.PI * 2);
+            ctx.fillStyle = "rgba(255,255,255,0.6)";
+            ctx.fill();
+          });
+          ctx.globalAlpha = 1;
+          ctx.restore();
+        }
+
+        /* ---------------- NEW: drifting underwater light rays ---------------- */
+        function drawCaustics(t) {
+          ctx.save();
+          ctx.globalAlpha = 0.1 + 0.04 * Math.sin(t * 0.6);
+          var rayCount = 3; // PERF: fewer rays — still reads as drifting light, far cheaper
+          for (var i = 0; i < rayCount; i++) {
+            var rx = (((i / rayCount) * W + t * 18) % (W + 200)) - 100;
+            ctx.save();
+            ctx.translate(rx, 0);
+            ctx.transform(1, 0, 0.15, 1, 0, 0);
+            ctx.fillStyle = causticRayGradient; // PERF: reused, not recreated
+            ctx.fillRect(0, 0, 70, H);
+            ctx.restore();
+          }
+          ctx.restore();
+        }
+
+        /* ---------------- NEW: pollution haze that clears as the reef heals ---------------- */
+        function drawPollutionHaze() {
+          var haze = Collision.clamp(1 - state.reef / 100, 0, 1);
+          if (haze <= 0.02) return;
+          ctx.save();
+          ctx.globalAlpha = haze * 0.35;
+          ctx.fillStyle = pollutionHazeGradient; // PERF: reused, not recreated
+          ctx.fillRect(0, 0, W, H);
+          ctx.restore();
+        }
+
+        /* ---------------- NEW: little bubble trail behind the swimming dolphin ---------------- */
+        function emitTrail(x, y, speedT) {
+          speedT = speedT || 0;
+          var boosting = state.elapsed < state.boostUntil;
+          trail.push({
+            x: x + rand(-4, 4),
+            y: y + rand(-4, 4),
+            r: rand(3, 6) + speedT * 3,
+            alpha: 0.5 + speedT * 0.2,
+            life: boosting ? 0.7 : 0.5,
+            boosting: boosting,
+            hue: boosting ? Math.floor(state.elapsed * 450) % 360 : 200,
+          });
+        }
+        function updateTrail(dt) {
+          for (var i = trail.length - 1; i >= 0; i--) {
+            var t = trail[i];
+            t.life -= dt;
+            var maxLife = t.boosting ? 0.7 : 0.5;
+            t.alpha = Math.max(0, t.life / maxLife) * 0.6;
+            t.y -= (t.boosting ? 18 : 12) * dt;
+            if (t.life <= 0) trail.splice(i, 1);
+          }
+        }
+        function drawTrail() {
+          ctx.save();
+          trail.forEach(function (t) {
+            ctx.globalAlpha = t.alpha;
+            ctx.beginPath();
+            ctx.arc(t.x, t.y, t.r, 0, Math.PI * 2);
+            if (t.boosting) {
+              ctx.fillStyle = "hsla(" + t.hue + ", 95%, 68%, " + t.alpha + ")";
+            } else {
+              ctx.fillStyle = "rgba(191, 233, 255, " + t.alpha + ")";
+            }
+            ctx.fill();
+
+            // Inner highlight
+            if (t.r > 4) {
+              ctx.beginPath();
+              ctx.arc(
+                t.x - t.r * 0.3,
+                t.y - t.r * 0.3,
+                t.r * 0.22,
+                0,
+                Math.PI * 2,
+              );
+              ctx.fillStyle = "rgba(255, 255, 255, " + t.alpha * 0.85 + ")";
+              ctx.fill();
+            }
+          });
+          ctx.globalAlpha = 1;
+          ctx.restore();
+        }
+
+        /* ---------------- NEW: confetti for milestones + the win screen ---------------- */
+        function spawnConfettiBurst(count, originX, originY) {
+          if (confetti.length > 130) return; // PERF: lower cap, plenty for a satisfying burst
+          var colors = ["#3dd6c0", "#2E5EE8", "#ffd166", "#e82e5d", "#9b5de5"];
+          for (var i = 0; i < count; i++) {
+            confetti.push({
+              x: originX !== undefined ? originX : rand(0, W),
+              y: originY !== undefined ? originY : -20,
+              vx: rand(-60, 60),
+              vy: rand(40, 140),
+              size: rand(5, 10),
+              rot: rand(0, Math.PI * 2),
+              vr: rand(-4, 4),
+              color: colors[Math.floor(Math.random() * colors.length)],
+              life: rand(1.2, 2.2),
+            });
+          }
+        }
+        function updateConfetti(dt) {
+          for (var i = confetti.length - 1; i >= 0; i--) {
+            var c = confetti[i];
+            c.x += c.vx * dt;
+            c.y += c.vy * dt;
+            c.vy += 60 * dt; // gravity
+            c.rot += c.vr * dt;
+            c.life -= dt;
+            if (c.life <= 0 || c.y > H + 30) confetti.splice(i, 1);
+          }
+        }
+        function drawConfetti() {
+          if (confetti.length === 0) return;
+          // PERF: one save/restore for the whole batch, using setTransform per piece
+          // instead of save+translate+rotate+restore per piece (4 stack ops -> 1 matrix op).
+          ctx.save();
+          confetti.forEach(function (c) {
+            var hw = c.size / 2,
+              hh = c.size * 0.33;
+            ctx.setTransform(
+              Math.cos(c.rot),
+              Math.sin(c.rot),
+              -Math.sin(c.rot),
+              Math.cos(c.rot),
+              c.x,
+              c.y,
+            );
+            ctx.fillStyle = c.color;
+            ctx.fillRect(-hw, -hh, c.size, c.size * 0.66);
+          });
+          ctx.restore();
+        }
+
+        /* ---------------- NEW: tap/click ripples ---------------- */
+        function updateRipples(dt) {
+          for (var i = ripples.length - 1; i >= 0; i--) {
+            var r = ripples[i];
+            r.radius += 140 * dt;
+            r.alpha -= dt * 1.2;
+            if (r.alpha <= 0) ripples.splice(i, 1);
+          }
+        }
+        function drawRipples() {
+          ctx.save();
+          ripples.forEach(function (r) {
+            ctx.globalAlpha = Math.max(0, r.alpha);
+            ctx.lineWidth = 3;
+            ctx.strokeStyle = "#ffffff";
+            ctx.beginPath();
+            ctx.arc(r.x, r.y, r.radius, 0, Math.PI * 2);
+            ctx.stroke();
+          });
+          ctx.globalAlpha = 1;
+          ctx.restore();
+        }
+
+        /* ---------------- NEW: swaying kelp (pure procedural, no art needed) ---------------- */
+        function drawKelp(t) {
+          ctx.save();
+          ctx.lineCap = "round";
+          kelpStalks.forEach(function (k) {
+            var sway = Math.sin(t * k.speed + k.phase) * 16;
+            var midSway = sway * 0.5;
+
+            // Draw stalk stem
+            ctx.beginPath();
+            ctx.moveTo(k.baseX, H);
+            ctx.quadraticCurveTo(
+              k.baseX + midSway,
+              H - k.height * 0.55,
+              k.baseX + sway,
+              H - k.height,
+            );
+            ctx.lineWidth = 7;
+            ctx.strokeStyle = "hsla(" + k.hue + ", 50%, 26%, 0.65)";
+            ctx.stroke();
+
+            // Draw leaves branching off the stem
+            for (var u = 0.25; u <= 0.95; u += 0.18) {
+              var t0 = (1 - u) * (1 - u);
+              var t1 = 2 * (1 - u) * u;
+              var t2 = u * u;
+
+              // Position on the curve
+              var lx =
+                t0 * k.baseX + t1 * (k.baseX + midSway) + t2 * (k.baseX + sway);
+              var ly =
+                t0 * H + t1 * (H - k.height * 0.55) + t2 * (H - k.height);
+
+              // Stalk tangent derivative B'(u)
+              var dx = 2 * (1 - u) * midSway + 2 * u * (sway - midSway);
+              var dy =
+                2 * (1 - u) * (-k.height * 0.55) + 2 * u * (-k.height * 0.45);
+              var angle = Math.atan2(dy, dx);
+
+              var leafSize = (1 - u * 0.5) * 8.5;
+
+              // Left Leaf
+              ctx.save();
+              ctx.translate(lx, ly);
+              ctx.rotate(
+                angle - Math.PI / 2 + Math.sin(t * 1.8 + u * 8) * 0.22,
+              );
+              ctx.beginPath();
+              ctx.ellipse(
+                0,
+                0,
+                leafSize * 1.8,
+                leafSize * 0.75,
+                0,
+                0,
+                Math.PI * 2,
+              );
+              ctx.fillStyle = "hsla(" + (k.hue + 12) + ", 65%, 32%, 0.75)";
+              ctx.fill();
+              ctx.restore();
+
+              // Right Leaf
+              ctx.save();
+              ctx.translate(lx, ly);
+              ctx.rotate(
+                angle + Math.PI / 2 + Math.cos(t * 1.8 + u * 8) * 0.22,
+              );
+              ctx.beginPath();
+              ctx.ellipse(
+                0,
+                0,
+                leafSize * 1.8,
+                leafSize * 0.75,
+                0,
+                0,
+                Math.PI * 2,
+              );
+              ctx.fillStyle = "hsla(" + (k.hue - 12) + ", 65%, 28%, 0.75)";
+              ctx.fill();
+              ctx.restore();
+            }
+          });
+          ctx.restore();
+        }
+
+        // NEW: seabed decorations (crabs crawling, seashells, starfish)
+        function updateSeabedDecorations(dt) {
+          if (!state.running) return;
+          seabedDecorations.forEach(function (d) {
+            if (d.glyph === "🦀") {
+              d.x += d.dir * d.speed * dt;
+              if (d.x > W - 30) {
+                d.x = W - 30;
+                d.dir = -1;
+              }
+              if (d.x < 30) {
+                d.x = 30;
+                d.dir = 1;
+              }
+            }
+          });
+        }
+
+        function drawSeabedDecorations() {
+          ctx.save();
+          seabedDecorations.forEach(function (d) {
+            ctx.save();
+            ctx.translate(d.x, d.y);
+            if (d.glyph === "🦀") {
+              // Wiggle rotation for walk effect
+              var walkWiggle = Math.sin(state.elapsed * 9 + d.bob) * 0.15;
+              ctx.rotate(walkWiggle);
+              if (d.dir < 0) ctx.scale(-1, 1);
+            } else {
+              // Shells bob gently
+              var scaleY = 1 + Math.sin(state.elapsed * 1.5 + d.bob) * 0.06;
+              ctx.scale(1, scaleY);
+            }
+            var sprite = EmojiSprite.get(d.glyph, 20);
+            ctx.drawImage(sprite, -sprite.width / 2, -sprite.height / 2);
+            ctx.restore();
+          });
+          ctx.restore();
+        }
+
+        /* ---------------- NEW: ambient background fish (decorative only) ---------------- */
+        function updateBgFish(dt) {
+          bgFish.forEach(function (f) {
+            f.x += f.dir * f.speed * dt;
+            if (f.dir > 0 && f.x > W + 30) f.x = -30;
+            if (f.dir < 0 && f.x < -30) f.x = W + 30;
+          });
+        }
+        function drawBgFish(t) {
+          ctx.save();
+          bgFish.forEach(function (f) {
+            ctx.save();
+            // Bobbing speed is proportional to their size/type
+            var yBob = Math.sin(t * 1.6 + f.bob) * 10;
+            ctx.translate(f.x, f.y + yBob);
+            if (f.dir < 0) ctx.scale(-1, 1);
+
+            // Make squid/octopus bob slightly differently (vertical pulse)
+            if (f.glyph === "🐙" || f.glyph === "🦑") {
+              var pulse = 1 + Math.sin(t * 3.5 + f.bob) * 0.1;
+              ctx.scale(1, pulse);
+            }
+
+            ctx.globalAlpha = 0.32; // Blend into the water background
+            var sprite = EmojiSprite.get(f.glyph, Math.round(f.size));
+            ctx.drawImage(sprite, -sprite.width / 2, -sprite.height / 2);
+            ctx.restore();
+          });
+          ctx.restore();
+        }
+
+        /* ---------------- NEW: speed-line "swoosh" trail while boosting ---------------- */
+        function updateSpeedLines(dt) {
+          for (var i = speedLines.length - 1; i >= 0; i--) {
+            var sl = speedLines[i];
+            sl.life -= dt;
+            sl.alpha = Math.max(0, sl.life / 0.25) * 0.55;
+            if (sl.life <= 0) speedLines.splice(i, 1);
+          }
+        }
+        function drawSpeedLines() {
+          if (speedLines.length === 0) return;
+          ctx.save();
+          ctx.lineWidth = 3.5;
+          speedLines.forEach(function (sl) {
+            ctx.globalAlpha = sl.alpha;
+            ctx.beginPath();
+            ctx.moveTo(sl.x, sl.y);
+            ctx.lineTo(sl.x + sl.facing * sl.len, sl.y);
+
+            // Draw colorful/white gradient speed line
+            var grad = ctx.createLinearGradient(
+              sl.x,
+              sl.y,
+              sl.x + sl.facing * sl.len,
+              sl.y,
+            );
+            grad.addColorStop(0, "rgba(255,255,255,0)");
+            grad.addColorStop(0.3, "rgba(61,214,192,0.95)");
+            grad.addColorStop(0.7, "rgba(255,255,255,0.95)");
+            grad.addColorStop(1, "rgba(255,255,255,0)");
+
+            ctx.strokeStyle = grad;
+            ctx.stroke();
+          });
+          ctx.globalAlpha = 1;
+          ctx.restore();
+        }
+
+        /* ---------------- NEW: camera "punch" for big positive moments ---------------- */
+        function triggerZoomPunch() {
+          var frame = canvasFrame;
+          if (!frame) return;
+          GOGUi.restartAnimation(frame, "zoom-punch");
+        }
+
+        /* ---------------- NEW: perfect-dodge near-miss -> brief bullet-time ---------------- */
+        function triggerNearMiss(x, y) {
+          particles.burst(x, y, { glyphs: ["💨"], count: 4, life: 350 });
+          GOGUi.floatLabel(
+            canvasFrame,
+            canvasXToClient(x),
+            canvasYToClient(y),
+            "Phew!",
+            "#ffd166",
+          );
+          state.slowMoUntil = state.elapsed + 0.55;
+          triggerZoomPunch();
+        }
+
+        /* ---------------- NEW: combo streak — consecutive pickups without getting hit ---------------- */
+        function addCombo() {
+          state.combo++;
+          var comboChip = document.getElementById("comboChip");
+          if (state.combo >= 2) {
+            comboChip.textContent = "🔥 x" + state.combo;
+            comboChip.classList.add("combo-visible");
+            comboChip.classList.remove("combo-tier-2", "combo-tier-3");
+            if (state.combo >= 10) comboChip.classList.add("combo-tier-3");
+            else if (state.combo >= 5) comboChip.classList.add("combo-tier-2");
+            GOGUi.restartAnimation(comboChip, "chip-pop");
+          }
+          if (state.combo > 0 && state.combo % 5 === 0) {
+            addSprouts(3);
+            particles.burst(dolphin.x, dolphin.y, {
+              glyphs: ["🔥", "✨"],
+              count: 10,
+              life: 600,
+            });
+            triggerZoomPunch();
+          }
+        }
+        function resetCombo() {
+          state.combo = 0;
+          document
+            .getElementById("comboChip")
+            .classList.remove("combo-visible", "combo-tier-2", "combo-tier-3");
+        }
+
+        /* ---------------- NEW: reef milestone celebrations (25% / 50% / 75%) ---------------- */
+        function milestoneMessage(p) {
+          if (p === 25) return "Reef waking up! 25%";
+          if (p === 50) return "Halfway healed! 50%";
+          return "Almost there! 75%";
+        }
+        function celebrateMilestone(percent, x, y) {
+          audio.heal();
+          pageFx("heal");
+          particles.burst(x, y, {
+            glyphs: ["🎉", "✨", "💙"],
+            count: 16,
+            life: 900,
+          });
+          GOGUi.floatLabel(
+            canvasFrame,
+            canvasXToClient(x),
+            canvasYToClient(y),
+            milestoneMessage(percent),
+            "#2E5EE8",
+          );
+          spawnConfettiBurst(12); // rains in from the top across the whole scene
+          triggerZoomPunch(); // NEW
+        }
+        function checkMilestones(x, y) {
+          [25, 50, 75].forEach(function (m) {
+            if (!milestonesHit[m] && state.reef >= m) {
+              milestonesHit[m] = true;
+              celebrateMilestone(m, x, y);
+            }
+          });
+        }
+
+        function getDifficultyLevel() {
+          // Level 1 to 5 based on elapsed time (every 15 seconds steps up, max 5)
+          return Math.min(5, 1 + Math.floor(state.elapsed / 15));
+        }
+
+        var currentDifficulty = 1;
+        function updateDifficultyUI() {
+          var level = getDifficultyLevel();
+          if (level === currentDifficulty) return;
+
+          currentDifficulty = level;
+
+          var diffChip = document.getElementById("difficultyChip");
+          if (!diffChip) return;
+
+          // Update styling based on new level
+          var colors = [
+            {
+              text: "⚡ Lvl 1",
+              bg: "var(--gog-white)",
+              color: "var(--gog-ink)",
+            },
+            { text: "⚡ Lvl 2", bg: "#ffd166", color: "var(--gog-ink)" },
+            {
+              text: "🔥 Lvl 3",
+              bg: "var(--gog-tangerine)",
+              color: "var(--gog-ink)",
+            },
+            {
+              text: "💀 Lvl 4",
+              bg: "var(--gog-pink)",
+              color: "var(--gog-white)",
+            },
+            { text: "☣️ MAX", bg: "#ef4444", color: "var(--gog-white)" },
+          ];
+
+          var config = colors[level - 1];
+          diffChip.textContent = config.text;
+          diffChip.style.backgroundColor = config.bg;
+          diffChip.style.color = config.color;
+
+          // Add bounce animation
+          GOGUi.restartAnimation(diffChip, "chip-pop");
+
+          // Float notification on the screen
+          var cx = canvasXToClient(W / 2);
+          var cy = canvasYToClient(H / 2) - 40;
+          GOGUi.floatLabel(
+            canvasFrame,
+            cx,
+            cy,
+            "⚠️ Danger: " + config.text + "!",
+            level >= 4 ? "#ef4444" : "var(--gog-cobalt)",
+          );
+
+          // Play hazard sound effect
+          audio.hazard();
+        }
+
+        var trashTimer = 0,
+          turtleTimer = 3,
+          pufferTimer = 4,
+          pearlTimer = 20;
+
+        function updateSpawns(dt) {
+          var level = getDifficultyLevel();
+
+          // Scale intervals down (which means faster spawning)
+          var spawnFreqMultiplier = 1.0;
+          if (level === 2) spawnFreqMultiplier = 0.8;
+          else if (level === 3) spawnFreqMultiplier = 0.65;
+          else if (level === 4) spawnFreqMultiplier = 0.5;
+          else if (level === 5) spawnFreqMultiplier = 0.35;
+
+          var qtySlider = document.getElementById("trashQtyMult");
+          var trashQuantityMult = qtySlider ? parseFloat(qtySlider.value) : 0.4;
+
+          trashTimer -= dt;
+          if (trashTimer <= 0) {
+            spawnTrash();
+            trashTimer =
+              (rand(0.7, 1.1) * spawnFreqMultiplier) / trashQuantityMult;
+          }
+
+          turtleTimer -= dt;
+          if (turtleTimer <= 0) {
+            spawnTurtle();
+            turtleTimer = rand(7, 10) * Math.max(0.7, spawnFreqMultiplier);
+          }
+
+          var pufferInterval = calmMode ? rand(4.2, 6.5) : rand(2.6, 4.2);
+          pufferTimer -= dt;
+          if (pufferTimer <= 0 && state.elapsed > 4) {
+            spawnPuffer();
+            pufferTimer = pufferInterval * spawnFreqMultiplier;
+          }
+
+          pearlTimer -= dt;
+          if (pearlTimer <= 0 && state.elapsed > 8) {
+            spawnPearl();
+            pearlTimer = rand(20, 30);
+          }
+        }
+
+        function setReef(delta, originX, originY) {
+          if (delta === 0) return;
+          state.reef = Collision.clamp(state.reef + delta, 0, 100);
+          reefAnimationDelta += delta;
+
+          // Generate Dynamic Canvas Expansion Rings
+          if (originX !== undefined && originY !== undefined) {
+            shockwaves.push({
+              x: originX,
+              y: originY,
+              radius: 8,
+              maxRadius: delta > 0 ? 80 : 50,
+              alpha: 1,
+              color: delta > 0 ? "rgba(61, 214, 192, " : "rgba(232, 46, 93, ",
+            });
+          }
+
+          // Spawn coral bloom particles rising from the seabed!
+          if (delta > 0) {
+            var numSparks = Math.round(delta * 1.5);
+            for (var s = 0; s < numSparks; s++) {
+              particles.burst(rand(10, W - 10), H - 20, {
+                glyphs: ["✨", "💧", "🌟"],
+                count: 1,
+                life: rand(500, 1000),
+                gravity: rand(-40, -10),
+                lift: rand(10, 30),
+                minSpeed: 5,
+                maxSpeed: 25,
+              });
+            }
+          }
+
+          // NEW: celebrate crossing a reef-health milestone
+          checkMilestones(
+            originX !== undefined ? originX : dolphin.x,
+            originY !== undefined ? originY : dolphin.y,
+          );
+        }
+
+        function addSprouts(n) {
+          state.sproutsEarned += n;
+          sproutsGainPending = true;
+        }
+
+        function flushUIUpdates() {
+          // 1. Reef HUD Update
+          if (lastReefValue !== state.reef) {
+            var fillElem = document.getElementById("reefFill");
+            var pctElem = document.getElementById("reefPct");
+            if (fillElem) fillElem.style.width = state.reef + "%";
+            if (pctElem) pctElem.textContent = Math.round(state.reef) + "%";
+            lastReefValue = state.reef;
+          }
+
+          // 2. Reef Meter Bounce Animation
+          if (reefAnimationDelta !== 0) {
+            var meterHUD = document.querySelector(".meter");
+            if (meterHUD) {
+              meterHUD.classList.remove("meter-pulse-up", "meter-pulse-down");
+              if (typeof meterHUD.getAnimations === "function") {
+                var animations = meterHUD.getAnimations();
+                if (animations && animations.length > 0) {
+                  animations.forEach(function (anim) {
+                    anim.cancel();
+                  });
+                }
+              } else {
+                void meterHUD.offsetWidth;
+              }
+              if (reefAnimationDelta > 0) {
+                meterHUD.classList.add("meter-pulse-up");
+              } else if (reefAnimationDelta < 0) {
+                meterHUD.classList.add("meter-pulse-down");
+              }
+            }
+            reefAnimationDelta = 0; // reset
+          }
+
+          // 3. Sprouts HUD Update and bounce animation
+          if (lastSproutsValue !== state.sproutsEarned) {
+            var chip = document.getElementById("sproutsChip");
+            if (chip) {
+              chip.textContent = state.sproutsEarned;
+              if (sproutsGainPending) {
+                var chipParent = chip.parentElement;
+                if (chipParent) {
+                  GOGUi.restartAnimation(chipParent, "chip-pop");
+                }
+                sproutsGainPending = false;
+              }
+            }
+            lastSproutsValue = state.sproutsEarned;
+          }
+        }
+
+        /* ---------------- update ---------------- */
+        function update(dt) {
+          // Ambient + celebratory FX keep animating even after the round ends,
+          // so confetti/bubbles/ripples don't freeze on the win/lose screen.
+          updateBubbles(dt);
+          updateConfetti(dt);
+          updateRipples(dt);
+          updateBgFish(dt); // NEW: background fish keep drifting regardless of game state
+          updateSeabedDecorations(dt); // Crawling crabs, snails, seashells wiggles
+          particles.update(dt);
+
+          if (!state.running) return;
+
+          // NEW: brief bullet-time window after a perfect dodge. Ambient FX above
+          // already ran at full speed, so only the "scene itself" slows down here.
+          if (state.elapsed < state.slowMoUntil) {
+            dt *= 0.35;
+          }
+
+          var difficultyLevel = getDifficultyLevel();
+          var gameSpeedMult = 1 + (difficultyLevel - 1) * 0.2;
+          var physicsDt = dt * gameSpeedMult;
+
+          state.elapsed += dt;
+          updateDifficultyUI();
+
+          // NEW: one-time splash burst the moment the stage opens
+          if (!state.introPlayed) {
+            state.introPlayed = true;
+            particles.burst(dolphin.x, dolphin.y, {
+              glyphs: ["💦", "✨"],
+              count: 10,
+              life: 600,
+            });
+          }
+
+          // NEW: keep the Echo Boost button's cooldown countdown in sync
+          if (state.elapsed < state.boostReadyAt) {
+            boostBtn.textContent =
+              Math.ceil(state.boostReadyAt - state.elapsed) + "s";
+          } else if (boostBtn.textContent !== "💨") {
+            boostBtn.textContent = "💨";
+            boostBtn.classList.remove("boost-cooldown");
+          }
+
+          if (!calmMode) {
+            state.timeLeft = Math.max(0, state.timeLeft - dt);
+            var timerChipEl = document.getElementById("timerChip");
+            timerChipEl.textContent = Math.ceil(state.timeLeft) + "s";
+
+            // NEW: timer starts pulsing red in the last 10 seconds
+            if (state.timeLeft <= 10) {
+              timerChipEl.classList.add("timer-urgent");
+            } else {
+              timerChipEl.classList.remove("timer-urgent");
+            }
+
+            if (state.timeLeft <= 0 && state.reef < 100) {
+              endLose();
+              return;
+            }
+          } else {
+            document.getElementById("timerChip").textContent = "∞";
+          }
+
+          // --- background scroll update ---
+          scrollX += 60 * physicsDt;
+
+          // --- spawn timers ---
+          updateSpawns(physicsDt);
+
+          // --- dolphin follows pointer, with keyboard fallback ---
+          var boosting = state.elapsed < state.boostUntil; // NEW: Echo Boost in progress
+          if (canvasFrame) {
+            canvasFrame.classList.toggle("boosting-active", boosting);
+          }
+          var prevX = dolphin.x,
+            prevY = dolphin.y;
+          var followLerp = boosting ? 0.34 : 0.16;
+          if (input.pointer.active) {
+            dolphin.x = Collision.lerp(dolphin.x, input.pointer.x, followLerp);
+            dolphin.y = Collision.lerp(dolphin.y, input.pointer.y, followLerp);
+          }
+          var kb = (boosting ? 380 : 220) * dt;
+          if (input.isDown("ArrowLeft") || input.isDown("a")) dolphin.x -= kb;
+          if (input.isDown("ArrowRight") || input.isDown("d")) dolphin.x += kb;
+          if (input.isDown("ArrowUp") || input.isDown("w")) dolphin.y -= kb;
+          if (input.isDown("ArrowDown") || input.isDown("s")) dolphin.y += kb;
+          dolphin.x = Collision.clamp(dolphin.x, 30, W - 30);
+          dolphin.y = Collision.clamp(dolphin.y, 30, H - 30);
+          dolphin.wobble += dt * 6;
+
+          // Update facing direction based on movement
+          if (dolphin.x > prevX + 0.1) {
+            if (dolphin.facing !== 1)
+              particles.burst(dolphin.x, dolphin.y, {
+                glyphs: ["💦"],
+                count: 4,
+                life: 300,
+              }); // NEW: direction-change splash
+            dolphin.facing = 1;
+          } else if (dolphin.x < prevX - 0.1) {
+            if (dolphin.facing !== -1)
+              particles.burst(dolphin.x, dolphin.y, {
+                glyphs: ["💦"],
+                count: 4,
+                life: 300,
+              }); // NEW: direction-change splash
+            dolphin.facing = -1;
+          }
+
+          // NEW: idle "breathing" — tracked here, used in drawDolphin
+          var moved = Math.abs(dolphin.x - prevX) + Math.abs(dolphin.y - prevY);
+          idleTimer = moved < 0.15 ? idleTimer + dt : 0;
+
+          // NEW: trail gets bigger & more frequent the faster the dolphin is moving
+          var speedMag = dt > 0 ? moved / dt : 0;
+          var speedT = Collision.clamp(speedMag / 260, 0, 1);
+          trailTimer -= dt;
+          if (trailTimer <= 0 && moved > 0.5 && trail.length < 50) {
+            emitTrail(dolphin.x - dolphin.facing * 22, dolphin.y + 6, speedT);
+            trailTimer = 0.09 - speedT * 0.06;
+          }
+          updateTrail(dt);
+
+          // NEW: speed-line "swoosh" streaks while boosting
+          if (boosting) {
+            speedLineTimer -= dt;
+            if (speedLineTimer <= 0) {
+              speedLines.push({
+                x: dolphin.x - dolphin.facing * 10,
+                y: dolphin.y + rand(-14, 14),
+                len: rand(18, 30),
+                life: 0.25,
+                alpha: 0.55,
+                facing: dolphin.facing,
+              });
+              speedLineTimer = 0.04;
+            }
+          }
+          updateSpeedLines(dt);
+
+          // Advance animation frame index
+          dolphin.elapsedFrameTime += dt;
+          var maxFrames = dolphin.state === "attack" ? 10 : 20;
+          var currentFps = dolphin.state === "attack" ? 32 : 15; // attack animation runs slightly faster for snappier feedback
+          while (dolphin.elapsedFrameTime >= 1 / currentFps) {
+            dolphin.frameIndex++;
+            if (dolphin.frameIndex >= maxFrames) {
+              if (dolphin.state === "attack") {
+                dolphin.state = "swim";
+                dolphin.frameIndex = 0;
+              } else {
+                dolphin.frameIndex = 0;
+              }
+            }
+            dolphin.elapsedFrameTime -= 1 / currentFps;
+          }
+
+          // --- items ---
+          for (var i = items.length - 1; i >= 0; i--) {
+            var it = items[i];
+            it.age += dt; // NEW: used to scale items in with a little pop when they spawn
+
+            var speedMult = 1.0;
+            if (it.type === "trash") {
+              var el = document.getElementById("trashSpeedMult");
+              if (el) speedMult = parseFloat(el.value);
+            } else if (it.type === "turtle") {
+              var el = document.getElementById("turtleSpeedMult");
+              if (el) speedMult = parseFloat(el.value);
+            } else if (it.type === "pearl") {
+              var el = document.getElementById("pearlSpeedMult");
+              if (el) speedMult = parseFloat(el.value);
+            } else if (it.type === "pufferfish") {
+              var el = document.getElementById("pufferSpeedMult");
+              if (el) speedMult = parseFloat(el.value);
+            }
+
+            it.x += it.vx * speedMult * dt * gameSpeedMult;
+            it.y +=
+              it.vy * speedMult * dt * gameSpeedMult +
+              Math.sin(state.elapsed * 2 + it.bob) * 6 * dt * gameSpeedMult;
+
+            // NEW: keep items inside the vertical play area so they always flow
+            // horizontally across the screen instead of drifting off the top/bottom.
+            // Gently bounce vy when an item nears the top or bottom edge.
+            var vMargin = (it.r || 24) + 10;
+            if (it.y < vMargin) {
+              it.y = vMargin;
+              if (it.vy < 0) it.vy = -it.vy;
+            } else if (it.y > H - vMargin) {
+              it.y = H - vMargin;
+              if (it.vy > 0) it.vy = -it.vy;
+            }
+
+            var offscreen = it.x < -80 || it.x > W + 80;
+            if (offscreen) {
+              if (it.type === "trash") {
+                GOGUi.say("A piece of trash escaped! 🗑️ Try again.");
+                endLose();
+                return;
+              }
+              items.splice(i, 1);
+              continue;
+            }
+
+            // NEW: pufferfish telegraph for 0.5s before they can actually deal damage
+            if (it.type === "pufferfish" && !it.armed && it.age > 0.5)
+              it.armed = true;
+
+            var hit = Collision.circleHit(
+              dolphin.x,
+              dolphin.y,
+              dolphin.r * 0.8,
+              it.x,
+              it.y,
+              it.r * 0.8,
+            );
+            if (it.type === "pufferfish" && !it.armed) hit = false; // not dangerous yet, just a visual warning
+
+            // NEW: perfect-dodge detection — fires once per puffer, right as it passes close by
+            if (
+              it.type === "pufferfish" &&
+              !hit &&
+              !it.nearMissFired &&
+              it.armed
+            ) {
+              var pdx = dolphin.x - it.x,
+                pdy = dolphin.y - it.y;
+              var pdist = Math.sqrt(pdx * pdx + pdy * pdy);
+              var hitR = dolphin.r * 0.8 + it.r * 0.8;
+              if (pdist < hitR + 16) {
+                it.nearMissFired = true;
+                triggerNearMiss(it.x, it.y);
+              }
+            }
+
+            if (!hit) continue;
+
+            if (it.type === "trash") {
+              items.splice(i, 1);
+              setReef(5, it.x, it.y);
+              addSprouts(2);
+              addCombo(); // NEW: chain pickups for a streak bonus
+              particles.burst(it.x, it.y, {
+                glyphs: ["✨", "💧"],
+                count: 7,
+                life: 550,
+              });
+              audio.collect();
+              pageFx("collect");
+              GOGUi.floatLabel(
+                canvasFrame,
+                canvasXToClient(it.x),
+                canvasYToClient(it.y),
+                "Scoop! ♻️ +5 Reef",
+                "#2E5EE8",
+              );
+              GOGUi.say("Yum, a piece of trash cleared! 🍃");
+
+              // Trigger attack animation
+              if (dolphin.state !== "attack") {
+                dolphin.state = "attack";
+                dolphin.frameIndex = 0;
+                dolphin.elapsedFrameTime = 0;
+              }
+            } else if (it.type === "turtle") {
+              items.splice(i, 1);
+              if (dolphin.state === "attack") {
+                // Mistakenly attacked the turtle!
+                state.turtleAttackCount++;
+                setReef(-10, it.x, it.y);
+                resetCombo();
+                particles.burst(it.x, it.y, {
+                  glyphs: ["😢", "💥"],
+                  count: 8,
+                  life: 600,
+                });
+                audio.oops();
+                pageFx("oops");
+                state.hitFlashUntil = state.elapsed + 0.25;
+                spawnDizzyStars();
+                GOGUi.floatLabel(
+                  canvasFrame,
+                  canvasXToClient(it.x),
+                  canvasYToClient(it.y),
+                  "Oops! 🩹 Hurt Turtle! -10 Reef",
+                  "#ef4444",
+                );
+                GOGUi.say("Oh no! Be careful around our turtle friends! 🩹");
+                if (state.turtleAttackCount > 3) {
+                  GOGUi.say(
+                    "Too many turtle attacks! The reef needs another chance.",
+                  );
+                  endLose();
+                  return;
+                }
+              } else {
+                setReef(7, it.x, it.y);
+                addSprouts(6);
+                addCombo(); // NEW
+                particles.burst(it.x, it.y, {
+                  glyphs: ["💚", "✨"],
+                  count: 12,
+                  life: 700,
+                });
+                spawnConfettiBurst(14, it.x, it.y); // NEW: extra-special turtle-save flourish
+                triggerZoomPunch(); // NEW: camera punch for the big save
+                audio.heal();
+                pageFx("heal");
+                state.healFlashUntil = state.elapsed + 0.25;
+                GOGUi.floatLabel(
+                  canvasFrame,
+                  canvasXToClient(it.x),
+                  canvasYToClient(it.y),
+                  "Heal! 🐢 Turtle saved! +7",
+                  "#1aa05e",
+                );
+                GOGUi.say("Yay, you saved a turtle! 🐢");
+              }
+            } else if (it.type === "pearl") {
+              // NEW: rare Golden Pearl — biggest single reward in the stage
+              items.splice(i, 1);
+              if (dolphin.state === "attack") {
+                // Mistakenly crushed the pearl!
+                setReef(-12, it.x, it.y);
+                resetCombo();
+                particles.burst(it.x, it.y, {
+                  glyphs: ["🪨", "💥"],
+                  count: 8,
+                  life: 600,
+                });
+                audio.oops();
+                pageFx("oops");
+                state.hitFlashUntil = state.elapsed + 0.25;
+                spawnDizzyStars();
+                GOGUi.floatLabel(
+                  canvasFrame,
+                  canvasXToClient(it.x),
+                  canvasYToClient(it.y),
+                  "Oops! 🪨 Crushed Pearl! -12 Reef",
+                  "#ef4444",
+                );
+                GOGUi.say("Oh no! Be careful around treasures! 🩹");
+              } else {
+                setReef(7, it.x, it.y);
+                addSprouts(10);
+                addCombo();
+                particles.burst(it.x, it.y, {
+                  glyphs: ["🌟", "💛", "✨"],
+                  count: 18,
+                  life: 900,
+                });
+                spawnConfettiBurst(20, it.x, it.y);
+                triggerZoomPunch();
+                audio.heal();
+                pageFx("heal");
+                state.healFlashUntil = state.elapsed + 0.25;
+                GOGUi.floatLabel(
+                  canvasFrame,
+                  canvasXToClient(it.x),
+                  canvasYToClient(it.y),
+                  "Heal! 🦪 Golden Pearl! +7",
+                  "#ffae00",
+                );
+                GOGUi.say("Incredible, a golden pearl! 🦪");
+              }
+            } else if (it.type === "pufferfish") {
+              if (state.elapsed < state.invulnUntil) continue;
+              items.splice(i, 1);
+
+              var damage = 12;
+              var labelText = "Oops! 🐡 -12 Reef";
+              if (dolphin.state === "attack") {
+                labelText = "Oops! 🐡 Puffer Spike! -12 Reef";
+                particles.burst(dolphin.x, dolphin.y, {
+                  glyphs: ["💥", "🐡"],
+                  count: 8,
+                  life: 500,
+                  gravity: 60,
+                });
+              } else {
+                particles.burst(dolphin.x, dolphin.y, {
+                  glyphs: ["💥"],
+                  count: 6,
+                  life: 420,
+                  gravity: 60,
+                });
+              }
+
+              setReef(-damage, dolphin.x, dolphin.y);
+              state.hits++;
+              if (state.hits > 3) {
+                GOGUi.say("Too many pufferfish hits! Try again.");
+                endLose();
+                return;
+              }
+              resetCombo(); // NEW: a hit breaks the streak
+              state.invulnUntil = state.elapsed + 0.7;
+              state.hitFlashUntil = state.elapsed + 0.25; // NEW: brief red screen flash
+              audio.oops();
+              pageFx("oops");
+              spawnDizzyStars();
+              GOGUi.floatLabel(
+                canvasFrame,
+                canvasXToClient(dolphin.x),
+                canvasYToClient(dolphin.y),
+                labelText,
+                "#ef4444",
+              );
+              GOGUi.say("Oops, a smoggy bump! Shake it off and try again 💪");
+
+              // NEW: gentle knockback away from the pufferfish
+              var kdx = dolphin.x - it.x,
+                kdy = dolphin.y - it.y;
+              var kdist = Math.max(1, Math.sqrt(kdx * kdx + kdy * kdy));
+              dolphin.x = Collision.clamp(
+                dolphin.x + (kdx / kdist) * 16,
+                30,
+                W - 30,
+              );
+              dolphin.y = Collision.clamp(
+                dolphin.y + (kdy / kdist) * 16,
+                30,
+                H - 30,
+              );
+            }
+          }
+
+          // --- update custom shockwaves ---
+          for (var s = shockwaves.length - 1; s >= 0; s--) {
+            var sw = shockwaves[s];
+            sw.radius += 200 * dt;
+            sw.alpha = 1 - sw.radius / sw.maxRadius;
+            if (sw.alpha <= 0) {
+              shockwaves.splice(s, 1);
+            }
+          }
+
+          if (state.reef >= 100 && !state.won) {
+            endWin();
+          }
+          flushUIUpdates();
+          rectUpdatedThisFrame = false;
+        }
+
+        function canvasXToClient(x) {
+          if (!rectUpdatedThisFrame || !cachedCanvasRect) {
+            updateCanvasRect();
+          }
+          return (x / W) * cachedCanvasRect.width;
+        }
+        function canvasYToClient(y) {
+          if (!rectUpdatedThisFrame || !cachedCanvasRect) {
+            updateCanvasRect();
+          }
+          return (y / H) * cachedCanvasRect.height;
+        }
+
+        function shakeFrame() {
+          if (!canvasFrame) return;
+          GOGUi.restartAnimation(canvasFrame, "shake");
+        }
+
+        // NEW: pulses a soft full-page glow (collect / oops / heal) so the feedback
+        // for these three moments reads beyond the canvas frame, across the whole
+        // screen — the HUD, the margins, everything.
+        function pageFx(kind) {
+          var el = document.getElementById("pageFx");
+          if (!el) return;
+          el.classList.remove("fx-collect", "fx-oops", "fx-heal");
+          if (typeof el.getAnimations === "function") {
+            var animations = el.getAnimations();
+            if (animations && animations.length > 0) {
+              animations.forEach(function (anim) {
+                anim.cancel();
+              });
+            }
+          } else {
+            void el.offsetWidth;
+          }
+          el.classList.add("fx-" + kind);
+        }
+
+        var lastDizzyStarAt = 0;
+        function spawnDizzyStars() {
+          var now = performance.now();
+          if (now - lastDizzyStarAt < 100) {
+            return;
+          }
+          var activeStars = document.querySelectorAll(".dizzyStar");
+          if (activeStars.length >= 9) {
+            for (var i = 0; i < 3; i++) {
+              if (activeStars[i]) activeStars[i].remove();
+            }
+          }
+          lastDizzyStarAt = now;
+
+          if (!rectUpdatedThisFrame || !cachedFrameRect) {
+            updateCanvasRect();
+          }
+          var rect = cachedFrameRect;
+          var clientX = rect.left + canvasXToClient(dolphin.x);
+          var clientY = rect.top + canvasYToClient(dolphin.y) - 40;
+
+          for (var i = 0; i < 3; i++) {
+            var star = document.createElement("div");
+            star.className = "dizzyStar";
+            star.textContent = "⭐";
+            star.style.left = clientX + "px";
+            star.style.top = clientY + "px";
+            star.style.setProperty("--dx", (i - 1) * 22 + "px");
+            star.style.animationDelay = i * 0.06 + "s";
+            document.body.appendChild(star);
+            (function (el) {
+              setTimeout(function () {
+                el.remove();
+              }, 850);
+            })(star);
+          }
+        }
+
+        /* ---------------- draw ---------------- */
+
+        function drawBackground() {
+          // Clear canvas before drawing layers
+          ctx.clearRect(0, 0, W, H);
+
+          // fallback fill so it never looks "dirty" even before images are ready
+          ctx.fillStyle = "#1a6fa3";
+          ctx.fillRect(0, 0, W, H);
+
+          // NEW: a very gentle shear that drifts back and forth — reads as a slow current
+          var currentShear = Math.sin(state.elapsed * 0.4) * 0.012;
+          ctx.save();
+          ctx.transform(1, 0, currentShear, 1, 0, 0);
+          layers.forEach(function (layer) {
+            if (!layer.img) return;
+            var img = layer.img;
+            var tileW = img.width;
+            var x = (scrollX * (layer.speed * 0.1)) % tileW;
+            if (x > 0) x -= tileW; // normalize into (-tileW, 0]
+            for (var dx = x; dx < W; dx += tileW) {
+              ctx.drawImage(img, dx, layer.y, tileW, H);
+            }
+          });
+          ctx.restore();
+
+          // seabed coral strip — grows greener/brighter as reef heals
+          var coralH = 60;
+          ctx.save();
+          ctx.translate(0, H - coralH);
+          var reefT = state.reef / 100;
+          ctx.fillStyle = "rgba(20,40,30," + (0.25 + reefT * 0.3) + ")";
+          ctx.fillRect(0, 0, W, coralH);
+          for (var cx = 20; cx < W; cx += 70) {
+            var bloom = cx / W < reefT + 0.08;
+            ctx.save();
+
+            // Bobbing and wiggling in the current
+            var bobY = Math.sin(state.elapsed * 1.5 + cx) * 3;
+            var sway = Math.sin(state.elapsed * 0.8 + cx) * 0.08;
+            var scale = bloom
+              ? 1 + Math.sin(state.elapsed * 2 + cx) * 0.04
+              : 0.95;
+
+            ctx.translate(cx, coralH - 18 + bobY);
+            ctx.rotate(sway);
+            ctx.scale(scale, scale);
+
+            ctx.globalAlpha = bloom ? 1 : 0.22;
+            var glyph = bloom ? "🪸" : "🪨";
+            var sprite = EmojiSprite.get(glyph, 26);
+            ctx.drawImage(sprite, -sprite.width / 2, -sprite.height / 2);
+            ctx.restore();
+          }
+          ctx.globalAlpha = 1;
+          ctx.restore();
+        }
+
+        function drawDolphin() {
+          ctx.save();
+
+          // NEW: dolphin "swims in" on stage start — eased scale + fade with a tiny overshoot bounce
+          var entranceT = Math.min(1, state.elapsed / 0.6);
+          var entranceEase = 1 - Math.pow(1 - entranceT, 3);
+          var entranceScale =
+            entranceT < 1
+              ? entranceEase +
+                Math.sin(entranceT * Math.PI) * 0.18 * (1 - entranceT)
+              : 1;
+
+          ctx.translate(dolphin.x, dolphin.y);
+
+          // Smooth, subtle bobbing effect (only when swimming, not attacking)
+          if (dolphin.state === "swim") {
+            var bob = Math.sin(dolphin.wobble) * 2;
+            ctx.translate(0, bob);
+          }
+
+          // Apply horizontal flip if facing left
+          if (dolphin.facing === -1) {
+            ctx.scale(-1, 1);
+          }
+
+          // NEW: gentle squash & stretch while swimming, plus a slow "breathing" pulse when idle
+          var squash =
+            dolphin.state === "swim"
+              ? 1 + Math.sin(dolphin.wobble * 1.3) * 0.035
+              : 1;
+          var idleBreath =
+            idleTimer > 1.5 ? 1 + Math.sin(state.elapsed * 1.3) * 0.025 : 1;
+          ctx.scale(
+            entranceScale * squash * idleBreath,
+            entranceScale * (1 / squash) * idleBreath,
+          );
+
+          var flash =
+            state.elapsed < state.invulnUntil &&
+            Math.floor(state.elapsed * 20) % 2 === 0;
+          ctx.globalAlpha = flash ? 0.4 : Math.min(1, entranceT * 1.4);
+
+          if (dolphin.state === "attack" && dolphinAttackImg) {
+            var col = dolphin.frameIndex % 5;
+            var row = Math.floor(dolphin.frameIndex / 5);
+            var sWidth = 256;
+            var sHeight = 256;
+            var sx = col * sWidth;
+            var sy = row * sHeight;
+
+            var dWidth = 150;
+            var dHeight = 150;
+
+            ctx.drawImage(
+              dolphinAttackImg,
+              sx,
+              sy,
+              sWidth,
+              sHeight,
+              -dWidth / 2,
+              -dHeight / 2,
+              dWidth,
+              dHeight,
+            );
+          } else if (dolphinImg) {
+            var col = dolphin.frameIndex % 5;
+            var row = Math.floor(dolphin.frameIndex / 5);
+            var sWidth = 128;
+            var sHeight = 128;
+            var sx = col * sWidth;
+            var sy = row * sHeight;
+
+            var dWidth = 150;
+            var dHeight = 150;
+
+            ctx.drawImage(
+              dolphinImg,
+              sx,
+              sy,
+              sWidth,
+              sHeight,
+              -dWidth / 2,
+              -dHeight / 2,
+              dWidth,
+              dHeight,
+            );
+          } else {
+            // Fallback if image not loaded yet
+            var sprite = EmojiSprite.get("🐬", 54);
+            ctx.drawImage(sprite, -sprite.width / 2, -sprite.height / 2);
+          }
+
+          ctx.globalAlpha = 1;
+          ctx.restore();
+        }
+
+        function drawItems() {
+          items.forEach(function (it) {
+            // NEW: items pop in with a little overshoot when they spawn, and wiggle gently
+            var growT = Math.min(1, it.age / 0.25);
+            var growEase = 1 - Math.pow(1 - growT, 3);
+            var growScale =
+              growT < 1
+                ? growEase + Math.sin(growT * Math.PI) * 0.25 * (1 - growT)
+                : 1;
+            var wiggle = Math.sin(state.elapsed * 3 + it.bob) * 0.12;
+
+            ctx.save();
+            ctx.translate(it.x, it.y);
+
+            // NEW: pufferfish telegraph their danger with a fading warning ring before arming
+            if (it.type === "pufferfish" && !it.armed) {
+              var telegraphT = it.age / 0.5;
+              ctx.save();
+              ctx.globalAlpha = 0.5 * (1 - telegraphT);
+              ctx.lineWidth = 3;
+              ctx.strokeStyle = "#ffd166";
+              ctx.beginPath();
+              ctx.arc(0, 0, 26 + telegraphT * 14, 0, Math.PI * 2);
+              ctx.stroke();
+              ctx.restore();
+            }
+
+            ctx.rotate(wiggle);
+            ctx.scale(growScale, growScale);
+            var size = it.type === "trash" ? 54 : 40;
+            var sprite = EmojiSprite.get(it.glyph, size);
+            ctx.drawImage(sprite, -sprite.width / 2, -sprite.height / 2);
+            ctx.restore();
+          });
+        }
+
+        function draw() {
+          drawBackground();
+          drawKelp(state.elapsed); // NEW: swaying kelp with leaves
+          drawSeabedDecorations(); // NEW: crawling crabs, bobbing shells/snails
+          drawBgFish(state.elapsed); // NEW: ambient background fish, behind everything
+          drawBubbles(); // NEW: ambient rising bubbles
+          drawCaustics(state.elapsed); // NEW: drifting underwater light rays
+          drawPollutionHaze(); // NEW: murky haze that clears as the reef heals
+          drawItems();
+          drawTrail(); // NEW: dolphin's swim trail
+          drawSpeedLines(); // NEW: boost "swoosh" streaks
+          drawDolphin();
+          particles.draw(ctx);
+          drawConfetti(); // NEW: milestone / win confetti
+          drawRipples(); // NEW: tap/click ripples
+
+          // --- Draw custom shockwaves ---
+          ctx.save();
+          shockwaves.forEach(function (sw) {
+            // Outer ring
+            ctx.lineWidth = 4;
+            ctx.strokeStyle = sw.color + sw.alpha + ")";
+            ctx.beginPath();
+            ctx.arc(sw.x, sw.y, sw.radius, 0, Math.PI * 2);
+            ctx.stroke();
+
+            // Inner soft ring (if positive shockwave)
+            if (sw.maxRadius > 60) {
+              ctx.lineWidth = 2;
+              ctx.strokeStyle = "rgba(255,255,255," + sw.alpha * 0.7 + ")";
+              ctx.beginPath();
+              ctx.arc(sw.x, sw.y, Math.max(0, sw.radius - 12), 0, Math.PI * 2);
+              ctx.stroke();
+            }
+          });
+          ctx.restore();
+
+          drawHitFlash(); // NEW: brief red vignette when hit by a pufferfish
+          drawHealFlash(); // NEW: brief green vignette when a heal/save occurs
+          rectUpdatedThisFrame = false;
+        }
+
+        // NEW: quick red screen flash when a pufferfish lands a hit
+        function drawHitFlash() {
+          if (state.elapsed >= state.hitFlashUntil) return;
+          var remain = state.hitFlashUntil - state.elapsed;
+          var alpha = Collision.clamp(remain / 0.25, 0, 1) * 0.32;
+          ctx.save();
+          ctx.fillStyle = "rgba(232,46,93," + alpha + ")";
+          ctx.fillRect(0, 0, W, H);
+          ctx.restore();
+        }
+
+        // NEW: quick green/teal screen flash when a heal/save occurs
+        function drawHealFlash() {
+          if (state.elapsed >= state.healFlashUntil) return;
+          var remain = state.healFlashUntil - state.elapsed;
+          var alpha = Collision.clamp(remain / 0.25, 0, 1) * 0.25;
+          ctx.save();
+          ctx.fillStyle = "rgba(61, 214, 192, " + alpha + ")";
+          ctx.fillRect(0, 0, W, H);
+          ctx.restore();
+        }
+
+        /* ---------------- end states ---------------- */
+        var cutsceneTimer = null;
+        function triggerSeedReturnCutscene(onComplete) {
+          var overlay = document.getElementById("cutscene");
+          var treeIcon = document.getElementById("csTreeIcon");
+          if (!overlay) {
+            onComplete();
+            return;
+          }
+          overlay.classList.add("show");
+          if (treeIcon) {
+            GOGUi.restartAnimation(treeIcon, "pulse");
+          }
+          GOGUi.say("A seed is heading home to the Tree… 🌱");
+
+          function closeCutscene() {
+            overlay.classList.remove("show");
+            if (cutsceneTimer) clearTimeout(cutsceneTimer);
+            onComplete();
+          }
+
+          var skipBtn = document.getElementById("csSkipBtn");
+          if (skipBtn) {
+            var newSkip = skipBtn.cloneNode(true);
+            skipBtn.parentNode.replaceChild(newSkip, skipBtn);
+            newSkip.addEventListener("click", closeCutscene);
+          }
+
+          cutsceneTimer = setTimeout(closeCutscene, 2200);
+        }
+
+        function computeStars() {
+          if (state.hits === 0 && state.timeLeft > TOTAL_TIME * 0.3) return 3;
+          if (state.hits <= 2) return 2;
+          return 1;
+        }
+
+        function endWin() {
+          stopBackgroundMusic();
+          state.won = true;
+          state.running = false;
+          audio.win();
+          var stars = computeStars();
+          var nextSave = GOGSave.recordStageClear(STAGE_ID, {
+            stars: stars,
+            sprouts: state.sproutsEarned,
+            smogDrop: 10,
+          });
+          save = nextSave;
+
+          // NEW: the canvas frame brightens triumphantly...
+          document.getElementById("canvasFrame").classList.add("flash-win");
+
+          // ...and confetti rains in over a few waves before the overlay appears
+          var confettiBursts = 0;
+          var confettiInterval = setInterval(function () {
+            spawnConfettiBurst(16);
+            confettiBursts++;
+            if (confettiBursts >= 3) clearInterval(confettiInterval);
+          }, 220);
+
+          GOGUi.say("You did it! A seed is heading home to the Tree… 🌱");
+
+          setTimeout(function () {
+            triggerSeedReturnCutscene(function () {
+              GOGUi.showOverlay({
+                accent: "var(--gog-white)",
+                title: "🪸 The reef is blooming!",
+                body: "Splash wakes up and a Seed of Life flies back to the Guardian Tree.",
+                stars: stars,
+                factText: stageMeta.fact,
+                primaryLabel: "Back to Map",
+                secondaryLabel: "Play Again",
+                onPrimary: function () {
+                  window.location.href = "../index.html";
+                },
+                onSecondary: function () {
+                  window.location.href = "stage01-ocean.html";
+                },
+              });
+            });
+          }, 750);
+        }
+
+        function endLose() {
+          stopBackgroundMusic();
+          state.running = false;
+          // NEW: a gentle desaturating fade signals "not quite yet" without feeling harsh
+          document.getElementById("canvasFrame").classList.add("flash-lose");
+          GOGUi.say("Don't worry, Splash is ready to try again! 💙");
+          GOGUi.showOverlay({
+            title: "🌫️ The tide's still cloudy",
+            body: "The reef needs a little more love. Want to dive back in? Nothing is lost.",
+            primaryLabel: "Try Again",
+            secondaryLabel: "Back to Map",
+            onPrimary: function () {
+              window.location.href = "stage01-ocean.html";
+            },
+            onSecondary: function () {
+              window.location.href = "../index.html";
+            },
+          });
+        }
+
+        /* ---------------- loop ---------------- */
+        var loop = new GOGEngine.GameLoop({
+          update: update,
+          draw: draw,
+        });
+        loop.start();
+
+        init();
+      })();
+    </script>
+  </body>
+</html>

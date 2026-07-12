@@ -481,11 +481,27 @@
   var audio = new window.GOGEngine.Audio(false);
   var EmojiSprite = window.EmojiSprite;
 
-  // Buzz's body sprite is fetched ONCE at a fixed pixel size and reused every
-  // frame. Squash/stretch/scale is applied with ctx.scale() at draw time
-  // instead of re-requesting new sprite sizes, so this never touches the
-  // EmojiSprite cache during gameplay (zero per-frame allocations).
-  var buzzSpriteImg = EmojiSprite.get("🐝", 56);
+  // Buzz flying sprite sheet — loaded ONCE and reused every frame
+  // Sprite sheet uses grid layout: 4 columns × 2 rows (8 frames total)
+  // Each frame shows bee wing flapping positions for smooth animation
+  var beesFlyingSpriteSheet = new Image();
+  beesFlyingSpriteSheet.src = "assets/sprites/stage03/bees-flying.png";
+  var beeSheetLoaded = false;
+  beesFlyingSpriteSheet.onload = function () {
+    beeSheetLoaded = true;
+    console.log("✓ Bee sprite sheet loaded successfully at", beesFlyingSpriteSheet.src);
+  };
+  beesFlyingSpriteSheet.onerror = function () {
+    console.warn("⚠ Bee sprite sheet not found at:", "assets/sprites/stage03/bees-flying.png");
+    console.warn("Using procedural bee animation fallback.");
+  };
+  var BEES_SHEET_COLS = 4;
+  var BEES_SHEET_ROWS = 2;
+  var BEES_FRAME_COUNT = 8;          // 4 cols × 2 rows
+  var BEES_SHEET_FRAME_WIDTH = 256;  // pixel width of one frame in the sheet (adjust if needed)
+  var BEES_SHEET_FRAME_HEIGHT = 256; // pixel height of one frame in the sheet (adjust if needed)
+  var BUZZ_SPRITE_SIZE = 64;         // how big to draw on canvas (increased for better visibility)
+  var BUZZ_ANIM_FPS = 12;            // frames per second for wing flap (12 fps = smooth wing flapping)
 
   // Same fetch-once-scale-at-draw-time pattern for background ambient life.
   var butterflySpriteImg = EmojiSprite.get("🦋", 22);
@@ -634,13 +650,15 @@ function getFlowerSpriteSheet(f) {
     restX: W * 0.5, restY: GROUND_Y - 160, // idle hover anchor point
     vx: 0, vy: 0,                       // velocity, drives bank angle
     angle: 0,                           // current bank/rotation (radians)
-    wingPhase: 0,                       // wing-flap oscillation phase
+    wingPhase: 0,                       // wing-flap oscillation phase (legacy, kept for compatibility)
     scaleX: 1, scaleY: 1,               // squash & stretch
     state: "idle",                      // idle | flying | landing
     landTimer: 0,
     takeoffTimer: 0,
     idleT: Math.random() * 10,
     emitTimer: 0,
+    frameIndex: 0,                      // current frame in sprite sheet (0-11)
+    elapsedFrameTime: 0,                // accumulated time for frame advancement
     trail: []                           // {x,y,age} buzzing motion-blur trail
   };
 
@@ -740,6 +758,17 @@ function getFlowerSpriteSheet(f) {
   }
 
   function updateBuzz(dt) {
+    // Advance sprite animation frame based on accumulated time
+    // Uses FPS-based frame advancement for frame-perfect timing
+    buzz.elapsedFrameTime += dt;
+    while (buzz.elapsedFrameTime >= 1 / BUZZ_ANIM_FPS) {
+      buzz.frameIndex++;
+      if (buzz.frameIndex >= BEES_FRAME_COUNT) {
+        buzz.frameIndex = 0;  // loop animation
+      }
+      buzz.elapsedFrameTime -= 1 / BUZZ_ANIM_FPS;
+    }
+
     // Wings flap continuously regardless of state — a resting bee still
     // flutters. ~7-8 visible flaps/sec at this multiplier.
     buzz.wingPhase += dt * 46;
@@ -1680,9 +1709,9 @@ flowers.push({
     ctx.restore();
   }
 
-  // Buzz himself: motion-blur trail dots, flapping wings, and the body
-  // sprite — all transformed with a single translate/rotate/scale so
-  // banking + squash/stretch apply consistently to every part.
+  // Buzz himself: motion-blur trail dots and the animated sprite sheet
+  // — all transformed with a single translate/rotate/scale so banking +
+  // squash/stretch apply consistently to every part.
   function drawBuzz() {
     if (gameState !== "playing") return;
 
@@ -1703,21 +1732,126 @@ flowers.push({
     ctx.rotate(buzz.angle);
     ctx.scale(buzz.scaleX, buzz.scaleY);
 
-    // wings: simple flapping ellipses, cheap vector shapes (no extra sprite)
-    var flap = Math.abs(Math.sin(buzz.wingPhase));
+    // Use sprite sheet with better error handling and frame calculation
+    if (beeSheetLoaded && beesFlyingSpriteSheet.complete && beesFlyingSpriteSheet.naturalWidth > 0) {
+      try {
+        var col = buzz.frameIndex % BEES_SHEET_COLS;
+        var row = Math.floor(buzz.frameIndex / BEES_SHEET_COLS);
+        var sx = col * BEES_SHEET_FRAME_WIDTH;
+        var sy = row * BEES_SHEET_FRAME_HEIGHT;
+
+        ctx.drawImage(
+          beesFlyingSpriteSheet,
+          sx, sy,
+          BEES_SHEET_FRAME_WIDTH, BEES_SHEET_FRAME_HEIGHT,
+          -BUZZ_SPRITE_SIZE / 2, -BUZZ_SPRITE_SIZE / 2,
+          BUZZ_SPRITE_SIZE, BUZZ_SPRITE_SIZE
+        );
+      } catch (e) {
+        console.warn("Sprite sheet rendering error:", e.message);
+        drawBeeFallback(buzz.frameIndex);
+      }
+    } else {
+      // Fallback: draw animated bee with procedural animation
+      drawBeeFallback(buzz.frameIndex);
+    }
+    ctx.restore();
+  }
+
+  // Procedural bee drawing with frame-based animation — used when sprite sheet unavailable
+  function drawBeeFallback(frameIndex) {
+    var frame = frameIndex % 8;  // 8-frame wing flap cycle
+    var wingFlap = Math.sin((frame / 8) * Math.PI * 2) * 0.5;  // smooth sine wave flap
+    
     ctx.save();
-    ctx.globalAlpha = 0.55;
-    ctx.fillStyle = "#ffffff";
+    
+    // Body (rounded yellow rectangle)
+    ctx.fillStyle = "#FFD700";
     ctx.beginPath();
-    ctx.ellipse(-6, -14, 12 * (0.4 + flap * 0.6), 7, -0.3, 0, Math.PI * 2);
+    ctx.ellipse(0, 0, 16, 24, 0, 0, Math.PI * 2);
+    ctx.fill();
+    
+    // Black stripes on body
+    ctx.fillStyle = "#000000";
+    ctx.fillRect(-14, -10, 28, 4);
+    ctx.fillRect(-14, 2, 28, 4);
+    ctx.fillRect(-14, 14, 28, 4);
+    
+    // Head (small circle)
+    ctx.fillStyle = "#FFD700";
+    ctx.beginPath();
+    ctx.arc(0, -22, 7, 0, Math.PI * 2);
+    ctx.fill();
+    
+    // Eyes
+    ctx.fillStyle = "#000000";
+    ctx.beginPath();
+    ctx.arc(-4, -24, 2, 0, Math.PI * 2);
     ctx.fill();
     ctx.beginPath();
-    ctx.ellipse(10, -14, 12 * (0.4 + flap * 0.6), 7, 0.3, 0, Math.PI * 2);
+    ctx.arc(4, -24, 2, 0, Math.PI * 2);
+    ctx.fill();
+    
+    // Antennae
+    ctx.strokeStyle = "#000000";
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.moveTo(-3, -27);
+    ctx.quadraticCurveTo(-6, -34, -4, -38);
+    ctx.stroke();
+    ctx.beginPath();
+    ctx.moveTo(3, -27);
+    ctx.quadraticCurveTo(6, -34, 4, -38);
+    ctx.stroke();
+    
+    // Wings - animated flapping with more pronounced motion
+    ctx.globalAlpha = 0.7;
+    ctx.fillStyle = "#87CEEB";  // Sky blue
+    
+    // Left wing with rotation animation
+    ctx.save();
+    ctx.translate(-12, -8);
+    ctx.rotate((Math.sin(wingFlap * Math.PI) * 0.8));
+    ctx.beginPath();
+    ctx.ellipse(0, 0, 10, 16, 0.3, 0, Math.PI * 2);
     ctx.fill();
     ctx.restore();
-
-    // body — cached sprite, scaled via the transform above (see buzzSpriteImg)
-    ctx.drawImage(buzzSpriteImg, -buzzSpriteImg.width / 2, -buzzSpriteImg.height / 2);
+    
+    // Right wing with opposite rotation
+    ctx.save();
+    ctx.translate(12, -8);
+    ctx.rotate((-Math.sin(wingFlap * Math.PI) * 0.8));
+    ctx.beginPath();
+    ctx.ellipse(0, 0, 10, 16, -0.3, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.restore();
+    
+    // Legs
+    ctx.globalAlpha = 1;
+    ctx.strokeStyle = "#000000";
+    ctx.lineWidth = 2;
+    ctx.lineCap = "round";
+    
+    // Front legs
+    ctx.beginPath();
+    ctx.moveTo(-8, 16);
+    ctx.lineTo(-14, 24);
+    ctx.stroke();
+    ctx.beginPath();
+    ctx.moveTo(8, 16);
+    ctx.lineTo(14, 24);
+    ctx.stroke();
+    
+    // Middle legs
+    ctx.beginPath();
+    ctx.moveTo(-10, 18);
+    ctx.lineTo(-16, 26);
+    ctx.stroke();
+    ctx.beginPath();
+    ctx.moveTo(10, 18);
+    ctx.lineTo(16, 26);
+    ctx.stroke();
+    
     ctx.restore();
   }
 
