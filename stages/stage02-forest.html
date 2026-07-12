@@ -557,6 +557,7 @@
           maxWaves: 3,
           smogPosition: 0,
           smogDelay: 0.0, // Prep phase delay before smog moves (Phase 7 Balance Pass)
+          smogMoving: false, // true = smog creeping forward (happy face), false = blocked/paused (upset face)
           gameState: "INTRO", // INTRO, WAVE_ACTIVE, WAVE_CLEARED, STAGE_WON, STAGE_LOST
           timer: 0,
           rows: 6,
@@ -607,6 +608,7 @@
             this.wave = 1;
             this.smogPosition = this.cols; // Smog starts at the right edge
             this.smogDelay = 5.0; // 5 seconds of pre-smog planting delay
+            this.smogMoving = false; // Starts frozen during prep delay -> upset face
             this.growthTime = this.growthTimes[0]; // starts with wave 1 growth time
             this.gameState = "INTRO";
             this.timer = 75; // 75 seconds wave length
@@ -771,10 +773,12 @@
               if (this.isColumnBlocked(c)) {
                 // Blocked! Smog stops just at the right side of this column
                 this.smogPosition = c + 1;
+                this.smogMoving = false; // Blocked -> upset face
                 return;
               }
             }
 
+            this.smogMoving = speed * dt > 0.0001; // Actively creeping -> happy face
             this.smogPosition = Math.max(0, targetPos);
 
             // If smog reaches the left edge (column 0), the forest is overrun
@@ -807,6 +811,7 @@
             // Pre-smog delay: smog is frozen during preparation time (Phase 7 Balance Pass)
             if (this.smogDelay > 0) {
               this.smogDelay = Math.max(0, this.smogDelay - dt);
+              this.smogMoving = false; // Frozen during prep -> upset face
             } else {
               this.advanceSmog(dt);
             }
@@ -2833,6 +2838,123 @@
               ctx.arc(clusterX - 5, sy - 5, baseRadius * 0.8, 0, Math.PI * 2);
               ctx.fill();
             }
+
+            // --- LAYER B.5: Cartoon Smog Face (big, focal, left-facing) ---
+            // The face sits on its own contrasting "face-plate" disc (not
+            // just floating on the puff texture) so it reads instantly as
+            // the character, and it leans/gazes toward the left — the
+            // direction the smog is actually creeping — for a strong
+            // sense of forward motion and intent.
+            var faceBobY = Math.sin(state.elapsed * 3.2) * 3; // idle bob, nothing sits still
+            var faceCenterY = gridYOffset + gridH / 2 + faceBobY;
+            var faceLead = Math.sin(faceCenterY * 0.04 + waveTime) * 14;
+            // Pull the face out ahead of the body's center toward the left
+            // (direction of travel) so it visibly leads the cloud.
+            var faceCenterX = smogX + faceLead - 22;
+            var faceHappy = !!GOGStage2.smogMoving;
+            var faceR = 46;
+            var lookDX = -9; // pupils/features shifted left = gazing the way it's moving
+
+            ctx.save();
+            ctx.translate(faceCenterX, faceCenterY);
+            ctx.rotate(-0.09); // slight forward lean into the direction of travel
+            ctx.lineCap = "round";
+            ctx.lineJoin = "round";
+
+            // Hard offset drop-shadow disc behind the face-plate (flat,
+            // no blur, per the toy-brutalist shadow style used elsewhere).
+            ctx.fillStyle = "#241c30";
+            ctx.beginPath();
+            // ctx.arc(6, 7, faceR, 0, Math.PI * 2);
+            // ctx.fill();
+
+            // Face-plate: a lighter, higher-contrast disc so the face
+            // pops clear of the busy cloud texture behind it.
+            ctx.fillStyle = faceHappy ? "#b7a4d6" : "#8f7bab";
+             ctx.strokeStyle = "#241c30";
+            ctx.lineWidth = 1;
+            ctx.beginPath();
+             ctx.arc(0, 0, faceR, 0, Math.PI * 2);
+             ctx.fill();
+            ctx.stroke();
+
+            var eyeDX = 17,
+              eyeY = -8;
+
+            if (faceHappy) {
+              // Happy: big round mischievous eyes gazing left, raised brows, wide grin
+              [-1, 1].forEach(function (dir) {
+                var ex = dir * eyeDX;
+                // Eyebrow: raised and swept back (glee / gathering speed)
+                ctx.strokeStyle = "#241c30";
+                ctx.lineWidth = 2;
+                ctx.beginPath();
+                ctx.moveTo(ex - 10, eyeY - 17);
+                ctx.lineTo(ex + 9, eyeY - 21);
+                ctx.stroke();
+
+                // Eye white
+                ctx.fillStyle = "#fdfaff";
+                ctx.beginPath();
+                ctx.arc(ex, eyeY, 11, 0, Math.PI * 2);
+                ctx.fill();
+                // Pupil shifted left = looking the way the smog moves
+                ctx.fillStyle = "#241c30";
+                ctx.beginPath();
+                ctx.arc(ex + lookDX, eyeY, 6, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.fillStyle = "rgba(255,255,255,0.95)";
+                ctx.beginPath();
+                ctx.arc(ex + lookDX - 2, eyeY - 2, 2.2, 0, Math.PI * 2);
+                ctx.fill();
+              });
+
+              // Big gleeful open grin
+              ctx.fillStyle = "#241c30";
+              ctx.beginPath();
+              ctx.moveTo(-19, 16);
+              ctx.quadraticCurveTo(-6, 32, 12, 20);
+              ctx.quadraticCurveTo(20, 15, 15, 10);
+              ctx.quadraticCurveTo(-4, 22, -19, 8);
+              ctx.closePath();
+              ctx.fill();
+            } else {
+              // Upset: heavy furrowed brows, narrowed worried eyes, deep frown
+              [-1, 1].forEach(function (dir) {
+                var ex = dir * eyeDX;
+                // Furrowed brow angled sharply down toward the center
+                ctx.strokeStyle = "#241c30";
+                ctx.lineWidth = 2;
+                ctx.beginPath();
+                if (dir < 0) {
+                  ctx.moveTo(ex - 12, eyeY - 12);
+                  ctx.lineTo(ex + 9, eyeY - 3);
+                } else {
+                  ctx.moveTo(ex + 12, eyeY - 12);
+                  ctx.lineTo(ex - 9, eyeY - 3);
+                }
+                ctx.stroke();
+
+                // Narrowed eye white (squint)
+                ctx.fillStyle = "#fdfaff";
+                ctx.beginPath();
+                ctx.ellipse(ex, eyeY + 3, 9, 6, 0, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.fillStyle = "#241c30";
+                ctx.beginPath();
+                ctx.arc(ex + lookDX * 0.7, eyeY + 3, 5, 0, Math.PI * 2);
+                ctx.fill();
+              });
+
+              // Deep downturned frown
+              ctx.strokeStyle = "#241c30";
+              ctx.lineWidth = 6;
+              ctx.beginPath();
+              ctx.arc(-2, 34, 18, 1.12 * Math.PI, 1.88 * Math.PI);
+              ctx.stroke();
+            }
+
+            ctx.restore();
 
             // --- LAYER C: Child-Friendly Visual Labels ---
             ctx.save();
