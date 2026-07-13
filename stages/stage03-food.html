@@ -185,6 +185,155 @@
       touch-action: manipulation;
     }
 
+    /* ================================================================
+       COCOMELON-STYLE CLARITY PASS
+       Bigger, bolder, brighter, with obvious escalating-color + bounce
+       feedback so every HUD element reads at a glance even for a
+       pre-reader — the same "big bold icon + one bright color state +
+       a bounce" language that toddler shows use so nothing needs to be
+       read to be understood.
+       ================================================================ */
+    .stage-hud .chip {
+      font-size: 1.05rem;
+      font-weight: 800;
+      padding: 8px 16px;
+      border-width: 3px;
+      box-shadow: 4px 4px 0 var(--gog-ink);
+    }
+
+    #progressVal {
+      display: inline-block;
+      font-size: 1.15rem;
+      font-weight: 800;
+    }
+    .progress-pop {
+      animation: progressPop 0.45s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+    }
+    @keyframes progressPop {
+      0% {
+        transform: scale(1);
+      }
+      45% {
+        transform: scale(1.65);
+        color: var(--gog-tangerine);
+      }
+      100% {
+        transform: scale(1);
+      }
+    }
+
+    /* Timer turns loud red + pulses once time is running low — a color
+       AND motion cue together, never color alone. */
+    .timer-chip {
+      transition:
+        background 0.3s,
+        color 0.3s,
+        border-color 0.3s;
+    }
+    .timer-chip.timer-danger {
+      background: #ff4d4d;
+      color: #fff;
+      border-color: #7a0000;
+      animation: timerPulse 0.6s ease-in-out infinite;
+    }
+    @keyframes timerPulse {
+      0%,
+      100% {
+        transform: scale(1);
+      }
+      50% {
+        transform: scale(1.14);
+      }
+    }
+
+    /* Combo chip visibly heats up as the streak climbs — cool green at
+       the start, warm gold mid-streak, hot pink/tangerine + a little
+       shake once it's really cooking. */
+    .combo-chip {
+      transition:
+        background 0.25s,
+        color 0.25s;
+    }
+    .combo-chip.combo-warm {
+      background: #ffd23f;
+      color: #241c30;
+      border-color: #7a5a00;
+    }
+    .combo-chip.combo-hot {
+      background: linear-gradient(90deg, #ff5e94, var(--gog-tangerine));
+      color: #fff;
+      border-color: #7a0033;
+      animation: comboHotShake 0.5s ease-in-out infinite;
+    }
+    @keyframes comboHotShake {
+      0%,
+      100% {
+        transform: rotate(0deg) scale(1);
+      }
+      25% {
+        transform: rotate(-5deg) scale(1.1);
+      }
+      75% {
+        transform: rotate(5deg) scale(1.1);
+      }
+    }
+
+    /* Guide mascot — idles with a friendly bounce, then reacts big and
+       obviously happy/oops on key beats, so the lesson lands even for
+       a kid who isn't reading the bubble yet. */
+    .guideBar {
+      padding: 10px 14px;
+      border-width: 4px;
+      box-shadow: 5px 5px 0 var(--gog-ink);
+      transition: box-shadow 0.2s;
+    }
+    .guideAvatar {
+      font-size: 2.1rem;
+      display: inline-block;
+      animation: guideIdleBounce 2.4s ease-in-out infinite;
+    }
+    @keyframes guideIdleBounce {
+      0%,
+      100% {
+        transform: translateY(0) rotate(-3deg);
+      }
+      50% {
+        transform: translateY(-4px) rotate(3deg);
+      }
+    }
+    .guideAvatar.guide-happy {
+      animation: guideHappyBounce 0.5s ease-in-out 2;
+    }
+    @keyframes guideHappyBounce {
+      0%,
+      100% {
+        transform: translateY(0) scale(1);
+      }
+      50% {
+        transform: translateY(-12px) scale(1.25);
+      }
+    }
+    .guideAvatar.guide-oops {
+      animation: guideOopsShake 0.4s ease-in-out;
+    }
+    @keyframes guideOopsShake {
+      0%,
+      100% {
+        transform: translateX(0) rotate(0deg);
+      }
+      25% {
+        transform: translateX(-6px) rotate(-10deg);
+      }
+      75% {
+        transform: translateX(6px) rotate(10deg);
+      }
+    }
+    .guideBubble {
+      font-size: 1.05rem;
+      font-weight: 700;
+      line-height: 1.25;
+    }
+
     @media (max-width: 700px) {
       .stage-wrap {
         width: calc(100vw - 12px);
@@ -514,6 +663,14 @@
   var progressVal = document.getElementById("progressVal");
   var timerChip = document.getElementById("timerChip");
   var muteBtn = document.getElementById("muteBtn");
+  var guideAvatarEl = document.querySelector(".guideBar .guideAvatar");
+
+  // Makes the mascot visibly happy or concerned at key beats, so the
+  // stage's feedback reads through expression + motion, not just text.
+  function reactGuide(mood) {
+    if (!guideAvatarEl || !window.GOGUi) return;
+    window.GOGUi.restartAnimation(guideAvatarEl, mood === "happy" ? "guide-happy" : "guide-oops");
+  }
 
   /* ---------------- Save & Sound State ---------------- */
   var STAGE_ID = "stage03";
@@ -633,6 +790,53 @@ function getFlowerSpriteSheet(f) {
   var smogActive = false, smogTimer = 0, smogAlpha = 0;
   var smogClouds = [];
   var flightPaths = [];
+
+  // One-shot flags for the milestone call-outs below — each fires once per
+  // session so the lesson lands clearly without turning into noise.
+  var saidFirstPollinate = false;
+  var saidCritterFed = false;
+
+  // Short bouncy on-canvas captions ("+50!", "Yum!", "Oops!") that pop up
+  // right where the thing happened — a Cocomelon-style visual+verbal
+  // double-reinforcement so the cause-and-effect reads even without
+  // reading the guide bubble. Same life/maxLife pattern as flightPaths.
+  var floatLabels = [];
+  function spawnFloatLabel(x, y, text, color) {
+    floatLabels.push({ x: x, y: y, text: text, color: color || "#241c30", life: 0, maxLife: 0.9 });
+  }
+  function updateFloatLabels(dt) {
+    for (var i = floatLabels.length - 1; i >= 0; i--) {
+      floatLabels[i].life += dt;
+      if (floatLabels[i].life >= floatLabels[i].maxLife) floatLabels.splice(i, 1);
+    }
+  }
+  function drawFloatLabels() {
+    if (!floatLabels.length) return;
+    ctx.save();
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+    ctx.font = "800 20px 'Baloo 2', sans-serif";
+    ctx.lineJoin = "round";
+    for (var i = 0; i < floatLabels.length; i++) {
+      var fl = floatLabels[i];
+      var t = fl.life / fl.maxLife;
+      var y = fl.y - t * 46; // drifts upward as it lives
+      var alpha = 1 - t * t; // eases out toward the end
+      // Bouncy pop-in (overshoot past 1x) then a gentle settle down.
+      var scale = t < 0.25 ? 0.7 + (t / 0.25) * 0.55 : 1.25 - (t - 0.25) * 0.33;
+      ctx.save();
+      ctx.globalAlpha = Math.max(0, alpha);
+      ctx.translate(fl.x, y);
+      ctx.scale(scale, scale);
+      ctx.lineWidth = 4;
+      ctx.strokeStyle = "#241c30";
+      ctx.fillStyle = fl.color;
+      ctx.strokeText(fl.text, 0, 0);
+      ctx.fillText(fl.text, 0, 0);
+      ctx.restore();
+    }
+    ctx.restore();
+  }
 
   var dragging = false;
   var dragSourceId = null;
@@ -994,6 +1198,23 @@ flowers.push({
     particles.burst(flower.x, flower.y - 6, { glyphs: ["✨", "💮", "🌟"], count: 10, life: 620, minSpeed: 40, maxSpeed: 150, gravity: 120 });
     popFruitAt(flower.x, flower.y);
     pulseCombo();
+    reactGuide("happy");
+    spawnFloatLabel(flower.x, flower.y - 40, "+" + gain + "!", "#2fbf71");
+
+    // Cocomelon-style reinforcement: short, cheerful call-outs fired at
+    // the exact moment they become true, so the lesson ("bees make
+    // flowers bloom") lands through repetition, not one buried mention.
+    if (!saidFirstPollinate) {
+      saidFirstPollinate = true;
+      GOGUi.say("🐝 Yay! Buzz made a flower bloom!");
+    } else if (combo === 5) {
+      GOGUi.say("🔥 5 in a row! Buzz is on fire!");
+    } else if (combo === 10) {
+      GOGUi.say("🌟 Wow, 10 in a row, Buzz!");
+    } else if (pollinatedCount === WIN_TARGET - 2) {
+      GOGUi.say("🎯 So close! Just 2 more flowers!");
+    }
+
     if (pollinatedCount >= WIN_TARGET) triggerWin();
   }
 
@@ -1004,6 +1225,11 @@ flowers.push({
     combo = 0;
     audio.oops();
     particles.burst(flower.x, flower.y, { glyphs: ["💨"], count: 6, life: 500, minSpeed: 20, maxSpeed: 60, gravity: 30 });
+    reactGuide("oops");
+    spawnFloatLabel(flower.x, flower.y - 20, "Oops!", "#e82e5d");
+    if (consecutiveMisses === 2) {
+      GOGUi.say("😮 A flower wilted — catch the next one, Buzz!");
+    }
     if (consecutiveMisses === SMOG_MISS_THRESHOLD) triggerSmog();
     if (consecutiveMisses >= FAIL_MISS_THRESHOLD) triggerFail();
   }
@@ -1020,6 +1246,8 @@ flowers.push({
         vx: rand(-24, 24), vy: rand(-6, 6)
       });
     }
+    reactGuide("oops");
+    GOGUi.say("😷 Uh-oh! No bees, no fruit, no food!");
   }
 
   function pulseCombo() {
@@ -1053,6 +1281,7 @@ flowers.push({
     beatTimer = 0; nextBeatMs = BEAT_MS;
     sessionTimeLeft = SESSION_MS;
     smogActive = false; smogTimer = 0; smogAlpha = 0; smogClouds = []; flightPaths = [];
+    floatLabels = []; saidFirstPollinate = false; saidCritterFed = false;
     dragging = false; dragSourceId = null; dragTrail = [];
     // reset Buzz to a calm idle hover in the middle of the meadow
     buzz.x = buzz.restX = W * 0.5;
@@ -1247,6 +1476,13 @@ flowers.push({
                 break;
               }
             }
+            // Make the pollination → fruit → food-chain link explicit and
+            // impossible to miss, right at the moment it happens.
+            spawnFloatLabel(c.x, c.y - 46, "Yum! 🍎", "#ffb020");
+            if (!saidCritterFed) {
+              saidCritterFed = true;
+              GOGUi.say("🦌 Look! The fruit fed a hungry friend!");
+            }
           }
         } else if (c.phase === "eat") {
           if (c.life >= c.eatUntil) {
@@ -1287,18 +1523,31 @@ flowers.push({
       }
     }
 
+    updateFloatLabels(dt);
     particles.update(dt);
     updateHUD();
   }
 
+  var lastShownPollinated = 0;
   function updateHUD() {
     scoreChip.textContent = score;
+
     comboChip.textContent = "🔥 x" + combo;
-    progressVal.textContent = Math.min(pollinatedCount, WIN_TARGET);
+    comboChip.classList.remove("combo-warm", "combo-hot");
+    if (combo >= 8) comboChip.classList.add("combo-hot");
+    else if (combo >= 4) comboChip.classList.add("combo-warm");
+
+    var shownPollinated = Math.min(pollinatedCount, WIN_TARGET);
+    progressVal.textContent = shownPollinated;
+    if (shownPollinated !== lastShownPollinated) {
+      lastShownPollinated = shownPollinated;
+      if (window.GOGUi) window.GOGUi.restartAnimation(progressVal, "progress-pop");
+    }
     progressFill.style.width = Math.min(100, (pollinatedCount / WIN_TARGET) * 100) + "%";
+
     var secs = Math.ceil(sessionTimeLeft / 1000);
     timerChip.textContent = Math.max(0, secs) + "s";
-    timerChip.style.color = (secs <= 15 && gameState === "playing") ? "#e82e5d" : "";
+    timerChip.classList.toggle("timer-danger", secs <= 15 && gameState === "playing");
   }
 
   /* ---------------- Draw ---------------- */
@@ -1982,6 +2231,7 @@ flowers.push({
     drawBuzz();          // Buzz himself, always drawn on top
     particles.draw(ctx);
     drawSmog();
+    drawFloatLabels();   // "+50!" / "Yum!" / "Oops!" — stays legible over smog
     drawWinWipe();
   }
 

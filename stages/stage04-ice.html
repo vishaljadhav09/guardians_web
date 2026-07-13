@@ -313,6 +313,59 @@
         }
       }
 
+      /* Cheerful pop/bounce whenever Spika says something new, so kids
+         notice the message changed even if they can't read it all yet. */
+      @keyframes guidePop {
+        0% {
+          transform: scale(0.9);
+        }
+        45% {
+          transform: scale(1.06);
+        }
+        100% {
+          transform: scale(1);
+        }
+      }
+      .guideBubble.pop {
+        animation: guidePop 0.35s ease;
+      }
+      .guideAvatar.pop {
+        animation: guidePop 0.4s ease;
+      }
+
+      /* Little celebration pop on the HUD chips when a count changes */
+      @keyframes chipPop {
+        0% {
+          transform: scale(0.85);
+        }
+        50% {
+          transform: scale(1.18);
+        }
+        100% {
+          transform: scale(1);
+        }
+      }
+      .chip.pop {
+        animation: chipPop 0.4s ease;
+      }
+
+      /* Soft pulsing highlight on the warmth meter so kids notice it's time
+         to go cool the valve, before things get urgent. */
+      .warmthMeter-hot {
+        animation: warmthPulse 0.6s ease infinite;
+      }
+      @keyframes warmthPulse {
+        0%,
+        100% {
+          box-shadow: var(--gog-shadow-sm);
+        }
+        50% {
+          box-shadow:
+            0 0 0 4px rgba(255, 120, 90, 0.35),
+            var(--gog-shadow-sm);
+        }
+      }
+
       body {
         position: relative;
       }
@@ -577,6 +630,7 @@
         const audio = new GOGEngine.Audio(!save.settings.sound);
 
         const ui = {
+          warmthMeter: document.getElementById("warmthMeter"),
           warmFill: document.getElementById("warmFill"),
           warmthText: document.getElementById("warmthText"),
           rescuedText: document.getElementById("rescuedChip"),
@@ -587,6 +641,33 @@
           guideText: document.getElementById("guideText"),
           canvasFrame: document.getElementById("canvasFrame"),
         };
+
+        // Cocomelon-style feedback: short, cheerful, repeated-name messages
+        // that always show up in the always-visible guide bubble (not just
+        // a toast that can be missed), so kids get a clear "what just
+        // happened + what to do next" every single time.
+        function sayGuide(text) {
+          if (ui.guideText) {
+            ui.guideText.textContent = text;
+            ui.guideText.classList.remove("pop");
+            void ui.guideText.offsetWidth; // restart animation
+            ui.guideText.classList.add("pop");
+          }
+          const avatar = document.querySelector(".guideAvatar");
+          if (avatar) {
+            avatar.classList.remove("pop");
+            void avatar.offsetWidth;
+            avatar.classList.add("pop");
+          }
+          if (typeof GOGUi !== "undefined" && GOGUi.say) GOGUi.say(text);
+        }
+
+        function popChip(el) {
+          if (!el) return;
+          el.classList.remove("pop");
+          void el.offsetWidth;
+          el.classList.add("pop");
+        }
 
         function syncMuteBtn() {
           if (ui.muteBtn) {
@@ -905,6 +986,7 @@
             particles: [],
             state: "playing",
             endTimer: 0,
+            warnedHot: false,
           };
         }
 
@@ -912,14 +994,12 @@
         let cutsceneTimer = null;
 
         function showIntro() {
-          GOGUi.say(
-            "Help Penny rescue the chicks and bring them home to the safe iceberg! 🐧",
-          );
+          sayGuide("Let's help Penny rescue 5 baby chicks! 🐧🐥");
           activeOverlay = GOGUi.showOverlay({
             accent: "var(--gog-lime)",
             title: "🐧 Penny on Thin Ice",
-            body: "Penny wakes in a warming polar dream. The floating ice shrinks faster when she stands still, so keep hopping, cool the valve, rescue chicks, and bring them home to the safe iceberg.<br><br><strong>Move:</strong> Arrow keys / WASD or touch buttons.<br><strong>Jump:</strong> Up / W / Space.<br><strong>Cool Valve:</strong> Stand near the valve, press E (or tap ☸️).",
-            primaryLabel: "Start Dream",
+            body: "Hi, I'm Penny! The ice is getting warm and it melts fast if I just stand still. Help me hop across the floes, rescue 5 chicks, and carry them home!<br><br>🕹️ <strong>Move:</strong> Arrows / WASD or the buttons.<br>⬆️ <strong>Jump:</strong> Up / W / Space.<br>☸️ <strong>Cool the ice:</strong> Stand by the valve and press E (or tap ☸️).<br><br>Don't worry — if I splash, we just try again! 💙",
+            primaryLabel: "Let's Go! 🐧",
             onPrimary: function () {
               GOGUi.closeOverlay(activeOverlay);
               activeOverlay = null;
@@ -939,7 +1019,7 @@
           if (treeIcon) {
             GOGUi.restartAnimation(treeIcon, "pulse");
           }
-          GOGUi.say("A seed is heading home to the Tree… 🌱");
+          sayGuide("A seed is flying home to the Guardian Tree! 🌱🌳");
 
           function closeCutscene() {
             overlay.classList.remove("show");
@@ -985,13 +1065,14 @@
           if (ui.canvasFrame) {
             ui.canvasFrame.classList.add("flash-lose");
           }
-          GOGUi.say("Penny splashed! Let's try again 💙");
+          sayGuide("Oopsie! Splash! Let's try again, Penny! 💙");
           activeOverlay = GOGUi.showOverlay({
-            title: "Take Another Glide",
+            title: "🐧 Splash! Let's Try Again",
             body:
-              reason ||
-              "The water got too cozy. Try again with quicker rescues and a timely valve spin.",
-            primaryLabel: "Try Again",
+              (reason ||
+                "The water got a little too close! Hop a bit faster and remember to cool the valve.") +
+              "<br><br>You're doing great — every try makes you better! 🌟",
+            primaryLabel: "Try Again 🔁",
             secondaryLabel: "Back to Map",
             onPrimary: function () {
               if (ui.canvasFrame) {
@@ -1029,7 +1110,7 @@
             ui.canvasFrame.classList.add("flash-win");
           }
 
-          GOGUi.say("You did it! A seed is heading home to the Tree… 🌱");
+          sayGuide("Hooray! All 5 chicks are safe! You did it! 🎉🐧");
 
           let confettiBursts = 0;
           const confettiInterval = setInterval(function () {
@@ -1046,12 +1127,12 @@
             triggerSeedReturnCutscene(function () {
               activeOverlay = GOGUi.showOverlay({
                 accent: "var(--gog-white)",
-                title: "❄️ Polar Ice Restored!",
-                body: "Penny wakes completely as the sea calms and the ice reforms.",
+                title: "❄️ You Saved the Ice!",
+                body: "Yay! All 5 chicks are safe and Penny is wide awake! The sea is calm again. Great job! 🎉",
                 stars: pendingStars,
                 factText: stageMeta.fact,
-                primaryLabel: "Back to Map",
-                secondaryLabel: "Play Again",
+                primaryLabel: "Back to Map 🗺️",
+                secondaryLabel: "Play Again 🔁",
                 onPrimary: function () {
                   window.location.href = "../index.html";
                 },
@@ -1116,8 +1197,23 @@
           }
           state.valve.pulse += dt;
 
-          const seaRise = calmMode ? 0 : 1.5 + state.warmth * 5;
+          const seaRise = calmMode ? 0 : 1.5 + state.warmth * 25;
           state.seaLevel = clamp(state.seaLevel - seaRise * dt, 480, 560);
+
+          if (!calmMode) {
+            if (state.warmth >= 0.65 && !state.warnedHot) {
+              state.warnedHot = true;
+              sayGuide("It's getting warm! Hop to the valve, Penny! ☸️❄️");
+            } else if (state.warmth < 0.4 && state.warnedHot) {
+              state.warnedHot = false;
+            }
+          }
+          if (ui.warmthMeter) {
+            ui.warmthMeter.classList.toggle(
+              "warmthMeter-hot",
+              !calmMode && state.warmth >= 0.65,
+            );
+          }
 
           const accel = p.speed * dt;
           if (input.left) {
@@ -1154,7 +1250,7 @@
 
           if (p.y > WORLD_H + 120 || p.y + p.h >= state.seaLevel) {
             failGame(
-              "Penny splashed into the rising water. Try a faster route and cool the valve sooner.",
+              "Splash! The water rose too high. Try hopping a little faster next time!",
             );
             return;
           }
@@ -1296,8 +1392,18 @@
                 state.rescuedCount += 1;
                 audio.heal();
                 spawnBurst(chick.x, chick.y, 14, "#FFD84D");
+                popChip(ui.rescuedText);
                 if (state.rescuedCount >= TARGET_RESCUES) {
                   winGame();
+                } else {
+                  sayGuide(
+                    state.rescuedCount +
+                      " of " +
+                      TARGET_RESCUES +
+                      " chicks safe! 🎉 " +
+                      (TARGET_RESCUES - state.rescuedCount) +
+                      " more to go!",
+                  );
                 }
               }
               continue;
@@ -1308,6 +1414,7 @@
               p.carrying.push(chick);
               audio.collect();
               spawnBurst(chick.x, chick.y, 10, "#FFE680");
+              sayGuide("Got a chick! 🐥 Carry it home to the iceberg!");
             }
             if (chick.y + 16 >= state.seaLevel) {
               const homeRestock = state.chicks.find(
@@ -1319,7 +1426,7 @@
                 !p.carrying.includes(chick)
               ) {
                 failGame(
-                  "A chick slipped into the water. Try shorter rescue routes and keep the floes from vanishing under you.",
+                  "Oh no, a little chick slipped into the water! Let's rescue them a bit quicker this time.",
                 );
                 return;
               }
@@ -1338,6 +1445,8 @@
             state.valve.activeFlash = 1;
             audio.blip(520, 150);
             spawnBurst(state.valve.x, state.valve.y, 16, "#87E1FF");
+            sayGuide("Brrr! Nice and cool now! ❄️ Great job, Penny!");
+            state.warnedHot = false;
           }
           input.actionPressed = false;
         }

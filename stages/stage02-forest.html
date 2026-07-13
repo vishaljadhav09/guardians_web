@@ -2408,15 +2408,19 @@
                 ctx.fillRect(x + 2, y + 2, cellW - 4, cellH - 4);
               }
 
-              // Smog locking visualization
+              // Smog locking visualization — haze-matched tint plus a full
+              // hazard X, so "you can't plant here" reads from the shape
+              // itself, not just a faint tint (colorblind-safe, per spec).
               if (!calmMode && c >= Math.floor(GOGStage2.smogPosition)) {
-                ctx.fillStyle = "rgba(220, 50, 50, 0.08)";
+                ctx.fillStyle = "rgba(92, 86, 70, 0.22)";
                 ctx.fillRect(x + 2, y + 2, cellW - 4, cellH - 4);
-                ctx.strokeStyle = "rgba(220, 50, 50, 0.18)";
-                ctx.lineWidth = 2;
+                ctx.strokeStyle = "rgba(40, 36, 30, 0.55)";
+                ctx.lineWidth = 3;
                 ctx.beginPath();
-                ctx.moveTo(x + 8, y + 8);
-                ctx.lineTo(x + cellW - 8, y + cellH - 8);
+                ctx.moveTo(x + 9, y + 9);
+                ctx.lineTo(x + cellW - 9, y + cellH - 9);
+                ctx.moveTo(x + cellW - 9, y + 9);
+                ctx.lineTo(x + 9, y + cellH - 9);
                 ctx.stroke();
               }
             }
@@ -2714,20 +2718,22 @@
             ctx.restore();
           });
 
-          // 6. Draw creeping Smog (Restricted to bottom half grid zone)
-          // 6. Draw creeping Smog (Super Cartoonish & Child-Friendly Rolling Storm Cloud)
-          // 6. Draw creeping Smog (Soft cartoon cloud wall theme for children)
+          // 6. Draw creeping Smog — INDUSTRIAL HAZE theme.
+          // Grey-brown/khaki palette (not purple/lavender) so the color
+          // itself reads as "dirty air" on sight, plus a hazard-stripe
+          // boundary and rising soot below. Still soft cartoon, never a
+          // monster — per brand — but now unmistakably pollution, not a
+          // friendly rain cloud.
           if (!calmMode && GOGStage2.smogPosition < GOGStage2.cols) {
             var smogX = GOGStage2.smogPosition * cellW;
 
             ctx.save();
 
-            // --- LAYER A: Soft Pastel Fog Body with a wavy, undulating
-            // leading edge instead of a flat rectangle wall. The edge is
-            // a sine-based path that ripples over time, and a few
-            // translucent wave bands roll through the body itself so the
-            // whole grid-covering fill reads as living fog, not a solid
-            // block of color.
+            // --- LAYER A: Murky Haze Body, wavy undulating leading edge
+            // instead of a flat rectangle wall. The edge is a sine-based
+            // path that ripples over time, and a few translucent wave
+            // bands roll through the body itself so the whole
+            // grid-covering fill reads as living haze, not a flat block.
             var frontWaveTime = state.elapsed * 3.5;
             var edgeSteps = 26;
             var edgeTop = gridYOffset - 6;
@@ -2741,7 +2747,7 @@
               );
             }
 
-            ctx.fillStyle = "rgba(125, 110, 145, 0.75)";
+            ctx.fillStyle = "rgba(92, 86, 70, 0.78)"; // murky charcoal-khaki
             ctx.beginPath();
             ctx.moveTo(W + 4, edgeTop);
             for (var wsY = 0; wsY <= edgeSteps; wsY++) {
@@ -2752,9 +2758,9 @@
             ctx.closePath();
             ctx.fill();
 
-            // Rolling wave bands clipped to the fog body's own wavy
-            // silhouette, each drifting at a slightly different phase and
-            // speed for a layered, watery motion effect.
+            // Rolling wave bands + drifting soot flecks, both clipped to
+            // the fog body's own wavy silhouette, each drifting at a
+            // slightly different phase and speed for layered motion.
             ctx.save();
             ctx.beginPath();
             ctx.moveTo(W + 4, edgeTop);
@@ -2767,9 +2773,9 @@
             ctx.clip();
 
             var smogBandColors = [
-              "rgba(150, 135, 170, 0.28)",
-              "rgba(90, 78, 110, 0.22)",
-              "rgba(170, 155, 190, 0.18)",
+              "rgba(132, 120, 90, 0.30)", // murky khaki-brown
+              "rgba(48, 44, 38, 0.30)", // sooty dark
+              "rgba(170, 158, 118, 0.20)", // sickly pale haze highlight
             ];
             for (var band = 0; band < smogBandColors.length; band++) {
               var bandPhase = frontWaveTime * (0.6 + band * 0.25) + band * 2.1;
@@ -2799,9 +2805,26 @@
               ctx.closePath();
               ctx.fill();
             }
+
+            // Drifting soot flecks — small dark ash specks sinking slowly
+            // through the haze. Cheap: fixed count, no per-frame arrays,
+            // positions are a pure function of time + index (no
+            // allocations, matches the perf discipline used elsewhere).
+            ctx.fillStyle = "rgba(28, 25, 21, 0.5)";
+            var sootCount = 16;
+            for (var si = 0; si < sootCount; si++) {
+              var sootSpanX = W - smogX + 60;
+              var sootX = smogX - 20 + ((si * 53 + frontWaveTime * 6) % sootSpanX);
+              var sootY =
+                gridYOffset - 10 + ((si * 37 + frontWaveTime * 14) % (gridH + 20));
+              var sootR = 1.4 + (si % 3) * 0.7;
+              ctx.beginPath();
+              ctx.arc(sootX, sootY, sootR, 0, Math.PI * 2);
+              ctx.fill();
+            }
             ctx.restore();
 
-            // --- LAYER B: Fluffy Cartoon Cloud Front (No more single circles!) ---
+            // --- LAYER B: Fluffy Haze Front (grey-brown, not lavender) ---
             var waveTime = state.elapsed * 3.5;
 
             // We use a slightly wider vertical step to stack big, fluffy compound shapes
@@ -2811,7 +2834,7 @@
               var baseRadius = 42 + Math.cos(sy * 0.08 + waveTime) * 5;
 
               // 1. Draw the Main Central Puff
-              ctx.fillStyle = "rgba(110, 95, 130, 0.92)";
+              ctx.fillStyle = "rgba(76, 71, 58, 0.93)";
               ctx.beginPath();
               ctx.arc(clusterX, sy, baseRadius, 0, Math.PI * 2);
               ctx.fill();
@@ -2832,12 +2855,73 @@
               ctx.arc(clusterX - 12, sy + 12, baseRadius * 0.6, 0, Math.PI * 2);
               ctx.fill();
 
-              // 4. Add a Soft Pastel Highlight layer to give the clusters a friendly, rounded 3D depth
-              ctx.fillStyle = "rgba(150, 135, 170, 0.4)";
+              // 4. Sickly khaki highlight — the "toxic" tint that visually
+              // separates this from a plain grey rain cloud.
+              ctx.fillStyle = "rgba(158, 148, 108, 0.4)";
               ctx.beginPath();
               ctx.arc(clusterX - 5, sy - 5, baseRadius * 0.8, 0, Math.PI * 2);
               ctx.fill();
             }
+
+            // --- LAYER B.2: Hazard-Stripe Boundary ---
+            // A thick black-and-amber marching dashed line traced along the
+            // exact leading edge — the single most universally recognized
+            // "danger / do-not-cross" visual there is, so kids read "this
+            // line means stop" before they read a word of text. Drawn on
+            // top of the puffs so it's never swallowed by the cloud art,
+            // and colorblind-safe since the pattern (not just hue) carries
+            // the meaning.
+            ctx.save();
+            ctx.lineCap = "round";
+            ctx.lineJoin = "round";
+            ctx.beginPath();
+            ctx.moveTo(smogEdgeX(edgeTop), edgeTop);
+            for (var hzY = 0; hzY <= edgeSteps; hzY++) {
+              var hy = edgeTop + ((edgeBottom - edgeTop) * hzY) / edgeSteps;
+              ctx.lineTo(smogEdgeX(hy), hy);
+            }
+            ctx.strokeStyle = "#241c30";
+            ctx.lineWidth = 7;
+            ctx.stroke();
+            ctx.strokeStyle = "#ffb020";
+            ctx.lineWidth = 7;
+            ctx.setLineDash([13, 13]);
+            ctx.lineDashOffset = -state.elapsed * 45;
+            ctx.stroke();
+            ctx.setLineDash([]);
+            ctx.restore();
+
+            // --- LAYER B.3: Rising Soot Plume ---
+            // A few dark tendrils drift up and fade off the top of the
+            // haze — reads instantly as chimney/exhaust smoke rather than
+            // weather, reinforcing "pollution" at a glance.
+            ctx.save();
+            for (var pl = 0; pl < 3; pl++) {
+              var plumePhase = state.elapsed * 0.9 + pl * 2.3;
+              var plumeBaseX =
+                smogX + 10 + pl * 26 + Math.sin(plumePhase) * 10;
+              var plumeTopY = gridYOffset - 55 - (pl % 2) * 15;
+              var plumeGrad = ctx.createLinearGradient(
+                plumeBaseX,
+                gridYOffset,
+                plumeBaseX,
+                plumeTopY,
+              );
+              plumeGrad.addColorStop(0, "rgba(70, 65, 55, 0.45)");
+              plumeGrad.addColorStop(1, "rgba(70, 65, 55, 0)");
+              ctx.strokeStyle = plumeGrad;
+              ctx.lineWidth = 10 - pl * 2;
+              ctx.beginPath();
+              ctx.moveTo(plumeBaseX, gridYOffset + 4);
+              ctx.quadraticCurveTo(
+                plumeBaseX + Math.sin(plumePhase * 1.6) * 18,
+                (gridYOffset + plumeTopY) / 2,
+                plumeBaseX + Math.sin(plumePhase * 2.1) * 10,
+                plumeTopY,
+              );
+              ctx.stroke();
+            }
+            ctx.restore();
 
             // --- LAYER B.5: Cartoon Smog Face (big, focal, left-facing) ---
             // The face sits on its own contrasting "face-plate" disc (not
@@ -2870,7 +2954,7 @@
 
             // Face-plate: a lighter, higher-contrast disc so the face
             // pops clear of the busy cloud texture behind it.
-            ctx.fillStyle = faceHappy ? "#b7a4d6" : "#8f7bab";
+            ctx.fillStyle = faceHappy ? "#cbbf9a" : "#8a8067";
              ctx.strokeStyle = "#241c30";
             ctx.lineWidth = 1;
             ctx.beginPath();
@@ -2956,18 +3040,31 @@
 
             ctx.restore();
 
-            // --- LAYER C: Child-Friendly Visual Labels ---
+            // --- LAYER C: High-Contrast Warning Label ---
+            // Bold, dark-outlined text pinned just behind the hazard
+            // stripe (not buried deep in the fog body) at full opacity,
+            // so the stage's message — this is smog, and it's spreading —
+            // is legible at a glance instead of the old 0.4-alpha text
+            // that all but disappeared against the cloud art.
             ctx.save();
             ctx.textAlign = "center";
             ctx.textBaseline = "middle";
 
-            var textCenterX = smogX + (W - smogX) / 2;
+            var labelX = Math.min(smogX + 74, W - 66);
+            var labelY = gridYOffset + gridH * 0.32;
 
-            // Soft warning text labels inside the body
-            ctx.fillStyle = "rgba(255, 255, 255, 0.4)";
-            ctx.font = "bold 22px sans-serif";
-            ctx.fillText("⚠️ OH NO!", textCenterX, gridYOffset + gridH * 0.4);
-            ctx.fillText("💨 COUGH!", textCenterX, gridYOffset + gridH * 0.7);
+            ctx.lineJoin = "round";
+            ctx.font = "800 24px 'Baloo 2', sans-serif";
+            ctx.lineWidth = 5;
+            ctx.strokeStyle = "#241c30";
+            ctx.fillStyle = "#fdfaef";
+            ctx.strokeText("⚠️ SMOG!", labelX, labelY);
+            ctx.fillText("⚠️ SMOG!", labelX, labelY);
+
+            ctx.font = "700 16px 'Quicksand', sans-serif";
+            ctx.lineWidth = 4;
+            ctx.strokeText("😷 dirty air — keep it out!", labelX, labelY + 27);
+            ctx.fillText("😷 dirty air — keep it out!", labelX, labelY + 27);
 
             ctx.restore();
             ctx.restore();
