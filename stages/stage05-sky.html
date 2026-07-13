@@ -288,6 +288,14 @@
 
   .emoji-big { font-size: 54px; display: block; margin-bottom: 6px; }
 
+  .panel-sprite {
+    display: block;
+    height: 84px;
+    width: auto;
+    margin: 0 auto 8px;
+    image-rendering: -webkit-optimize-contrast;
+  }
+
   .btn {
     font-family: 'Baloo 2', sans-serif;
     font-weight: 800;
@@ -389,7 +397,7 @@
       <!-- START OVERLAY -->
       <div class="overlay" id="startOverlay">
         <div class="panel">
-          <span class="emoji-big">🌀</span>
+          <img class="panel-sprite" src="assets/sprites/stage05/happy-breezy.png" alt="Breezy the wind spirit, smiling">
           <h1>Stage 5</h1>
           <h2>Breezy & the Two Skies</h2>
           <p>Guide Breezy through the sky and gather glowing energy orbs ✨ to light up the sleepy city below.</p>
@@ -405,7 +413,7 @@
       <!-- WIN OVERLAY -->
       <div class="overlay hidden" id="winOverlay">
         <div class="panel">
-          <span class="emoji-big">🌇✨</span>
+          <img class="panel-sprite" src="assets/sprites/stage05/lit-buildings.png" alt="City buildings glowing with light">
           <h1>The City is Powered!</h1>
           <h2>Breezy did it — clean skies ahead</h2>
           <div class="seedcard">
@@ -419,7 +427,7 @@
       <!-- FAIL OVERLAY (soft, no negative language) -->
       <div class="overlay hidden" id="failOverlay">
         <div class="panel">
-          <span class="emoji-big">🌫️🌀</span>
+          <img class="panel-sprite" src="assets/sprites/stage05/sad-clouds.png" alt="Sad smoggy clouds">
           <h1>Let's Catch Some Air!</h1>
           <h2>Breezy just needs a little breather</h2>
           <p>The skies got a bit foggy — take a breath and try gliding through those clean updrafts again.</p>
@@ -459,6 +467,51 @@
     ink:'#12120F', cream:'#FDFBF7', lime:'#C6FF3D', limeDark:'#8FCB1A',
     cobalt:'#2C4BFF', cobaltDark:'#1830B0', grey:'#8b8b8b', greyDark:'#4a4a4a',
     greyLight:'#d9d9d3', gold:'#FFC93C'
+  };
+
+  // ---------------------------------------------------------------
+  // SPRITE SHEETS (GOGSpriteSheet convention: single-row frame strips)
+  // ---------------------------------------------------------------
+  const SPRITE_BASE = 'assets/sprites/stage05/';
+
+  function GOGSpriteSheet(src, frameCount){
+    const img = new Image();
+    let ready = false;
+    img.onload = () => { ready = true; };
+    img.src = SPRITE_BASE + src;
+    return {
+      img,
+      frameCount,
+      get ready(){ return ready; },
+      get frameW(){ return Math.floor(img.naturalWidth / frameCount); },
+      get frameH(){ return Math.floor(img.naturalHeight); }
+    };
+  }
+
+  // draws a single frame of a sheet centered at (x,y), scaled to displayH (keeps aspect), optional hFlip
+  function drawSpriteFrame(sheet, frameIndex, x, y, displayH, hFlip){
+    if(!sheet.ready) return false;
+    const fi = ((frameIndex % sheet.frameCount) + sheet.frameCount) % sheet.frameCount;
+    const fw = sheet.frameW, fh = sheet.frameH;
+    const scale = displayH / fh;
+    const dw = Math.round(fw * scale), dh = Math.round(fh * scale);
+    const sx = Math.round(fi * fw);
+    ctx.save();
+    ctx.translate(x, y);
+    if(hFlip) ctx.scale(-1, 1);
+    ctx.drawImage(sheet.img, sx, 0, fw, fh, -dw/2, -dh/2, dw, dh);
+    ctx.restore();
+    return true;
+  }
+
+  const sprites = {
+    breezyFly: GOGSpriteSheet('flying-breezy.png', 6),   // 6-frame flight loop
+    breezyHappy: GOGSpriteSheet('happy-breezy.png', 3),  // 3-frame celebrate/boost pose
+    birds: GOGSpriteSheet('flying-birds.png', 2),        // 2-frame wing flap
+    cloudHappy: GOGSpriteSheet('happy-clouds.png', 2),   // 2-frame ambient cloud
+    cloudSad: GOGSpriteSheet('sad-clouds.png', 2),       // 2-frame obstacle cloud (smog)
+    buildingLit: GOGSpriteSheet('lit-buildings.png', 2), // 2 lit building variants
+    buildingUnlit: GOGSpriteSheet('unlit-buildings.png', 2) // 2 unlit building variants
   };
 
   // ---------------------------------------------------------------
@@ -514,7 +567,9 @@
     boostTimer: 0,
     dragActive: false,
     angle: 0,
-    trailTimer: 0
+    trailTimer: 0,
+    animFrame: 0,
+    animTimer: 0
   };
 
   let score = 0;
@@ -522,7 +577,8 @@
   let smokeOverlapThisFrame = false;
 
   let updrafts = [], smokes = [], orbs = [], particles = [];
-  let spawnTimers = { updraft: 40, smoke: 60, orb: 20 };
+  let birds = [], ambientClouds = [];
+  let spawnTimers = { updraft: 40, smoke: 60, orb: 20, bird: 30, cloud: 5 };
 
   const buildings = [];
 
@@ -552,7 +608,7 @@
           windows.push({ lit: Math.random() < 0.5 });
         }
       }
-      buildings.push({ x, w, h, y: H - h, lit:false, cols, rows, windows, litProgress:0 });
+      buildings.push({ x, w, h, y: H - h, lit:false, cols, rows, windows, litProgress:0, variant: i % 2 });
     }
   }
 
@@ -570,8 +626,11 @@
     clarity = 100;
     player.y = 300; player.targetY = 300; player.prevY = 300;
     player.speedFactor = 1; player.boostTimer = 0; player.angle = 0;
+    player.animFrame = 0; player.animTimer = 0;
     updrafts = []; smokes = []; orbs = []; particles = [];
-    spawnTimers = { updraft: 40, smoke: 60, orb: 20 };
+    birds = []; ambientClouds = [];
+    spawnTimers = { updraft: 40, smoke: 60, orb: 20, bird: 30, cloud: 5 };
+    seedAmbientClouds();
     buildBuildings();
     updateHUD();
   }
@@ -639,6 +698,9 @@
       radius: rand(34,50),
       wobble: rand(0, Math.PI*2),
       speed: rand(0.8, 1.3),
+      frame: Math.random() < 0.5 ? 0 : 1,
+      hFlip: Math.random() < 0.5,
+      blinkTimer: rand(1.5,3.5),
       puffs: [
         {dx:0, dy:0, r: rand(20,28)},
         {dx: rand(-18,18), dy: rand(-10,10), r: rand(14,20)},
@@ -650,6 +712,37 @@
   function spawnOrb(){
     const y = rand(PLAY_TOP+20, PLAY_BOTTOM-40);
     orbs.push({ x: W+40, y, baseY: y, radius: 13, wobble: rand(0,Math.PI*2), collected:false });
+  }
+
+  // ambient decorative flock (purely visual, no collisions)
+  function spawnBird(){
+    const y = rand(PLAY_TOP-10, PLAY_TOP+140);
+    const baseSpeed = rand(1.1, 1.9);
+    birds.push({
+      x: W + rand(20,90), y, baseY: y,
+      speed: baseSpeed,
+      h: rand(20,30),
+      flapTimer: rand(0,1),
+      flapRate: rand(7,11),
+      wobble: rand(0,Math.PI*2)
+    });
+  }
+
+  // ambient far-background friendly clouds (purely visual, drift slowly)
+  function spawnAmbientCloud(x){
+    ambientClouds.push({
+      x: x !== undefined ? x : W + rand(30,120),
+      y: rand(PLAY_TOP-10, PLAY_BOTTOM*0.55),
+      h: rand(46,74),
+      speed: rand(0.35,0.6),
+      blinkTimer: rand(0,6),
+      frame: 0
+    });
+  }
+  function seedAmbientClouds(){
+    for(let i=0;i<4;i++){
+      spawnAmbientCloud(rand(0, W));
+    }
   }
 
   // ---------------------------------------------------------------
@@ -706,6 +799,12 @@
       player.speedFactor = lerp(player.speedFactor, 1, 0.03*dt);
     }
 
+    // --- sprite animation frame ---
+    const frameCount = (player.boostTimer > 0) ? sprites.breezyHappy.frameCount : sprites.breezyFly.frameCount;
+    const fps = (player.boostTimer > 0) ? 8 : 11;
+    player.animTimer += dt/60*fps;
+    player.animFrame = Math.floor(player.animTimer) % frameCount;
+
     // --- trail particles while boosted ---
     if(player.boostTimer > 0){
       player.trailTimer -= dt;
@@ -719,9 +818,13 @@
     spawnTimers.updraft -= dt;
     spawnTimers.smoke -= dt;
     spawnTimers.orb -= dt;
+    spawnTimers.bird -= dt;
+    spawnTimers.cloud -= dt;
     if(spawnTimers.updraft <= 0){ spawnUpdraft(); spawnTimers.updraft = rand(70,110); }
     if(spawnTimers.smoke <= 0){ spawnSmoke(); spawnTimers.smoke = rand(90,140); }
     if(spawnTimers.orb <= 0){ spawnOrb(); spawnTimers.orb = rand(55,90); }
+    if(spawnTimers.bird <= 0){ spawnBird(); spawnTimers.bird = rand(90,160); }
+    if(spawnTimers.cloud <= 0){ spawnAmbientCloud(); spawnTimers.cloud = rand(140,220); }
 
     // --- update updrafts ---
     smokeOverlapThisFrame = false;
@@ -749,6 +852,8 @@
       s.x -= s.speed * effScroll * dt;
       s.wobble += 0.03*dt;
       s.y = s.baseY + Math.sin(s.wobble)*6;
+      s.blinkTimer -= dt/60;
+      if(s.blinkTimer <= 0){ s.frame = 1 - s.frame; s.blinkTimer = rand(1.5,3.5); }
       if(s.x < -100){ smokes.splice(i,1); continue; }
       const d = Math.hypot(s.x-player.x, s.y-player.y);
       if(d < s.radius + player.radius*0.6){
@@ -783,6 +888,25 @@
           triggerWin();
         }
       }
+    }
+
+    // --- update ambient birds (decorative, no collision) ---
+    for(let i=birds.length-1;i>=0;i--){
+      const b = birds[i];
+      b.x -= b.speed * effScroll * dt;
+      b.wobble += 0.04*dt;
+      b.y = b.baseY + Math.sin(b.wobble)*6;
+      b.flapTimer += dt/60*b.flapRate;
+      if(b.x < -60){ birds.splice(i,1); }
+    }
+
+    // --- update ambient clouds (decorative, no collision) ---
+    for(let i=ambientClouds.length-1;i>=0;i--){
+      const c = ambientClouds[i];
+      c.x -= c.speed * effScroll * dt;
+      c.blinkTimer -= dt/60;
+      if(c.blinkTimer <= 0){ c.frame = 1 - c.frame; c.blinkTimer = rand(2.5,5); }
+      if(c.x < -100){ ambientClouds.splice(i,1); }
     }
 
     // --- particles ---
@@ -865,6 +989,15 @@
     ctx.restore();
   }
 
+  // draws one frame of a building sheet stretched to an arbitrary w x h box (not aspect-locked,
+  // since skyline slots vary but building art should fill each slot fully)
+  function drawBuildingSprite(sheet, variant, x, y, w, h){
+    if(!sheet.ready) return false;
+    const fw = sheet.frameW, fh = sheet.frameH;
+    ctx.drawImage(sheet.img, variant*fw, 0, fw, fh, x, y, w, h);
+    return true;
+  }
+
   function drawSkyline(){
     // ground strip
     ctx.fillStyle = COLORS.ink;
@@ -873,38 +1006,36 @@
     buildings.forEach(b=>{
       // smooth lit transition
       b.litProgress = lerp(b.litProgress, b.lit?1:0, 0.08);
-      const baseColor = mixColor([90,90,90], [70,190,90], b.litProgress);
 
-      ctx.fillStyle = `rgb(${baseColor[0]},${baseColor[1]},${baseColor[2]})`;
-      ctx.strokeStyle = COLORS.ink;
-      ctx.lineWidth = 3;
-      roundRectPath(b.x, b.y, b.w, b.h, 4);
-      ctx.fill(); ctx.stroke();
-
-      if(b.litProgress > 0.05){
-        ctx.save();
-        ctx.globalAlpha = b.litProgress*0.35;
-        ctx.fillStyle = COLORS.lime;
-        ctx.beginPath();
-        ctx.arc(b.x+b.w/2, b.y+b.h/2, b.w*0.9, 0, Math.PI*2);
-        ctx.fill();
-        ctx.restore();
+      const unlitDrawn = drawBuildingSprite(sprites.buildingUnlit, b.variant, b.x, b.y, b.w, b.h);
+      if(!unlitDrawn){
+        // fallback while sprite loads: original neo-brutalist rect
+        ctx.fillStyle = '#5a5a5a';
+        ctx.strokeStyle = COLORS.ink;
+        ctx.lineWidth = 3;
+        roundRectPath(b.x, b.y, b.w, b.h, 4);
+        ctx.fill(); ctx.stroke();
       }
 
-      // windows
-      const padX = 6, padY = 6;
-      const cellW = (b.w-padX*2)/b.cols;
-      const cellH = (b.h-padY*2)/b.rows;
-      let wi = 0;
-      for(let cx=0;cx<b.cols;cx++){
-        for(let cy=0;cy<b.rows;cy++){
-          const win = b.windows[wi++];
-          const litWin = b.lit && win.lit;
-          ctx.fillStyle = litWin ? '#FFF3B0' : (b.lit ? 'rgba(255,255,255,0.35)' : '#2c2c2c');
-          const wx = b.x + padX + cx*cellW + cellW*0.15;
-          const wy = b.y + padY + cy*cellH + cellH*0.15;
-          ctx.fillRect(wx, wy, cellW*0.6, cellH*0.6);
+      if(b.litProgress > 0.02){
+        ctx.save();
+        ctx.globalAlpha = b.litProgress;
+        const litDrawn = drawBuildingSprite(sprites.buildingLit, b.variant, b.x, b.y, b.w, b.h);
+        if(!litDrawn){
+          ctx.fillStyle = '#4aaf5a';
+          roundRectPath(b.x, b.y, b.w, b.h, 4);
+          ctx.fill();
         }
+        ctx.restore();
+
+        // warm glow halo once lit
+        ctx.save();
+        ctx.globalAlpha = b.litProgress*0.3;
+        ctx.fillStyle = COLORS.gold;
+        ctx.beginPath();
+        ctx.arc(b.x+b.w/2, b.y+b.h/2, b.w*0.85, 0, Math.PI*2);
+        ctx.fill();
+        ctx.restore();
       }
     });
   }
@@ -973,20 +1104,50 @@
     });
   }
 
+  function drawAmbientClouds(){
+    ambientClouds.forEach(c=>{
+      if(!drawSpriteFrame(sprites.cloudHappy, c.frame, c.x, c.y, c.h)){
+        // fallback while sprite loads
+        ctx.fillStyle = 'rgba(255,255,255,0.7)';
+        drawCloud(c.x, c.y, c.h*0.9);
+      }
+    });
+  }
+
+  function drawBirds(){
+    birds.forEach(b=>{
+      const frame = Math.floor(b.flapTimer) % 2;
+      if(!drawSpriteFrame(sprites.birds, frame, b.x, b.y, b.h, true)){
+        // fallback: tiny drawn bird silhouette
+        ctx.save();
+        ctx.translate(b.x, b.y);
+        ctx.fillStyle = COLORS.cobalt;
+        ctx.beginPath();
+        ctx.moveTo(-10,0); ctx.quadraticCurveTo(0,-8,10,0); ctx.quadraticCurveTo(0,4,-10,0);
+        ctx.fill();
+        ctx.restore();
+      }
+    });
+  }
+
   function drawSmokes(){
     smokes.forEach(s=>{
-      ctx.save();
-      ctx.translate(s.x,s.y);
-      ctx.fillStyle = 'rgba(70,70,70,0.75)';
-      ctx.strokeStyle = COLORS.ink;
-      ctx.lineWidth = 3;
-      s.puffs.forEach(p=>{
-        ctx.beginPath();
-        ctx.arc(p.dx, p.dy, p.r, 0, Math.PI*2);
-        ctx.fill();
-        ctx.stroke();
-      });
-      ctx.restore();
+      const frame = s.frame || 0;
+      if(!drawSpriteFrame(sprites.cloudSad, frame, s.x, s.y, s.radius*2.1, s.hFlip)){
+        // fallback while sprite loads
+        ctx.save();
+        ctx.translate(s.x,s.y);
+        ctx.fillStyle = 'rgba(70,70,70,0.75)';
+        ctx.strokeStyle = COLORS.ink;
+        ctx.lineWidth = 3;
+        s.puffs.forEach(p=>{
+          ctx.beginPath();
+          ctx.arc(p.dx, p.dy, p.r, 0, Math.PI*2);
+          ctx.fill();
+          ctx.stroke();
+        });
+        ctx.restore();
+      }
     });
   }
 
@@ -1050,24 +1211,30 @@
       ctx.beginPath(); ctx.arc(0,0,player.radius*1.7,0,Math.PI*2); ctx.fill();
     }
 
-    // body disc (neo-brutalist: cream fill, thick black outline)
-    ctx.fillStyle = glowing ? COLORS.lime : (smokeOverlapThisFrame ? '#cfcfcf' : COLORS.cream);
-    ctx.strokeStyle = COLORS.ink;
-    ctx.lineWidth = 4;
-    ctx.beginPath();
-    ctx.arc(0,0, player.radius, 0, Math.PI*2);
-    ctx.fill(); ctx.stroke();
+    ctx.restore();
 
-    // spiral emoji face
-    ctx.font = '30px Arial';
-    ctx.textAlign='center'; ctx.textBaseline='middle';
-    ctx.fillText('🌀', 0, 2);
-
-    // cute eyes
-    ctx.fillStyle = COLORS.ink;
-    ctx.beginPath(); ctx.arc(-7,-4,2.4,0,Math.PI*2); ctx.fill();
-    ctx.beginPath(); ctx.arc(7,-4,2.4,0,Math.PI*2); ctx.fill();
-
+    // Breezy sprite: happy pose while boosted, flight loop otherwise.
+    // Drawn un-rotated (fairy sprite already reads correctly at any bob angle)
+    // but nudged slightly by angle for a gentle tilt-into-motion feel.
+    ctx.save();
+    ctx.translate(player.x, player.y);
+    ctx.rotate(player.angle*0.35);
+    const spriteH = player.radius * 3.0;
+    const sheet = glowing ? sprites.breezyHappy : sprites.breezyFly;
+    if(smokeOverlapThisFrame) ctx.globalAlpha = 0.6;
+    const drawn = drawSpriteFrame(sheet, player.animFrame, 0, 0, spriteH, false);
+    if(!drawn){
+      // fallback while sprite loads: original neo-brutalist disc
+      ctx.fillStyle = glowing ? COLORS.lime : (smokeOverlapThisFrame ? '#cfcfcf' : COLORS.cream);
+      ctx.strokeStyle = COLORS.ink;
+      ctx.lineWidth = 4;
+      ctx.beginPath();
+      ctx.arc(0,0, player.radius, 0, Math.PI*2);
+      ctx.fill(); ctx.stroke();
+      ctx.font = '30px Arial';
+      ctx.textAlign='center'; ctx.textBaseline='middle';
+      ctx.fillText('🌀', 0, 2);
+    }
     ctx.restore();
   }
 
@@ -1083,6 +1250,8 @@
   function render(time){
     ctx.clearRect(0,0,W,H);
     drawSky();
+    drawAmbientClouds();
+    drawBirds();
     drawSkyline();
     drawSmokes();
     drawUpdrafts();
@@ -1135,6 +1304,20 @@
       // idle background motion on start/win/fail screens
       bgOffset1 = (bgOffset1 + 0.4*dt) % W;
       bgOffset2 = (bgOffset2 + 0.8*dt) % W;
+      for(let i=ambientClouds.length-1;i>=0;i--){
+        const c = ambientClouds[i];
+        c.x -= c.speed*1.2*dt;
+        c.blinkTimer -= dt/60;
+        if(c.blinkTimer <= 0){ c.frame = 1 - c.frame; c.blinkTimer = rand(2.5,5); }
+        if(c.x < -100){ ambientClouds.splice(i,1); spawnAmbientCloud(W+rand(20,80)); }
+      }
+      if(Math.random() < 0.01*dt) spawnBird();
+      for(let i=birds.length-1;i>=0;i--){
+        const b = birds[i];
+        b.x -= b.speed*1.2*dt;
+        b.flapTimer += dt/60*b.flapRate;
+        if(b.x < -60){ birds.splice(i,1); }
+      }
     }
     if(gameState === 'winning'){
       winWipeRadius += dt * (winWipeMax * 1.6 / 60);
@@ -1168,6 +1351,7 @@
   });
 
   buildBuildings();
+  seedAmbientClouds();
   updateHUD();
   requestAnimationFrame(loop);
 
