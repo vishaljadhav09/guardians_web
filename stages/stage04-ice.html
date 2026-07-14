@@ -720,6 +720,30 @@
           { x: 390, y: 80, scale: 0.7, speed: 10, layer: "front" },
         ];
 
+        // Fixed-size ambient water dressing — positions/phases are set once
+        // and animated purely from state.time, so drawWater never has to
+        // allocate or push/pop arrays every frame.
+        const waterBubbles = [];
+        for (let i = 0; i < 14; i++) {
+          waterBubbles.push({
+            x: (i * 137) % WORLD_W,
+            depth: 20 + ((i * 53) % 90),
+            speed: 12 + (i % 5) * 6,
+            size: 2 + (i % 3) * 1.5,
+            phase: i * 0.9,
+          });
+        }
+        const waterFish = [];
+        for (let i = 0; i < 5; i++) {
+          waterFish.push({
+            baseX: (i * 340 + 120) % WORLD_W,
+            depth: 40 + ((i * 71) % 70),
+            speed: 26 + (i % 3) * 10,
+            dir: i % 2 === 0 ? 1 : -1,
+            phase: i * 1.3,
+          });
+        }
+
         const input = {
           left: false,
           right: false,
@@ -848,6 +872,22 @@
               gone: false,
             },
           ];
+
+          // Give every floe a unique, stable "personality": an irregular
+          // jagged silhouette, its own gentle rotation wobble, and its own
+          // ambient drip/snow timers, all seeded off its phase so the same
+          // floe always looks the same way (no per-frame reshuffling).
+          for (let i = 0; i < meltPlatforms.length; i++) {
+            const pl = meltPlatforms[i];
+            pl.seed = Math.floor(pl.phase * 1000) + i * 37;
+            pl.rot = 0;
+            pl.rotSpeed = (i % 2 === 0 ? 1 : -1) * (0.08 + (i % 3) * 0.03);
+            pl.snowTimer = pl.phase % 1;
+            pl.dripTimer = (pl.phase * 0.6) % 1;
+            pl.meltStage = 0;
+            pl.shapePts = null;
+            pl.crackSeed = pl.seed * 7 + 3;
+          }
 
           const chicks = [
             {
@@ -1190,8 +1230,11 @@
           }
         }
 
+        const AMBIENT_PARTICLE_CAP = 40;
+
         function updatePlatforms(dt) {
           const p = state.player;
+          p.onCriticalIce = false;
           for (const pl of state.meltPlatforms) {
             if (pl.gone) {
               pl.refreezeTimer = (pl.refreezeTimer || 0) + dt;
@@ -1200,12 +1243,20 @@
                 pl.shrink = 0;
                 pl.w = pl.baseW;
                 pl.refreezeTimer = 0;
+                pl.cachedCrackStage = -1;
                 spawnBurst(pl.x + pl.baseW / 2, pl.y + 6, 8, "#A0E0FF");
               }
               continue;
             }
             pl.t = (pl.t || 0) + dt;
             pl.y += Math.sin(state.time * 0.55 + pl.phase) * 4 * dt;
+            // Gentle rotational bob — bigger floes barely tilt, small
+            // melting ones wobble more, like real drift physics.
+            const meltRatioNow = 1 - pl.w / pl.baseW;
+            pl.rot =
+              Math.sin(state.time * 0.4 + pl.phase) *
+              0.045 *
+              (1 + meltRatioNow);
 
             const topBand = {
               x: pl.x + pl.shrink * 0.5,
@@ -1229,9 +1280,66 @@
                 (standing ? 3 + state.warmth * 5 : 0);
             pl.shrink += meltRate * dt;
             pl.w = Math.max(48, pl.baseW - pl.shrink);
+
+            const meltRatio = 1 - pl.w / pl.baseW;
+            if (standing && meltRatio > 0.55) p.onCriticalIce = true;
+
+            // Crack-stage sound cue: a soft crack plays the moment a floe
+            // worsens a stage, not every frame while it stays there.
+            const stage =
+              meltRatio < 0.15
+                ? 1
+                : meltRatio < 0.35
+                  ? 2
+                  : meltRatio < 0.52
+                    ? 3
+                    : meltRatio < 0.68
+                      ? 4
+                      : 5;
+            if (stage > (pl.meltStage || 0)) {
+              pl.meltStage = stage;
+              if (stage >= 2) audio.blip(200 - stage * 12, 70);
+            }
+
+            // Pooled ambient drips/snow: capped total count, timers reset
+            // rather than allocating a growing array of emitters.
+            if (state.particles.length < AMBIENT_PARTICLE_CAP) {
+              pl.snowTimer -= dt;
+              if (pl.snowTimer <= 0) {
+                pl.snowTimer = 1.4 + Math.random() * 1.2;
+                state.particles.push({
+                  x: pl.x + Math.random() * pl.w,
+                  y: pl.y + 4,
+                  vx: (Math.random() - 0.5) * 10,
+                  vy: 6 + Math.random() * 8,
+                  life: 1.2,
+                  maxLife: 1.2,
+                  color: "#ffffff",
+                  size: 2 + Math.random() * 2,
+                  kind: "snow",
+                });
+              }
+              pl.dripTimer -= dt * (1 + meltRatio * 2);
+              if (pl.dripTimer <= 0 && meltRatio > 0.25) {
+                pl.dripTimer = 0.9 + Math.random() * 0.7;
+                state.particles.push({
+                  x: pl.x + pl.w * 0.5 + (Math.random() - 0.5) * pl.w * 0.6,
+                  y: pl.y + pl.h,
+                  vx: 0,
+                  vy: 30,
+                  life: 0.5,
+                  maxLife: 0.5,
+                  color: "#6FB6E8",
+                  size: 3,
+                  kind: "drip",
+                });
+              }
+            }
+
             if (pl.shrink > pl.baseW - 42) {
               pl.gone = true;
               pl.refreezeTimer = 0;
+              pl.meltStage = 0;
               state.meltedCount += 1;
               spawnBurst(pl.x + pl.baseW / 2, pl.y + 6, 12, "#DFF6FF");
               if (standing) {
@@ -1380,7 +1488,7 @@
             pt.life -= dt;
             pt.x += pt.vx * dt;
             pt.y += pt.vy * dt;
-            pt.vy += 180 * dt;
+            pt.vy += (pt.kind === "snow" ? 25 : 180) * dt;
             if (pt.life <= 0) state.particles.splice(i, 1);
           }
         }
@@ -1699,7 +1807,16 @@
 
           const delivered = state.chicks.filter((c) => c.delivered);
           delivered.forEach((c, i) => {
-            drawEmoji("🐥", b.x + 52 + i * 28, b.y - 6 - (i % 2) * 6, 22);
+            const dance = Math.sin(state.time * 4 + i * 1.7) * 4;
+            drawEmoji(
+              "🐥",
+              b.x + 52 + i * 28,
+              b.y - 6 - (i % 2) * 6 + dance,
+              22,
+            );
+            if (Math.sin(state.time * 3 + i) > 0.85) {
+              drawEmoji("💚", b.x + 52 + i * 28 + 10, b.y - 22 - (i % 2) * 6 + dance, 12);
+            }
           });
         }
 
@@ -1742,6 +1859,155 @@
             p.x + 165,
             p.y - 31,
           );
+        }
+
+        // Small deterministic PRNG so each floe's jagged edge and crack
+        // pattern is generated once, cached, and never reshuffles frame
+        // to frame (real Math.random() would make the ice "boil").
+        function seededRandom(seed) {
+          let s = seed % 2147483647;
+          if (s <= 0) s += 2147483646;
+          return function () {
+            s = (s * 16807) % 2147483647;
+            return (s - 1) / 2147483646;
+          };
+        }
+
+        // Builds an irregular, organic outline for a floe (as normalized
+        // 0..1 offsets around a rounded rect) plus a jagged snow-cap line
+        // along the top edge, so no two platforms read as the same shape.
+        function getIceShapePoints(pl) {
+          if (pl.shapePts) return pl.shapePts;
+          const rand = seededRandom(pl.seed || 1);
+          const N = 14;
+          const outline = [];
+          for (let i = 0; i < N; i++) {
+            const t = i / N;
+            const bulge = 0.82 + rand() * 0.22;
+            outline.push({ t, bulge });
+          }
+          const snowTeeth = [];
+          const teeth = 6 + Math.floor(rand() * 3);
+          for (let i = 0; i <= teeth; i++) {
+            snowTeeth.push(0.55 + rand() * 0.45);
+          }
+          pl.shapePts = { outline, snowTeeth };
+          return pl.shapePts;
+        }
+
+        // Cracks are generated once per melt-stage (not every frame) and
+        // cached on the platform so they hold still until the ice actually
+        // worsens to the next stage.
+        function getCrackLines(pl, stage) {
+          if (pl.cachedCrackStage === stage && pl.cachedCracks) {
+            return pl.cachedCracks;
+          }
+          const rand = seededRandom((pl.crackSeed || 1) + stage * 911);
+          const count = Math.min(stage * 2, 8);
+          const lines = [];
+          for (let i = 0; i < count; i++) {
+            const cx = 0.15 + rand() * 0.7;
+            const cy = 0.2 + rand() * 0.6;
+            const len = 0.12 + rand() * 0.22;
+            const ang = rand() * Math.PI * 2;
+            lines.push({ cx, cy, len, ang, branch: rand() > 0.5 });
+          }
+          pl.cachedCrackStage = stage;
+          pl.cachedCracks = lines;
+          return lines;
+        }
+
+        // Draws one organic ice floe: jagged silhouette, snow cap, interior
+        // shading, and stage-appropriate cracks/puddles/fragment gaps.
+        function drawIceFloe(pl, x, w, meltRatio) {
+          const h = pl.h;
+          const pts = getIceShapePoints(pl);
+          const stage =
+            meltRatio < 0.15
+              ? 1
+              : meltRatio < 0.35
+                ? 2
+                : meltRatio < 0.52
+                  ? 3
+                  : meltRatio < 0.68
+                    ? 4
+                    : 5;
+
+          ctx.save();
+          ctx.translate(x + w / 2, pl.y + h / 2);
+          ctx.rotate(pl.rot || 0);
+          ctx.translate(-w / 2, -h / 2);
+
+          // Jagged organic body
+          ctx.beginPath();
+          for (let i = 0; i < pts.outline.length; i++) {
+            const o = pts.outline[i];
+            const ang = o.t * Math.PI * 2;
+            const rx = (w / 2) * o.bulge;
+            const ry = (h / 2) * o.bulge;
+            const px = w / 2 + Math.cos(ang) * rx;
+            const py = h / 2 + Math.sin(ang) * ry;
+            if (i === 0) ctx.moveTo(px, py);
+            else ctx.lineTo(px, py);
+          }
+          ctx.closePath();
+
+          const fade = stage >= 5 ? 0.55 : stage >= 4 ? 0.72 : 0.92;
+          ctx.globalAlpha = fade;
+          ctx.fillStyle = stage >= 4 ? "#B7E2FF" : "#E4F7FF";
+          ctx.fill();
+          ctx.globalAlpha = 1;
+          ctx.strokeStyle = "#111";
+          ctx.lineWidth = 3.5;
+          ctx.stroke();
+
+          // Snow cap: a jagged bright strip hugging the top edge
+          ctx.beginPath();
+          const teeth = pts.snowTeeth;
+          const step = w / (teeth.length - 1);
+          ctx.moveTo(0, h * 0.16);
+          for (let i = 0; i < teeth.length; i++) {
+            ctx.lineTo(i * step, h * 0.16 * teeth[i]);
+          }
+          ctx.lineTo(w, h * 0.3);
+          ctx.lineTo(0, h * 0.3);
+          ctx.closePath();
+          ctx.fillStyle = "#ffffff";
+          ctx.globalAlpha = 0.9;
+          ctx.fill();
+          ctx.globalAlpha = 1;
+
+          // Cracks / puddles that thicken with each melt stage
+          if (stage >= 2) {
+            const cracks = getCrackLines(pl, stage);
+            ctx.strokeStyle = stage >= 4 ? "#3B7FB8" : "#7FB8E0";
+            ctx.lineWidth = stage >= 4 ? 2.4 : 1.6;
+            for (const c of cracks) {
+              const cx = c.cx * w;
+              const cy = c.cy * h;
+              const dx = Math.cos(c.ang) * c.len * w;
+              const dy = Math.sin(c.ang) * c.len * h;
+              ctx.beginPath();
+              ctx.moveTo(cx - dx / 2, cy - dy / 2);
+              ctx.lineTo(cx + dx / 2, cy + dy / 2);
+              if (c.branch) {
+                ctx.lineTo(cx + dx / 2 + dy * 0.3, cy + dy / 2 - dx * 0.3);
+              }
+              ctx.stroke();
+            }
+          }
+          if (stage >= 3) {
+            // small melt puddles pooling on the surface
+            const rand = seededRandom((pl.crackSeed || 1) * 3 + 5);
+            ctx.fillStyle = "rgba(60, 130, 200, 0.35)";
+            const puddles = 2 + (stage >= 4 ? 1 : 0);
+            for (let i = 0; i < puddles; i++) {
+              const px = (0.2 + rand() * 0.6) * w;
+              const py = (0.35 + rand() * 0.35) * h;
+              ellipse(px, py, 10 + rand() * 8, 4 + rand() * 3, true, false);
+            }
+          }
+          ctx.restore();
         }
 
         function drawPlatforms() {
@@ -1787,7 +2053,34 @@
           for (const chick of state.chicks) {
             if (chick.delivered) continue;
             const bob = Math.sin(chick.bob) * 3;
-            drawEmoji("🐥", chick.x + 8, chick.y + 8 + bob, 22);
+            const carried = state.player.carrying.includes(chick);
+            let shiver = 0;
+            let crying = false;
+            if (!carried) {
+              // Find the nearest floe under the chick to decide if it
+              // should look scared (shiver + tear) or just wave happily.
+              let nearest = null;
+              let bestDist = Infinity;
+              for (const pl of state.meltPlatforms) {
+                if (pl.gone) continue;
+                const d = Math.abs(pl.x + pl.w / 2 - chick.x);
+                if (d < bestDist) {
+                  bestDist = d;
+                  nearest = pl;
+                }
+              }
+              if (nearest && bestDist < 120) {
+                const ratio = 1 - nearest.w / nearest.baseW;
+                if (ratio > 0.5) {
+                  shiver = Math.sin(state.time * 22 + chick.bob) * 2.2;
+                  crying = ratio > 0.7;
+                }
+              }
+            }
+            drawEmoji("🐥", chick.x + 8 + shiver, chick.y + 8 + bob, 22);
+            if (crying) {
+              drawEmoji("💧", chick.x + 16, chick.y + 20, 12);
+            }
           }
         }
 
@@ -1796,6 +2089,13 @@
           const x = p.x;
           const y = p.y;
           const sheet = getActiveSpriteSheet();
+
+          // Nervous cue: a quick foot-slip jitter and a worried tilt while
+          // standing on ice that's about to give way, so kids can read
+          // "this spot is dangerous" straight from Penny's body language.
+          const nervous = !!p.onCriticalIce;
+          const jitterX = nervous ? Math.sin(state.time * 30) * 2.2 : 0;
+          const tilt = nervous ? Math.sin(state.time * 16) * 0.06 : 0;
 
           if (sheet.loaded) {
             const frame = penguinAnim.frameIndex;
@@ -1808,7 +2108,8 @@
             const destH = (sheet.frameH / sheet.frameW) * destW;
 
             ctx.save();
-            ctx.translate(x + p.w / 2, y + p.h);
+            ctx.translate(x + p.w / 2 + jitterX, y + p.h);
+            ctx.rotate(tilt);
 
             // FIX: If the running sheet naturally faces left, invert the scale multiplier for that state
             let faceDirection = p.facing;
@@ -1835,7 +2136,8 @@
             const destW = 60;
             const destH = 60;
             ctx.save();
-            ctx.translate(x + p.w / 2, y + p.h);
+            ctx.translate(x + p.w / 2 + jitterX, y + p.h);
+            ctx.rotate(tilt);
 
             let faceDirection = p.facing;
             if (sheet === spriteSheets.running) {
@@ -1853,6 +2155,10 @@
             ctx.restore();
           }
 
+          if (nervous) {
+            drawEmoji("💦", x + p.w / 2 + 16, y - 6 + Math.sin(state.time * 10) * 2, 16);
+          }
+
           if (p.carrying && p.carrying.length > 0) {
             p.carrying.forEach((chick, index) => {
               drawEmoji("🐥", x + p.w / 2, y - 8 - index * 14, 20);
@@ -1862,25 +2168,35 @@
 
         function drawParticles() {
           for (const pt of state.particles) {
-            ctx.globalAlpha = Math.max(0, pt.life / 0.8);
-            ctx.fillStyle = pt.color;
-            ctx.strokeStyle = "#111";
-            ctx.lineWidth = 2;
-            roundedRect(pt.x, pt.y, pt.size, pt.size, 3, true, false);
-            roundedRect(pt.x, pt.y, pt.size, pt.size, 3, false, true);
+            const alpha = Math.max(0, Math.min(1, pt.life / (pt.maxLife || 0.8)));
+            ctx.globalAlpha = alpha;
+            if (pt.kind === "snow") {
+              ctx.fillStyle = pt.color;
+              circle(pt.x, pt.y, pt.size, true);
+            } else if (pt.kind === "drip") {
+              ctx.fillStyle = pt.color;
+              ellipse(pt.x, pt.y, pt.size * 0.6, pt.size * 1.3, true, false);
+            } else {
+              ctx.fillStyle = pt.color;
+              ctx.strokeStyle = "#111";
+              ctx.lineWidth = 2;
+              roundedRect(pt.x, pt.y, pt.size, pt.size, 3, true, false);
+              roundedRect(pt.x, pt.y, pt.size, pt.size, 3, false, true);
+            }
             ctx.globalAlpha = 1;
           }
         }
 
         function drawWater() {
           const top = state.seaLevel;
+          const roughness = 1 + state.warmth * 1.6;
           ctx.save();
           ctx.fillStyle = "#2F6FD0";
           ctx.beginPath();
           ctx.moveTo(0, canvas.height);
           ctx.lineTo(0, top);
           for (let x = 0; x <= canvas.width; x += 16) {
-            const y = top + Math.sin(state.time * 2.8 + x * 0.02) * 7;
+            const y = top + Math.sin(state.time * 2.8 * roughness + x * 0.02) * 7 * roughness;
             ctx.lineTo(x, y);
           }
           ctx.lineTo(canvas.width, canvas.height);
@@ -1889,6 +2205,51 @@
           ctx.strokeStyle = "#111";
           ctx.lineWidth = 4;
           ctx.stroke();
+
+          // Foam highlight riding the crest of the wave line
+          ctx.strokeStyle = "rgba(255,255,255,0.55)";
+          ctx.lineWidth = 2;
+          ctx.beginPath();
+          for (let x = 0; x <= canvas.width; x += 16) {
+            const y = top + Math.sin(state.time * 2.8 * roughness + x * 0.02) * 7 * roughness - 2;
+            if (x === 0) ctx.moveTo(x, y);
+            else ctx.lineTo(x, y);
+          }
+          ctx.stroke();
+
+          // Fish swimming beneath the surface, wrapping around the world
+          ctx.font = "16px Arial";
+          ctx.textAlign = "center";
+          ctx.textBaseline = "middle";
+          for (const f of waterFish) {
+            const worldX =
+              ((f.baseX + state.time * f.speed * f.dir) % WORLD_W + WORLD_W) %
+              WORLD_W;
+            const sx = worldX - cameraX;
+            if (sx < -20 || sx > canvas.width + 20) continue;
+            const sy = top + f.depth + Math.sin(state.time * 1.6 + f.phase) * 6;
+            if (sy > canvas.height - 4) continue;
+            ctx.save();
+            ctx.translate(sx, sy);
+            ctx.scale(f.dir, 1);
+            ctx.fillText("🐟", 0, 0);
+            ctx.restore();
+          }
+
+          // Rising bubbles, looping in depth
+          ctx.fillStyle = "rgba(255,255,255,0.55)";
+          ctx.strokeStyle = "rgba(255,255,255,0.8)";
+          for (const b of waterBubbles) {
+            const worldX = b.x;
+            const sx = worldX - cameraX;
+            if (sx < -10 || sx > canvas.width + 10) continue;
+            const cycle = (state.time * b.speed + b.phase * 20) % (b.depth + 40);
+            const sy = canvas.height - cycle;
+            if (sy < top + 6) continue;
+            ctx.beginPath();
+            ctx.arc(sx + Math.sin(state.time + b.phase) * 4, sy, b.size, 0, Math.PI * 2);
+            ctx.fill();
+          }
 
           ctx.globalAlpha = 0.28;
           ctx.fillStyle = "#2F6FD0";
