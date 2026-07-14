@@ -824,6 +824,18 @@
 
   let scrollBase = 2.4;
   let bgOffset1 = 0, bgOffset2 = 0, groundOffset = 0;
+  let scrollX = 0;
+
+  const bgLayers = [
+    { img: new Image(), speed: 0.15 },
+    { img: new Image(), speed: 0.35 },
+    { img: new Image(), speed: 0.65 },
+    { img: new Image(), speed: 1.0 }
+  ];
+  bgLayers[0].img.src = 'assets/background/stage02/1.png';
+  // bgLayers[1].img.src = 'assets/background/stage02/2.png';
+  // bgLayers[2].img.src = 'assets/background/stage02/3.png';
+  bgLayers[3].img.src = 'assets/background/stage05/4.png';
 
   const player = {
     x: 170, y: 300, targetY: 300, prevY: 300,
@@ -921,6 +933,7 @@
     birds = []; ambientClouds = []; floatTexts = [];
     spawnTimers = { updraft: 40, smoke: 60, orb: 20, bird: 30, cloud: 5 };
     msgCooldown = 0;
+    scrollX = 0;
     seedAmbientClouds();
     buildBuildings();
     updateHUD();
@@ -1120,6 +1133,7 @@
     bgOffset1 = (bgOffset1 + effScroll*0.3*dt) % W;
     bgOffset2 = (bgOffset2 + effScroll*0.6*dt) % W;
     groundOffset = (groundOffset + effScroll*1.0*dt) % 40;
+    scrollX += effScroll * dt;
 
     // --- player target Y from input ---
     if(input.pointerActive){
@@ -1329,25 +1343,43 @@
   }
 
   function drawSky(){
-    const c = skyColors();
-    const g = ctx.createLinearGradient(0,0,0,H);
-    g.addColorStop(0, c.top);
-    g.addColorStop(1, c.bot);
-    ctx.fillStyle = g;
-    ctx.fillRect(0,0,W,H);
+    // Check if any layer is ready. If not, draw fallback gradient sky and clouds.
+    let anyLoaded = bgLayers.some(l => l.img.complete && l.img.naturalWidth > 0);
+    if (!anyLoaded) {
+      const c = skyColors();
+      const g = ctx.createLinearGradient(0,0,0,H);
+      g.addColorStop(0, c.top);
+      g.addColorStop(1, c.bot);
+      ctx.fillStyle = g;
+      ctx.fillRect(0,0,W,H);
 
-    // parallax clouds layer 1 (slow, far)
-    ctx.fillStyle = 'rgba(255,255,255,0.55)';
-    for(let i=0;i<5;i++){
-      const x = ((i*220 - bgOffset1) % (W+220)) - 110;
-      drawCloud(x, 80 + (i%3)*40, 44);
+      // parallax clouds layer 1 (slow, far)
+      ctx.fillStyle = 'rgba(255,255,255,0.55)';
+      for(let i=0;i<5;i++){
+        const x = ((i*220 - bgOffset1) % (W+220)) - 110;
+        drawCloud(x, 80 + (i%3)*40, 44);
+      }
+      // parallax clouds layer 2 (faster, near)
+      ctx.fillStyle = 'rgba(255,255,255,0.75)';
+      for(let i=0;i<4;i++){
+        const x = ((i*260 - bgOffset2) % (W+260)) - 130;
+        drawCloud(x, 150 + (i%2)*70, 60);
+      }
+      return;
     }
-    // parallax clouds layer 2 (faster, near)
-    ctx.fillStyle = 'rgba(255,255,255,0.75)';
-    for(let i=0;i<4;i++){
-      const x = ((i*260 - bgOffset2) % (W+260)) - 130;
-      drawCloud(x, 150 + (i%2)*70, 60);
-    }
+
+    // Draw the stage 2 parallax forest backgrounds as they are, scaled proportionally to canvas height
+    bgLayers.forEach(layer => {
+      const img = layer.img;
+      if (!img.complete || img.naturalWidth === 0) return;
+      const scale = H / img.naturalHeight;
+      const tileW = img.naturalWidth * scale;
+      let x = -(scrollX * layer.speed) % tileW;
+      if (x > 0) x -= tileW;
+      for (let dx = x; dx < W; dx += tileW) {
+        ctx.drawImage(img, dx, 0, tileW, H);
+      }
+    });
   }
 
   function drawCloud(x,y,scale){
@@ -1644,6 +1676,7 @@
       // idle background motion on start/win/fail screens
       bgOffset1 = (bgOffset1 + 0.4*dt) % W;
       bgOffset2 = (bgOffset2 + 0.8*dt) % W;
+      scrollX += 0.45 * dt;
       for(let i=ambientClouds.length-1;i>=0;i--){
         const c = ambientClouds[i];
         c.x -= c.speed*1.2*dt;
