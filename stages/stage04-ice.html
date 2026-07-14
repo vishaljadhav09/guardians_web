@@ -661,6 +661,17 @@
           };
         });
 
+        const bgLayers = [
+          { img: new Image(), speed: 0.15 },
+          { img: new Image(), speed: 1 },
+          { img: new Image(), speed: 2 },
+          { img: new Image(), speed: 3 }
+        ];
+        bgLayers[0].img.src = 'assets/background/stage04/1.png';
+        bgLayers[1].img.src = 'assets/background/stage04/2.png';
+        bgLayers[2].img.src = 'assets/background/stage04/3.png';
+        bgLayers[3].img.src = 'assets/background/stage04/4.png';
+
         const penguinAnim = {
           frameIndex: 0,
           elapsed: 0,
@@ -1537,24 +1548,40 @@
         }
 
         function drawBackground() {
-          ctx.fillStyle = "#FDFBF7";
-          ctx.fillRect(0, 0, canvas.width, canvas.height);
+          // Check if background layers are ready. If not, draw default sky and clouds.
+          const anyLoaded = bgLayers.some(l => l.img.complete && l.img.naturalWidth > 0);
+          if (!anyLoaded) {
+            ctx.fillStyle = "#FDFBF7";
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-          ctx.fillStyle = "#FFE6F2";
-          circle(120, 95, 52, true);
-          ctx.fillStyle = "#DFF2FF";
-          circle(700, 90, 58, true);
+            ctx.fillStyle = "#FFE6F2";
+            circle(120, 95, 52, true);
+            ctx.fillStyle = "#DFF2FF";
+            circle(700, 90, 58, true);
 
-          for (const cloud of clouds) {
-            drawCloud(cloud.x, cloud.y, cloud.scale, cloud.layer);
+            for (const cloud of clouds) {
+              drawCloud(cloud.x, cloud.y, cloud.scale, cloud.layer);
+            }
+            return;
           }
 
-          ctx.fillStyle = "#B7D9FF";
-          ctx.strokeStyle = "#111";
-          ctx.lineWidth = 3;
-          // roundedRect(-50, 445, 500, 120, 22, true, true);    this is base ices
-          // roundedRect(420, 455, 540, 110, 22, true, true);
-          // roundedRect(930, 430, 520, 140, 22, true, true);
+          const W = canvas.width;
+          const H = canvas.height;
+          
+          // Use cameraX during active play, or slow drift scroll when idle/intro overlay is open
+          const scrollVal = gameRunning ? cameraX : (state ? cameraX + state.time * 25 : Date.now() * 0.025);
+
+          bgLayers.forEach(layer => {
+            const img = layer.img;
+            if (!img.complete || img.naturalWidth === 0) return;
+            const scale = H / img.naturalHeight;
+            const tileW = img.naturalWidth * scale;
+            let x = -(scrollVal * layer.speed) % tileW;
+            if (x > 0) x -= tileW;
+            for (let dx = x; dx < W; dx += tileW) {
+              ctx.drawImage(img, dx, 0, tileW, H);
+            }
+          });
         }
 
         function drawSmogFactory() {
