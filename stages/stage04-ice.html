@@ -102,6 +102,22 @@
         margin: 0 auto;
         /* max-width: 800px; */
       }
+      @keyframes warmthPulse {
+        0%,
+        100% {
+          box-shadow:
+            4px 4px 0 var(--gog-ink),
+            0 0 0 0 rgba(239, 68, 68, 0);
+        }
+        50% {
+          box-shadow:
+            4px 4px 0 var(--gog-ink),
+            0 0 22px 6px rgba(239, 68, 68, 0.55);
+        }
+      }
+      .canvas-frame.warmth-danger {
+        animation: warmthPulse 1.1s ease-in-out infinite;
+      }
       canvas {
         width: 100%;
         height: 100%;
@@ -313,59 +329,6 @@
         }
       }
 
-      /* Cheerful pop/bounce whenever Spika says something new, so kids
-         notice the message changed even if they can't read it all yet. */
-      @keyframes guidePop {
-        0% {
-          transform: scale(0.9);
-        }
-        45% {
-          transform: scale(1.06);
-        }
-        100% {
-          transform: scale(1);
-        }
-      }
-      .guideBubble.pop {
-        animation: guidePop 0.35s ease;
-      }
-      .guideAvatar.pop {
-        animation: guidePop 0.4s ease;
-      }
-
-      /* Little celebration pop on the HUD chips when a count changes */
-      @keyframes chipPop {
-        0% {
-          transform: scale(0.85);
-        }
-        50% {
-          transform: scale(1.18);
-        }
-        100% {
-          transform: scale(1);
-        }
-      }
-      .chip.pop {
-        animation: chipPop 0.4s ease;
-      }
-
-      /* Soft pulsing highlight on the warmth meter so kids notice it's time
-         to go cool the valve, before things get urgent. */
-      .warmthMeter-hot {
-        animation: warmthPulse 0.6s ease infinite;
-      }
-      @keyframes warmthPulse {
-        0%,
-        100% {
-          box-shadow: var(--gog-shadow-sm);
-        }
-        50% {
-          box-shadow:
-            0 0 0 4px rgba(255, 120, 90, 0.35),
-            var(--gog-shadow-sm);
-        }
-      }
-
       body {
         position: relative;
       }
@@ -555,7 +518,7 @@
 
       <!-- Spika Mascot Guide Bar -->
       <div class="guideBar">
-        <div class="guideAvatar" aria-hidden="true">🦋</div>
+        <div class="guideAvatar" aria-hidden="true">🐧</div>
         <div class="guideBubble" id="guideText">
           Rescue 5 chicks and carry them back to the safe iceberg! 🐧
         </div>
@@ -630,7 +593,6 @@
         const audio = new GOGEngine.Audio(!save.settings.sound);
 
         const ui = {
-          warmthMeter: document.getElementById("warmthMeter"),
           warmFill: document.getElementById("warmFill"),
           warmthText: document.getElementById("warmthText"),
           rescuedText: document.getElementById("rescuedChip"),
@@ -641,33 +603,6 @@
           guideText: document.getElementById("guideText"),
           canvasFrame: document.getElementById("canvasFrame"),
         };
-
-        // Cocomelon-style feedback: short, cheerful, repeated-name messages
-        // that always show up in the always-visible guide bubble (not just
-        // a toast that can be missed), so kids get a clear "what just
-        // happened + what to do next" every single time.
-        function sayGuide(text) {
-          if (ui.guideText) {
-            ui.guideText.textContent = text;
-            ui.guideText.classList.remove("pop");
-            void ui.guideText.offsetWidth; // restart animation
-            ui.guideText.classList.add("pop");
-          }
-          const avatar = document.querySelector(".guideAvatar");
-          if (avatar) {
-            avatar.classList.remove("pop");
-            void avatar.offsetWidth;
-            avatar.classList.add("pop");
-          }
-          if (typeof GOGUi !== "undefined" && GOGUi.say) GOGUi.say(text);
-        }
-
-        function popChip(el) {
-          if (!el) return;
-          el.classList.remove("pop");
-          void el.offsetWidth;
-          el.classList.add("pop");
-        }
 
         function syncMuteBtn() {
           if (ui.muteBtn) {
@@ -984,9 +919,9 @@
             meltPlatforms,
             chicks,
             particles: [],
+            floatingTexts: [],
             state: "playing",
             endTimer: 0,
-            warnedHot: false,
           };
         }
 
@@ -994,12 +929,14 @@
         let cutsceneTimer = null;
 
         function showIntro() {
-          sayGuide("Let's help Penny rescue 5 baby chicks! 🐧🐥");
+          GOGUi.say(
+            "Help Penny rescue the chicks and bring them home to the safe iceberg! 🐧",
+          );
           activeOverlay = GOGUi.showOverlay({
             accent: "var(--gog-lime)",
             title: "🐧 Penny on Thin Ice",
-            body: "Hi, I'm Penny! The ice is getting warm and it melts fast if I just stand still. Help me hop across the floes, rescue 5 chicks, and carry them home!<br><br>🕹️ <strong>Move:</strong> Arrows / WASD or the buttons.<br>⬆️ <strong>Jump:</strong> Up / W / Space.<br>☸️ <strong>Cool the ice:</strong> Stand by the valve and press E (or tap ☸️).<br><br>Don't worry — if I splash, we just try again! 💙",
-            primaryLabel: "Let's Go! 🐧",
+            body: "Penny wakes in a warming polar dream. The floating ice shrinks faster when she stands still, so keep hopping, cool the valve, rescue chicks, and bring them home to the safe iceberg.<br><br><strong>Move:</strong> Arrow keys / WASD or touch buttons.<br><strong>Jump:</strong> Up / W / Space.<br><strong>Cool Valve:</strong> Stand near the valve, press E (or tap ☸️).",
+            primaryLabel: "Start Dream",
             onPrimary: function () {
               GOGUi.closeOverlay(activeOverlay);
               activeOverlay = null;
@@ -1019,7 +956,7 @@
           if (treeIcon) {
             GOGUi.restartAnimation(treeIcon, "pulse");
           }
-          sayGuide("A seed is flying home to the Guardian Tree! 🌱🌳");
+          GOGUi.say("A seed is heading home to the Tree… 🌱");
 
           function closeCutscene() {
             overlay.classList.remove("show");
@@ -1065,14 +1002,13 @@
           if (ui.canvasFrame) {
             ui.canvasFrame.classList.add("flash-lose");
           }
-          sayGuide("Oopsie! Splash! Let's try again, Penny! 💙");
+          GOGUi.say("Penny splashed! Let's try again 💙");
           activeOverlay = GOGUi.showOverlay({
-            title: "🐧 Splash! Let's Try Again",
+            title: "Take Another Glide",
             body:
-              (reason ||
-                "The water got a little too close! Hop a bit faster and remember to cool the valve.") +
-              "<br><br>You're doing great — every try makes you better! 🌟",
-            primaryLabel: "Try Again 🔁",
+              reason ||
+              "The water got too cozy. Try again with quicker rescues and a timely valve spin.",
+            primaryLabel: "Try Again",
             secondaryLabel: "Back to Map",
             onPrimary: function () {
               if (ui.canvasFrame) {
@@ -1110,7 +1046,7 @@
             ui.canvasFrame.classList.add("flash-win");
           }
 
-          sayGuide("Hooray! All 5 chicks are safe! You did it! 🎉🐧");
+          GOGUi.say("You did it! A seed is heading home to the Tree… 🌱");
 
           let confettiBursts = 0;
           const confettiInterval = setInterval(function () {
@@ -1127,12 +1063,12 @@
             triggerSeedReturnCutscene(function () {
               activeOverlay = GOGUi.showOverlay({
                 accent: "var(--gog-white)",
-                title: "❄️ You Saved the Ice!",
-                body: "Yay! All 5 chicks are safe and Penny is wide awake! The sea is calm again. Great job! 🎉",
+                title: "❄️ Polar Ice Restored!",
+                body: "Penny wakes completely as the sea calms and the ice reforms.",
                 stars: pendingStars,
                 factText: stageMeta.fact,
-                primaryLabel: "Back to Map 🗺️",
-                secondaryLabel: "Play Again 🔁",
+                primaryLabel: "Back to Map",
+                secondaryLabel: "Play Again",
                 onPrimary: function () {
                   window.location.href = "../index.html";
                 },
@@ -1179,6 +1115,7 @@
             }
             updateUI();
             updateParticles(dt);
+            updateFloatingTexts(dt);
             return;
           }
 
@@ -1197,23 +1134,8 @@
           }
           state.valve.pulse += dt;
 
-          const seaRise = calmMode ? 0 : 1.5 + state.warmth * 25;
+          const seaRise = calmMode ? 0 : 1.5 + state.warmth * 5;
           state.seaLevel = clamp(state.seaLevel - seaRise * dt, 480, 560);
-
-          if (!calmMode) {
-            if (state.warmth >= 0.65 && !state.warnedHot) {
-              state.warnedHot = true;
-              sayGuide("It's getting warm! Hop to the valve, Penny! ☸️❄️");
-            } else if (state.warmth < 0.4 && state.warnedHot) {
-              state.warnedHot = false;
-            }
-          }
-          if (ui.warmthMeter) {
-            ui.warmthMeter.classList.toggle(
-              "warmthMeter-hot",
-              !calmMode && state.warmth >= 0.65,
-            );
-          }
 
           const accel = p.speed * dt;
           if (input.left) {
@@ -1245,12 +1167,13 @@
           updateChicks(dt);
           updateValve(dt);
           updateParticles(dt);
+          updateFloatingTexts(dt);
           updateCamera(dt);
           updateUI();
 
           if (p.y > WORLD_H + 120 || p.y + p.h >= state.seaLevel) {
             failGame(
-              "Splash! The water rose too high. Try hopping a little faster next time!",
+              "Penny splashed into the rising water. Try a faster route and cool the valve sooner.",
             );
             return;
           }
@@ -1392,18 +1315,9 @@
                 state.rescuedCount += 1;
                 audio.heal();
                 spawnBurst(chick.x, chick.y, 14, "#FFD84D");
-                popChip(ui.rescuedText);
+                spawnFloatText(chick.x, chick.y - 12, "Safe! +1 💚", "#3aa655");
                 if (state.rescuedCount >= TARGET_RESCUES) {
                   winGame();
-                } else {
-                  sayGuide(
-                    state.rescuedCount +
-                      " of " +
-                      TARGET_RESCUES +
-                      " chicks safe! 🎉 " +
-                      (TARGET_RESCUES - state.rescuedCount) +
-                      " more to go!",
-                  );
                 }
               }
               continue;
@@ -1414,7 +1328,7 @@
               p.carrying.push(chick);
               audio.collect();
               spawnBurst(chick.x, chick.y, 10, "#FFE680");
-              sayGuide("Got a chick! 🐥 Carry it home to the iceberg!");
+              spawnFloatText(chick.x, chick.y - 12, "Got one! 🐥", "#2e5ee8");
             }
             if (chick.y + 16 >= state.seaLevel) {
               const homeRestock = state.chicks.find(
@@ -1426,7 +1340,7 @@
                 !p.carrying.includes(chick)
               ) {
                 failGame(
-                  "Oh no, a little chick slipped into the water! Let's rescue them a bit quicker this time.",
+                  "A chick slipped into the water. Try shorter rescue routes and keep the floes from vanishing under you.",
                 );
                 return;
               }
@@ -1445,8 +1359,6 @@
             state.valve.activeFlash = 1;
             audio.blip(520, 150);
             spawnBurst(state.valve.x, state.valve.y, 16, "#87E1FF");
-            sayGuide("Brrr! Nice and cool now! ❄️ Great job, Penny!");
-            state.warnedHot = false;
           }
           input.actionPressed = false;
         }
@@ -1467,9 +1379,23 @@
           cameraX += (target - cameraX) * Math.min(1, CAMERA_LERP * dt * 60);
         }
 
+        function warmthGradient(w) {
+          if (w < 0.4) return "linear-gradient(90deg, #3dd6c0, #2e5ee8)"; // cool & safe
+          if (w < 0.7) return "linear-gradient(90deg, #ffd23f, #ff8c42)"; // caution
+          return "linear-gradient(90deg, #ff8c42, #ef4444)"; // danger
+        }
+
         function updateUI() {
-          if (ui.warmFill)
+          if (ui.warmFill) {
             ui.warmFill.style.width = (state.warmth * 100).toFixed(0) + "%";
+            ui.warmFill.style.background = warmthGradient(state.warmth);
+          }
+          if (ui.canvasFrame) {
+            ui.canvasFrame.classList.toggle(
+              "warmth-danger",
+              state.warmth >= 0.7 && state.state === "playing",
+            );
+          }
           if (ui.warmthText)
             ui.warmthText.textContent = (state.warmth * 100).toFixed(0) + "%";
           if (ui.rescuedText)
@@ -1501,6 +1427,54 @@
           }
         }
 
+        // Floating reward-text pop-ups — short, bouncy, high-contrast
+        // confirmation text ("Got one! 🐥") at the exact moment something
+        // good happens, so the stage's message is felt instantly instead
+        // of only showing up later as a HUD chip number.
+        function spawnFloatText(x, y, text, color) {
+          state.floatingTexts.push({
+            x,
+            y,
+            text,
+            color: color || "#241c30",
+            life: 1.1,
+            maxLife: 1.1,
+          });
+        }
+
+        function updateFloatingTexts(dt) {
+          for (let i = state.floatingTexts.length - 1; i >= 0; i--) {
+            const t = state.floatingTexts[i];
+            t.life -= dt;
+            t.y -= 34 * dt;
+            if (t.life <= 0) state.floatingTexts.splice(i, 1);
+          }
+        }
+
+        function drawFloatingTexts() {
+          if (!state.floatingTexts.length) return;
+          ctx.save();
+          ctx.textAlign = "center";
+          ctx.textBaseline = "middle";
+          ctx.font = "800 18px 'Baloo 2', Arial, sans-serif";
+          ctx.lineJoin = "round";
+          for (const t of state.floatingTexts) {
+            const p = Math.max(0, t.life / t.maxLife);
+            const bounce = 1 + Math.sin(p * Math.PI) * 0.15;
+            ctx.save();
+            ctx.globalAlpha = p;
+            ctx.translate(t.x, t.y);
+            ctx.scale(bounce, bounce);
+            ctx.lineWidth = 4;
+            ctx.strokeStyle = "#241c30";
+            ctx.fillStyle = t.color;
+            ctx.strokeText(t.text, 0, 0);
+            ctx.fillText(t.text, 0, 0);
+            ctx.restore();
+          }
+          ctx.restore();
+        }
+
         function render() {
           if (!state) {
             drawIdleScene();
@@ -1518,6 +1492,7 @@
           drawChicks();
           drawPlayer();
           drawParticles();
+          drawFloatingTexts();
           ctx.restore();
           drawWater();
           drawWorldHud();
@@ -1585,32 +1560,63 @@
         function drawSmogFactory() {
           const x = 1720;
           const y = 150;
-          ctx.fillStyle = "#FF9BC7";
+
+          // Body — a grimy rust-brown instead of candy pink, so the
+          // building itself reads as "dirty machine", not a playhouse.
+          ctx.fillStyle = "#8a7362";
           roundedRect(x, y + 120, 160, 130, 10, true, false);
           ctx.strokeStyle = "#111";
           ctx.lineWidth = 4;
           roundedRect(x, y + 120, 160, 130, 10, false, true);
 
-          ctx.fillStyle = "#7A869A";
+          // Smokestacks — darker charcoal-grey, with a thin black/amber
+          // hazard-stripe ring near the top of each. Same danger motif as
+          // the Smog cloud in Stage 2, so kids read "this = bad" using one
+          // shared visual language across the whole game.
+          ctx.fillStyle = "#565a60";
           roundedRect(x + 24, y + 30, 42, 100, 8, true, false);
           roundedRect(x + 88, y, 42, 130, 8, true, false);
           ctx.strokeStyle = "#111";
           roundedRect(x + 24, y + 30, 42, 100, 8, false, true);
           roundedRect(x + 88, y, 42, 130, 8, false, true);
 
-          ctx.font = "900 44px Arial";
-          ctx.textAlign = "center";
-          ctx.textBaseline = "middle";
-          ctx.fillStyle = "#111";
-          ctx.fillText("🏭", x + 80, y + 185);
+          ctx.save();
+          ctx.strokeStyle = "#ffb020";
+          ctx.lineWidth = 5;
+          ctx.beginPath();
+          ctx.moveTo(x + 24, y + 46);
+          ctx.lineTo(x + 66, y + 46);
+          ctx.moveTo(x + 88, y + 16);
+          ctx.lineTo(x + 130, y + 16);
+          ctx.stroke();
+          ctx.restore();
 
+          // A simple grumpy face on the body — no text required, kids
+          // read "this place is unhappy/bad" at a glance, still soft
+          // cartoon, never scary (per brand).
+          ctx.fillStyle = "#241c30";
+          circle(x + 55, y + 175, 7, true);
+          circle(x + 105, y + 175, 7, true);
+          ctx.save();
+          ctx.strokeStyle = "#241c30";
+          ctx.lineWidth = 5;
+          ctx.lineCap = "round";
+          ctx.beginPath();
+          ctx.arc(x + 80, y + 210, 22, Math.PI * 1.1, Math.PI * 1.9);
+          ctx.stroke();
+          ctx.restore();
+
+          // Smoke — sooty grey-brown with a sickly khaki tint, the same
+          // palette family as the Smog itself, so factory smoke and the
+          // Smog register as the same danger on sight.
           const smokePuffs = 3 + Math.floor(state.warmth * 5);
           for (let i = 0; i < smokePuffs; i++) {
             const sx = x + 46 + i * 20 + Math.sin(state.time * 1.4 + i) * 10;
             const sy =
               y + 20 - i * 10 - Math.cos(state.time * 1.5 + i * 0.5) * 8;
-            ctx.globalAlpha = 0.18 + state.warmth * 0.22;
-            ctx.fillStyle = "#666";
+            ctx.globalAlpha = 0.2 + state.warmth * 0.25;
+            ctx.fillStyle =
+              i % 2 === 0 ? "rgba(70, 65, 55, 1)" : "rgba(150, 140, 108, 1)";
             circle(sx, sy, 18 + i * 3, true);
             ctx.globalAlpha = 1;
           }
@@ -1624,15 +1630,45 @@
           ctx.lineWidth = 4;
           roundedRect(b.x, b.y, b.w, b.h, 20, false, true);
 
+          // A bright mint "safe zone" trim along the top edge — an
+          // unmistakable "this is the good place" signal, readable before
+          // any label text.
+          ctx.fillStyle = "#7CE6A6";
+          roundedRect(b.x, b.y, b.w, 14, 7, true, false);
+          ctx.strokeStyle = "#111";
+          ctx.lineWidth = 3;
+          roundedRect(b.x, b.y, b.w, 14, 7, false, true);
+
+          // A simple happy face — a friendly, always-smiling landmark
+          // kids can spot from across the level without reading text.
+          ctx.fillStyle = "#241c30";
+          circle(b.x + b.w * 0.32, b.y + b.h * 0.42, 6, true);
+          circle(b.x + b.w * 0.5, b.y + b.h * 0.42, 6, true);
+          ctx.save();
+          ctx.strokeStyle = "#241c30";
+          ctx.lineWidth = 4;
+          ctx.lineCap = "round";
+          ctx.beginPath();
+          ctx.arc(
+            b.x + b.w * 0.41,
+            b.y + b.h * 0.55,
+            16,
+            Math.PI * 0.1,
+            Math.PI * 0.9,
+          );
+          ctx.stroke();
+          ctx.restore();
+
           ctx.fillStyle = "#fff";
           roundedRect(b.x + 22, b.y - 38, 150, 36, 8, true, false);
           ctx.strokeStyle = "#111";
+          ctx.lineWidth = 4;
           roundedRect(b.x + 22, b.y - 38, 150, 36, 8, false, true);
           ctx.fillStyle = "#111";
           ctx.font = "900 14px Arial";
           ctx.textAlign = "left";
           ctx.textBaseline = "middle";
-          ctx.fillText("SAFE ICEBERG", b.x + 36, b.y - 20);
+          ctx.fillText("💚 SAFE ICEBERG", b.x + 30, b.y - 20);
 
           const delivered = state.chicks.filter((c) => c.delivered);
           delivered.forEach((c, i) => {
@@ -1686,11 +1722,29 @@
             if (pl.gone) continue;
             const x = pl.x + pl.shrink * 0.5;
             const meltRatio = 1 - pl.w / pl.baseW;
-            ctx.fillStyle = meltRatio > 0.55 ? "#B7E2FF" : "#DDF6FF";
+            const critical = meltRatio > 0.55;
+            ctx.fillStyle = critical ? "#B7E2FF" : "#DDF6FF";
             roundedRect(x, pl.y, pl.w, pl.h, 12, true, false);
             ctx.strokeStyle = "#111";
             ctx.lineWidth = 4;
             roundedRect(x, pl.y, pl.w, pl.h, 12, false, true);
+
+            if (critical) {
+              // Hazard cue: a pulsing amber/red marching-dash outline so
+              // kids read "get off, this one's about to go!" before it
+              // actually vanishes — the same danger language as the Smog
+              // and factory, applied to a shrinking hazard here.
+              const pulse = 0.5 + Math.sin(state.time * 9) * 0.5;
+              ctx.save();
+              ctx.strokeStyle = `rgba(239, 68, 68, ${(0.5 + pulse * 0.4).toFixed(2)})`;
+              ctx.lineWidth = 4;
+              ctx.setLineDash([8, 6]);
+              ctx.lineDashOffset = -state.time * 40;
+              roundedRect(x - 3, pl.y - 3, pl.w + 6, pl.h + 6, 14, false, true);
+              ctx.setLineDash([]);
+              ctx.restore();
+            }
+
             for (let i = 0; i < Math.max(2, Math.floor(pl.w / 38)); i++) {
               drawEmoji(
                 "🧊",
@@ -1823,18 +1877,22 @@
               state.player.y + state.player.h / 2 - state.valve.y,
             ) < 78;
           if (nearValve && state.state === "playing") {
+            const bounce = Math.sin(state.time * 6) * 3;
             const sx = state.valve.x - cameraX;
-            const sy = state.valve.y - 70;
+            const sy = state.valve.y - 70 + bounce;
+            // "E" and "tap ☸️" shown together — a keyboard-only hint
+            // would leave touch players (no keyboard) with no message
+            // at all, so both input paths are spelled out every time.
             ctx.fillStyle = "#FFF7E8";
-            roundedRect(sx - 58, sy - 18, 116, 32, 8, true, false);
+            roundedRect(sx - 68, sy - 18, 136, 32, 8, true, false);
             ctx.strokeStyle = "#111";
             ctx.lineWidth = 3;
-            roundedRect(sx - 58, sy - 18, 116, 32, 8, false, true);
+            roundedRect(sx - 68, sy - 18, 136, 32, 8, false, true);
             ctx.fillStyle = "#111";
             ctx.textAlign = "center";
             ctx.textBaseline = "middle";
             ctx.font = "900 12px Arial";
-            ctx.fillText("Press E to cool", sx, sy - 1);
+            ctx.fillText("Press E / tap ☸️", sx, sy - 1);
           }
         }
         function drawCloud(x, y, scale, layer) {

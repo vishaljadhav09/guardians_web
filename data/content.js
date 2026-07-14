@@ -76,7 +76,8 @@
       icon: "🌬️",
       mapPos: { x: 78, y: 18 },
       fact: "Wind and sun make electricity without polluting the air.",
-      playable: false
+      playable: true,
+      href: "stages/stage05-sky.html"
     },
     {
       id: "stage06",
