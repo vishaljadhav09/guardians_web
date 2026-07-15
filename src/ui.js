@@ -170,6 +170,103 @@
       var r = btn.getBoundingClientRect();
       confettiAt(r.left + r.width / 2, r.top + r.height / 2, 8);
     }, true);
+
+    var GUARDIAN_DATA = {
+      "stage01": {
+        name: "Splash",
+        emoji: "🐬",
+        role: "Guardian of the Ocean",
+        fact: "Dolphins use echolocation to navigate and hunt! They play a key role in keeping marine ecosystems balanced and healthy.",
+        quote: "When we clear the plastic from our waters, we help the ocean breathe and thrive!"
+      },
+      "stage02": {
+        name: "Ravi",
+        emoji: "🐯",
+        role: "Guardian of the Rainforest",
+        fact: "Rainforests are home to more than half of the world's plant and animal species! Trees act as Earth's lungs, absorbing carbon dioxide.",
+        quote: "Every tree we grow makes our canopy stronger and shelters my forest friends!"
+      },
+      "stage03": {
+        name: "Buzz",
+        emoji: "🐝",
+        role: "Guardian of the Meadow",
+        fact: "Bees pollinate a third of the crops we eat! Without them, many of our favorite fruits and vegetables wouldn't grow.",
+        quote: "By planting wildflowers, we keep our meadows buzzing and food chains healthy!"
+      },
+      "stage04": {
+        name: "Nori",
+        emoji: "🐧",
+        role: "Guardian of the Ice",
+        fact: "Penguins help keep the ocean healthy! They are like little gardeners of the sea. 🌊",
+        quote: "When we protect the ice, we help the penguins stay happy and strong!"
+      },
+      "stage05": {
+        name: "Breezy",
+        emoji: "🌬️",
+        role: "Guardian of the Sky",
+        fact: "Wind energy is clean, infinite, and doesn't pollute the air! A single wind turbine can power hundreds of homes.",
+        quote: "Harnessing the clean wind keeps our skies clear, fresh, and beautiful for everyone!"
+      }
+    };
+
+    function initGuardianCard() {
+      var canvasFrame = document.getElementById("canvasFrame");
+      if (!canvasFrame) return;
+
+      // Detect stage ID from URL path
+      var filename = window.location.pathname.split("/").pop();
+      var stageId = "";
+      if (filename.indexOf("stage01") !== -1) stageId = "stage01";
+      else if (filename.indexOf("stage02") !== -1) stageId = "stage02";
+      else if (filename.indexOf("stage03") !== -1) stageId = "stage03";
+      else if (filename.indexOf("stage04") !== -1) stageId = "stage04";
+      else if (filename.indexOf("stage05") !== -1) stageId = "stage05";
+
+      if (!stageId || !GUARDIAN_DATA[stageId]) return;
+
+      var data = GUARDIAN_DATA[stageId];
+
+      // Create flex wrapper gog-stage-layout
+      var wrapper = document.createElement("div");
+      wrapper.className = "gog-stage-layout";
+
+      // Insert wrapper before canvasFrame, then move canvasFrame inside it
+      canvasFrame.parentNode.insertBefore(wrapper, canvasFrame);
+      wrapper.appendChild(canvasFrame);
+
+      // Create the Guardian Card element
+      var card = document.createElement("section");
+      card.className = "gog-guardian-card theme-" + stageId;
+
+      var html = "";
+      html += '<div class="card-inner">';
+      html += '  <div class="mascot-box">';
+      html += '    <div class="mascot-circle">' + data.emoji + '</div>';
+      html += '    <h3>' + data.name + '</h3>';
+      html += '    <p class="role-text">' + data.role + '</p>';
+      html += '  </div>';
+      html += '  <div style="width:100%;">';
+      html += '    <h2>Did you know?</h2>';
+      html += '    <div class="fact-box">';
+      html += '      <p style="margin:0;">' + data.fact + '</p>';
+      html += '    </div>';
+      html += '    <div class="quote-box">';
+      html += '      <p style="margin:0;"><strong>' + data.name + ' says:</strong> "' + data.quote + '"</p>';
+      html += '    </div>';
+      html += '  </div>';
+      html += '</div>';
+
+      card.innerHTML = html;
+
+      // Prepend the card to the flex container (to the left of canvasFrame)
+      wrapper.insertBefore(card, canvasFrame);
+    }
+
+    if (document.readyState === "loading") {
+      document.addEventListener("DOMContentLoaded", initGuardianCard);
+    } else {
+      initGuardianCard();
+    }
   }
 
   global.GOGUi = {

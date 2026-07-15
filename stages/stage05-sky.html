@@ -936,6 +936,7 @@
     scrollX = 0;
     seedAmbientClouds();
     buildBuildings();
+    resetWindSystem(); // WIND HOOK — clear/reset Clean Wind Currents on every new run
     updateHUD();
     updateGuide("Hi, I'm Spika! 🦉 Let's help Breezy gather energy orbs to light up the city! Let's go! ⚡", true);
   }
@@ -1302,6 +1303,16 @@
       updateGuide("Brrr, it's a bit smoggy! Let's catch a green updraft to clean the sky! 🍃💚");
     }
 
+    // WIND HOOK — Clean Wind Currents system (see section above render()).
+    // Runs after everything else this frame so it only layers gentle
+    // extra effects on top of the player's already-computed movement.
+    updateWindManager(dt, effScroll);
+    applyWindEffectsToPlayer(dt);
+    applyOrbMagnetism(dt);
+    updateWindParticles(dt);
+    updateAmbientFlyers(dt, effScroll);
+    detectWindOrbBonus();
+
     updateHUD();
   }
 
@@ -1626,8 +1637,10 @@
     drawSkyline();
     drawSmokes();
     drawUpdrafts();
+    drawWind(time);       // WIND HOOK — ribbons, turbines, particles, ambient flyers
     drawOrbs(time);
     drawParticles();
+    drawWindAura();       // WIND HOOK — glow behind Breezy while riding a current
     drawPlayer();
     drawFloatTexts();
     drawSmokeVignette();
@@ -1659,6 +1672,683 @@
       ctx.stroke();
       ctx.restore();
     }
+  }
+
+  // =================================================================
+  // CLEAN WIND CURRENTS  (added gameplay system)
+  // -----------------------------------------------------------------
+  // Self-contained "air river" mechanic: renewable-energy sources
+  // (wind turbines / solar updraft towers) emit flowing magical wind
+  // ribbons that Breezy can ride for a smoother, faster, glowing
+  // glide. Nothing above this section was changed — this system only
+  // plugs into the existing loop through a few marked WIND HOOK
+  // call-sites in update(), render() and initGame().
+  // =================================================================
+
+  // ---- tunables ---------------------------------------------------
+  const WIND_MAX_CURRENTS   = 20;   // hard safety cap (spec limit)
+  const WIND_MAX_CONCURRENT = 3;    // how many are allowed on screen at once, for readability
+  const WIND_MAX_PARTICLES  = 100;  // hard safety cap (spec limit)
+  const WIND_SAMPLES        = 14;   // points sampled along each ribbon's spine
+
+  const WIND_COLORS = {
+    ribbon: 'rgba(255,255,255,0.92)',
+    ribbonSoft: 'rgba(255,255,255,0.4)',
+    glow: 'rgba(173,216,255,0.55)',
+    sparkle: '#FFFFFF',
+    leaf: '#8DD35F',
+    leafDark: '#5FAE3A',
+    feather: '#FFE7B3',
+    pollen: '#FFE066',
+    turbineBody: '#F4F7FB',
+    turbineAccent: COLORS.cobalt
+  };
+
+  const WIND_TIER_CONFIG = {
+    easy:   { lenMin:480, lenMax:620, thickMin:46, thickMax:60, ampMin:6,  ampMax:14, freqMin:0.5, freqMax:0.9, speedMin:0.85, speedMax:1.0,  driftMin:4,  driftMax:8,  driftSpeedMin:0.15, driftSpeedMax:0.28, bendMin:4,  bendMax:10 },
+    medium: { lenMin:340, lenMax:440, thickMin:34, thickMax:44, ampMin:18, ampMax:30, freqMin:1.0, freqMax:1.5, speedMin:1.0,  speedMax:1.15, driftMin:8,  driftMax:14, driftSpeedMin:0.28, driftSpeedMax:0.45, bendMin:10, bendMax:18 },
+    hard:   { lenMin:260, lenMax:360, thickMin:24, thickMax:34, ampMin:30, ampMax:48, freqMin:1.5, freqMax:2.2, speedMin:1.15, speedMax:1.35, driftMin:14, driftMax:22, driftSpeedMin:0.45, driftSpeedMax:0.75, bendMin:18, bendMax:28 }
+  };
+
+  // ---- state (all new, does not touch any existing variable) -----
+  let windCurrents = [];       // active air-river ribbons
+  let windCurrentPool = [];    // free-list, reused instead of reallocated
+  let windParticles = [];      // active pooled particles
+  let windParticlePool = [];   // free-list
+  let windSpawnTimer = rand(120,200);
+  let windTime = 0;            // slow clock driving all wind animation phases
+  let ambientFlyers = [];      // butterflies / leaves / pollen / dandelion seeds
+  let ambientFlyerTimer = rand(60,120);
+  let windLastScore = 0;       // used only to detect "orb collected while riding wind"
+
+  // reusable scratch objects so influence/sampling queries never allocate mid-frame
+  const _windInfluenceScratch = { influence:0, current:null, centerY:0 };
+  const _sampleScratch = { y:0, thick:0, splitOff:0 };
+
+  // ---- lightweight self-contained wind audio (does not touch GOGEngine.Audio) ----
+  let windCtx = null, windNoiseSource = null, windNoiseGain = null, windNoiseFilter = null;
+
+  function ensureWindAudioCtx(){
+    if(windCtx) return windCtx;
+    try { windCtx = new (window.AudioContext || window.webkitAudioContext)(); }
+    catch(e){ windCtx = null; }
+    return windCtx;
+  }
+
+  function initWindAmbientSound(){
+    const ctx2 = ensureWindAudioCtx();
+    if(!ctx2 || windNoiseSource) return;
+    const bufferSize = ctx2.sampleRate * 2;
+    const buffer = ctx2.createBuffer(1, bufferSize, ctx2.sampleRate);
+    const data = buffer.getChannelData(0);
+    for(let i=0;i<bufferSize;i++) data[i] = (Math.random()*2-1)*0.6;
+    windNoiseSource = ctx2.createBufferSource();
+    windNoiseSource.buffer = buffer;
+    windNoiseSource.loop = true;
+    windNoiseFilter = ctx2.createBiquadFilter();
+    windNoiseFilter.type = 'bandpass';
+    windNoiseFilter.frequency.value = 900;
+    windNoiseFilter.Q.value = 0.6;
+    windNoiseGain = ctx2.createGain();
+    windNoiseGain.gain.value = 0;
+    windNoiseSource.connect(windNoiseFilter).connect(windNoiseGain).connect(ctx2.destination);
+    windNoiseSource.start();
+  }
+
+  function updateWindAudio(influence, dt){
+    if(audio.muted){ if(windNoiseGain) windNoiseGain.gain.value = 0; return; }
+    if(influence > 0.05){
+      initWindAmbientSound();
+      if(windNoiseGain){
+        const targetGain = clamp(influence,0,1) * 0.10; // subtle, never overpowering
+        windNoiseGain.gain.value = lerp(windNoiseGain.gain.value, targetGain, clamp(0.12*dt,0,1));
+      }
+    } else if(windNoiseGain){
+      windNoiseGain.gain.value = lerp(windNoiseGain.gain.value, 0, clamp(0.12*dt,0,1));
+    }
+  }
+
+  function playWindChime(){
+    if(audio.muted) return;
+    const ctx2 = ensureWindAudioCtx();
+    if(!ctx2) return;
+    const now = ctx2.currentTime;
+    [0,1,2].forEach((i)=>{
+      const osc = ctx2.createOscillator();
+      const g = ctx2.createGain();
+      osc.type = 'sine';
+      osc.frequency.value = 880 * Math.pow(1.25, i);
+      g.gain.value = 0;
+      osc.connect(g).connect(ctx2.destination);
+      const t0 = now + i*0.06;
+      g.gain.setValueAtTime(0, t0);
+      g.gain.linearRampToValueAtTime(0.12, t0+0.02);
+      g.gain.exponentialRampToValueAtTime(0.001, t0+0.35);
+      osc.start(t0); osc.stop(t0+0.4);
+    });
+  }
+
+  function playWindCollectChime(){
+    if(audio.muted) return;
+    const ctx2 = ensureWindAudioCtx();
+    if(!ctx2) return;
+    const now = ctx2.currentTime;
+    const osc = ctx2.createOscillator();
+    const g = ctx2.createGain();
+    osc.type = 'triangle';
+    osc.frequency.value = 1400;
+    g.gain.value = 0;
+    osc.connect(g).connect(ctx2.destination);
+    g.gain.setValueAtTime(0, now);
+    g.gain.linearRampToValueAtTime(0.15, now+0.015);
+    g.gain.exponentialRampToValueAtTime(0.001, now+0.25);
+    osc.start(now); osc.stop(now+0.3);
+  }
+
+  // -----------------------------------------------------------------
+  // WindParticle — pooled particle used for sparkles / leaves /
+  // feathers / glowing dust / tiny cloudlets. Objects are recycled
+  // via windParticlePool so nothing is allocated once the pool warms up.
+  // -----------------------------------------------------------------
+  class WindParticle {
+    constructor(){ this.reset('sparkle',0,0,0,0,1,3,WIND_COLORS.sparkle); }
+    reset(type,x,y,vx,vy,life,size,color){
+      this.type = type; this.x = x; this.y = y; this.vx = vx; this.vy = vy;
+      this.life = life; this.maxLife = life; this.size = size; this.color = color;
+      this.angle = Math.random()*Math.PI*2;
+      this.spin = (Math.random()-0.5)*0.1;
+      this.sway = Math.random()*Math.PI*2;
+    }
+  }
+
+  function spawnWindParticle(type,x,y,vx,vy,life,size,color){
+    if(windParticles.length >= WIND_MAX_PARTICLES) return null;
+    let p = windParticlePool.pop();
+    if(!p) p = new WindParticle();
+    p.reset(type,x,y,vx,vy,life,size,color);
+    windParticles.push(p);
+    return p;
+  }
+
+  function updateWindParticles(dt){
+    for(let i=windParticles.length-1;i>=0;i--){
+      const p = windParticles[i];
+      p.x += p.vx*dt; p.y += p.vy*dt;
+      p.angle += p.spin*dt;
+      p.sway += 0.05*dt;
+      if(p.type === 'leaf' || p.type === 'feather'){
+        p.x += Math.sin(p.sway)*0.4*dt; // gentle flutter, not a straight fall
+      }
+      p.life -= dt/60/p.maxLife;
+      if(p.life <= 0 || p.x < -60){
+        windParticles.splice(i,1);
+        windParticlePool.push(p);
+      }
+    }
+  }
+
+  function drawWindParticles(){
+    windParticles.forEach(p=>{
+      const a = clamp(p.life,0,1);
+      ctx.save();
+      ctx.globalAlpha = a;
+      ctx.translate(p.x,p.y);
+      ctx.rotate(p.angle);
+      if(p.type === 'sparkle'){
+        ctx.fillStyle = p.color;
+        ctx.beginPath();
+        ctx.moveTo(0,-p.size); ctx.lineTo(p.size*0.3,0); ctx.lineTo(0,p.size); ctx.lineTo(-p.size*0.3,0);
+        ctx.closePath(); ctx.fill();
+      } else if(p.type === 'leaf'){
+        ctx.fillStyle = p.color;
+        ctx.beginPath(); ctx.ellipse(0,0,p.size,p.size*0.55,0,0,Math.PI*2); ctx.fill();
+        ctx.strokeStyle = 'rgba(0,0,0,0.15)'; ctx.lineWidth = 0.6;
+        ctx.beginPath(); ctx.moveTo(-p.size,0); ctx.lineTo(p.size,0); ctx.stroke();
+      } else if(p.type === 'feather'){
+        ctx.fillStyle = p.color;
+        ctx.beginPath();
+        ctx.moveTo(0,-p.size);
+        ctx.quadraticCurveTo(p.size*0.6,0,0,p.size);
+        ctx.quadraticCurveTo(-p.size*0.6,0,0,-p.size);
+        ctx.fill();
+      } else if(p.type === 'dust'){
+        const g = ctx.createRadialGradient(0,0,0,0,0,p.size*2);
+        g.addColorStop(0, p.color); g.addColorStop(1,'rgba(255,255,255,0)');
+        ctx.fillStyle = g;
+        ctx.beginPath(); ctx.arc(0,0,p.size*2,0,Math.PI*2); ctx.fill();
+      } else { // cloudlet
+        ctx.fillStyle = 'rgba(255,255,255,0.6)';
+        ctx.beginPath();
+        ctx.arc(-p.size*0.5,0,p.size*0.6,0,Math.PI*2);
+        ctx.arc(p.size*0.5,0,p.size*0.6,0,Math.PI*2);
+        ctx.arc(0,-p.size*0.3,p.size*0.7,0,Math.PI*2);
+        ctx.fill();
+      }
+      ctx.restore();
+    });
+  }
+
+  // -----------------------------------------------------------------
+  // WindCurrent — one flowing "air river". Its spine is sampled into
+  // a reused points buffer (no per-frame allocation) each update.
+  // Difficulty tiers (easy/medium/hard) control width, curve, speed,
+  // and whether it can split into two braided paths that reconnect.
+  // -----------------------------------------------------------------
+  class WindCurrent {
+    constructor(){
+      this.points = [];
+      for(let i=0;i<WIND_SAMPLES;i++) this.points.push({x:0,y:0,thick:0,splitOff:0});
+      this.bladeAngle = 0;
+    }
+  }
+
+  function pickWindTier(){
+    let wEasy=0.6, wMedium=0.3, wHard=0.1;
+    if(score >= 3 && score < 6){ wEasy=0.4; wMedium=0.4; wHard=0.2; }
+    else if(score >= 6){ wEasy=0.25; wMedium=0.4; wHard=0.35; }
+    const r = Math.random()*(wEasy+wMedium+wHard);
+    if(r < wEasy) return 'easy';
+    if(r < wEasy+wMedium) return 'medium';
+    return 'hard';
+  }
+
+  function configureWindCurrent(cur){
+    const tier = pickWindTier();
+    const cfg = WIND_TIER_CONFIG[tier];
+    cur.tier = tier;
+    cur.x = W + rand(40,120);
+    cur.length = rand(cfg.lenMin, cfg.lenMax);
+    cur.thickness = rand(cfg.thickMin, cfg.thickMax);
+    cur.amplitude = rand(cfg.ampMin, cfg.ampMax);
+    cur.freq = rand(cfg.freqMin, cfg.freqMax);
+    cur.speedMult = rand(cfg.speedMin, cfg.speedMax);
+    cur.driftAmp = rand(cfg.driftMin, cfg.driftMax);
+    cur.driftSpeed = rand(cfg.driftSpeedMin, cfg.driftSpeedMax);
+    cur.bendAmount = rand(cfg.bendMin, cfg.bendMax);
+    cur.phase = rand(0, Math.PI*2);
+    cur.driftPhase = rand(0, Math.PI*2);
+    cur.bendPhase = rand(0, Math.PI*2);
+    cur.waveSpeed = rand(0.5,0.9);
+    cur.thickWobbleSpeed = rand(0.6,1.1);
+    cur.thickWobblePhase = rand(0, Math.PI*2);
+    const safeMargin = cur.amplitude + cur.driftAmp + 40;
+    cur.baseY = rand(PLAY_TOP+safeMargin, PLAY_BOTTOM-safeMargin);
+    cur.canSplit = tier === 'hard' ? Math.random() < 0.6 : (tier === 'medium' ? Math.random() < 0.2 : false);
+    cur.splitGap = cur.canSplit ? rand(18,32) : 0;
+    cur.sourceType = Math.random() < 0.6 ? 'turbine' : 'tower';
+    cur.bladeAngle = rand(0, Math.PI*2);
+  }
+
+  function spawnWindCurrent(){
+    if(windCurrents.length >= WIND_MAX_CURRENTS) return;
+    let cur = windCurrentPool.pop();
+    if(!cur) cur = new WindCurrent();
+    configureWindCurrent(cur);
+    windCurrents.push(cur);
+  }
+
+  function updateWindCurrentSamples(cur){
+    const n = cur.points.length;
+    for(let i=0;i<n;i++){
+      const u = i/(n-1);
+      const worldX = cur.x + u*cur.length;
+      const wave = Math.sin(u*cur.freq*Math.PI*2 + cur.phase + windTime*cur.waveSpeed) * cur.amplitude;
+      const drift = Math.sin(windTime*cur.driftSpeed + cur.driftPhase) * cur.driftAmp;
+      const bend = Math.sin(u*Math.PI) * cur.bendAmount * Math.sin(windTime*0.35 + cur.bendPhase);
+      const y = cur.baseY + wave + drift + bend;
+      const thick = cur.thickness * (0.82 + 0.18*Math.sin(u*4 + windTime*cur.thickWobbleSpeed + cur.thickWobblePhase));
+      const splitOff = cur.canSplit
+        ? cur.splitGap * Math.sin(u*Math.PI) * (0.7 + 0.3*Math.sin(windTime*0.6 + cur.phase))
+        : 0;
+      const p = cur.points[i];
+      p.x = worldX; p.y = y; p.thick = thick; p.splitOff = splitOff;
+    }
+  }
+
+  // samples a current's spine at an arbitrary world X (interpolated between the
+  // nearest two buffer points). Returns a shared scratch object — use immediately.
+  function sampleWindCurrentAt(cur, worldX){
+    const n = cur.points.length;
+    const u = clamp((worldX - cur.x)/cur.length, 0, 1);
+    const fi = u*(n-1);
+    const i0 = Math.floor(fi), i1 = Math.min(n-1, i0+1);
+    const t = fi - i0;
+    const a = cur.points[i0], b = cur.points[i1];
+    _sampleScratch.y = lerp(a.y,b.y,t);
+    _sampleScratch.thick = lerp(a.thick,b.thick,t);
+    _sampleScratch.splitOff = lerp(a.splitOff,b.splitOff,t);
+    return _sampleScratch;
+  }
+
+  // checkWindInfluence(px,py) — the smooth "influence zone" collision
+  // requested in the spec: 1.0 dead-center, easing down to 0 near the
+  // ribbon's edge, instead of an on/off rectangle. Returns a shared
+  // scratch object — read it immediately, don't hold a reference.
+  function checkWindInfluence(px, py){
+    const r = _windInfluenceScratch;
+    r.influence = 0; r.current = null; r.centerY = py;
+    for(let i=0;i<windCurrents.length;i++){
+      const cur = windCurrents[i];
+      if(px < cur.x || px > cur.x + cur.length) continue;
+      const s = sampleWindCurrentAt(cur, px);
+      let centerY = s.y;
+      if(s.splitOff > 1){
+        const dTop = Math.abs(py - (s.y - s.splitOff));
+        const dBot = Math.abs(py - (s.y + s.splitOff));
+        centerY = dTop < dBot ? s.y - s.splitOff : s.y + s.splitOff;
+      }
+      const halfSpan = s.thick*0.55 + 26;
+      const dist = Math.abs(py - centerY);
+      let infl = clamp(1 - dist/halfSpan, 0, 1);
+      infl = infl*infl*(3-2*infl); // smoothstep for a soft, non-linear falloff
+      if(infl > r.influence){ r.influence = infl; r.current = cur; r.centerY = centerY; }
+    }
+    return r;
+  }
+
+  function maybeEmitAmbientWindParticles(cur, dt){
+    if(windParticles.length >= WIND_MAX_PARTICLES) return;
+    if(Math.random() < 0.06*dt){
+      const idx = Math.floor(Math.random()*cur.points.length);
+      const p = cur.points[idx];
+      const roll = Math.random();
+      if(roll < 0.4){
+        spawnWindParticle('sparkle', p.x, p.y+rand(-6,6), rand(-0.6,-0.2), rand(-0.3,0.3), rand(0.8,1.4), rand(2,4), WIND_COLORS.sparkle);
+      } else if(roll < 0.7){
+        spawnWindParticle('leaf', p.x, p.y+rand(-8,8), rand(-1.2,-0.5), rand(-0.2,0.2), rand(1.2,2), rand(4,6), Math.random()<0.5?WIND_COLORS.leaf:WIND_COLORS.leafDark);
+      } else {
+        spawnWindParticle('dust', p.x, p.y+rand(-10,10), rand(-0.5,-0.15), rand(-0.15,0.15), rand(1,1.8), rand(2,4), WIND_COLORS.glow);
+      }
+    }
+  }
+
+  function updateWindManager(dt, effScroll){
+    windTime += dt/60;
+    windSpawnTimer -= dt;
+    if(windSpawnTimer <= 0 && windCurrents.length < WIND_MAX_CONCURRENT){
+      spawnWindCurrent();
+      windSpawnTimer = rand(230,340);
+    }
+    for(let i=windCurrents.length-1;i>=0;i--){
+      const cur = windCurrents[i];
+      cur.x -= effScroll * cur.speedMult * dt;
+      cur.bladeAngle += 0.12*dt;
+      if(cur.x + cur.length < -80){
+        windCurrents.splice(i,1);
+        windCurrentPool.push(cur);
+        continue;
+      }
+      updateWindCurrentSamples(cur);
+      maybeEmitAmbientWindParticles(cur, dt);
+    }
+  }
+
+  // -----------------------------------------------------------------
+  // Gameplay effects: riding a current smooths Breezy's tilt, lifts
+  // her gently, boosts speed, trails feathers, and plays soft audio.
+  // Runs after the existing player-movement code each frame, so it
+  // only *adds* a gentle influence on top rather than overriding it.
+  // -----------------------------------------------------------------
+  function applyWindEffectsToPlayer(dt){
+    if(player.windInfluence === undefined){
+      player.windInfluence = 0; player.windMultiplierActive = false; player.windFeatherTimer = 0;
+    }
+    const res = checkWindInfluence(player.x, player.y);
+    const target = res.influence;
+    const wasActive = player.windInfluence > 0.15;
+    player.windInfluence = lerp(player.windInfluence, target, clamp(0.18*dt,0,1));
+    const wi = player.windInfluence;
+    const nowActive = wi > 0.15;
+
+    if(nowActive && !wasActive){
+      playWindChime();
+      updateGuide("Ooh, a clean wind current! Ride it, Breezy! 🌬️✨");
+    }
+    updateWindAudio(wi, dt);
+
+    if(wi > 0.02){
+      // gentle upward float — this stage has no explicit gravity value,
+      // so "lighter" is expressed as a soft upward nudge to the target
+      player.targetY = clamp(player.targetY - wi*0.5*dt, PLAY_TOP, PLAY_BOTTOM);
+      // calmer tilt while riding, applied on top of the existing angle
+      player.angle = lerp(player.angle, player.angle*0.5, clamp(wi*0.4,0,1));
+      // playful speed lift — takes the max with the existing green-updraft
+      // boost so the two systems stack nicely instead of fighting
+      player.speedFactor = Math.max(player.speedFactor, lerp(1, 1.45, wi));
+      // feather trail, denser the deeper into the current
+      player.windFeatherTimer -= dt;
+      if(player.windFeatherTimer <= 0){
+        spawnWindParticle('feather', player.x - player.radius*0.7, player.y+rand(-6,6), rand(-1.6,-0.8), rand(-0.3,0.3), rand(0.7,1.1), rand(4,7), WIND_COLORS.feather);
+        player.windFeatherTimer = lerp(14, 4, wi);
+      }
+    }
+    player.windMultiplierActive = wi > 0.3;
+  }
+
+  // energy orbs get pulled gently toward Breezy while she's in a current
+  function applyOrbMagnetism(dt){
+    const wi = player.windInfluence || 0;
+    if(wi < 0.12) return;
+    const radius = 70 + wi*90;
+    const pull = 0.10 + wi*0.16;
+    for(let i=0;i<orbs.length;i++){
+      const o = orbs[i];
+      const dx = player.x - o.x, dy = player.y - o.y;
+      const d = Math.hypot(dx,dy);
+      if(d < radius && d > 1){
+        o.x += (dx/d) * pull * dt * 6;
+        o.y += (dy/d) * pull * dt * 6;
+      }
+    }
+  }
+
+  // Detects "an orb was just collected" purely by watching the existing
+  // score variable change — zero edits needed to the orb-collision code
+  // above. When it happens while riding a current, layers on a cosmetic
+  // "wind bonus" celebration (sound + burst + label) without touching
+  // the real score or the building/win progression.
+  function detectWindOrbBonus(){
+    if(score !== windLastScore){
+      if(score > windLastScore && (player.windInfluence||0) > 0.25){
+        spawnBurst(player.x, player.y - 6, 'rainbow', 10);
+        spawnFloatText(player.x, player.y - 34, 'Wind Boost! ✨', WIND_COLORS.pollen);
+        playWindCollectChime();
+      }
+      windLastScore = score;
+    }
+  }
+
+  // -----------------------------------------------------------------
+  // Ambient environmental life: butterflies, leaves, pollen and
+  // dandelion seeds drift across the sky and get swept along whenever
+  // they pass through a wind current — purely decorative, no collision.
+  // -----------------------------------------------------------------
+  function spawnAmbientFlyer(){
+    const kinds = ['butterfly','leaf','pollen','dandelion'];
+    const kind = kinds[Math.floor(Math.random()*kinds.length)];
+    ambientFlyers.push({
+      kind, x: W+rand(20,80), y: rand(PLAY_TOP, PLAY_BOTTOM),
+      baseSpeed: rand(0.5,1.1), wobble: rand(0,Math.PI*2), flap: 0,
+      hue: rand(0,1)
+    });
+  }
+
+  function updateAmbientFlyers(dt, effScroll){
+    ambientFlyerTimer -= dt;
+    if(ambientFlyerTimer <= 0 && ambientFlyers.length < 10){
+      spawnAmbientFlyer();
+      ambientFlyerTimer = rand(90,160);
+    }
+    for(let i=ambientFlyers.length-1;i>=0;i--){
+      const f = ambientFlyers[i];
+      f.wobble += 0.06*dt;
+      let vx = -f.baseSpeed*effScroll*0.5*dt;
+      let vy = Math.sin(f.wobble)*0.4*dt;
+      const res = checkWindInfluence(f.x, f.y);
+      if(res.influence > 0.15){
+        vx -= res.influence*effScroll*0.9*dt;
+        vy += (res.centerY - f.y) * 0.02 * res.influence * dt;
+        if(Math.random() < 0.06*dt){
+          spawnWindParticle('dust', f.x, f.y, rand(-1,-0.4), rand(-0.3,0.3), rand(0.4,0.7), rand(2,3), WIND_COLORS.sparkle);
+        }
+      }
+      f.x += vx; f.y += vy;
+      f.flap += dt/60*8;
+      if(f.x < -40) ambientFlyers.splice(i,1);
+    }
+  }
+
+  function drawAmbientFlyers(){
+    ambientFlyers.forEach(f=>{
+      ctx.save();
+      ctx.translate(f.x,f.y);
+      if(f.kind === 'butterfly'){
+        const wing = Math.sin(f.flap)*0.6+0.6;
+        ctx.fillStyle = f.hue>0.5 ? '#FF9F6B' : '#8DD9FF';
+        ctx.strokeStyle = COLORS.ink; ctx.lineWidth = 1;
+        ctx.save(); ctx.scale(wing,1);
+        ctx.beginPath(); ctx.ellipse(-4,0,4,6,0,0,Math.PI*2); ctx.fill(); ctx.stroke();
+        ctx.restore();
+        ctx.save(); ctx.scale(wing,1);
+        ctx.beginPath(); ctx.ellipse(4,0,4,6,0,0,Math.PI*2); ctx.fill(); ctx.stroke();
+        ctx.restore();
+      } else if(f.kind === 'leaf'){
+        ctx.rotate(f.wobble);
+        ctx.fillStyle = WIND_COLORS.leaf; ctx.strokeStyle = WIND_COLORS.leafDark; ctx.lineWidth = 1;
+        ctx.beginPath(); ctx.ellipse(0,0,7,4,0,0,Math.PI*2); ctx.fill(); ctx.stroke();
+      } else if(f.kind === 'pollen'){
+        ctx.fillStyle = WIND_COLORS.pollen; ctx.globalAlpha = 0.85;
+        ctx.beginPath(); ctx.arc(0,0,2.4,0,Math.PI*2); ctx.fill();
+      } else {
+        ctx.strokeStyle = 'rgba(255,255,255,0.8)'; ctx.lineWidth = 0.8;
+        for(let a=0;a<8;a++){
+          const ang = a*Math.PI/4 + f.wobble;
+          ctx.beginPath(); ctx.moveTo(0,0); ctx.lineTo(Math.cos(ang)*5, Math.sin(ang)*5); ctx.stroke();
+        }
+        ctx.fillStyle = '#FFFFFF';
+        ctx.beginPath(); ctx.arc(0,0,1.5,0,Math.PI*2); ctx.fill();
+      }
+      ctx.restore();
+    });
+  }
+
+  // -----------------------------------------------------------------
+  // Rendering: renewable-energy source glyph, the ribbon itself
+  // (glow + gradient strokes + flow-direction glints), and the aura
+  // drawn behind Breezy while she's riding a current.
+  // -----------------------------------------------------------------
+  function drawWindSource(cur){
+    const p = cur.points[cur.points.length-1];
+    if(p.x > W+70 || p.x < -70) return;
+    ctx.save();
+    ctx.translate(p.x, p.y);
+    if(cur.sourceType === 'turbine'){
+      ctx.fillStyle = WIND_COLORS.turbineBody;
+      ctx.strokeStyle = COLORS.ink;
+      ctx.lineWidth = 2;
+      ctx.fillRect(-3, 0, 6, 26);
+      ctx.strokeRect(-3, 0, 6, 26);
+      ctx.beginPath(); ctx.arc(0,0,5,0,Math.PI*2);
+      ctx.fillStyle = WIND_COLORS.turbineAccent; ctx.fill(); ctx.stroke();
+      for(let b=0;b<3;b++){
+        const a = cur.bladeAngle + b*(Math.PI*2/3);
+        ctx.save();
+        ctx.rotate(a);
+        ctx.beginPath();
+        ctx.moveTo(0,0);
+        ctx.quadraticCurveTo(4,-14,2,-26);
+        ctx.quadraticCurveTo(-2,-14,0,0);
+        ctx.fillStyle = WIND_COLORS.turbineBody;
+        ctx.strokeStyle = COLORS.ink; ctx.lineWidth = 1.5;
+        ctx.fill(); ctx.stroke();
+        ctx.restore();
+      }
+    } else {
+      ctx.fillStyle = WIND_COLORS.turbineBody;
+      ctx.strokeStyle = COLORS.ink;
+      ctx.lineWidth = 2;
+      roundRectPath(-4,0,8,28,3); ctx.fill(); ctx.stroke();
+      const pulse = 0.6 + Math.sin(windTime*3 + cur.phase)*0.3;
+      const g = ctx.createRadialGradient(0,-4,0,0,-4,16);
+      g.addColorStop(0, `rgba(255,214,102,${0.7*pulse})`);
+      g.addColorStop(1, 'rgba(255,214,102,0)');
+      ctx.fillStyle = g;
+      ctx.beginPath(); ctx.arc(0,-4,16,0,Math.PI*2); ctx.fill();
+      ctx.beginPath(); ctx.arc(0,-4,5,0,Math.PI*2);
+      ctx.fillStyle = COLORS.gold; ctx.fill(); ctx.stroke();
+    }
+    ctx.restore();
+  }
+
+  // traces a smooth quadratic path through the ribbon's sample points,
+  // offset vertically by `sign*splitOff` (0 for a single unsplit ribbon)
+  function tracePath(pts, sign, widthFactor){
+    const wf = widthFactor || 1;
+    ctx.beginPath();
+    const first = pts[0];
+    ctx.moveTo(first.x, first.y + sign*first.splitOff*wf);
+    for(let i=1;i<pts.length;i++){
+      const p0 = pts[i-1], p1 = pts[i];
+      const y0 = p0.y + sign*p0.splitOff*wf, y1 = p1.y + sign*p1.splitOff*wf;
+      const midX = (p0.x+p1.x)/2, midY = (y0+y1)/2;
+      ctx.quadraticCurveTo(p0.x, y0, midX, midY);
+    }
+    const last = pts[pts.length-1];
+    ctx.lineTo(last.x, last.y + sign*last.splitOff*wf);
+  }
+
+  function drawWindRibbon(cur){
+    const pts = cur.points;
+    const n = pts.length;
+    if(pts[n-1].x < -80 || pts[0].x > W+80) return;
+
+    // outer soft glow along the centerline
+    ctx.save();
+    ctx.lineCap = 'round'; ctx.lineJoin = 'round';
+    ctx.strokeStyle = WIND_COLORS.glow;
+    ctx.lineWidth = cur.thickness*1.8;
+    ctx.globalAlpha = 0.35;
+    tracePath(pts, 0);
+    ctx.stroke();
+    ctx.restore();
+
+    const branches = cur.canSplit ? [-1, 1] : [0];
+    branches.forEach(sign=>{
+      ctx.save();
+      ctx.lineCap = 'round'; ctx.lineJoin = 'round';
+      const grad = ctx.createLinearGradient(pts[0].x,0,pts[n-1].x,0);
+      grad.addColorStop(0, 'rgba(255,255,255,0)');
+      grad.addColorStop(0.5, WIND_COLORS.ribbon);
+      grad.addColorStop(1, 'rgba(255,255,255,0)');
+      ctx.strokeStyle = grad;
+      ctx.lineWidth = Math.max(2, cur.thickness*0.22);
+      ctx.globalAlpha = 0.85;
+      tracePath(pts, sign);
+      ctx.stroke();
+
+      ctx.lineWidth = Math.max(1, cur.thickness*0.1);
+      ctx.strokeStyle = WIND_COLORS.ribbonSoft;
+      ctx.globalAlpha = 0.6;
+      tracePath(pts, sign, 0.5);
+      ctx.stroke();
+      ctx.restore();
+    });
+
+    // small stretched glints sliding along the ribbon = animated flow direction
+    const glintCount = 3;
+    for(let g=0; g<glintCount; g++){
+      const u = ((windTime*0.18 + g/glintCount) % 1 + 1) % 1;
+      const s = sampleWindCurrentAt(cur, cur.x + u*cur.length);
+      branches.forEach(sign=>{
+        ctx.save();
+        ctx.globalAlpha = 0.5*(0.4+0.6*Math.sin(u*Math.PI));
+        ctx.fillStyle = '#FFFFFF';
+        ctx.translate(cur.x+u*cur.length, s.y + sign*s.splitOff);
+        ctx.beginPath();
+        ctx.ellipse(0,0, 10,2.5, 0,0,Math.PI*2);
+        ctx.fill();
+        ctx.restore();
+      });
+    }
+  }
+
+  function drawWind(time){
+    if(!windCurrents.length && !windParticles.length && !ambientFlyers.length) return;
+    windCurrents.forEach(cur=>drawWindSource(cur));
+    windCurrents.forEach(cur=>drawWindRibbon(cur));
+    drawAmbientFlyers();
+    drawWindParticles();
+  }
+
+  function drawWindAura(){
+    const wi = player.windInfluence || 0;
+    if(wi < 0.03) return;
+    ctx.save();
+    ctx.translate(player.x, player.y);
+    const g = ctx.createRadialGradient(0,0,player.radius*0.4,0,0,player.radius*2.4);
+    g.addColorStop(0, `rgba(255,255,255,${0.5*wi})`);
+    g.addColorStop(0.6, `rgba(173,216,255,${0.35*wi})`);
+    g.addColorStop(1, 'rgba(173,216,255,0)');
+    ctx.fillStyle = g;
+    ctx.beginPath(); ctx.arc(0,0, player.radius*2.4, 0, Math.PI*2); ctx.fill();
+    ctx.restore();
+  }
+
+  // WIND HOOK — called once from initGame() to clear/reset the system on every new run
+  function resetWindSystem(){
+    windCurrents.forEach(c=>windCurrentPool.push(c));
+    windCurrents.length = 0;
+    windParticles.forEach(p=>windParticlePool.push(p));
+    windParticles.length = 0;
+    ambientFlyers.length = 0;
+    windSpawnTimer = rand(120,200);
+    ambientFlyerTimer = rand(60,120);
+    windTime = 0;
+    windLastScore = 0;
+    player.windInfluence = 0;
+    player.windMultiplierActive = false;
+    player.windFeatherTimer = 0;
+    if(windNoiseGain) windNoiseGain.gain.value = 0;
   }
 
   // ---------------------------------------------------------------
