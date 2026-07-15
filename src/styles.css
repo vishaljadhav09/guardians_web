@@ -320,7 +320,7 @@ img, svg { display: block; max-width: 100%; }
   100% { clip-path: circle(140% at 50% 30%); opacity: 0; }
 }
 
-/* Guardian Card & Stage Layout */
+//* Guardian & How-to-Play Card Styles & Stage Layout */
 .gog-stage-layout {
   display: flex;
   flex-direction: column;
@@ -329,237 +329,289 @@ img, svg { display: block; max-width: 100%; }
   width: 100%;
 }
 
-.gog-guardian-card {
+.gog-guardian-card,
+.gog-play-card {
   width: 100%;
-  max-width: 320px;
-  padding: 20px;
-  border-radius: 32px;
+  max-width: 280px;
+  padding: 14px;
+  border-radius: 24px;
   font-family: var(--gog-font-body);
   transition: all 0.3s ease;
   flex-shrink: 0;
+  box-sizing: border-box;
 }
 
-.gog-guardian-card .card-inner {
+.gog-guardian-card .card-inner,
+.gog-play-card .card-inner {
   display: flex;
   flex-direction: column;
-  gap: 15px;
+  gap: 10px;
   align-items: center;
 }
 
-.gog-guardian-card .mascot-box {
+.gog-guardian-card .mascot-box,
+.gog-play-card .mascot-box {
   width: 100%;
-  padding: 15px;
-  border-radius: 24px;
+  padding: 10px;
+  border-radius: 18px;
   text-align: center;
   border: 3px solid;
 }
 
-.gog-guardian-card .mascot-circle {
-  width: 80px;
-  height: 80px;
+.gog-guardian-card .mascot-circle,
+.gog-play-card .mascot-circle {
+  width: 56px;
+  height: 56px;
   border-radius: 50%;
-  margin: 0 auto 10px;
+  margin: 0 auto 6px;
   display: flex;
   align-items: center;
   justify-content: center;
   border: 3px solid #ffffff;
-  font-size: 40px;
-  box-shadow: 0 4px 0 rgba(0,0,0,0.1);
+  font-size: 28px;
+  box-shadow: 0 3px 0 rgba(0,0,0,0.1);
 }
 
-.gog-guardian-card h3 {
+.gog-guardian-card h3,
+.gog-play-card h3 {
   margin: 0;
-  font-size: 24px;
+  font-size: 18px;
   font-family: var(--gog-font-head);
 }
 
-.gog-guardian-card .role-text {
-  margin: 5px 0 0;
-  font-size: 14px;
+.gog-guardian-card .role-text,
+.gog-play-card .role-text {
+  margin: 3px 0 0;
+  font-size: 12px;
   font-weight: 700;
 }
 
-.gog-guardian-card h2 {
-  margin: 0 0 10px;
-  font-size: 24px;
+.gog-guardian-card h2,
+.gog-play-card h2 {
+  margin: 0 0 6px;
+  font-size: 18px;
   font-family: var(--gog-font-head);
   text-align: center;
 }
 
-.gog-guardian-card .fact-box {
-  padding: 15px;
-  border-radius: 20px;
+.gog-guardian-card .fact-box,
+.gog-play-card .fact-box {
+  padding: 10px 12px;
+  border-radius: 14px;
   background: #ffffff;
   border: 2px solid;
-  font-size: 15px;
-  line-height: 1.5;
+  font-size: 13px;
+  line-height: 1.4;
+  width: 100%;
 }
 
-.gog-guardian-card .quote-box {
-  margin-top: 12px;
-  padding: 12px;
-  border-radius: 20px;
+.gog-guardian-card .quote-box,
+.gog-play-card .quote-box {
+  margin-top: 8px;
+  padding: 8px 10px;
+  border-radius: 14px;
   border: 2px dashed;
-  font-size: 14px;
-  line-height: 1.4;
+  font-size: 12px;
+  line-height: 1.3;
+  width: 100%;
 }
 
 /* Theme color definitions for cards */
-.gog-guardian-card.theme-stage01 {
+.gog-guardian-card.theme-stage01,
+.gog-play-card.theme-stage01 {
   background: linear-gradient(180deg, #ffffff, #e3f2fd);
-  border: 4px solid #90caf9;
-  box-shadow: 0 8px 0 #64b5f6;
+  border: 3px solid #90caf9;
+  box-shadow: 0 6px 0 #64b5f6;
   color: #0d47a1;
 }
-.gog-guardian-card.theme-stage01 .mascot-box {
+.gog-guardian-card.theme-stage01 .mascot-box,
+.gog-play-card.theme-stage01 .mascot-box {
   background: #fff9c4;
   border-color: #fbc02d;
 }
-.gog-guardian-card.theme-stage01 .mascot-circle {
+.gog-guardian-card.theme-stage01 .mascot-circle,
+.gog-play-card.theme-stage01 .mascot-circle {
   background: #ffb74d;
 }
-.gog-guardian-card.theme-stage01 h3 {
+.gog-guardian-card.theme-stage01 h3,
+.gog-play-card.theme-stage01 h3 {
   color: #e65100;
 }
-.gog-guardian-card.theme-stage01 .role-text {
+.gog-guardian-card.theme-stage01 .role-text,
+.gog-play-card.theme-stage01 .role-text {
   color: #bf360c;
 }
-.gog-guardian-card.theme-stage01 h2 {
+.gog-guardian-card.theme-stage01 h2,
+.gog-play-card.theme-stage01 h2 {
   color: #1565c0;
 }
-.gog-guardian-card.theme-stage01 .fact-box {
+.gog-guardian-card.theme-stage01 .fact-box,
+.gog-play-card.theme-stage01 .fact-box {
   border-color: #90caf9;
   color: #0d47a1;
 }
-.gog-guardian-card.theme-stage01 .quote-box {
+.gog-guardian-card.theme-stage01 .quote-box,
+.gog-play-card.theme-stage01 .quote-box {
   background: #e3f2fd;
   border-color: #2196f3;
   color: #0d47a1;
 }
 
-.gog-guardian-card.theme-stage02 {
+.gog-guardian-card.theme-stage02,
+.gog-play-card.theme-stage02 {
   background: linear-gradient(180deg, #ffffff, #e8f5e9);
-  border: 4px solid #a5d6a7;
-  box-shadow: 0 8px 0 #81c784;
+  border: 3px solid #a5d6a7;
+  box-shadow: 0 6px 0 #81c784;
   color: #2e7d32;
 }
-.gog-guardian-card.theme-stage02 .mascot-box {
+.gog-guardian-card.theme-stage02 .mascot-box,
+.gog-play-card.theme-stage02 .mascot-box {
   background: #fff9c4;
   border-color: #fbc02d;
 }
-.gog-guardian-card.theme-stage02 .mascot-circle {
+.gog-guardian-card.theme-stage02 .mascot-circle,
+.gog-play-card.theme-stage02 .mascot-circle {
   background: #ffb74d;
 }
-.gog-guardian-card.theme-stage02 h3 {
+.gog-guardian-card.theme-stage02 h3,
+.gog-play-card.theme-stage02 h3 {
   color: #e65100;
 }
-.gog-guardian-card.theme-stage02 .role-text {
+.gog-guardian-card.theme-stage02 .role-text,
+.gog-play-card.theme-stage02 .role-text {
   color: #bf360c;
 }
-.gog-guardian-card.theme-stage02 h2 {
+.gog-guardian-card.theme-stage02 h2,
+.gog-play-card.theme-stage02 h2 {
   color: #2e7d32;
 }
-.gog-guardian-card.theme-stage02 .fact-box {
+.gog-guardian-card.theme-stage02 .fact-box,
+.gog-play-card.theme-stage02 .fact-box {
   border-color: #a5d6a7;
   color: #2e7d32;
 }
-.gog-guardian-card.theme-stage02 .quote-box {
+.gog-guardian-card.theme-stage02 .quote-box,
+.gog-play-card.theme-stage02 .quote-box {
   background: #e8f5e9;
   border-color: #4caf50;
   color: #2e7d32;
 }
 
-.gog-guardian-card.theme-stage03 {
+.gog-guardian-card.theme-stage03,
+.gog-play-card.theme-stage03 {
   background: linear-gradient(180deg, #ffffff, #fff3e0);
-  border: 4px solid #ffcc80;
-  box-shadow: 0 8px 0 #ffb74d;
+  border: 3px solid #ffcc80;
+  box-shadow: 0 6px 0 #ffb74d;
   color: #e65100;
 }
-.gog-guardian-card.theme-stage03 .mascot-box {
+.gog-guardian-card.theme-stage03 .mascot-box,
+.gog-play-card.theme-stage03 .mascot-box {
   background: #fffdf8;
   border-color: #ffb74d;
 }
-.gog-guardian-card.theme-stage03 .mascot-circle {
+.gog-guardian-card.theme-stage03 .mascot-circle,
+.gog-play-card.theme-stage03 .mascot-circle {
   background: #ffe082;
 }
-.gog-guardian-card.theme-stage03 h3 {
+.gog-guardian-card.theme-stage03 h3,
+.gog-play-card.theme-stage03 h3 {
   color: #e65100;
 }
-.gog-guardian-card.theme-stage03 .role-text {
+.gog-guardian-card.theme-stage03 .role-text,
+.gog-play-card.theme-stage03 .role-text {
   color: #bf360c;
 }
-.gog-guardian-card.theme-stage03 h2 {
+.gog-guardian-card.theme-stage03 h2,
+.gog-play-card.theme-stage03 h2 {
   color: #ef6c00;
 }
-.gog-guardian-card.theme-stage03 .fact-box {
+.gog-guardian-card.theme-stage03 .fact-box,
+.gog-play-card.theme-stage03 .fact-box {
   border-color: #ffcc80;
   color: #e65100;
 }
-.gog-guardian-card.theme-stage03 .quote-box {
+.gog-guardian-card.theme-stage03 .quote-box,
+.gog-play-card.theme-stage03 .quote-box {
   background: #fff3e0;
   border-color: #ff9800;
   color: #e65100;
 }
 
-.gog-guardian-card.theme-stage04 {
+.gog-guardian-card.theme-stage04,
+.gog-play-card.theme-stage04 {
   background: linear-gradient(180deg, #ffffff, #e1f5fe);
-  border: 4px solid #b3e5fc;
-  box-shadow: 0 8px 0 #81d4fa;
+  border: 3px solid #b3e5fc;
+  box-shadow: 0 6px 0 #81d4fa;
   color: #1e3d59;
 }
-.gog-guardian-card.theme-stage04 .mascot-box {
+.gog-guardian-card.theme-stage04 .mascot-box,
+.gog-play-card.theme-stage04 .mascot-box {
   background: #fff9c4;
   border-color: #fbc02d;
 }
-.gog-guardian-card.theme-stage04 .mascot-circle {
+.gog-guardian-card.theme-stage04 .mascot-circle,
+.gog-play-card.theme-stage04 .mascot-circle {
   background: #ffb74d;
 }
-.gog-guardian-card.theme-stage04 h3 {
+.gog-guardian-card.theme-stage04 h3,
+.gog-play-card.theme-stage04 h3 {
   color: #e65100;
 }
-.gog-guardian-card.theme-stage04 .role-text {
+.gog-guardian-card.theme-stage04 .role-text,
+.gog-play-card.theme-stage04 .role-text {
   color: #bf360c;
 }
-.gog-guardian-card.theme-stage04 h2 {
+.gog-guardian-card.theme-stage04 h2,
+.gog-play-card.theme-stage04 h2 {
   color: #0288d1;
 }
-.gog-guardian-card.theme-stage04 .fact-box {
+.gog-guardian-card.theme-stage04 .fact-box,
+.gog-play-card.theme-stage04 .fact-box {
   border-color: #b3e5fc;
   color: #01579b;
 }
-.gog-guardian-card.theme-stage04 .quote-box {
+.gog-guardian-card.theme-stage04 .quote-box,
+.gog-play-card.theme-stage04 .quote-box {
   background: #e1f5fe;
   border-color: #03a9f4;
   color: #0277bd;
 }
 
-.gog-guardian-card.theme-stage05 {
+.gog-guardian-card.theme-stage05,
+.gog-play-card.theme-stage05 {
   background: linear-gradient(180deg, #ffffff, #ede7f6);
-  border: 4px solid #d1c4e9;
-  box-shadow: 0 8px 0 #b39ddb;
+  border: 3px solid #d1c4e9;
+  box-shadow: 0 6px 0 #b39ddb;
   color: #311b92;
 }
-.gog-guardian-card.theme-stage05 .mascot-box {
+.gog-guardian-card.theme-stage05 .mascot-box,
+.gog-play-card.theme-stage05 .mascot-box {
   background: #fffdf8;
   border-color: #d1c4e9;
 }
-.gog-guardian-card.theme-stage05 .mascot-circle {
+.gog-guardian-card.theme-stage05 .mascot-circle,
+.gog-play-card.theme-stage05 .mascot-circle {
   background: #b6a6ff;
 }
-.gog-guardian-card.theme-stage05 h3 {
+.gog-guardian-card.theme-stage05 h3,
+.gog-play-card.theme-stage05 h3 {
   color: #4a148c;
 }
-.gog-guardian-card.theme-stage05 .role-text {
+.gog-guardian-card.theme-stage05 .role-text,
+.gog-play-card.theme-stage05 .role-text {
   color: #7b1fa2;
 }
-.gog-guardian-card.theme-stage05 h2 {
+.gog-guardian-card.theme-stage05 h2,
+.gog-play-card.theme-stage05 h2 {
   color: #4a148c;
 }
-.gog-guardian-card.theme-stage05 .fact-box {
+.gog-guardian-card.theme-stage05 .fact-box,
+.gog-play-card.theme-stage05 .fact-box {
   border-color: #d1c4e9;
   color: #311b92;
 }
-.gog-guardian-card.theme-stage05 .quote-box {
+.gog-guardian-card.theme-stage05 .quote-box,
+.gog-play-card.theme-stage05 .quote-box {
   background: #ede7f6;
   border-color: #673ab7;
   color: #512da8;
@@ -583,15 +635,22 @@ body .stage-wrap {
     width: 100%;
   }
   body .gog-guardian-card {
-    width: 320px;
+    order: 1;
+    width: 280px;
     flex-shrink: 0;
   }
   body .gog-stage-layout #canvasFrame {
+    order: 2;
     flex-grow: 1;
     flex-shrink: 1;
     max-width: none !important;
     max-height: calc(100vh - 160px) !important;
     margin: 0 !important;
+  }
+  body .gog-play-card {
+    order: 3;
+    width: 280px;
+    flex-shrink: 0;
   }
 }
 
@@ -603,16 +662,24 @@ body .stage-wrap {
     gap: 16px;
     width: 100%;
   }
-  body .gog-guardian-card {
-    width: 100%;
-    max-width: 320px;
-  }
   body .gog-stage-layout #canvasFrame {
+    order: 1;
     width: 100%;
     max-width: none !important;
     max-height: calc(100vh - 240px) !important;
     margin: 0 auto !important;
   }
+  body .gog-guardian-card {
+    order: 2;
+    width: 100%;
+    max-width: 280px;
+  }
+  body .gog-play-card {
+    order: 3;
+    width: 100%;
+    max-width: 280px;
+  }
+}
 }
 
 

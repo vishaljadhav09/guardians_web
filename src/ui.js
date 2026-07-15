@@ -177,35 +177,60 @@
         emoji: "🐬",
         role: "Guardian of the Ocean",
         fact: "Dolphins use echolocation to navigate and hunt! They play a key role in keeping marine ecosystems balanced and healthy.",
-        quote: "When we clear the plastic from our waters, we help the ocean breathe and thrive!"
+        quote: "When we clear the plastic from our waters, we help the ocean breathe and thrive!",
+        play: {
+          emoji: "🎮",
+          goal: "Collect plastic trash from the reef before the timer runs out or health drops!",
+          controls: "<strong>Move:</strong> Move mouse / drag finger to steer Splash.<br><strong>Boost:</strong> Click 💨 or press <strong>Spacebar</strong> to break clusters!"
+        }
       },
       "stage02": {
         name: "Ravi",
         emoji: "🐯",
         role: "Guardian of the Rainforest",
         fact: "Rainforests are home to more than half of the world's plant and animal species! Trees act as Earth's lungs, absorbing carbon dioxide.",
-        quote: "Every tree we grow makes our canopy stronger and shelters my forest friends!"
+        quote: "Every tree we grow makes our canopy stronger and shelters my forest friends!",
+        play: {
+          emoji: "🌱",
+          goal: "Plant trees to grow a protective canopy and stop the logging machines!",
+          controls: "<strong>Select:</strong> Tap a tree card at the bottom.<br><strong>Plant:</strong> Tap a green glowing plot.<br><strong>Seeds:</strong> Tap floating seeds to collect energy!"
+        }
       },
       "stage03": {
         name: "Buzz",
         emoji: "🐝",
         role: "Guardian of the Meadow",
         fact: "Bees pollinate a third of the crops we eat! Without them, many of our favorite fruits and vegetables wouldn't grow.",
-        quote: "By planting wildflowers, we keep our meadows buzzing and food chains healthy!"
+        quote: "By planting wildflowers, we keep our meadows buzzing and food chains healthy!",
+        play: {
+          emoji: "🐝",
+          goal: "Fly Buzz along paths to pollinate flowers and make them bloom!",
+          controls: "<strong>Fly:</strong> Use Arrow keys / WASD (or tap screen sectors).<br><strong>Beat:</strong> Follow rhythm lines and fly over glowing flowers!"
+        }
       },
       "stage04": {
         name: "Nori",
         emoji: "🐧",
         role: "Guardian of the Ice",
         fact: "Penguins help keep the ocean healthy! They are like little gardeners of the sea. 🌊",
-        quote: "When we protect the ice, we help the penguins stay happy and strong!"
+        quote: "When we protect the ice, we help the penguins stay happy and strong!",
+        play: {
+          emoji: "❄️",
+          goal: "Rescue lost penguin chicks and bring them safely back to the safe iceberg!",
+          controls: "<strong>Walk:</strong> Use Left/Right Arrow / A/D keys (or ◀ ▶ buttons).<br><strong>Jump:</strong> Press Up Arrow / W / Space (or ▲ button).<br><strong>Cool Valve:</strong> Stand near valve and press E (or tap ☸️)."
+        }
       },
       "stage05": {
         name: "Breezy",
         emoji: "🌬️",
         role: "Guardian of the Sky",
         fact: "Wind energy is clean, infinite, and doesn't pollute the air! A single wind turbine can power hundreds of homes.",
-        quote: "Harnessing the clean wind keeps our skies clear, fresh, and beautiful for everyone!"
+        quote: "Harnessing the clean wind keeps our skies clear, fresh, and beautiful for everyone!",
+        play: {
+          emoji: "⚡",
+          goal: "Gather glowing energy orbs in the sky to power the city cleanly!",
+          controls: "<strong>Fly Up:</strong> Press and hold Spacebar / Up Arrow / W (or hold tap).<br><strong>Glide:</strong> Release key or touch to glide down.<br><strong>Boost/Avoid:</strong> Ride updrafts, avoid factory smoke."
+        }
       }
     };
 
@@ -258,8 +283,33 @@
 
       card.innerHTML = html;
 
-      // Prepend the card to the flex container (to the left of canvasFrame)
+      // Create the How to Play Card element
+      var playCard = document.createElement("section");
+      playCard.className = "gog-play-card theme-" + stageId;
+
+      var playHtml = "";
+      playHtml += '<div class="card-inner">';
+      playHtml += '  <div class="mascot-box">';
+      playHtml += '    <div class="mascot-circle">' + data.play.emoji + '</div>';
+      playHtml += '    <h3>How to Play</h3>';
+      playHtml += '    <p class="role-text">Game Guide</p>';
+      playHtml += '  </div>';
+      playHtml += '  <div style="width:100%;">';
+      playHtml += '    <h2>Your Goal</h2>';
+      playHtml += '    <div class="fact-box">';
+      playHtml += '      <p style="margin:0;">' + data.play.goal + '</p>';
+      playHtml += '    </div>';
+      playHtml += '    <div class="quote-box">';
+      playHtml += '      <p style="margin:0;">' + data.play.controls + '</p>';
+      playHtml += '    </div>';
+      playHtml += '  </div>';
+      playHtml += '</div>';
+
+      playCard.innerHTML = playHtml;
+
+      // Add cards to the wrapper
       wrapper.insertBefore(card, canvasFrame);
+      wrapper.appendChild(playCard);
     }
 
     if (document.readyState === "loading") {
