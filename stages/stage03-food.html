@@ -569,7 +569,7 @@
           </div>
           <span class="label"><span id="progressVal">0</span> / 15</span>
         </div>
-        <span class="chip timer-chip" id="timerChip">90s</span>
+        <span class="chip timer-chip" id="timerChip">60s</span>
         <span class="chip">🌼 <span id="scoreChip">0</span></span>
         <span class="chip combo-chip" id="comboChip">🔥 x0</span>
         <button
@@ -609,6 +609,7 @@
   </div>
 
   <script src="../data/content.js"></script>
+  <script src="../src/constants.js"></script>
   <script src="../src/save.js"></script>
   <script src="../src/engine.js"></script>
   <script src="../src/ui.js"></script>
@@ -704,7 +705,7 @@
 
   /* ---------------- Constants ---------------- */
   var WIN_TARGET = 15;
-  var SESSION_MS = 90000;
+  var SESSION_MS = GOGConstants.STAGE3.gameTimeMs; // 60 seconds from constants
   var WILT_MS = 3000;
   var BEAT_MS = 2000;
   var BEAT_JITTER = 300;

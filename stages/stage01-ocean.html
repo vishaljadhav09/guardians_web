@@ -846,7 +846,7 @@
             </div>
             <span class="label" id="reefPct">0%</span>
           </div>
-          <span class="chip timer-chip" id="timerChip">75s</span>
+          <span class="chip timer-chip" id="timerChip">60s</span>
           <span
             class="chip"
             id="difficultyChip"
@@ -1114,6 +1114,7 @@
     </div>
 
     <script src="../data/content.js"></script>
+    <script src="../src/constants.js"></script>
     <script src="../src/save.js"></script>
     <script src="../src/engine.js"></script>
     <script src="../src/ui.js"></script>
@@ -1379,7 +1380,7 @@
         }
 
         /* ---------------- game state ---------------- */
-        var TOTAL_TIME = 75; // seconds
+        var TOTAL_TIME = GOGConstants.STAGE1.gameTime; // 60 seconds from constants
         var state = {
           running: true,
           won: false,

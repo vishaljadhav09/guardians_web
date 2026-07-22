@@ -492,7 +492,7 @@
             </div>
             <span class="label" id="canopyPct">42%</span>
           </div>
-          <span class="chip timer-chip" id="timerChip">75s</span>
+          <span class="chip timer-chip" id="timerChip">60s</span>
           <span class="chip" id="difficultyChip" title="Difficulty Level"
             >⚡ Lvl 1</span
           >
@@ -533,6 +533,7 @@
     </div>
 
     <script src="../data/content.js"></script>
+    <script src="../src/constants.js"></script>
     <script src="../src/save.js"></script>
     <script src="../src/engine.js"></script>
     <script src="../src/ui.js"></script>
@@ -611,7 +612,7 @@
             this.smogMoving = false; // Starts frozen during prep delay -> upset face
             this.growthTime = this.growthTimes[0]; // starts with wave 1 growth time
             this.gameState = "INTRO";
-            this.timer = 75; // 75 seconds wave length
+            this.timer = GOGConstants.STAGE2.gameTime; // 60 seconds from constants
             this.computeConnectivity();
           },
 
@@ -1129,7 +1130,6 @@
         var winWiping = false;
         var winWipeDone = false;
 
-
         var input = new GOGEngine.Input(canvas);
         var particles = new GOGEngine.ParticleSystem(120);
         var audio = new GOGEngine.Audio(!save.settings.sound);
@@ -1359,9 +1359,9 @@
         /* ---------------- parallax background layers ---------------- */
         var layers = [
           { img: null, speed: 1, y: 0 },
-          { img: null, speed: 2, y: 0 },
-          { img: null, speed: 3, y: 0 },
-          { img: null, speed: 4, y: 0 },
+          { img: null, speed: 1, y: 0 },
+          { img: null, speed: 1, y: 0 },
+          { img: null, speed: 1, y: 0 },
         ];
         var scrollX = 0;
 
@@ -1941,7 +1941,7 @@
           } else {
             GOGStage2.wave = waveNum;
             GOGStage2.smogPosition = GOGStage2.cols;
-            GOGStage2.timer = 75;
+            GOGStage2.timer = GOGConstants.STAGE2.timePerWave;
             GOGStage2.saplings += 4; // bonus saplings per wave
             GOGStage2.transitionTo("WAVE_ACTIVE");
           }
@@ -2286,8 +2286,7 @@
 
           sproutsChip.textContent = GOGStage2.saplings;
           if (GOGStage2.smogDelay > 0 && !calmMode) {
-            timerChip.textContent =
-              "Prep: " + Math.ceil(GOGStage2.smogDelay) + "s";
+            timerChip.textContent = Math.ceil(GOGStage2.timer) + "s";
             timerChip.style.backgroundColor = "var(--gog-sun)"; // yellow highlight
             timerChip.style.color = "var(--gog-ink)";
           } else {
@@ -2309,7 +2308,14 @@
           ctx.beginPath();
           ctx.arc(W / 2, H / 2, r, 0, Math.PI * 2);
           ctx.clip();
-          var grad = ctx.createRadialGradient(W / 2, H / 2, 0, W / 2, H / 2, r || 1);
+          var grad = ctx.createRadialGradient(
+            W / 2,
+            H / 2,
+            0,
+            W / 2,
+            H / 2,
+            r || 1,
+          );
           grad.addColorStop(0, "#FFD23F");
           grad.addColorStop(0.55, "#a3e635");
           grad.addColorStop(1, "#2E7D32");
@@ -2814,9 +2820,12 @@
             var sootCount = 16;
             for (var si = 0; si < sootCount; si++) {
               var sootSpanX = W - smogX + 60;
-              var sootX = smogX - 20 + ((si * 53 + frontWaveTime * 6) % sootSpanX);
+              var sootX =
+                smogX - 20 + ((si * 53 + frontWaveTime * 6) % sootSpanX);
               var sootY =
-                gridYOffset - 10 + ((si * 37 + frontWaveTime * 14) % (gridH + 20));
+                gridYOffset -
+                10 +
+                ((si * 37 + frontWaveTime * 14) % (gridH + 20));
               var sootR = 1.4 + (si % 3) * 0.7;
               ctx.beginPath();
               ctx.arc(sootX, sootY, sootR, 0, Math.PI * 2);
@@ -2898,8 +2907,7 @@
             ctx.save();
             for (var pl = 0; pl < 3; pl++) {
               var plumePhase = state.elapsed * 0.9 + pl * 2.3;
-              var plumeBaseX =
-                smogX + 10 + pl * 26 + Math.sin(plumePhase) * 10;
+              var plumeBaseX = smogX + 10 + pl * 26 + Math.sin(plumePhase) * 10;
               var plumeTopY = gridYOffset - 55 - (pl % 2) * 15;
               var plumeGrad = ctx.createLinearGradient(
                 plumeBaseX,
@@ -2955,11 +2963,11 @@
             // Face-plate: a lighter, higher-contrast disc so the face
             // pops clear of the busy cloud texture behind it.
             ctx.fillStyle = faceHappy ? "#cbbf9a" : "#8a8067";
-             ctx.strokeStyle = "#241c30";
+            ctx.strokeStyle = "#241c30";
             ctx.lineWidth = 1;
             ctx.beginPath();
-             ctx.arc(0, 0, faceR, 0, Math.PI * 2);
-             ctx.fill();
+            ctx.arc(0, 0, faceR, 0, Math.PI * 2);
+            ctx.fill();
             ctx.stroke();
 
             var eyeDX = 17,

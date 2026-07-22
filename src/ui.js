@@ -209,7 +209,7 @@
         }
       },
       "stage04": {
-        name: "Nori",
+        name: "Penny",
         emoji: "🐧",
         role: "Guardian of the Ice",
         fact: "Penguins help keep the ocean healthy! They are like little gardeners of the sea. 🌊",

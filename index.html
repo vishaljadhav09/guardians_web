@@ -1,1285 +1,2744 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
-<head>
-<meta charset="UTF-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-<title>Guardians of Gaia</title>
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@500;700;800&family=Quicksand:wght@500;600;700&family=Caveat:wght@600;700&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="src/styles.css" />
-<style>
-  :root {
-    --gog-lime: #a3e635;
-    --gog-sun: #facc15;
-    --gog-ink: #1e293b;
-    --gog-white: rgba(255, 255, 255, 0.85);
-    --gog-glass: rgba(15, 23, 42, 0.45);
-    --gog-text-light: #f8fafc;
-    --fx-pink: #f43f5e;
-    --fx-tangerine: #f97316;
-    --fx-cobalt: #3b82f6;
-    --fx-lavender: #a855f7;
-    --gog-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.3), 0 8px 10px -6px rgba(0, 0, 0, 0.3);
-  }
+  <head>
+    <meta charset="UTF-8" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1, viewport-fit=cover"
+    />
+    <title>Guardians of Gala</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@500;700;800&family=Quicksand:wght@500;600;700&family=Caveat:wght@600;700&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="src/styles.css" />
+    <style>
+      :root {
+        --gog-lime: #a3e635;
+        --gog-sun: #facc15;
+        --gog-ink: #1e293b;
+        --gog-white: rgba(255, 255, 255, 0.85);
+        --gog-glass: rgba(15, 23, 42, 0.45);
+        --gog-text-light: #f8fafc;
+        --fx-pink: #f43f5e;
+        --fx-tangerine: #f97316;
+        --fx-cobalt: #3b82f6;
+        --fx-lavender: #a855f7;
+        --gog-shadow:
+          0 10px 25px -5px rgba(0, 0, 0, 0.3),
+          0 8px 10px -6px rgba(0, 0, 0, 0.3);
+      }
 
-  body {
-    margin: 0;
-    font-family: 'Quicksand', sans-serif;
-    background-color: #56595e;
-    color: var(--gog-text-light);
-    min-height: 100vh;
-    overflow-x: hidden;
-    position: relative;
-  }
+      body {
+        margin: 0;
+        font-family: "Quicksand", sans-serif;
+        background-color: #56595e;
+        color: var(--gog-text-light);
+        min-height: 100vh;
+        overflow-x: hidden;
+        position: relative;
+      }
 
-  /* ---- Parallax Background Canvas ---- */
-  .parallax-bg {
-    position: fixed;
-    inset: -30px;
-    z-index: -2;
-    overflow: hidden;
-    pointer-events: none;
-    background-color: #090d16;
-  }
-  .parallax-layer {
-    position: absolute;
-    inset: 0;
-    background-size: cover;
-    background-position: center;
-    transition: transform 0.15s cubic-bezier(0.25, 1, 0.5, 1);
-  }
-  /* .layer-stars {
-    background-image: url('https://images.unsplash.com/photo-1506318137071-a8e063b4bec0?auto=format&fit=crop&w=1920&q=80');
-    opacity: 0.35;
-  }
-  .layer-mountains {
-    background-image: url('https://images.unsplash.com/photo-1511497584788-876760111969?auto=format&fit=crop&w=1920&q=80');
-    filter: brightness(0.35) saturate(1.1);
-  } */
+      /* ---- Parallax Background Canvas ---- */
+      .parallax-bg {
+        position: fixed;
+        inset: -30px;
+        z-index: -2;
+        overflow: hidden;
+        pointer-events: none;
+        background-color: #090d16;
+      }
+      .parallax-layer {
+        position: absolute;
+        inset: 0;
+        background-size: cover;
+        background-position: center;
+        transition: transform 0.15s cubic-bezier(0.25, 1, 0.5, 1);
+      }
 
-  /* Decorative Aurora Ambient Blurs */
-  body::after {
-    content: "";
-    position: fixed;
-    inset: -15%;
-    z-index: -1;
-    pointer-events: none;
-    background:
-      radial-gradient(circle at 15% 20%, rgba(163, 230, 53, 0.12) 0%, transparent 40%),
-      radial-gradient(circle at 85% 15%, rgba(244, 63, 94, 0.12) 0%, transparent 40%),
-      radial-gradient(circle at 75% 85%, rgba(59, 130, 246, 0.12) 0%, transparent 40%);
-    filter: blur(90px);
-    animation: auroraDrift 30s ease-in-out infinite alternate;
-  }
+      /* Decorative Aurora Ambient Blurs */
+      body::after {
+        content: "";
+        position: fixed;
+        inset: -15%;
+        z-index: -1;
+        pointer-events: none;
+        background:
+          radial-gradient(
+            circle at 15% 20%,
+            rgba(163, 230, 53, 0.12) 0%,
+            transparent 40%
+          ),
+          radial-gradient(
+            circle at 85% 15%,
+            rgba(244, 63, 94, 0.12) 0%,
+            transparent 40%
+          ),
+          radial-gradient(
+            circle at 75% 85%,
+            rgba(59, 130, 246, 0.12) 0%,
+            transparent 40%
+          );
+        filter: blur(90px);
+        animation: auroraDrift 30s ease-in-out infinite alternate;
+      }
 
-  @keyframes auroraDrift {
-    0% { transform: translate(0, 0) scale(1); }
-    100% { transform: translate(2%, -2%) scale(1.04); }
-  }
-
-  .wrap {
-    max-width: 1100px;
-    margin: 0 auto;
-    padding: 24px 20px 80px;
-  }
-
-  /* ---------- Modern Glassmorphic HUD HUD ---------- */
-  .hud {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 20px;
-    flex-wrap: wrap;
-    margin-bottom: 24px;
-    background: var(--gog-glass);
-    backdrop-filter: blur(16px);
-    -webkit-backdrop-filter: blur(16px);
-    padding: 16px 24px;
-    border-radius: 24px;
-    border: 1px solid rgba(255, 255, 255, 0.08);
-    box-shadow: var(--gog-shadow);
-    animation: popIn 0.6s cubic-bezier(.2,1.2,.4,1) both;
-  }
-
-  .brand {
-    display: flex;
-    align-items: center;
-    gap: 14px;
-    position: relative;
-  }
-  .brand .owl { 
-    font-size: 2.5rem; 
-    filter: drop-shadow(0 4px 6px rgba(0,0,0,0.2));
-    display: inline-block;
-    transform-origin: 50% 50%;
-    animation: owlFlyIn 0.9s ease-out both;
+      @keyframes auroraDrift {
+        0% {
+          transform: translate(0, 0) scale(1);
         }
-  .brand h1 {
-    font-family: 'Baloo 2', sans-serif;
-    font-weight: 800;
-    font-size: 1.8rem;
-    line-height: 1.1;
-    margin: 0;
-    background: linear-gradient(90deg, var(--gog-lime), #4ade80, var(--fx-lavender), var(--gog-lime));
-    background-size: 300% 100%;
-    -webkit-background-clip: text;
-    background-clip: text;
-    color: transparent;
-    animation: titleRainbow 8s linear infinite;
-  }
-  .brand small {
-    font-family: 'Caveat', cursive;
-    font-size: 1.25rem;
-    color: #cbd5e1;
-    display: block;
-    margin-top: 2px;
-  }
+        100% {
+          transform: translate(2%, -2%) scale(1.04);
+        }
+      }
 
-  .hud-right { 
-    display: flex; 
-    gap: 12px; 
-    align-items: center; 
-    flex-wrap: wrap; 
-  }
+      .wrap {
+        max-width: 1100px;
+        margin: 0 auto;
+        padding: 24px 20px 80px;
+      }
 
-  .chip {
-    background: rgba(255, 255, 255, 0.08);
-    border: 1px solid rgba(255, 255, 255, 0.12);
-    color: var(--gog-text-light);
-    padding: 8px 16px;
-    border-radius: 999px;
-    font-weight: 600;
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1);
-    transition: transform 0.2s ease, background 0.2s ease;
-  }
-  .chip:hover {
-    transform: translateY(-2px);
-    background: rgba(255, 255, 255, 0.14);
-  }
+      /* ---------- Modern Glassmorphic HUD ---------- */
+      .hud {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 20px;
+        flex-wrap: wrap;
+        margin-bottom: 24px;
+        background: var(--gog-glass);
+        backdrop-filter: blur(16px);
+        -webkit-backdrop-filter: blur(16px);
+        padding: 16px 24px;
+        border-radius: 24px;
+        border: 1px solid rgba(255, 255, 255, 0.08);
+        box-shadow: var(--gog-shadow);
+        animation: popIn 0.6s cubic-bezier(0.2, 1.2, 0.4, 1) both;
+      }
 
-  .smog-meter {
-    display: flex; 
-    align-items: center; 
-    gap: 10px;
-    background: rgba(15, 23, 42, 0.5);
-    border: 1px solid rgba(255, 255, 255, 0.08);
-    border-radius: 999px;
-    padding: 6px 16px;
-    min-width: 200px;
-  }
-  .smog-meter .label { 
-    font-size: 0.8rem; 
-    font-weight: 800; 
-    letter-spacing: 1px;
-    color: #94a3b8;
-  }
-  .smog-track {
-    flex: 1;
-    height: 12px;
-    border-radius: 999px;
-    background: #334155;
-    overflow: hidden;
-    position: relative;
-  }
-  .smog-fill {
-    height: 100%;
-    background: linear-gradient(90deg, #ef4444, #f97316, var(--gog-lime));
-    width: 0%;
-    transition: width 0.8s cubic-bezier(.3,1,.4,1);
-    position: relative;
-  }
-  .smog-fill::after {
-    content: "";
-    position: absolute; inset: 0;
-    background: linear-gradient(110deg, transparent 30%, rgba(255,255,255,0.3) 50%, transparent 70%);
-    background-size: 200% 100%;
-    animation: smogShimmer 2s linear infinite;
-  }
+      .brand {
+        display: flex;
+        align-items: center;
+        gap: 14px;
+        position: relative;
+      }
+      .brand .owl {
+        font-size: 2.5rem;
+        filter: drop-shadow(0 4px 6px rgba(0, 0, 0, 0.2));
+        display: inline-block;
+        transform-origin: 50% 50%;
+        animation: owlFlyIn 0.9s ease-out both;
+      }
+      .brand h1 {
+        font-family: "Baloo 2", sans-serif;
+        font-weight: 800;
+        font-size: 1.8rem;
+        line-height: 1.1;
+        margin: 0;
+        background: linear-gradient(
+          90deg,
+          var(--gog-lime),
+          #4ade80,
+          var(--fx-lavender),
+          var(--gog-lime)
+        );
+        background-size: 300% 100%;
+        -webkit-background-clip: text;
+        background-clip: text;
+        color: transparent;
+        animation: titleRainbow 8s linear infinite;
+      }
+      .brand small {
+        font-family: "Caveat", cursive;
+        font-size: 1.25rem;
+        color: #cbd5e1;
+        display: block;
+        margin-top: 2px;
+      }
 
-  .icon-btn {
-    width: 44px; height: 44px;
-    border-radius: 50%;
-    background: rgba(255, 255, 255, 0.08);
-    border: 1px solid rgba(255, 255, 255, 0.15);
-    color: white;
-    cursor: pointer;
-    display: flex; align-items: center; justify-content: center;
-    font-size: 1.2rem;
-    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-  }
-  .icon-btn:hover { 
-    background: var(--gog-lime);
-    color: #0f172a;
-    transform: rotate(45deg) scale(1.05);
-  }
+      .hud-right {
+        display: flex;
+        gap: 12px;
+        align-items: center;
+        flex-wrap: wrap;
+      }
 
-  /* ---------- Map Main Viewport Section ---------- */
-  .map-stage {
-    position: relative;
-    width: 100%;
-    aspect-ratio: 16 / 10;
-    border-radius: 32px;
-    overflow: hidden;
-    background-image: url('https://images.unsplash.com/photo-1448375240586-882707db888b?auto=format&fit=crop&w=1200&q=80');
-    background-size: cover;
-    background-position: center;
-    box-shadow: var(--gog-shadow), inset 0 0 100px rgba(0,0,0,0.5);
-    border: 1px solid rgba(255,255,255,0.08);
-    animation: popIn 0.8s cubic-bezier(.2,1.2,.4,1) 0.1s both;
-  }
+      .chip {
+        background: rgba(255, 255, 255, 0.08);
+        border: 1px solid rgba(255, 255, 255, 0.12);
+        color: var(--gog-text-light);
+        padding: 8px 16px;
+        border-radius: 999px;
+        font-weight: 600;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+        transition:
+          transform 0.2s ease,
+          background 0.2s ease;
+      }
+      .chip:hover {
+        transform: translateY(-2px);
+        background: rgba(255, 255, 255, 0.14);
+      }
 
-  /* Constellation Dynamic Vectors */
-  .constellation-svg {
-    position: absolute;
-    inset: 0;
-    width: 100%; height: 100%;
-    pointer-events: none;
-    z-index: 4;
-  }
-  .constellation-line {
-    stroke-dasharray: 8, 8;
-    animation: constellationPulse 35s linear infinite;
-    filter: drop-shadow(0 0 4px rgba(255,255,255,0.2));
-  }
+      .smog-meter {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        background: rgba(15, 23, 42, 0.5);
+        border: 1px solid rgba(255, 255, 255, 0.08);
+        border-radius: 999px;
+        padding: 6px 16px;
+        min-width: 200px;
+      }
+      .smog-meter .label {
+        font-size: 0.8rem;
+        font-weight: 800;
+        letter-spacing: 1px;
+        color: #94a3b8;
+      }
+      .smog-track {
+        flex: 1;
+        height: 12px;
+        border-radius: 999px;
+        background: #334155;
+        overflow: hidden;
+        position: relative;
+      }
+      .smog-fill {
+        height: 100%;
+        background: linear-gradient(90deg, #ef4444, #f97316, var(--gog-lime));
+        width: 0%;
+        transition: width 0.8s cubic-bezier(0.3, 1, 0.4, 1);
+        position: relative;
+      }
+      .smog-fill::after {
+        content: "";
+        position: absolute;
+        inset: 0;
+        background: linear-gradient(
+          110deg,
+          transparent 30%,
+          rgba(255, 255, 255, 0.3) 50%,
+          transparent 70%
+        );
+        background-size: 200% 100%;
+        animation: smogShimmer 2s linear infinite;
+      }
 
-  .biome-blob {
-    position: absolute;
-    border-radius: 50%;
-    mix-blend-mode: screen;
-    filter: blur(30px);
-    opacity: 0.2;
-    transition: all 1s ease;
-    transform: translate(-50%, -50%);
-    animation: blobFloat 14s ease-in-out infinite alternate;
-  }
-  .biome-blob.cleared { 
-    opacity: 0.6; 
-    filter: blur(18px);
-    animation: blobFloat 8s ease-in-out infinite alternate, blobGlow 4s ease-in-out infinite;
-  }
+      .icon-btn {
+        width: 44px;
+        height: 44px;
+        border-radius: 50%;
+        background: rgba(255, 255, 255, 0.08);
+        border: 1px solid rgba(255, 255, 255, 0.15);
+        color: white;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 1.2rem;
+        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+      }
+      .icon-btn:hover {
+        background: var(--gog-lime);
+        color: #0f172a;
+      }
 
-  /* ---------- Centerpiece: The Guardian Tree ---------- */
-  .tree-zone {
-    position: absolute;
-    left: 50%; top: 50%;
-    transform: translate(-50%, -50%);
-    width: 22%;
-    z-index: 10;
-    pointer-events: none;
-    transform-origin: bottom center;
-    animation: treeSway 6s ease-in-out infinite;
-  }
-  .tree-zone::before {
-    content: "";
-    position: absolute;
-    left: 50%; top: 50%;
-    width: 160%; height: 160%;
-    transform: translate(-50%, -50%);
-    background: radial-gradient(circle, rgba(163,230,53,0.25) 0%, rgba(168,85,247,0.08) 45%, transparent 70%);
-    filter: blur(20px);
-    z-index: -1;
-    animation: treeHaloPulse 4s ease-in-out infinite;
-  }
+      @keyframes titleRainbow {
+        0% {
+          background-position: 0% center;
+        }
+        50% {
+          background-position: 100% center;
+        }
+        100% {
+          background-position: 0% center;
+        }
+      }
 
-  .tree-svg { width: 100%; height: auto; filter: drop-shadow(0 10px 15px rgba(0,0,0,0.4)); }
-  .leaf-bud { 
-    transition: all 0.6s cubic-bezier(.3,1.5,.4,1); 
-    transform-origin: center;
-  }
-  .leaf-bud.bloom { 
-    fill: #22c55e; 
-    filter: drop-shadow(0 0 8px rgba(34,197,94,0.8));
-    animation: leafPop 0.55s cubic-bezier(.34,1.56,.64,1) forwards;
-  }
-  @keyframes leafPop {
-    0% { transform: scale(0.4); opacity: 0.4; }
-    70% { transform: scale(1.25); opacity: 1; }
-    100% { transform: scale(1); opacity: 1; }
-  }
+      @keyframes popIn {
+        0% {
+          opacity: 0;
+          transform: scale(0.92);
+        }
+        100% {
+          opacity: 1;
+          transform: scale(1);
+        }
+      }
 
-  /* ---------- Strategic Interface Markers ---------- */
-  .marker {
-    position: absolute;
-    transform: translate(-50%, -50%) scale(1);
-    width: 64px; height: 64px;
-    border-radius: 50%;
-    border: 2px solid rgba(255, 255, 255, 0.35);
-    display: flex; align-items: center; justify-content: center;
-    font-size: 1.8rem;
-    cursor: pointer;
-    background: rgba(15, 23, 42, 0.8);
-    backdrop-filter: blur(8px);
-    box-shadow: 0 10px 20px rgba(0,0,0,0.35);
-    transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.2);
-    z-index: 15;
-  }
-  .marker:not(.locked):hover {
-    transform: translate(-50%, -50%) scale(1.2);
-    background: #ffffff;
-    border-color: var(--gog-ink);
-    box-shadow: 0 0 25px rgba(255,255,255,0.5);
-  }
+      @keyframes owlFlyIn {
+        0% {
+          transform: translate(-180px, -180px) rotate(-45deg) scale(0.4);
+          opacity: 0;
+        }
+        60% {
+          transform: translate(20px, 20px) rotate(15deg) scale(1.2);
+          opacity: 1;
+        }
+        100% {
+          transform: translate(0, 0) rotate(0deg) scale(1);
+          opacity: 1;
+        }
+      }
 
-  .marker.locked {
-    filter: grayscale(1) opacity(0.35);
-    cursor: not-allowed;
-    background: rgba(30, 41, 59, 0.85);
-  }
-  .marker.locked::after {
-    content: "🔒";
-    position: absolute; bottom: -2px; right: -2px;
-    font-size: 0.8rem; background: #334155;
-    border-radius: 50%; width: 20px; height: 20px;
-    display: flex; align-items: center; justify-content: center;
-  }
-  
-  .marker.unlocked-ready {
-    border-color: var(--gog-lime);
-    box-shadow: 0 0 20px rgba(163, 230, 53, 0.4);
-    animation: markerPulse 2s ease-in-out infinite;
-  }
-  .marker.unlocked-ready::before {
-    content: '';
-    position: absolute; inset: -6px;
-    border-radius: 50%; border: 2px solid var(--gog-lime);
-    animation: markerPulseRing 2s cubic-bezier(0.24, 0, 0.38, 1) infinite;
-  }
+      @keyframes smogShimmer {
+        0% {
+          background-position: 200% 0;
+        }
+        100% {
+          background-position: calc(200% - 200px) 0;
+        }
+      }
 
-  .marker.unlocked-upcoming {
-    border-color: var(--gog-sun);
-    background: rgba(255, 255, 255, 0.9);
-    box-shadow: 0 0 18px rgba(250, 204, 21, 0.35);
-  }
-  .marker.unlocked-upcoming::after {
-    content: "Soon";
-    position: absolute;
-    bottom: -8px;
-    left: 50%;
-    transform: translateX(-50%);
-    padding: 2px 7px;
-    border: 1px solid var(--gog-ink);
-    border-radius: 999px;
-    background: var(--gog-sun);
-    color: var(--gog-ink);
-    font-family: var(--gog-font-body);
-    font-size: 0.62rem;
-    font-weight: 900;
-    line-height: 1;
-    letter-spacing: 0;
-    box-shadow: 2px 2px 0 var(--gog-ink);
-  }
+      @keyframes markerPulse {
+        0%,
+        100% {
+          transform: translate(-50%, -50%) scale(1);
+        }
+        50% {
+          transform: translate(-50%, -50%) scale(1.15);
+        }
+      }
 
-  .marker.cleared::after {
-    content: "";
-    position: absolute; inset: -5px;
-    border-radius: 50%; border: 1.5px dashed rgba(163, 230, 53, 0.4);
-    animation: clearedRingSpin 24s linear infinite;
-  }
+      @keyframes markerPulseRing {
+        0% {
+          transform: scale(1);
+          opacity: 1;
+        }
+        100% {
+          transform: scale(1.8);
+          opacity: 0;
+        }
+      }
 
-  /* Engaging Story Narrative Tooltip Cards */
-  .marker-label {
-    position: absolute;
-    top: 115%; left: 50%;
-    transform: translateX(-50%) translateY(5px);
-    font-size: 0.8rem;
-    font-weight: 700;
-    line-height: 1.3;
-    white-space: nowrap;
-    color: white;
-    background: linear-gradient(135deg, #1e293b, #0f172a);
-    border: 1px solid rgba(255,255,255,0.15);
-    border-left: 3px solid var(--gog-lime);
-    padding: 6px 12px;
-    border-radius: 8px;
-    pointer-events: none;
-    box-shadow: 0 8px 16px rgba(0,0,0,0.3);
-    opacity: 0;
-    transition: all 0.3s cubic-bezier(0.25, 1, 0.5, 1);
-  }
-  .marker:hover .marker-label {
-    opacity: 1;
-    transform: translateX(-50%) translateY(0);
-  }
+      @keyframes constellationPulse {
+        0% {
+          stroke-dashoffset: 0;
+        }
+        100% {
+          stroke-dashoffset: -16;
+        }
+      }
 
-  /* ---------- Fog Canvas Overlays ---------- */
-  .fog-layer {
-    position: absolute; inset: 0;
-    pointer-events: none;
-    z-index: 12;
-  }
-  .fog-blob {
-    position: absolute;
-    border-radius: 50%;
-    background: radial-gradient(circle, rgba(100, 116, 139, 0.7) 0%, rgba(100, 116, 139, 0) 70%);
-    filter: blur(24px);
-    transform: translate(-50%, -50%);
-    animation: fogDrift 22s ease-in-out infinite alternate;
-    transition: opacity 1.5s ease;
-  }
+      @keyframes blobFloat {
+        0%,
+        100% {
+          transform: translate(-50%, -50%) scale(1);
+        }
+        50% {
+          transform: translate(-50%, -50%) scale(1.1);
+        }
+      }
 
-  /* ---------- Real-Time Particle Visuals ---------- */
-  .spika-flyer {
-    position: absolute;
-    font-size: 2.5rem;
-    z-index: 100;
-    pointer-events: none;
-    transform: translate(-50%, -50%) scale(0);
-    transition: left 0.85s cubic-bezier(0.25, 1, 0.5, 1), top 0.85s cubic-bezier(0.25, 1, 0.5, 1), transform 0.3s ease;
-    filter: drop-shadow(0 10px 15px rgba(0,0,0,0.4));
-  }
-  .spika-flyer.active { transform: translate(-50%, -50%) scale(1.25); }
+      @keyframes blobGlow {
+        0%,
+        100% {
+          filter: blur(18px) drop-shadow(0 0 20px rgba(163, 230, 53, 0.3));
+        }
+        50% {
+          filter: blur(18px) drop-shadow(0 0 35px rgba(163, 230, 53, 0.6));
+        }
+      }
 
-  .spika-sparkle, .leaf-sparkle, .ambient-bubble, .ambient-butterfly, .ambient-flower, .ambient-sparkle, .owl-feather {
-    position: absolute; pointer-events: none; z-index: 99; transform: translate(-50%, -50%);
-  }
-  .owl-feather { font-size: 0.9rem; }
+      @keyframes treeSway {
+        0%,
+        100% {
+          transform: translate(-50%, -50%) rotate(0deg);
+        }
+        50% {
+          transform: translate(-50%, -50%) rotate(1deg);
+        }
+      }
 
-  .smog-puff {
-    position: absolute;
-    background: radial-gradient(circle, rgba(148, 163, 184, 0.75) 0%, rgba(148, 163, 184, 0) 70%);
-    border-radius: 50%; pointer-events: none; z-index: 13;
-    animation: puffDisperse 1.2s cubic-bezier(0.1, 0.8, 0.3, 1) forwards;
-  }
+      @keyframes treeHaloPulse {
+        0%,
+        100% {
+          transform: translate(-50%, -50%) scale(1);
+          opacity: 0.25;
+        }
+        50% {
+          transform: translate(-50%, -50%) scale(1.15);
+          opacity: 0.4;
+        }
+      }
 
-  /* ---------- Layout Utilities ---------- */
-  .bottom-row {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-top: 24px;
-    gap: 16px;
-    flex-wrap: wrap;
-    animation: popIn 0.6s cubic-bezier(.2,1.2,.4,1) 0.2s both;
-  }
-  .legend { display: flex; gap: 10px; flex-wrap: wrap; }
+      @keyframes clearedRingSpin {
+        0% {
+          transform: rotate(0deg);
+        }
+        100% {
+          transform: rotate(360deg);
+        }
+      }
 
-  .brutal-btn {
-    background: rgba(239, 68, 68, 0.15);
-    border: 1px solid rgba(239, 68, 68, 0.3);
-    color: #fca5a5;
-    padding: 10px 20px;
-    border-radius: 12px;
-    font-weight: 600;
-    cursor: pointer;
-    transition: all 0.2s ease;
-  }
-  .brutal-btn:hover {
-    background: #ef4444;
-    color: white;
-    box-shadow: 0 0 15px rgba(239, 68, 68, 0.4);
-  }
+      /* === NEW: SPIKA EMOTIONAL ANIMATIONS === */
+      @keyframes spikaExcited {
+        0%,
+        100% {
+          transform: scale(1) rotate(0deg);
+        }
+        25% {
+          transform: scale(1.15) rotate(-3deg);
+        }
+        75% {
+          transform: scale(1.15) rotate(3deg);
+        }
+      }
 
-  .footer-note {
-    margin-top: 32px;
-    text-align: center;
-    font-family: 'Caveat', cursive;
-    font-size: 1.5rem;
-    color: #94a3b8;
-  }
-  .footer-note::before, .footer-note::after {
-    content: " ✨ ";
-    display: inline-block;
-  }
+      @keyframes spikaThinking {
+        0%,
+        100% {
+          transform: rotate(0deg);
+        }
+        50% {
+          transform: rotate(-8deg);
+        }
+      }
 
-  /* Configuration Switch Items */
-  .settings-panel { padding: 8px 4px; color: #1e293b; }
-  .settings-row {
-    display: flex; align-items: center; justify-content: space-between;
-    gap: 24px; padding: 12px 0;
-    border-bottom: 1px dashed #cbd5e1;
-  }
-  .settings-row span { font-weight: 600; }
-  .switch { position: relative; width: 48px; height: 26px; }
-  .switch input { opacity: 0; width: 0; height: 0; }
-  .switch .track {
-    position: absolute; inset: 0; background: #cbd5e1;
-    border-radius: 999px; transition: background 0.3s;
-    cursor: pointer;
-  }
-  .switch .knob {
-    position: absolute; top: 3px; left: 3px; width: 20px; height: 20px;
-    background: white; border-radius: 50%; transition: transform 0.3s;
-    box-shadow: 0 2px 4px rgba(0,0,0,0.2);
-  }
-  .switch input:checked + .track { background: #22c55e; }
-  .switch input:checked + .track + .knob { transform: translateX(22px); }
+      @keyframes spikaPointing {
+        0% {
+          transform: rotate(0deg) scaleX(1);
+        }
+        100% {
+          transform: rotate(-25deg) scaleX(1);
+        }
+      }
 
-  /* ---------- Dynamic Frames Core CSS Keyframes ---------- */
-  @keyframes titleRainbow { to { background-position: 300% 0; } }
-  @keyframes smogShimmer { 0% { background-position: 200% 0; } 100% { background-position: -200% 0; } }
-  @keyframes constellationPulse { to { stroke-dashoffset: -100px; } }
-  @keyframes popIn { 0% { opacity: 0; transform: translateY(20px) scale(0.97); } 100% { opacity: 1; transform: translateY(0) scale(1); } }
-@keyframes owlFlyIn {
-     0%   { opacity: 0; transform: translate(-140vw, 36px) rotate(-22deg) scale(0.8); }
-    8%   { opacity: 1; }
-    22%  { transform: translate(-95vw, -14px) rotate(10deg) scale(0.95); }
-    38%  { transform: translate(-58vw, 16px) rotate(-12deg) scale(1.05); }
-    54%  { transform: translate(-30vw, -10px) rotate(7deg) scale(1.05); }
-    68%  { transform: translate(-12vw, 12px) rotate(-8deg) scale(1.02); }
-    80%  { transform: translate(-3vw, -6px) rotate(5deg) scale(1.08); }
-    90%  { transform: translate(1.2vw, 3px) rotate(-4deg) scale(0.96); }
-    100% { opacity: 1; transform: translate(0, 0) rotate(0deg) scale(1); }
-}
+      .spika-emotion-excited {
+        animation: spikaExcited 0.5s ease-in-out !important;
+      }
 
-@keyframes owlLanding{
-    0%{
-        transform: translate(-3px,-6px) rotate(5deg);
-    }
-    40%{
-        transform: translate(2px,3px) rotate(-2deg);
-    }
-    70%{
-        transform: translate(-1px,-1px);
-    }
-    100%{
-        transform: translate(0,0);
-    }
-}
-  @keyframes treeSway { 0%, 100% { transform: translate(-50%, -50%) rotate(0deg); } 50% { transform: translate(-50%, -50%) rotate(1.2deg); } }
-  @keyframes treeHaloPulse { 0%, 100% { opacity: 0.2; transform: translate(-50%, -50%) scale(0.96); } 50% { opacity: 0.4; transform: translate(-50%, -50%) scale(1.04); } }
-  @keyframes markerPulse { 0%, 100% { box-shadow: 0 0 15px rgba(163, 230, 53, 0.4); transform: translate(-50%, -50%) rotate(-3deg); } 50% { box-shadow: 0 0 25px rgba(163, 230, 53, 0.75); transform: translate(-50%, calc(-50% - 8px)) rotate(3deg); } }
-  @keyframes markerPulseRing { 0% { transform: scale(0.95); opacity: 0.8; } 100% { transform: scale(1.4); opacity: 0; } }
-  @keyframes clearedRingSpin { to { transform: rotate(360deg); } }
-  @keyframes blobFloat { 0% { transform: translate(-50%, -50%) scale(1); } 100% { transform: translate(-48%, -52%) scale(1.08) rotate(3deg); } }
-  @keyframes blobGlow { 0%, 100% { filter: blur(18px) saturate(1); } 50% { filter: blur(14px) saturate(1.35) brightness(1.1); } }
-  @keyframes fogDrift { 0% { transform: translate(-50%, -50%) scale(1); } 100% { transform: translate(-48%, -52%) scale(1.12); } }
-  @keyframes puffDisperse { 0% { transform: translate(-50%, -50%) scale(0.5); opacity: 0.9; } 100% { transform: translate(calc(-50% + var(--tx)), calc(-50% + var(--ty))) scale(2.2); opacity: 0; } }
+      .spika-emotion-thinking {
+        animation: spikaThinking 1.2s ease-in-out infinite !important;
+      }
 
-  /* Ambient Particle Animation Trees */
-  @keyframes spikaSparkleOut { 0% { opacity: 1; transform: translate(-50%, -50%) scale(0.5); } 100% { opacity: 0; transform: translate(calc(-50% + var(--tx)), calc(-50% + var(--ty))) scale(1.2); } }
-  @keyframes leafSparkleOut { 0% { opacity: 1; transform: translate(-50%, -50%) rotate(0deg); } 100% { opacity: 0; transform: translate(calc(-50% + var(--tx)), calc(-50% + var(--ty))) scale(1.3) rotate(180deg); } }
-  @keyframes featherBurstOut { 0% { opacity: 1; transform: translate(-50%, -50%) scale(0.6) rotate(0deg); } 100% { opacity: 0; transform: translate(calc(-50% + var(--tx)), calc(-50% + var(--ty))) scale(1.1) rotate(110deg); } }
-  @keyframes ambientBubbleFloat { 0% { transform: translateY(0) scale(0.7); opacity: 0; } 15% { opacity: 0.7; } 85% { opacity: 0.7; } 100% { transform: translateY(-75px) translateX(var(--drift)) scale(1.2); opacity: 0; } }
-  @keyframes ambientButterflyFlutter { 0% { transform: translate(0,0) scale(0.5); opacity: 0; } 20% { opacity: 0.8; } 100% { transform: translate(var(--dx2), var(--dy2)) scale(0.75); opacity: 0; } }
-  @keyframes ambientFlowerSway { 0% { transform: scale(0); opacity: 0; } 20% { transform: scale(1); opacity: 0.85; } 100% { transform: scale(0); opacity: 0; } }
-  @keyframes ambientSparkleTwinkle { 0%, 100% { transform: scale(0); opacity: 0; } 50% { transform: scale(1.2); opacity: 0.9; } }
+      .spika-emotion-pointing {
+        animation: spikaPointing 0.6s ease-out forwards !important;
+        transform-origin: 50% 60% !important;
+      }
 
-  .spika-sparkle { animation: spikaSparkleOut 0.7s cubic-bezier(0.1, 0.8, 0.3, 1) forwards; }
-  .leaf-sparkle { animation: leafSparkleOut 0.8s cubic-bezier(0.1, 0.8, 0.3, 1) forwards; }
-  .owl-feather { animation: featherBurstOut 0.8s cubic-bezier(0.1, 0.8, 0.3, 1) forwards; }
-  .ambient-bubble { animation: ambientBubbleFloat 3.2s ease-out forwards; }
-  .ambient-butterfly { animation: ambientButterflyFlutter 4.2s ease-in-out forwards; }
-  .ambient-flower { animation: ambientFlowerSway 4.8s ease-in-out forwards; }
-  .ambient-sparkle { animation: ambientSparkleTwinkle 2.5s ease-in-out infinite; }
+      /* === NEW: GUIDE BAR ENHANCEMENTS === */
+      .guideBar {
+        display: flex;
+        align-items: flex-start;
+        gap: 14px;
+        margin-bottom: 20px;
+        padding: 14px 16px;
+        background: rgba(15, 23, 42, 0.6);
+        backdrop-filter: blur(12px);
+        border-radius: 16px;
+        border: 1px solid rgba(163, 230, 53, 0.2);
+        animation: popIn 0.6s cubic-bezier(0.2, 1.2, 0.4, 1) 0.3s both;
+        min-height: 56px;
+      }
 
-  /* Fly-in animations from different sides with playful bobbing */
-  @keyframes flyInFromLeft {
-    0%   { opacity: 0; transform: translate(-140vw, 36px) rotate(-22deg) scale(0.8); }
-    8%   { opacity: 1; }
-    22%  { transform: translate(-95vw, -14px) rotate(10deg) scale(0.95); }
-    38%  { transform: translate(-58vw, 16px) rotate(-12deg) scale(1.05); }
-    54%  { transform: translate(-30vw, -10px) rotate(7deg) scale(1.05); }
-    68%  { transform: translate(-12vw, 12px) rotate(-8deg) scale(1.02); }
-    80%  { transform: translate(-3vw, -6px) rotate(5deg) scale(1.08); }
-    90%  { transform: translate(1.2vw, 3px) rotate(-4deg) scale(0.96); }
-    100% { opacity: 1; transform: translate(0, 0) rotate(0deg) scale(1); }
-  }
+      .guideAvatar {
+        font-size: 2.2rem;
+        flex-shrink: 0;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        width: 50px;
+        height: 50px;
+        filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.3));
+      }
 
-  @keyframes flyInFromRight {
-    0%   { opacity: 0; transform: translate(140vw, 36px) rotate(22deg) scale(0.8); }
-    8%   { opacity: 1; }
-    22%  { transform: translate(95vw, -14px) rotate(-10deg) scale(0.95); }
-    38%  { transform: translate(58vw, 16px) rotate(12deg) scale(1.05); }
-    54%  { transform: translate(30vw, -10px) rotate(-7deg) scale(1.05); }
-    68%  { transform: translate(12vw, 12px) rotate(8deg) scale(1.02); }
-    80%  { transform: translate(3vw, -6px) rotate(-5deg) scale(1.08); }
-    90%  { transform: translate(-1.2vw, 3px) rotate(4deg) scale(0.96); }
-    100% { opacity: 1; transform: translate(0, 0) rotate(0deg) scale(1); }
-  }
+      .guideBubble {
+        flex: 1;
+        font-size: 0.95rem;
+        line-height: 1.5;
+        /* color: var(--gog-text-light); */
+        display: flex;
+        align-items: center;
+        word-break: break-word;
+        max-height: 100%;
+        animation: guideFadeIn 0.4s ease-out both;
+      }
 
-  @keyframes flyInFromTop {
-    0%   { opacity: 0; transform: translate(36px, -140vh) rotate(-22deg) scale(0.8); }
-    8%   { opacity: 1; }
-    22%  { transform: translate(-14px, -95vh) rotate(10deg) scale(0.95); }
-    38%  { transform: translate(16px, -58vh) rotate(-12deg) scale(1.05); }
-    54%  { transform: translate(-10px, -30vh) rotate(7deg) scale(1.05); }
-    68%  { transform: translate(12px, -12vh) rotate(-8deg) scale(1.02); }
-    80%  { transform: translate(-6px, -3vh) rotate(5deg) scale(1.08); }
-    90%  { transform: translate(3px, 1.2vh) rotate(-4deg) scale(0.96); }
-    100% { opacity: 1; transform: translate(0, 0) rotate(0deg) scale(1); }
-  }
+      @keyframes guideFadeIn {
+        from {
+          opacity: 0;
+          transform: translateY(-4px);
+        }
+        to {
+          opacity: 1;
+          transform: translateY(0);
+        }
+      }
 
-  @keyframes flyInFromBottom {
-    0%   { opacity: 0; transform: translate(36px, 140vh) rotate(22deg) scale(0.8); }
-    8%   { opacity: 1; }
-    22%  { transform: translate(-14px, 95vh) rotate(-10deg) scale(0.95); }
-    38%  { transform: translate(16px, 58vh) rotate(12deg) scale(1.05); }
-    54%  { transform: translate(-10px, 30vh) rotate(-7deg) scale(1.05); }
-    68%  { transform: translate(12px, 12vh) rotate(8deg) scale(1.02); }
-    80%  { transform: translate(-6px, 3vh) rotate(-5deg) scale(1.08); }
-    90%  { transform: translate(3px, -1.2vh) rotate(4deg) scale(0.96); }
-    100% { opacity: 1; transform: translate(0, 0) rotate(0deg) scale(1); }
-  }
+      /* === NEW: INTRO OVERLAY === */
+      .intro-overlay {
+        position: fixed;
+        inset: 0;
+        background: rgba(0, 0, 0, 0.9);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        z-index: 1000;
+        animation: fadeIn 0.3s ease-out;
+      }
 
-  /* Specific absolute keyframes for centered map markers */
-  @keyframes markerFlyInFromLeft {
-    0%   { opacity: 0; transform: translate(calc(-50% - 140vw), calc(-50% + 36px)) rotate(-22deg) scale(0.8); }
-    8%   { opacity: 1; }
-    22%  { transform: translate(calc(-50% - 95vw), calc(-50% - 14px)) rotate(10deg) scale(0.95); }
-    38%  { transform: translate(calc(-50% - 58vw), calc(-50% + 16px)) rotate(-12deg) scale(1.05); }
-    54%  { transform: translate(calc(-50% - 30vw), calc(-50% - 10px)) rotate(7deg) scale(1.05); }
-    68%  { transform: translate(calc(-50% - 12vw), calc(-50% + 12px)) rotate(-8deg) scale(1.02); }
-    80%  { transform: translate(calc(-50% - 3vw), calc(-50% - 6px)) rotate(5deg) scale(1.08); }
-    90%  { transform: translate(calc(-50% + 1.2vw), calc(-50% + 3px)) rotate(-4deg) scale(0.96); }
-    100% { opacity: 1; transform: translate(-50%, -50%) rotate(0deg) scale(1); }
-  }
+      @keyframes fadeIn {
+        from {
+          opacity: 0;
+        }
+        to {
+          opacity: 1;
+        }
+      }
 
-  @keyframes markerFlyInFromRight {
-    0%   { opacity: 0; transform: translate(calc(-50% + 140vw), calc(-50% + 36px)) rotate(22deg) scale(0.8); }
-    8%   { opacity: 1; }
-    22%  { transform: translate(calc(-50% + 95vw), calc(-50% - 14px)) rotate(-10deg) scale(0.95); }
-    38%  { transform: translate(calc(-50% + 58vw), calc(-50% + 16px)) rotate(12deg) scale(1.05); }
-    54%  { transform: translate(calc(-50% + 30vw), calc(-50% - 10px)) rotate(-7deg) scale(1.05); }
-    68%  { transform: translate(calc(-50% + 12vw), calc(-50% + 12px)) rotate(8deg) scale(1.02); }
-    80%  { transform: translate(calc(-50% + 3vw), calc(-50% - 6px)) rotate(-5deg) scale(1.08); }
-    90%  { transform: translate(calc(-50% - 1.2vw), calc(-50% + 3px)) rotate(4deg) scale(0.96); }
-    100% { opacity: 1; transform: translate(-50%, -50%) rotate(0deg) scale(1); }
-  }
+      .intro-content {
+        text-align: center;
+        color: white;
+        max-width: 80%;
+        animation: slideUp 0.5s ease-out 0.2s both;
+      }
 
-  @keyframes markerFlyInFromTop {
-    0%   { opacity: 0; transform: translate(calc(-50% + 36px), calc(-50% - 140vh)) rotate(-22deg) scale(0.8); }
-    8%   { opacity: 1; }
-    22%  { transform: translate(calc(-50% - 14px), calc(-50% - 95vh)) rotate(10deg) scale(0.95); }
-    38%  { transform: translate(calc(-50% + 16px), calc(-50% - 58vh)) rotate(-12deg) scale(1.05); }
-    54%  { transform: translate(calc(-50% - 10px), calc(-50% - 30vh)) rotate(7deg) scale(1.05); }
-    68%  { transform: translate(calc(-50% + 12px), calc(-50% - 12vh)) rotate(-8deg) scale(1.02); }
-    80%  { transform: translate(calc(-50% - 6px), calc(-50% - 3vh)) rotate(5deg) scale(1.08); }
-    90%  { transform: translate(calc(-50% + 3px), calc(-50% + 1.2vh)) rotate(-4deg) scale(0.96); }
-    100% { opacity: 1; transform: translate(-50%, -50%) rotate(0deg) scale(1); }
-  }
+      @keyframes slideUp {
+        from {
+          opacity: 0;
+          transform: translateY(30px);
+        }
+        to {
+          opacity: 1;
+          transform: translateY(0);
+        }
+      }
 
-  @keyframes markerFlyInFromBottom {
-    0%   { opacity: 0; transform: translate(calc(-50% + 36px), calc(-50% + 140vh)) rotate(22deg) scale(0.8); }
-    8%   { opacity: 1; }
-    22%  { transform: translate(calc(-50% - 14px), calc(-50% + 95vh)) rotate(-10deg) scale(0.95); }
-    38%  { transform: translate(calc(-50% + 16px), calc(-50% + 58vh)) rotate(12deg) scale(1.05); }
-    54%  { transform: translate(calc(-50% - 10px), calc(-50% + 30vh)) rotate(-7deg) scale(1.05); }
-    68%  { transform: translate(calc(-50% + 12px), calc(-50% + 12vh)) rotate(8deg) scale(1.02); }
-    80%  { transform: translate(calc(-50% - 6px), calc(-50% + 3vh)) rotate(-5deg) scale(1.08); }
-    90%  { transform: translate(calc(-50% + 3px), calc(-50% - 1.2vh)) rotate(4deg) scale(0.96); }
-    100% { opacity: 1; transform: translate(-50%, -50%) rotate(0deg) scale(1); }
-  }
+      .intro-step {
+        display: none;
+        animation: fadeIn 0.4s ease-out;
+      }
 
-  /* Classes to trigger animations */
-  .brand-text {
-    display: inline-block;
-    animation: flyInFromRight 1.0s cubic-bezier(0.175, 0.885, 0.32, 1.275) both;
-    animation-delay: 0.15s;
-  }
+      .intro-step.active {
+        display: block;
+      }
 
-  .sprouts-chip {
-    animation: flyInFromLeft 1.1s cubic-bezier(0.175, 0.885, 0.32, 1.275) both;
-    animation-delay: 0.4s;
-  }
+      .intro-step-emoji {
+        font-size: 4rem;
+        margin-bottom: 16px;
+        animation: pulse 1s ease-in-out infinite;
+      }
 
-  .cleared-chip {
-    animation: flyInFromBottom 1.1s cubic-bezier(0.175, 0.885, 0.32, 1.275) both;
-    animation-delay: 0.5s;
-  }
+      @keyframes pulse {
+        0%,
+        100% {
+          transform: scale(1);
+        }
+        50% {
+          transform: scale(1.1);
+        }
+      }
 
-  .reset-btn {
-    animation: flyInFromRight 1.1s cubic-bezier(0.175, 0.885, 0.32, 1.275) both;
-    animation-delay: 0.6s;
-  }
+      .intro-step-text {
+        font-size: 1.3rem;
+        line-height: 1.6;
+        margin: 16px 0;
+      }
 
-  .marker.fly-in-top {
-    animation: markerFlyInFromTop 1.0s cubic-bezier(0.175, 0.885, 0.32, 1.275) both;
-  }
-  .marker.fly-in-right {
-    animation: markerFlyInFromRight 1.0s cubic-bezier(0.175, 0.885, 0.32, 1.275) both;
-  }
-  .marker.fly-in-bottom {
-    animation: markerFlyInFromBottom 1.0s cubic-bezier(0.175, 0.885, 0.32, 1.275) both;
-  }
-  .marker.fly-in-left {
-    animation: markerFlyInFromLeft 1.0s cubic-bezier(0.175, 0.885, 0.32, 1.275) both;
-  }
+      .intro-controls {
+        display: flex;
+        gap: 12px;
+        justify-content: center;
+        margin-top: 24px;
+      }
 
-  /* Pulse overlay combined animations for unlocked stage markers */
-  .marker.fly-in-top.unlocked-ready {
-    animation: markerFlyInFromTop 1.0s cubic-bezier(0.175, 0.885, 0.32, 1.275) both, markerPulse 2s ease-in-out infinite;
-  }
-  .marker.fly-in-right.unlocked-ready {
-    animation: markerFlyInFromRight 1.0s cubic-bezier(0.175, 0.885, 0.32, 1.275) both, markerPulse 2s ease-in-out infinite;
-  }
-  .marker.fly-in-bottom.unlocked-ready {
-    animation: markerFlyInFromBottom 1.0s cubic-bezier(0.175, 0.885, 0.32, 1.275) both, markerPulse 2s ease-in-out infinite;
-  }
-  .marker.fly-in-left.unlocked-ready {
-    animation: markerFlyInFromLeft 1.0s cubic-bezier(0.175, 0.885, 0.32, 1.275) both, markerPulse 2s ease-in-out infinite;
-  }
+      .intro-btn {
+        padding: 10px 20px;
+        border: none;
+        border-radius: 8px;
+        font-size: 0.95rem;
+        font-weight: 600;
+        cursor: pointer;
+        transition: all 0.3s ease;
+      }
 
-  @media (max-width: 768px) {
-    .map-stage { aspect-ratio: 1 / 1; }
-    .hud { flex-direction: column; align-items: stretch; text-align: center; }
-    .brand { flex-direction: column; }
-    .hud-right { justify-content: center; }
-  }
+      .intro-btn-primary {
+        background: var(--gog-lime);
+        color: #0f172a;
+      }
 
-  /* Cleared Marker Bobbing */
-  .marker.cleared {
-    animation: clearedBob 3s ease-in-out infinite;
-  }
-  @keyframes clearedBob {
-    0%, 100% { transform: translate(-50%, -50%) rotate(-2deg); }
-    50% { transform: translate(-50%, calc(-50% - 6px)) rotate(2deg); }
-  }
+      .intro-btn-primary:hover {
+        transform: scale(1.05);
+        box-shadow: 0 0 20px rgba(163, 230, 53, 0.4);
+      }
 
-  /* Drifting map fog layers */
-  .fog {
-    position: absolute; border-radius: 50%;
-    background: radial-gradient(circle, rgba(255,255,255,.25) 0%, rgba(255,255,255,0) 70%);
-    filter: blur(10px); pointer-events: none; mix-blend-mode: screen; z-index: 5;
-  }
-  .fog1 { width: 50%; height: 35%; top: 5%; left: -10%; animation: driftA 26s ease-in-out infinite, hazeBlur 9s ease-in-out infinite; }
-  .fog2 { width: 60%; height: 40%; top: 40%; left: 50%; animation: driftB 34s ease-in-out infinite, hazeBlur 11s ease-in-out infinite reverse; opacity: .6; }
-  .fog3 { width: 45%; height: 30%; top: 65%; left: 10%; animation: driftC 22s ease-in-out infinite, hazeBlur 7s ease-in-out infinite; opacity: .45; }
+      .intro-btn-secondary {
+        background: rgba(255, 255, 255, 0.2);
+        color: white;
+        border: 1px solid rgba(255, 255, 255, 0.3);
+      }
 
-  @keyframes driftA { 0% { transform: translate(0,0); } 50% { transform: translate(15vw, 2vh); } 100% { transform: translate(0,0); } }
-  @keyframes driftB { 0% { transform: translate(0,0); } 50% { transform: translate(-15vw, -3vh); } 100% { transform: translate(0,0); } }
-  @keyframes driftC { 0% { transform: translate(0,0); } 50% { transform: translate(12vw, -4vh); } 100% { transform: translate(0,0); } }
-  @keyframes hazeBlur { 0%, 100% { filter: blur(10px); } 50% { filter: blur(18px); } }
+      .intro-btn-secondary:hover {
+        background: rgba(255, 255, 255, 0.3);
+      }
 
-  @media (prefers-reduced-motion: reduce) {
-    .brand .owl, .brand-text, .sprouts-chip, .cleared-chip, .reset-btn, .marker {
-      animation: none !important;
-      transform: none !important;
-    }
-  }
-</style>
-</head>
-<body>
+      /* === NEW: RESET CONFIRMATION MODAL === */
+      .modal-overlay {
+        position: fixed;
+        inset: 0;
+        background: rgba(0, 0, 0, 0.7);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        z-index: 999;
+        animation: fadeIn 0.3s ease-out;
+      }
 
-<div class="parallax-bg">
-  <div class="parallax-layer layer-stars"></div>
-  <div class="parallax-layer layer-mountains"></div>
-</div>
+      .modal-content {
+        background: linear-gradient(135deg, #1e293b, #0f172a);
+        border: 1px solid rgba(163, 230, 53, 0.2);
+        border-radius: 16px;
+        padding: 32px;
+        max-width: 400px;
+        text-align: center;
+        color: white;
+        animation: slideUp 0.4s ease-out;
+        box-shadow: 0 20px 60px rgba(0, 0, 0, 0.4);
+      }
 
-<div class="wrap">
-  <div class="hud">
-    <div class="brand">
-      <span class="owl">🦉</span>
-      <div class="brand-text">
-        <h1>Guardians of Gala</h1>
-        <small>Spika's world is waiting to bloom again</small>
+      .modal-emoji {
+        font-size: 3rem;
+        margin-bottom: 12px;
+      }
+
+      .modal-title {
+        font-family: "Baloo 2", sans-serif;
+        font-size: 1.4rem;
+        font-weight: 700;
+        margin: 12px 0;
+      }
+
+      .modal-text {
+        font-size: 0.95rem;
+        line-height: 1.6;
+        color: #cbd5e1;
+        margin: 16px 0 24px;
+      }
+
+      .modal-buttons {
+        display: flex;
+        gap: 12px;
+        justify-content: center;
+        flex-wrap: wrap;
+      }
+
+      .modal-btn {
+        padding: 10px 24px;
+        border: none;
+        border-radius: 8px;
+        font-size: 0.95rem;
+        font-weight: 600;
+        cursor: pointer;
+        transition: all 0.3s ease;
+      }
+
+      .modal-btn-safe {
+        background: var(--gog-lime);
+        color: #0f172a;
+        flex: 1;
+        min-width: 120px;
+      }
+
+      .modal-btn-safe:hover {
+        transform: scale(1.05);
+        box-shadow: 0 0 20px rgba(163, 230, 53, 0.4);
+      }
+
+      .modal-btn-caution {
+        background: rgba(255, 255, 255, 0.15);
+        color: white;
+        border: 1px solid rgba(255, 255, 255, 0.3);
+        flex: 1;
+        min-width: 120px;
+      }
+
+      .modal-btn-caution:hover {
+        background: rgba(255, 255, 255, 0.25);
+      }
+
+      /* ---------- Map Main Viewport Section ---------- */
+      .map-stage {
+        position: relative;
+        width: 100%;
+        aspect-ratio: 16 / 10;
+        border-radius: 32px;
+        overflow: hidden;
+        background-image: url("https://images.unsplash.com/photo-1448375240586-882707db888b?auto=format&fit=crop&w=1200&q=80");
+        background-size: cover;
+        background-position: center;
+        box-shadow:
+          var(--gog-shadow),
+          inset 0 0 100px rgba(0, 0, 0, 0.5);
+        border: 1px solid rgba(255, 255, 255, 0.08);
+        animation: popIn 0.8s cubic-bezier(0.2, 1.2, 0.4, 1) 0.1s both;
+      }
+
+      /* Constellation Dynamic Vectors */
+      .constellation-svg {
+        position: absolute;
+        inset: 0;
+        width: 100%;
+        height: 100%;
+        pointer-events: none;
+        z-index: 4;
+      }
+      .constellation-line {
+        stroke-dasharray: 8, 8;
+        animation: constellationPulse 35s linear infinite;
+        filter: drop-shadow(0 0 4px rgba(255, 255, 255, 0.2));
+      }
+
+      .biome-blob {
+        position: absolute;
+        border-radius: 50%;
+        mix-blend-mode: screen;
+        filter: blur(30px);
+        opacity: 0.2;
+        transition: all 1s ease;
+        transform: translate(-50%, -50%);
+        animation: blobFloat 14s ease-in-out infinite alternate;
+      }
+      .biome-blob.cleared {
+        opacity: 0.6;
+        filter: blur(18px);
+        animation:
+          blobFloat 8s ease-in-out infinite alternate,
+          blobGlow 4s ease-in-out infinite;
+      }
+
+      /* ---------- Centerpiece: The Guardian Tree ---------- */
+      .tree-zone {
+        position: absolute;
+        left: 50%;
+        top: 50%;
+        transform: translate(-50%, -50%);
+        width: 22%;
+        z-index: 10;
+        pointer-events: none;
+        transform-origin: bottom center;
+        animation: treeSway 6s ease-in-out infinite;
+        cursor: pointer;
+      }
+      .tree-zone::before {
+        content: "";
+        position: absolute;
+        left: 50%;
+        top: 50%;
+        width: 160%;
+        height: 160%;
+        transform: translate(-50%, -50%);
+        background: radial-gradient(
+          circle,
+          rgba(163, 230, 53, 0.25) 0%,
+          rgba(168, 85, 247, 0.08) 45%,
+          transparent 70%
+        );
+        filter: blur(20px);
+        z-index: -1;
+        animation: treeHaloPulse 4s ease-in-out infinite;
+      }
+
+      .tree-svg {
+        width: 100%;
+        height: auto;
+        filter: drop-shadow(0 10px 15px rgba(0, 0, 0, 0.4));
+      }
+      .leaf-bud {
+        transition: all 0.6s cubic-bezier(0.3, 1.5, 0.4, 1);
+        transform-origin: center;
+      }
+      .leaf-bud.bloom {
+        fill: #22c55e;
+        filter: drop-shadow(0 0 8px rgba(34, 197, 94, 0.8));
+        animation: leafPop 0.55s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+      }
+      @keyframes leafPop {
+        0% {
+          transform: scale(0.4);
+          opacity: 0.4;
+        }
+        70% {
+          transform: scale(1.25);
+          opacity: 1;
+        }
+        100% {
+          transform: scale(1);
+          opacity: 1;
+        }
+      }
+
+      /* === NEW: TREE GLOW ON PROGRESS === */
+      @keyframes treeGrowGlow {
+        0% {
+          filter: drop-shadow(0 10px 15px rgba(0, 0, 0, 0.4));
+        }
+        50% {
+          filter: drop-shadow(0 0 30px rgba(163, 230, 53, 0.8));
+        }
+        100% {
+          filter: drop-shadow(0 10px 15px rgba(0, 0, 0, 0.4));
+        }
+      }
+
+      .tree-svg.grow-pulse {
+        animation: treeGrowGlow 0.6s ease-out !important;
+      }
+
+      /* ---------- Strategic Interface Markers ---------- */
+      .marker {
+        position: absolute;
+        transform: translate(-50%, -50%) scale(1);
+        width: 64px;
+        height: 64px;
+        border-radius: 50%;
+        border: 2px solid rgba(255, 255, 255, 0.35);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 1.8rem;
+        cursor: pointer;
+        background: rgba(15, 23, 42, 0.8);
+        backdrop-filter: blur(8px);
+        box-shadow: 0 10px 20px rgba(0, 0, 0, 0.35);
+        transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.2);
+        z-index: 15;
+      }
+      .marker:not(.locked):hover {
+        transform: translate(-50%, -50%) scale(1.2);
+        background: #ffffff;
+        border-color: var(--gog-ink);
+        box-shadow: 0 0 25px rgba(255, 255, 255, 0.5);
+      }
+
+      .marker.locked {
+        filter: grayscale(1) opacity(0.35);
+        cursor: not-allowed;
+        background: rgba(30, 41, 59, 0.85);
+        animation: lockedBreathe 3s ease-in-out infinite;
+      }
+
+      /* === NEW: LOCKED STAGE BREATHING === */
+      @keyframes lockedBreathe {
+        0%,
+        100% {
+          transform: translate(-50%, -50%) scale(1);
+        }
+        50% {
+          transform: translate(-50%, -50%) scale(1.05);
+        }
+      }
+
+      .marker.locked::after {
+        content: "😴";
+        position: absolute;
+        bottom: -2px;
+        right: -2px;
+        font-size: 0.8rem;
+        background: #334155;
+        border-radius: 50%;
+        width: 20px;
+        height: 20px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+      }
+
+      .marker.unlocked-ready {
+        border-color: var(--gog-lime);
+        box-shadow: 0 0 20px rgba(163, 230, 53, 0.4);
+        animation: markerPulse 2s ease-in-out infinite;
+      }
+      .marker.unlocked-ready::before {
+        content: "";
+        position: absolute;
+        inset: -6px;
+        border-radius: 50%;
+        border: 2px solid var(--gog-lime);
+        animation: markerPulseRing 2s cubic-bezier(0.24, 0, 0.38, 1) infinite;
+      }
+
+      .marker.unlocked-upcoming {
+        border-color: var(--gog-sun);
+        background: rgba(255, 255, 255, 0.9);
+        box-shadow: 0 0 18px rgba(250, 204, 21, 0.35);
+      }
+      .marker.unlocked-upcoming::after {
+        content: "⭐";
+        position: absolute;
+        bottom: -8px;
+        left: 50%;
+        transform: translateX(-50%);
+        font-size: 0.8rem;
+      }
+
+      .marker.cleared::after {
+        content: "";
+        position: absolute;
+        inset: -5px;
+        border-radius: 50%;
+        border: 1.5px dashed rgba(163, 230, 53, 0.4);
+        animation: clearedRingSpin 24s linear infinite;
+      }
+
+      /* === NEW: GUARDIAN AWAKENING PULSE === */
+      @keyframes guardianAwaken {
+        0% {
+          transform: translate(-50%, -50%) scale(1) rotate(0deg);
+          opacity: 0.5;
+        }
+        50% {
+          transform: translate(-50%, -50%) scale(1.3) rotate(180deg);
+          opacity: 1;
+        }
+        100% {
+          transform: translate(-50%, -50%) scale(1) rotate(360deg);
+          opacity: 1;
+        }
+      }
+
+      .marker.newly-cleared {
+        animation: guardianAwaken 0.8s cubic-bezier(0.34, 1.56, 0.64, 1) !important;
+      }
+
+      /* Engaging Story Narrative Tooltip Cards */
+      .marker-label {
+        position: absolute;
+        top: 115%;
+        left: 50%;
+        transform: translateX(-50%) translateY(5px);
+        font-size: 0.8rem;
+        font-weight: 700;
+        line-height: 1.3;
+        white-space: nowrap;
+        color: white;
+        background: linear-gradient(135deg, #1e293b, #0f172a);
+        border: 1px solid rgba(255, 255, 255, 0.15);
+        border-left: 3px solid var(--gog-lime);
+        padding: 6px 12px;
+        border-radius: 8px;
+        pointer-events: none;
+        box-shadow: 0 8px 16px rgba(0, 0, 0, 0.3);
+        opacity: 0;
+        transition: all 0.3s cubic-bezier(0.25, 1, 0.5, 1);
+      }
+      .marker:hover .marker-label {
+        opacity: 1;
+        transform: translateX(-50%) translateY(0);
+      }
+
+      /* ---------- Fog Canvas Overlays ---------- */
+      .fog-layer {
+        position: absolute;
+        inset: 0;
+        pointer-events: none;
+        z-index: 12;
+      }
+      .fog-blob {
+        position: absolute;
+        border-radius: 50%;
+        background: radial-gradient(
+          circle at 40% 40%,
+          rgba(255, 255, 255, 0.35),
+          rgba(255, 255, 255, 0) 70%
+        );
+        filter: blur(25px);
+        transform: translate(-50%, -50%);
+        opacity: 0.85;
+        transition: opacity 0.6s ease-out;
+        pointer-events: none;
+        animation: fogFloat 12s ease-in-out infinite;
+      }
+
+      @keyframes fogFloat {
+        0%,
+        100% {
+          transform: translate(-50%, -50%);
+        }
+        50% {
+          transform: translate(-50%, calc(-50% + 20px));
+        }
+      }
+
+      /* === NEW: BLOOM CELEBRATION === */
+      .bloomSweep {
+        position: absolute;
+        inset: 0;
+        background: radial-gradient(
+          circle at center,
+          rgba(163, 230, 53, 0.15) 0%,
+          transparent 70%
+        );
+        pointer-events: none;
+        opacity: 0;
+        z-index: 8;
+      }
+
+      .bloomSweep.run {
+        animation: bloomExpand 0.8s cubic-bezier(0.25, 0.46, 0.45, 0.94)
+          forwards;
+      }
+
+      @keyframes bloomExpand {
+        0% {
+          opacity: 1;
+          transform: scale(1);
+        }
+        100% {
+          opacity: 0;
+          transform: scale(1.4);
+        }
+      }
+
+      /* Drifting map fog layers */
+      .fog {
+        position: absolute;
+        border-radius: 50%;
+        background: radial-gradient(
+          circle,
+          rgba(255, 255, 255, 0.25) 0%,
+          rgba(255, 255, 255, 0) 70%
+        );
+        filter: blur(10px);
+        pointer-events: none;
+        mix-blend-mode: screen;
+        z-index: 5;
+      }
+      .fog1 {
+        width: 50%;
+        height: 35%;
+        top: 5%;
+        left: -10%;
+        animation:
+          driftA 26s ease-in-out infinite,
+          hazeBlur 9s ease-in-out infinite;
+      }
+      .fog2 {
+        width: 60%;
+        height: 40%;
+        top: 40%;
+        left: 50%;
+        animation:
+          driftB 34s ease-in-out infinite,
+          hazeBlur 11s ease-in-out infinite reverse;
+        opacity: 0.6;
+      }
+      .fog3 {
+        width: 45%;
+        height: 30%;
+        top: 65%;
+        left: 10%;
+        animation:
+          driftC 22s ease-in-out infinite,
+          hazeBlur 7s ease-in-out infinite;
+        opacity: 0.45;
+      }
+
+      @keyframes driftA {
+        0% {
+          transform: translate(0, 0);
+        }
+        50% {
+          transform: translate(15vw, 2vh);
+        }
+        100% {
+          transform: translate(0, 0);
+        }
+      }
+      @keyframes driftB {
+        0% {
+          transform: translate(0, 0);
+        }
+        50% {
+          transform: translate(-15vw, -3vh);
+        }
+        100% {
+          transform: translate(0, 0);
+        }
+      }
+      @keyframes driftC {
+        0% {
+          transform: translate(0, 0);
+        }
+        50% {
+          transform: translate(12vw, -4vh);
+        }
+        100% {
+          transform: translate(0, 0);
+        }
+      }
+      @keyframes hazeBlur {
+        0%,
+        100% {
+          filter: blur(10px);
+        }
+        50% {
+          filter: blur(18px);
+        }
+      }
+
+      /* Spika Flying Character */
+      .spika-flyer {
+        position: absolute;
+        font-size: 2.2rem;
+        left: 50%;
+        top: 50%;
+        transform: translate(-50%, -50%);
+        pointer-events: none;
+        z-index: 20;
+        opacity: 0;
+        transition: all 0.8s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+      }
+      .spika-flyer.active {
+        opacity: 1;
+      }
+
+      .spika-sparkle {
+        position: absolute;
+        font-size: 0.9rem;
+        pointer-events: none;
+        z-index: 19;
+        animation: sparkleFloat 0.6s ease-out forwards;
+      }
+      @keyframes sparkleFloat {
+        0% {
+          opacity: 1;
+          transform: translate(var(--tx), var(--ty)) scale(1);
+        }
+        100% {
+          opacity: 0;
+          transform: translate(calc(var(--tx) * 2), calc(var(--ty) * 2))
+            scale(0.3);
+        }
+      }
+
+      .owl-feather {
+        position: absolute;
+        font-size: 1rem;
+        pointer-events: none;
+        z-index: 19;
+        animation: featherFloat 0.85s ease-out forwards;
+      }
+      @keyframes featherFloat {
+        0% {
+          opacity: 1;
+          transform: translate(0, 0) rotate(0deg) scale(1);
+        }
+        100% {
+          opacity: 0;
+          transform: translate(var(--tx), var(--ty)) rotate(45deg) scale(0.6);
+        }
+      }
+
+      .smog-puff {
+        position: absolute;
+        border-radius: 50%;
+        background: rgba(200, 200, 200, 0.4);
+        pointer-events: none;
+        z-index: 8;
+        animation: puffFloat 1.1s ease-out forwards;
+      }
+      @keyframes puffFloat {
+        0% {
+          opacity: 0.8;
+          transform: translate(0, 0) scale(1);
+        }
+        100% {
+          opacity: 0;
+          transform: translate(var(--tx), var(--ty)) scale(0.4);
+        }
+      }
+
+      .leaf-sparkle {
+        position: absolute;
+        font-size: 0.8rem;
+        pointer-events: none;
+        z-index: 9;
+        animation: leafFloat 0.75s ease-out forwards;
+      }
+      @keyframes leafFloat {
+        0% {
+          opacity: 1;
+          transform: translate(0, 0) scale(1);
+        }
+        100% {
+          opacity: 0;
+          transform: translate(var(--tx), var(--ty)) scale(0.4);
+        }
+      }
+
+      .ambient-bubble {
+        position: absolute;
+        font-size: 1.2rem;
+        pointer-events: none;
+        animation: bubbleDrift 2.8s ease-out forwards;
+      }
+      @keyframes bubbleDrift {
+        0% {
+          opacity: 1;
+          transform: translateX(0) translateY(0) scale(1);
+        }
+        100% {
+          opacity: 0;
+          transform: translateX(var(--drift)) translateY(-80px) scale(0.7);
+        }
+      }
+
+      .ambient-butterfly {
+        position: absolute;
+        font-size: 1.2rem;
+        pointer-events: none;
+        animation: butterflyDrift 3.8s ease-in-out forwards;
+      }
+      @keyframes butterflyDrift {
+        0% {
+          opacity: 0;
+          transform: translate(0, 0);
+        }
+        50% {
+          opacity: 1;
+        }
+        100% {
+          opacity: 0;
+          transform: translate(var(--dx2), var(--dy2));
+        }
+      }
+
+      .ambient-flower {
+        position: absolute;
+        font-size: 1.3rem;
+        pointer-events: none;
+        animation: flowerFloat 4.8s ease-out forwards;
+      }
+      @keyframes flowerFloat {
+        0% {
+          opacity: 1;
+          transform: translate(0, 0) scale(1);
+        }
+        100% {
+          opacity: 0;
+          transform: translate(var(--dx2), var(--dy2)) scale(0.5);
+        }
+      }
+
+      .ambient-sparkle {
+        position: absolute;
+        font-size: 1rem;
+        pointer-events: none;
+        animation: twinkle 2.4s ease-in-out forwards;
+      }
+      @keyframes twinkle {
+        0%,
+        100% {
+          opacity: 0;
+        }
+        50% {
+          opacity: 1;
+        }
+      }
+
+      /* Overlay Messaging System */
+      .overlay-container {
+        position: fixed;
+        inset: 0;
+        z-index: 500;
+        pointer-events: none;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+      }
+
+      .toast-container {
+        position: fixed;
+        top: 20px;
+        left: 50%;
+        transform: translateX(-50%);
+        z-index: 600;
+        pointer-events: none;
+      }
+
+      .toast {
+        background: linear-gradient(
+          135deg,
+          rgba(30, 41, 59, 0.95),
+          rgba(15, 23, 42, 0.95)
+        );
+        backdrop-filter: blur(12px);
+        border: 1px solid rgba(163, 230, 53, 0.3);
+        color: var(--gog-text-light);
+        padding: 14px 20px;
+        border-radius: 12px;
+        box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
+        font-size: 0.95rem;
+        font-weight: 600;
+        animation: toastSlideDown 0.4s cubic-bezier(0.34, 1.56, 0.64, 1)
+          forwards;
+        pointer-events: auto;
+        margin-bottom: 8px;
+      }
+
+      @keyframes toastSlideDown {
+        from {
+          opacity: 0;
+          transform: translateY(-20px);
+        }
+        to {
+          opacity: 1;
+          transform: translateY(0);
+        }
+      }
+
+      .toast-exit {
+        animation: toastSlideUp 0.3s cubic-bezier(0.6, -0.28, 0.735, 0.045)
+          forwards !important;
+      }
+
+      @keyframes toastSlideUp {
+        from {
+          opacity: 1;
+          transform: translateY(0);
+        }
+        to {
+          opacity: 0;
+          transform: translateY(-20px);
+        }
+      }
+
+      .bottom-row {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-top: 20px;
+        gap: 20px;
+        flex-wrap: wrap;
+      }
+
+      .legend {
+        display: flex;
+        gap: 12px;
+        flex-wrap: wrap;
+      }
+
+      .brutal-btn {
+        padding: 10px 20px;
+        border-radius: 8px;
+        border: 2px solid rgba(255, 255, 255, 0.2);
+        background: rgba(255, 255, 255, 0.08);
+        color: white;
+        font-weight: 600;
+        cursor: pointer;
+        transition: all 0.3s ease;
+        font-size: 0.9rem;
+      }
+
+      .brutal-btn:hover {
+        background: rgba(255, 255, 255, 0.15);
+        border-color: rgba(255, 255, 255, 0.4);
+        transform: translateY(-2px);
+      }
+
+      .footer-note {
+        margin-top: 16px;
+        font-size: 0.8rem;
+        color: #94a3b8;
+        text-align: center;
+      }
+
+      @media (max-width: 768px) {
+        .map-stage {
+          aspect-ratio: 1 / 1;
+        }
+        .hud {
+          flex-direction: column;
+          align-items: stretch;
+          text-align: center;
+        }
+        .brand {
+          flex-direction: column;
+        }
+        .hud-right {
+          justify-content: center;
+        }
+        .guideBar {
+          flex-direction: column;
+          align-items: center;
+        }
+        .guideBubble {
+          text-align: center;
+        }
+      }
+
+      /* Cleared Marker Bobbing */
+      .marker.cleared {
+        animation: clearedBob 3s ease-in-out infinite;
+      }
+      @keyframes clearedBob {
+        0%,
+        100% {
+          transform: translate(-50%, -50%) rotate(-2deg);
+        }
+        50% {
+          transform: translate(-50%, calc(-50% - 6px)) rotate(2deg);
+        }
+      }
+
+      @media (prefers-reduced-motion: reduce) {
+        * {
+          animation-duration: 0.01ms !important;
+          animation-iteration-count: 1 !important;
+          transition-duration: 0.01ms !important;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="parallax-bg">
+      <div class="parallax-layer layer-stars"></div>
+      <div class="parallax-layer layer-mountains"></div>
+    </div>
+
+    <div class="wrap">
+      <div class="hud">
+        <div class="brand">
+          <span class="owl">🦉</span>
+          <div class="brand-text">
+            <h1>Guardians of Gala</h1>
+            <small>Spika's world is waiting to bloom again</small>
+          </div>
+        </div>
+        <div class="hud-right">
+          <div class="chip" title="Seeds of Life returned to the Guardian Tree">
+            🌱 <span id="seedsCount">0</span>/10
+          </div>
+          <div class="smog-meter" title="The Smog level over the world">
+            <span class="label">SMOG</span>
+            <div class="smog-track">
+              <div class="smog-fill" id="smogFill"></div>
+            </div>
+            <span class="label" id="smogPct">100%</span>
+          </div>
+          <button
+            class="icon-btn"
+            id="settingsBtn"
+            title="Settings"
+            aria-label="Settings"
+          >
+            ⚙️
+          </button>
+        </div>
+      </div>
+
+      <!-- === NEW: Spika's Dynamic Guide Bar === -->
+      <div class="guideBar">
+        <div class="guideAvatar" aria-hidden="true">🦉</div>
+        <div class="guideBubble" id="guideText">
+          Hi, I'm Spika! Let's help Gala wake up! 🌍
+        </div>
+      </div>
+
+      <div class="map-stage" id="mapStage">
+        <div id="biomeLayer"></div>
+        <svg class="constellation-svg" id="constellationSvg"></svg>
+        <div class="bloomSweep" id="bloomSweep"></div>
+
+        <!-- Drifting Atmospheric Fog Layers -->
+        <div class="fog fog1"></div>
+        <div class="fog fog2"></div>
+        <div class="fog fog3"></div>
+
+        <div class="tree-zone" id="treeZone" title="The Guardian Tree">
+          <svg class="tree-svg" viewBox="0 0 200 220" id="treeSvg">
+            <ellipse
+              cx="100"
+              cy="206"
+              rx="46"
+              ry="9"
+              fill="rgba(15,23,42,0.3)"
+            ></ellipse>
+            <rect
+              x="92"
+              y="120"
+              width="16"
+              height="86"
+              rx="6"
+              fill="#78350f"
+              stroke="#0f172a"
+              stroke-width="3"
+            ></rect>
+            <path
+              d="M100 140 C 70 130, 55 110, 60 92"
+              stroke="#78350f"
+              stroke-width="9"
+              fill="none"
+              stroke-linecap="round"
+            ></path>
+            <path
+              d="M100 130 C 130 118, 145 98, 142 80"
+              stroke="#78350f"
+              stroke-width="9"
+              fill="none"
+              stroke-linecap="round"
+            ></path>
+            <circle
+              class="leaf-bud"
+              id="leaf0"
+              cx="100"
+              cy="95"
+              r="20"
+              fill="#475569"
+              stroke="#0f172a"
+              stroke-width="3"
+              transform="scale(0.4)"
+              style="transform-origin: 100px 95px"
+            ></circle>
+            <circle
+              class="leaf-bud"
+              id="leaf1"
+              cx="62"
+              cy="86"
+              r="17"
+              fill="#475569"
+              stroke="#0f172a"
+              stroke-width="3"
+              transform="scale(0.4)"
+              style="transform-origin: 62px 86px"
+            ></circle>
+            <circle
+              class="leaf-bud"
+              id="leaf2"
+              cx="140"
+              cy="74"
+              r="17"
+              fill="#475569"
+              stroke="#0f172a"
+              stroke-width="3"
+              transform="scale(0.4)"
+              style="transform-origin: 140px 74px"
+            ></circle>
+            <circle
+              class="leaf-bud"
+              id="leaf3"
+              cx="40"
+              cy="60"
+              r="14"
+              fill="#475569"
+              stroke="#0f172a"
+              stroke-width="3"
+              transform="scale(0.4)"
+              style="transform-origin: 40px 60px"
+            ></circle>
+            <circle
+              class="leaf-bud"
+              id="leaf4"
+              cx="160"
+              cy="50"
+              r="14"
+              fill="#475569"
+              stroke="#0f172a"
+              stroke-width="3"
+              transform="scale(0.4)"
+              style="transform-origin: 160px 50px"
+            ></circle>
+            <circle
+              class="leaf-bud"
+              id="leaf5"
+              cx="100"
+              cy="48"
+              r="20"
+              fill="#475569"
+              stroke="#0f172a"
+              stroke-width="3"
+              transform="scale(0.4)"
+              style="transform-origin: 100px 48px"
+            ></circle>
+            <circle
+              class="leaf-bud"
+              id="leaf6"
+              cx="70"
+              cy="34"
+              r="13"
+              fill="#475569"
+              stroke="#0f172a"
+              stroke-width="3"
+              transform="scale(0.4)"
+              style="transform-origin: 70px 34px"
+            ></circle>
+            <circle
+              class="leaf-bud"
+              id="leaf7"
+              cx="130"
+              cy="30"
+              r="13"
+              fill="#475569"
+              stroke="#0f172a"
+              stroke-width="3"
+              transform="scale(0.4)"
+              style="transform-origin: 130px 30px"
+            ></circle>
+            <circle
+              class="leaf-bud"
+              id="leaf8"
+              cx="100"
+              cy="14"
+              r="12"
+              fill="#475569"
+              stroke="#0f172a"
+              stroke-width="3"
+              transform="scale(0.4)"
+              style="transform-origin: 100px 14px"
+            ></circle>
+            <circle
+              class="leaf-bud"
+              id="leaf9"
+              cx="100"
+              cy="95"
+              r="34"
+              fill="#475569"
+              stroke="#0f172a"
+              stroke-width="2"
+              opacity="0.0"
+              transform="scale(0.4)"
+              style="transform-origin: 100px 95px"
+            ></circle>
+          </svg>
+        </div>
+
+        <div id="markerLayer"></div>
+        <div class="fog-layer" id="fogLayer"></div>
+      </div>
+
+      <div class="bottom-row">
+        <div class="legend">
+          <span class="chip sprouts-chip"
+            >🌱 <span id="sproutsCount">0</span> sprouts</span
+          >
+          <span class="chip cleared-chip" id="clearedChip">0/10 awake</span>
+        </div>
+        <button
+          class="brutal-btn reset-btn"
+          id="resetBtn"
+          title="Clear local save"
+        >
+          Reset world
+        </button>
+      </div>
+
+      <div class="footer-note">
+        Tap stage markers to help the Guardians and heal Gala! 🌍
       </div>
     </div>
-    <div class="hud-right">
-      <div class="chip" title="Seeds of Life returned to the Guardian Tree">🌱 <span id="seedsCount">0</span>/10</div>
-      <div class="smog-meter" title="The Smog level over the world">
-        <span class="label">SMOG</span>
-        <div class="smog-track"><div class="smog-fill" id="smogFill"></div></div>
-        <span class="label" id="smogPct">100%</span>
-      </div>
-      <button class="icon-btn" id="settingsBtn" title="Settings" aria-label="Settings">⚙️</button>
-    </div>
-  </div>
 
-  <!-- Spika Mascot Guide Bar -->
-  <div class="guideBar">
-    <div class="guideAvatar" aria-hidden="true">🦋</div>
-    <div class="guideBubble" id="guideText">Hi, I'm Spika! Tap a stage marker to start clean-up! 🌍</div>
-  </div>
+    <script src="data/content.js"></script>
+    <script src="src/save.js"></script>
+    <script src="src/ui.js"></script>
+    <script>
+      (function () {
+        "use strict";
 
-  <div class="map-stage" id="mapStage">
-    <div id="biomeLayer"></div>
-    <svg class="constellation-svg" id="constellationSvg"></svg>
-    <div class="bloomSweep" id="bloomSweep"></div>
+        var STAGES = GOGContent.STAGES;
+        var save = GOGSave.load();
 
-    <!-- Drifting Atmospheric Fog Layers -->
-    <div class="fog fog1"></div>
-    <div class="fog fog2"></div>
-    <div class="fog fog3"></div>
+        var biomeLayer = document.getElementById("biomeLayer");
+        var markerLayer = document.getElementById("markerLayer");
+        var fogLayer = document.getElementById("fogLayer");
 
-    <div class="tree-zone">
-      <svg class="tree-svg" viewBox="0 0 200 220" id="treeSvg">
-        <ellipse cx="100" cy="206" rx="46" ry="9" fill="rgba(15,23,42,0.3)"></ellipse>
-        <rect x="92" y="120" width="16" height="86" rx="6" fill="#78350f" stroke="#0f172a" stroke-width="3"></rect>
-        <path d="M100 140 C 70 130, 55 110, 60 92" stroke="#78350f" stroke-width="9" fill="none" stroke-linecap="round"></path>
-        <path d="M100 130 C 130 118, 145 98, 142 80" stroke="#78350f" stroke-width="9" fill="none" stroke-linecap="round"></path>
-        <circle class="leaf-bud" id="leaf0" cx="100" cy="95" r="20" fill="#475569" stroke="#0f172a" stroke-width="3" transform="scale(0.4)" style="transform-origin:100px 95px;"></circle>
-        <circle class="leaf-bud" id="leaf1" cx="62"  cy="86" r="17" fill="#475569" stroke="#0f172a" stroke-width="3" transform="scale(0.4)" style="transform-origin:62px 86px;"></circle>
-        <circle class="leaf-bud" id="leaf2" cx="140" cy="74" r="17" fill="#475569" stroke="#0f172a" stroke-width="3" transform="scale(0.4)" style="transform-origin:140px 74px;"></circle>
-        <circle class="leaf-bud" id="leaf3" cx="40"  cy="60" r="14" fill="#475569" stroke="#0f172a" stroke-width="3" transform="scale(0.4)" style="transform-origin:40px 60px;"></circle>
-        <circle class="leaf-bud" id="leaf4" cx="160" cy="50" r="14" fill="#475569" stroke="#0f172a" stroke-width="3" transform="scale(0.4)" style="transform-origin:160px 50px;"></circle>
-        <circle class="leaf-bud" id="leaf5" cx="100" cy="48" r="20" fill="#475569" stroke="#0f172a" stroke-width="3" transform="scale(0.4)" style="transform-origin:100px 48px;"></circle>
-        <circle class="leaf-bud" id="leaf6" cx="70"  cy="34" r="13" fill="#475569" stroke="#0f172a" stroke-width="3" transform="scale(0.4)" style="transform-origin:70px 34px;"></circle>
-        <circle class="leaf-bud" id="leaf7" cx="130" cy="30" r="13" fill="#475569" stroke="#0f172a" stroke-width="3" transform="scale(0.4)" style="transform-origin:130px 30px;"></circle>
-        <circle class="leaf-bud" id="leaf8" cx="100" cy="14" r="12" fill="#475569" stroke="#0f172a" stroke-width="3" transform="scale(0.4)" style="transform-origin:100px 14px;"></circle>
-        <circle class="leaf-bud" id="leaf9" cx="100" cy="95" r="34" fill="#475569" stroke="#0f172a" stroke-width="2" opacity="0.0" transform="scale(0.4)" style="transform-origin:100px 95px;"></circle>
-      </svg>
-    </div>
+        // === NEW: STORY DIRECTOR SYSTEM ===
+        var StoryDirector = {
+          messageQueue: [],
+          currentMessageTimeout: null,
+          lastMessageTime: {},
+          isPlayingSequence: false,
 
-    <div id="markerLayer"></div>
-    <div class="fog-layer" id="fogLayer"></div>
-  </div>
+          init: function () {
+            // Check if first visit story has been seen
+            if (!sessionStorage.getItem("gog_story_intro_seen")) {
+              this.playFirstVisit();
+            }
+          },
 
-  <div class="bottom-row">
-    <div class="legend">
-      <span class="chip sprouts-chip">🌱 <span id="sproutsCount">0</span> sprouts</span>
-      <span class="chip cleared-chip" id="clearedChip">0/10 awake</span>
-    </div>
-    <button class="brutal-btn reset-btn" id="resetBtn" title="Clear local save">Reset world</button>
-  </div>
+          playFirstVisit: function () {
+            if (this.isPlayingSequence) return;
+            this.isPlayingSequence = true;
 
-  <div class="footer-note">Hover over unlocked zones to observe weather systems. Tap to fly with Spika! 🦉</div>
-</div>
+            var overlay = document.createElement("div");
+            overlay.className = "intro-overlay";
+            overlay.id = "introOverlay";
 
-<script src="data/content.js"></script>
-<script src="src/save.js"></script>
-<script src="src/ui.js"></script>
-<script>
-(function () {
-  "use strict";
+            var content = document.createElement("div");
+            content.className = "intro-content";
 
-  var STAGES = GOGContent.STAGES;
-  var save = GOGSave.load();
+            var stepDefinitions = [
+              {
+                emoji: "🌍",
+                text: "Oh no...",
+                delay: 500,
+              },
+              {
+                emoji: "🌍😢",
+                text: "Gala is losing her color!",
+                delay: 1200,
+              },
+              {
+                emoji: "💤",
+                text: "The Guardians have fallen asleep.",
+                delay: 1200,
+              },
+              {
+                emoji: "🌱✨",
+                text: "But we can wake them!",
+                delay: 1200,
+              },
+              {
+                emoji: "🦉",
+                text: "I'm Spika! Let's find our first Guardian! 🌊",
+                delay: 1500,
+                showControls: true,
+              },
+            ];
 
-  var biomeLayer = document.getElementById("biomeLayer");
-  var markerLayer = document.getElementById("markerLayer");
-  var fogLayer = document.getElementById("fogLayer");
+            var currentStep = 0;
+            var stepElements = [];
 
-  // Core Procedural Synthesizer Sound Engine Configuration
-  var GaiaAudio = {
-    ctx: null,
-    init: function() {
-      if (!this.ctx) this.ctx = new (window.AudioContext || window.webkitAudioContext)();
-    },
-    playTone: function(freq, dur, type, peak, glideTo, delay) {
-      if (save.settings && save.settings.sound === false) return;
-      this.init();
-      if (this.ctx.state === 'suspended') this.ctx.resume().catch(function(){});
-      
-      var t0 = this.ctx.currentTime + (delay || 0);
-      var osc = this.ctx.createOscillator();
-      var g = this.ctx.createGain();
-      osc.type = type || 'sine';
-      osc.frequency.setValueAtTime(freq, t0);
-      if (glideTo) {
-        osc.frequency.exponentialRampToValueAtTime(glideTo, t0 + dur);
-      }
-      var p = peak != null ? peak : 0.05;
-      g.gain.setValueAtTime(0.0001, t0);
-      g.gain.exponentialRampToValueAtTime(p, t0 + Math.min(0.02, dur * 0.15));
-      g.gain.exponentialRampToValueAtTime(0.0001, t0 + dur);
-      osc.connect(g);
-      g.connect(this.ctx.destination);
-      osc.start(t0);
-      osc.stop(t0 + dur + 0.03);
-      
-      osc.onended = function () {
-        osc.disconnect();
-        g.disconnect();
-      };
-    },
-    playWhoosh: function() {
-      this.playTone(320, 0.6, 'triangle', 0.12, 100);
-    },
-    playFly: function() {
-      this.playTone(500, 0.35, 'sine', 0.08, 900);
-    },
-    playGrow: function() {
-      this.playTone(160, 0.5, 'sine', 0.12, 420);
-    },
-    playBloom: function() {
-      var self = this;
-      [523, 659, 784, 1046].forEach(function (f, i) {
-        self.playTone(f, 0.22, 'triangle', 0.08, null, i * 0.09);
-      });
-    }
-  };
+            function showNextStep() {
+              if (currentStep >= stepDefinitions.length) {
+                cleanup();
+                return;
+              }
 
-  // Parallax Event Coordinates Tracking Setup
-  document.addEventListener("mousemove", function (e) {
-    var cx = window.innerWidth / 2;
-    var cy = window.innerHeight / 2;
-    var dx = e.clientX - cx;
-    var dy = e.clientY - cy;
-    var layerStars = document.querySelector(".layer-stars");
-    var layerMountains = document.querySelector(".layer-mountains");
-    if (layerStars) layerStars.style.transform = "translate(" + (dx * 0.01) + "px, " + (dy * 0.01) + "px) scale(1.02)";
-    if (layerMountains) layerMountains.style.transform = "translate(" + (dx * 0.025) + "px, " + (dy * 0.025) + "px) scale(1.04)";
-  });
+              var def = stepDefinitions[currentStep];
+              var step = document.createElement("div");
+              step.className = "intro-step active";
 
-  var spikaFlyer = document.createElement("div");
-  spikaFlyer.className = "spika-flyer";
-  spikaFlyer.textContent = "🦋";
-  document.getElementById("mapStage").appendChild(spikaFlyer);
+              var emoji = document.createElement("div");
+              emoji.className = "intro-step-emoji";
+              emoji.textContent = def.emoji;
 
-  var brandOwl = document.querySelector(".brand .owl");
-  if (brandOwl) {
-    brandOwl.addEventListener("animationend", function (e) {
-      if (e.animationName === "owlFlyIn") spawnOwlLandingFeathers(brandOwl);
-    });
-  }
+              var text = document.createElement("div");
+              text.className = "intro-step-text";
+              text.textContent = def.text;
 
-  var prevCleared = JSON.parse(sessionStorage.getItem("gog_prev_cleared") || "[]");
-  var prevSeeds = parseInt(sessionStorage.getItem("gog_prev_seeds") || "0", 10);
-  var isFirstLoad = sessionStorage.getItem("gog_prev_cleared") === null;
+              step.appendChild(emoji);
+              step.appendChild(text);
 
-  if (isFirstLoad) {
-    sessionStorage.setItem("gog_prev_cleared", JSON.stringify(save.stagesCleared));
-    sessionStorage.setItem("gog_prev_seeds", save.seeds.toString());
-    prevCleared = save.stagesCleared;
-    prevSeeds = save.seeds;
-  }
+              if (def.showControls) {
+                var controls = document.createElement("div");
+                controls.className = "intro-controls";
 
-  STAGES.forEach(function (stage) {
-    var blob = document.createElement("div");
-    blob.className = "biome-blob";
-    blob.id = "blob-" + stage.id;
-    var size = stage.finale ? 35 : 28;
-    blob.style.width = size + "%";
-    blob.style.height = size + "%";
-    blob.style.left = stage.mapPos.x + "%";
-    blob.style.top = stage.mapPos.y + "%";
-    blob.style.background = stage.color;
-    biomeLayer.appendChild(blob);
-  });
+                var playBtn = document.createElement("button");
+                playBtn.className = "intro-btn intro-btn-primary";
+                playBtn.textContent = "Let's Help Gala! 🌟";
+                playBtn.addEventListener("click", cleanup);
 
-  STAGES.forEach(function (stage) {
-    if(!stage.playable){
-      var fog = document.createElement("div");
-      fog.className = "fog-blob";
-      fog.id = "fog-" + stage.id;
-      var size = stage.finale ? 40 : 32;
-      fog.style.width = size + "%";
-      fog.style.height = size + "%";
-      fog.style.left = stage.mapPos.x + "%";
-      fog.style.top = stage.mapPos.y + "%";
-      fog.style.animationDelay = (stage.order * 0.4) + "s";
-      fogLayer.appendChild(fog);
-    }
-  });
+                var skipBtn = document.createElement("button");
+                skipBtn.className = "intro-btn intro-btn-secondary";
+                skipBtn.textContent = "Skip ⏭";
+                skipBtn.addEventListener("click", cleanup);
 
-  // Dynamic Constellation Vector Rendering Algorithm
-  function drawConstellationLines() {
-    var svg = document.getElementById("constellationSvg");
-    if (!svg) return;
-    svg.innerHTML = "";
-    
-    for (var i = 0; i < STAGES.length - 1; i++) {
-      var current = STAGES[i];
-      var next = STAGES[i+1];
-      var currentCleared = save.stagesCleared.indexOf(current.id) !== -1;
-      var nextUnlocked = GOGContent.isUnlocked(next, save);
+                controls.appendChild(playBtn);
+                controls.appendChild(skipBtn);
+                step.appendChild(controls);
+              }
 
-      if (currentCleared || nextUnlocked) {
-        var line = document.createElementNS("http://www.w3.org/2000/svg", "line");
-        line.setAttribute("x1", current.mapPos.x + "%");
-        line.setAttribute("y1", current.mapPos.y + "%");
-        line.setAttribute("x2", next.mapPos.x + "%");
-        line.setAttribute("y2", next.mapPos.y + "%");
-        line.setAttribute("class", "constellation-line");
-        line.setAttribute("stroke", currentCleared ? current.color : "rgba(255,255,255,0.25)");
-        line.setAttribute("stroke-width", currentCleared ? "2.5" : "1.5");
-        line.setAttribute("opacity", "0.65");
-        svg.appendChild(line);
-      }
-    }
-  }
+              content.innerHTML = "";
+              content.appendChild(step);
+              currentStep++;
 
-  function buildMarkers() {
-    markerLayer.innerHTML = "";
-    STAGES.forEach(function (stage, i) {
-      var cleared = save.stagesCleared.indexOf(stage.id) !== -1;
-      var unlocked = GOGContent.isUnlocked(stage, save);
+              if (def.showControls) {
+                return;
+              }
 
-      var el = document.createElement("button");
-      el.className = "marker";
+              setTimeout(showNextStep, def.delay);
+            }
 
-      // Staggered fly-in directions and delays
-      var directions = ["fly-in-top", "fly-in-right", "fly-in-bottom", "fly-in-left"];
-      var dirClass = directions[i % directions.length];
-      el.classList.add(dirClass);
-      el.style.animationDelay = (i * 0.12) + "s";
+            function cleanup() {
+              overlay.classList.remove("intro-overlay");
+              setTimeout(function () {
+                if (overlay.parentElement)
+                  overlay.parentElement.removeChild(overlay);
+                StoryDirector.isPlayingSequence = false;
+                sessionStorage.setItem("gog_story_intro_seen", "true");
+                SpikaGuide.show("Ready? Tap the glowing ocean! 🌊", {
+                  priority: 8,
+                  duration: 4000,
+                });
+              }, 300);
+            }
 
-      el.style.left = stage.mapPos.x + "%";
-      el.style.top = stage.mapPos.y + "%";
-      el.setAttribute("aria-label", stage.guardian + " - " + stage.biome);
-      if (cleared) {
-        el.classList.add("cleared");
-        el.textContent = stage.icon;
-        el.style.boxShadow = "0 0 20px " + stage.color;
-      } else if (unlocked && stage.playable) {
-        el.classList.add("unlocked-ready");
-        el.textContent = stage.icon;
-      } else if (unlocked && !stage.playable) {
-        el.classList.add("unlocked-upcoming");
-        el.textContent = stage.icon;
-        el.title = stage.guardian + " is unlocked, but this stage is still being built.";
-      } else {
-        el.classList.add("locked");
-        el.textContent = "💤";
-      }
+            overlay.appendChild(content);
+            document.body.appendChild(overlay);
 
-      var label = document.createElement("span");
-      label.className = "marker-label";
-      label.innerHTML = "<strong>" + stage.order + ". " + stage.guardian + "</strong><br><small style='color:#94a3b8;font-weight:500;'>" + stage.biome + "</small>";
-      el.appendChild(label);
+            setTimeout(showNextStep, 800);
+          },
 
-      el.addEventListener("click", function () { onMarkerClick(stage, cleared, unlocked); });
-      markerLayer.appendChild(el);
-    });
-  }
+          playStageReturn: function (stage, isNewGuardian) {
+            if (this.isPlayingSequence) return;
+            this.isPlayingSequence = true;
 
-  var isAnimatingSpika = false;
+            var sequence = [
+              {
+                delay: 0,
+                msg: "You're back! 🦉✨",
+                priority: 9,
+                duration: 2500,
+              },
+              {
+                delay: 1000,
+                msg: "Look what you brought!",
+                priority: 9,
+                duration: 2000,
+              },
+              {
+                delay: 2500,
+                msg: "A Seed of Life! 🌱",
+                priority: 9,
+                duration: 2500,
+              },
+              {
+                delay: 4200,
+                msg: "The Guardian Tree is growing!",
+                priority: 9,
+                duration: 2500,
+              },
+              {
+                delay: 6000,
+                msg: stage.guardian + " is awake! " + stage.icon + "✨",
+                priority: 9,
+                duration: 2500,
+              },
+              {
+                delay: 7700,
+                msg: "Look! The Smog is moving back! 🌫️→☀️",
+                priority: 9,
+                duration: 2500,
+              },
+              {
+                delay: 9400,
+                msg: "YOU did that! 🌟",
+                priority: 10,
+                duration: 2500,
+              },
+              {
+                delay: 11100,
+                msg: "Gala is getting stronger!",
+                priority: 9,
+                duration: 2500,
+              },
+            ];
 
-  function onMarkerClick(stage, cleared, unlocked) {
-    if (isAnimatingSpika) return;
-    if (!unlocked) {
-      GOGUi.showToast("🌫️ " + stage.guardian + " is still asleep behind the Smog.");
-      return;
-    }
-    if (!stage.playable) {
-      GOGUi.showToast("✨ " + stage.guardian + "'s stage is being built next!");
-      return;
-    }
+            var nextStageHint = this.getNextStageName();
+            if (nextStageHint) {
+              sequence.push({
+                delay: 12800,
+                msg: "Wait... " + nextStageHint + " needs us!",
+                priority: 9,
+                duration: 3000,
+              });
+            }
 
-    isAnimatingSpika = true;
-    GaiaAudio.playFly();
-    GOGUi.say("Off Spika flutters to the next stage! 🦋");
-    spikaFlyer.style.left = "50%";
-    spikaFlyer.style.top = "50%";
-    spikaFlyer.offsetHeight; 
-    spikaFlyer.classList.add("active");
+            sequence.forEach(function (item) {
+              setTimeout(function () {
+                SpikaGuide.show(item.msg, {
+                  priority: item.priority,
+                  duration: item.duration,
+                });
+              }, item.delay);
+            });
 
-    var trailInterval = setInterval(function () {
-      spawnSpikaTrail(parseFloat(spikaFlyer.style.left), parseFloat(spikaFlyer.style.top));
-    }, 40);
+            setTimeout(function () {
+              StoryDirector.isPlayingSequence = false;
+            }, 13500);
+          },
 
-    setTimeout(function () {
-      spikaFlyer.style.left = stage.mapPos.x + "%";
-      spikaFlyer.style.top = stage.mapPos.y + "%";
-      spikaFlyer.style.transform = stage.mapPos.x < 50 ? "translate(-50%, -50%) scale(1.2) scaleX(-1)" : "translate(-50%, -50%) scale(1.2) scaleX(1)";
-    }, 50);
+          getNextStageName: function () {
+            for (var i = 0; i < STAGES.length; i++) {
+              if (!GOGContent.isUnlocked(STAGES[i], save)) {
+                return "someone in the " + STAGES[i].biome.toLowerCase();
+              }
+            }
+            return null;
+          },
 
-    setTimeout(function () {
-      clearInterval(trailInterval);
-      window.location.href = stage.href;
-    }, 850);
-  }
+          playMilestone: function (count) {
+            var messages = {
+              1: "Our first Guardian is awake! 🌟",
+              3: "Three Guardians! We're a team! 🤝",
+              5: "Halfway there! 🌍✨",
+              8: "Gala is almost glowing again! 💫",
+              9: "One Guardian left! 🦉",
+              10: "WE DID IT! You are a Guardian of Gala! 🌍✨",
+            };
 
-  function spawnSpikaTrail(x, y) {
-    var sparkle = document.createElement("div");
-    sparkle.className = "spika-sparkle";
-    var items = ["🌱", "✨", "🍃", "🟢"];
-    sparkle.textContent = items[Math.floor(Math.random() * items.length)];
-    sparkle.style.left = x + "%";
-    sparkle.style.top = y + "%";
-    var angle = Math.random() * Math.PI * 2;
-    var dist = 10 + Math.random() * 15;
-    sparkle.style.setProperty("--tx", Math.cos(angle) * dist + "px");
-    sparkle.style.setProperty("--ty", Math.sin(angle) * dist + "px");
-    document.getElementById("mapStage").appendChild(sparkle);
-    setTimeout(function () { sparkle.remove(); }, 600);
-  }
+            if (messages[count]) {
+              SpikaGuide.show(messages[count], { priority: 9, duration: 4000 });
+            }
+          },
 
-  function spawnOwlLandingFeathers(owl) {
-    var parent = owl.offsetParent || owl.parentElement;
-    if (!parent) return;
-    var cx = owl.offsetLeft + owl.offsetWidth / 2;
-    var cy = owl.offsetTop + owl.offsetHeight / 2;
-    var items = ["🪶", "✨"];
-    for (var i = 0; i < 6; i++) {
-      var f = document.createElement("div");
-      f.className = "owl-feather";
-      f.textContent = items[Math.floor(Math.random() * items.length)];
-      f.style.left = cx + "px";
-      f.style.top = cy + "px";
-      var angle = Math.random() * Math.PI * 2;
-      var dist = 16 + Math.random() * 20;
-      f.style.setProperty("--tx", Math.cos(angle) * dist + "px");
-      f.style.setProperty("--ty", Math.sin(angle) * dist + "px");
-      parent.appendChild(f);
-      (function (el) { setTimeout(function () { el.remove(); }, 850); })(f);
-    }
-  }
+          playFinalBloom: function () {
+            if (this.isPlayingSequence) return;
+            this.isPlayingSequence = true;
 
-  function triggerSmogDispersion(x, y) {
-    for (var i = 0; i < 15; i++) {
-      var puff = document.createElement("div");
-      puff.className = "smog-puff";
-      puff.style.left = x + "%";
-      puff.style.top = y + "%";
-      var size = 25 + Math.random() * 25;
-      var angle = Math.random() * Math.PI * 2;
-      var dist = 30 + Math.random() * 50;
-      puff.style.width = size + "px";
-      puff.style.height = size + "px";
-      puff.style.setProperty("--tx", Math.cos(angle) * dist + "px");
-      puff.style.setProperty("--ty", Math.sin(angle) * dist + "px");
-      document.getElementById("mapStage").appendChild(puff);
-      (function(p){ setTimeout(function(){ p.remove(); }, 1100); })(puff);
-    }
-  }
+            var sequence = [
+              {
+                delay: 0,
+                msg: "All ten Guardians...",
+                priority: 10,
+                duration: 2000,
+              },
+              {
+                delay: 1500,
+                msg: "LOOK AT GAIA! 🌍✨",
+                priority: 10,
+                duration: 3000,
+              },
+              { delay: 4200, msg: "We did it!", priority: 10, duration: 2000 },
+              {
+                delay: 6000,
+                msg: "YOU are a Guardian of Gala.",
+                priority: 10,
+                duration: 3000,
+              },
+              {
+                delay: 8800,
+                msg: "Small actions can change a whole world. 🌱",
+                priority: 10,
+                duration: 3500,
+              },
+              {
+                delay: 11200,
+                msg: "Keep helping Gala! 🌍💚",
+                priority: 9,
+                duration: 4000,
+              },
+            ];
 
-  function triggerLeafSparkles(leafId) {
-    var leaf = document.getElementById(leafId);
-    if (!leaf) return;
-    var zone = document.querySelector(".tree-zone");
-    var rect = leaf.getBoundingClientRect(), zRect = zone.getBoundingClientRect();
-    var cx = rect.left - zRect.left + rect.width / 2;
-    var cy = rect.top - zRect.top + rect.height / 2;
+            sequence.forEach(function (item) {
+              setTimeout(function () {
+                SpikaGuide.show(item.msg, {
+                  priority: item.priority,
+                  duration: item.duration,
+                });
+              }, item.delay);
+            });
 
-    for (var i = 0; i < 8; i++) {
-      var sparkle = document.createElement("div");
-      sparkle.className = "leaf-sparkle";
-      sparkle.textContent = Math.random() > 0.5 ? "✨" : "🍃";
-      sparkle.style.left = cx + "px";
-      sparkle.style.top = cy + "px";
-      var angle = Math.random() * Math.PI * 2;
-      var dist = 15 + Math.random() * 20;
-      sparkle.style.setProperty("--tx", Math.cos(angle) * dist + "px");
-      sparkle.style.setProperty("--ty", Math.sin(angle) * dist + "px");
-      zone.appendChild(sparkle);
-      (function(s){ setTimeout(function(){ s.remove(); }, 750); })(sparkle);
-    }
-  }
+            setTimeout(function () {
+              StoryDirector.isPlayingSequence = false;
+            }, 15200);
+          },
 
-  // Interactive Hover Micro-Weather System Engine Loops
-  var ambientIntervals = [];
-  function startAmbientEffects() {
-    ambientIntervals.forEach(clearInterval);
-    ambientIntervals = [];
-    STAGES.forEach(function (stage) {
-      if (save.stagesCleared.indexOf(stage.id) === -1) return;
-      var blob = document.getElementById("blob-" + stage.id);
-      if (!blob) return;
+          pointToNextStage: function () {
+            var nextStage = null;
+            for (var i = 0; i < STAGES.length; i++) {
+              if (
+                GOGContent.isUnlocked(STAGES[i], save) &&
+                !save.stagesCleared.includes(STAGES[i].id)
+              ) {
+                nextStage = STAGES[i];
+                break;
+              }
+            }
 
-      if (stage.id === "stage01") {
-        ambientIntervals.push(setInterval(function () { spawnAmbientBubble(blob); }, 1400));
-      } else if (["stage02", "stage06", "stage08"].indexOf(stage.id) !== -1) {
-        ambientIntervals.push(setInterval(function () { spawnAmbientFloraFauna(blob, stage.id); }, 2200));
-      } else if (stage.id === "stage03") {
-        ambientIntervals.push(setInterval(function () { spawnAmbientFlower(blob); }, 1800));
-      } else if (["stage04", "stage10"].indexOf(stage.id) !== -1) {
-        ambientIntervals.push(setInterval(function () { spawnAmbientSparkle(blob); }, 1500));
-      }
-    });
-  }
+            if (nextStage) {
+              var marker = document.querySelector(
+                '[data-stage-id="' + nextStage.id + '"]',
+              );
+              if (marker) {
+                marker.classList.add("pulse-hint");
+                setTimeout(function () {
+                  marker.classList.remove("pulse-hint");
+                }, 3000);
+              }
+              SpikaGuide.show("This way! 🦉✨", {
+                priority: 5,
+                duration: 2500,
+              });
+            }
+          },
+        };
 
-  function spawnAmbientBubble(blob) {
-    var b = document.createElement("div"); b.className = "ambient-bubble"; b.textContent = Math.random() > 0.5 ? "🫧" : "💧";
-    b.style.left = (15 + Math.random() * 70) + "%"; b.style.setProperty("--drift", (-20 + Math.random() * 40) + "px");
-    blob.appendChild(b); setTimeout(function () { b.remove(); }, 2800);
-  }
+        // === NEW: SPIKA GUIDE SYSTEM ===
+        var SpikaGuide = {
+          currentMessage: null,
+          messageTimeout: null,
+          messageCooldowns: {},
 
-  function spawnAmbientFloraFauna(blob, id) {
-    var e = document.createElement("div"); e.className = id === "stage06" ? "leaf-sparkle" : "ambient-butterfly";
-    e.textContent = id === "stage06" ? "🍃" : "🦋"; e.style.left = (20 + Math.random() * 60) + "%"; e.style.top = (20 + Math.random() * 60) + "%";
-    e.style.setProperty("--dx2", (-40 + Math.random() * 80) + "px"); e.style.setProperty("--dy2", (-40 + Math.random() * 80) + "px");
-    blob.appendChild(e); setTimeout(function () { e.remove(); }, 3800);
-  }
+          show: function (text, options) {
+            options = options || {};
+            var self = this;
+            var priority = options.priority || 3;
+            var duration = options.duration || 3000;
+            var cooldown = options.cooldown || 1000;
 
-  function spawnAmbientFlower(blob) {
-    var f = document.createElement("div"); f.className = "ambient-flower";
-    var fl = ["🌸", "🌼", "🌻", "🌺"]; f.textContent = fl[Math.floor(Math.random() * fl.length)];
-    f.style.left = (15 + Math.random() * 70) + "%"; f.style.top = (15 + Math.random() * 70) + "%";
-    blob.appendChild(f); setTimeout(function () { f.remove(); }, 4800);
-  }
+            // Prevent spam with cooldown
+            var msgHash = text.substring(0, 20);
+            if (
+              this.messageCooldowns[msgHash] &&
+              Date.now() - this.messageCooldowns[msgHash] < cooldown
+            ) {
+              return;
+            }
+            this.messageCooldowns[msgHash] = Date.now();
 
-  function spawnAmbientSparkle(blob) {
-    var s = document.createElement("div"); s.className = "ambient-sparkle"; s.textContent = "✨";
-    s.style.left = (15 + Math.random() * 70) + "%"; s.style.top = (15 + Math.random() * 70) + "%";
-    blob.appendChild(s); setTimeout(function () { s.remove(); }, 2400);
-  }
+            // Don't interrupt high-priority messages
+            if (
+              this.currentMessage &&
+              this.currentMessage.priority > priority
+            ) {
+              return;
+            }
 
-  function renderState() {
-    document.getElementById("seedsCount").textContent = save.seeds;
-    document.getElementById("sproutsCount").textContent = save.sprouts;
-    document.getElementById("clearedChip").textContent = save.stagesCleared.length + "/10 awake";
-    document.getElementById("smogPct").textContent = save.smogLevel + "%";
-    document.getElementById("smogFill").style.width = (100 - save.smogLevel) + "%";
+            // Clear any pending timeout
+            if (this.messageTimeout) {
+              clearTimeout(this.messageTimeout);
+            }
 
-    var newlyClearedStage = null;
-    STAGES.forEach(function (stage) {
-      var cleared = save.stagesCleared.indexOf(stage.id) !== -1;
-      var fog = document.getElementById("fog-" + stage.id);
-      var blob = document.getElementById("blob-" + stage.id);
-      if (fog) {
-        if (cleared && prevCleared.indexOf(stage.id) === -1) {
-          newlyClearedStage = stage;
+            var guideText = document.getElementById("guideText");
+            if (!guideText) return;
+
+            this.currentMessage = {
+              text: text,
+              priority: priority,
+              timestamp: Date.now(),
+            };
+
+            guideText.textContent = text;
+            guideText.style.animation = "none";
+            setTimeout(function () {
+              guideText.style.animation = "";
+            }, 10);
+
+            this.messageTimeout = setTimeout(function () {
+              self.currentMessage = null;
+            }, duration);
+          },
+
+          setSpikaEmotion: function (emotion) {
+            var avatar = document.querySelector(".guideAvatar");
+            if (!avatar) return;
+
+            avatar.classList.remove(
+              "spika-emotion-excited",
+              "spika-emotion-thinking",
+              "spika-emotion-pointing",
+            );
+            if (emotion) {
+              avatar.classList.add("spika-emotion-" + emotion);
+            }
+          },
+        };
+
+        // Core Procedural Synthesizer Sound Engine Configuration
+        var GaiaAudio = {
+          ctx: null,
+          init: function () {
+            if (!this.ctx)
+              this.ctx = new (
+                window.AudioContext || window.webkitAudioContext
+              )();
+          },
+          playTone: function (freq, dur, type, peak, glideTo, delay) {
+            if (save.settings && save.settings.sound === false) return;
+            this.init();
+            if (this.ctx.state === "suspended")
+              this.ctx.resume().catch(function () {});
+
+            var t0 = this.ctx.currentTime + (delay || 0);
+            var osc = this.ctx.createOscillator();
+            var g = this.ctx.createGain();
+            osc.type = type || "sine";
+            osc.frequency.setValueAtTime(freq, t0);
+            if (glideTo) {
+              osc.frequency.exponentialRampToValueAtTime(glideTo, t0 + dur);
+            }
+            var p = peak != null ? peak : 0.05;
+            g.gain.setValueAtTime(0.0001, t0);
+            g.gain.exponentialRampToValueAtTime(
+              p,
+              t0 + Math.min(0.02, dur * 0.15),
+            );
+            g.gain.exponentialRampToValueAtTime(0.0001, t0 + dur);
+            osc.connect(g);
+            g.connect(this.ctx.destination);
+            osc.start(t0);
+            osc.stop(t0 + dur + 0.03);
+
+            osc.onended = function () {
+              osc.disconnect();
+              g.disconnect();
+            };
+          },
+          playWhoosh: function () {
+            this.playTone(320, 0.6, "triangle", 0.12, 100);
+          },
+          playFly: function () {
+            this.playTone(500, 0.35, "sine", 0.08, 900);
+          },
+          playGrow: function () {
+            this.playTone(160, 0.5, "sine", 0.12, 420);
+          },
+          playBloom: function () {
+            var self = this;
+            [523, 659, 784, 1046].forEach(function (f, i) {
+              self.playTone(f, 0.22, "triangle", 0.08, null, i * 0.09);
+            });
+          },
+          playChime: function () {
+            var self = this;
+            [523, 784, 1046].forEach(function (f, i) {
+              self.playTone(f, 0.4, "sine", 0.08, null, i * 0.12);
+            });
+          },
+        };
+
+        // Parallax Event Coordinates Tracking Setup
+        document.addEventListener("mousemove", function (e) {
+          var cx = window.innerWidth / 2;
+          var cy = window.innerHeight / 2;
+          var dx = e.clientX - cx;
+          var dy = e.clientY - cy;
+          var layerStars = document.querySelector(".layer-stars");
+          var layerMountains = document.querySelector(".layer-mountains");
+          if (layerStars)
+            layerStars.style.transform =
+              "translate(" + dx * 0.01 + "px, " + dy * 0.01 + "px) scale(1.02)";
+          if (layerMountains)
+            layerMountains.style.transform =
+              "translate(" +
+              dx * 0.025 +
+              "px, " +
+              dy * 0.025 +
+              "px) scale(1.04)";
+        });
+
+        var spikaFlyer = document.createElement("div");
+        spikaFlyer.className = "spika-flyer";
+        spikaFlyer.textContent = "🦉";
+        document.getElementById("mapStage").appendChild(spikaFlyer);
+
+        var brandOwl = document.querySelector(".brand .owl");
+        if (brandOwl) {
+          brandOwl.addEventListener("animationend", function (e) {
+            if (e.animationName === "owlFlyIn")
+              spawnOwlLandingFeathers(brandOwl);
+          });
+        }
+
+        var prevCleared = JSON.parse(
+          sessionStorage.getItem("gog_prev_cleared") || "[]",
+        );
+        var prevSeeds = parseInt(
+          sessionStorage.getItem("gog_prev_seeds") || "0",
+          10,
+        );
+        var isFirstLoad = sessionStorage.getItem("gog_prev_cleared") === null;
+
+        if (isFirstLoad) {
+          sessionStorage.setItem(
+            "gog_prev_cleared",
+            JSON.stringify(save.stagesCleared),
+          );
+          sessionStorage.setItem("gog_prev_seeds", save.seeds.toString());
+          prevCleared = save.stagesCleared;
+          prevSeeds = save.seeds;
+        }
+
+        STAGES.forEach(function (stage) {
+          var blob = document.createElement("div");
+          blob.className = "biome-blob";
+          blob.id = "blob-" + stage.id;
+          var size = stage.finale ? 35 : 28;
+          blob.style.width = size + "%";
+          blob.style.height = size + "%";
+          blob.style.left = stage.mapPos.x + "%";
+          blob.style.top = stage.mapPos.y + "%";
+          blob.style.background = stage.color;
+          biomeLayer.appendChild(blob);
+        });
+
+        STAGES.forEach(function (stage) {
+          if (!stage.playable) {
+            var fog = document.createElement("div");
+            fog.className = "fog-blob";
+            fog.id = "fog-" + stage.id;
+            var size = stage.finale ? 40 : 32;
+            fog.style.width = size + "%";
+            fog.style.height = size + "%";
+            fog.style.left = stage.mapPos.x + "%";
+            fog.style.top = stage.mapPos.y + "%";
+            fog.style.animationDelay = stage.order * 0.4 + "s";
+            fogLayer.appendChild(fog);
+          }
+        });
+
+        // Dynamic Constellation Vector Rendering Algorithm
+        function drawConstellationLines() {
+          var svg = document.getElementById("constellationSvg");
+          if (!svg) return;
+          svg.innerHTML = "";
+
+          for (var i = 0; i < STAGES.length - 1; i++) {
+            var current = STAGES[i];
+            var next = STAGES[i + 1];
+            var currentCleared = save.stagesCleared.indexOf(current.id) !== -1;
+            var nextUnlocked = GOGContent.isUnlocked(next, save);
+
+            if (currentCleared || nextUnlocked) {
+              var line = document.createElementNS(
+                "http://www.w3.org/2000/svg",
+                "line",
+              );
+              line.setAttribute("x1", current.mapPos.x + "%");
+              line.setAttribute("y1", current.mapPos.y + "%");
+              line.setAttribute("x2", next.mapPos.x + "%");
+              line.setAttribute("y2", next.mapPos.y + "%");
+              line.setAttribute("class", "constellation-line");
+              line.setAttribute(
+                "stroke",
+                currentCleared ? current.color : "rgba(255,255,255,0.25)",
+              );
+              line.setAttribute("stroke-width", currentCleared ? "2.5" : "1.5");
+              line.setAttribute("opacity", "0.65");
+              svg.appendChild(line);
+            }
+          }
+        }
+
+        function buildMarkers() {
+          markerLayer.innerHTML = "";
+          STAGES.forEach(function (stage, i) {
+            var cleared = save.stagesCleared.indexOf(stage.id) !== -1;
+            var unlocked = GOGContent.isUnlocked(stage, save);
+
+            var el = document.createElement("button");
+            el.className = "marker";
+            el.setAttribute("data-stage-id", stage.id);
+
+            // Staggered fly-in directions and delays
+            var directions = [
+              "fly-in-top",
+              "fly-in-right",
+              "fly-in-bottom",
+              "fly-in-left",
+            ];
+            var dirClass = directions[i % directions.length];
+            el.classList.add(dirClass);
+            el.style.animationDelay = i * 0.12 + "s";
+
+            el.style.left = stage.mapPos.x + "%";
+            el.style.top = stage.mapPos.y + "%";
+            el.setAttribute("aria-label", stage.guardian + " - " + stage.biome);
+            if (cleared) {
+              el.classList.add("cleared");
+              el.textContent = stage.icon;
+              el.style.boxShadow = "0 0 20px " + stage.color;
+            } else if (unlocked && stage.playable) {
+              el.classList.add("unlocked-ready");
+              el.textContent = stage.icon;
+            } else if (unlocked && !stage.playable) {
+              el.classList.add("unlocked-upcoming");
+              el.textContent = stage.icon;
+              el.title =
+                stage.guardian +
+                " is unlocked, but this stage is still being built.";
+            } else {
+              el.classList.add("locked");
+              el.textContent = "😴";
+            }
+
+            var label = document.createElement("span");
+            label.className = "marker-label";
+            label.innerHTML =
+              "<strong>" +
+              stage.order +
+              ". " +
+              stage.guardian +
+              "</strong><br><small style='color:#94a3b8;font-weight:500;'>" +
+              stage.biome +
+              "</small>";
+            el.appendChild(label);
+
+            el.addEventListener("click", function () {
+              onMarkerClick(stage, cleared, unlocked);
+            });
+            markerLayer.appendChild(el);
+          });
+        }
+
+        var isAnimatingSpika = false;
+
+        function onMarkerClick(stage, cleared, unlocked) {
+          if (isAnimatingSpika) return;
+          if (!unlocked) {
+            SpikaGuide.show(
+              "🌫️ " + stage.guardian + " is sleeping behind the Smog.",
+              { priority: 4, duration: 3000 },
+            );
+            return;
+          }
+          if (!stage.playable) {
+            SpikaGuide.show(
+              "✨ " + stage.guardian + "'s adventure is being built!",
+              { priority: 4, duration: 3000 },
+            );
+            return;
+          }
+
+          isAnimatingSpika = true;
+          GaiaAudio.playFly();
+          SpikaGuide.show("Let's help " + stage.guardian + "! 🦉✨", {
+            priority: 8,
+            duration: 2000,
+          });
+          spikaFlyer.style.left = "50%";
+          spikaFlyer.style.top = "50%";
+          spikaFlyer.offsetHeight;
+          spikaFlyer.classList.add("active");
+
+          var trailInterval = setInterval(function () {
+            spawnSpikaTrail(
+              parseFloat(spikaFlyer.style.left),
+              parseFloat(spikaFlyer.style.top),
+            );
+          }, 40);
+
           setTimeout(function () {
-            triggerSmogDispersion(stage.mapPos.x, stage.mapPos.y);
-            if (fog) fog.style.opacity = "0";
-          }, 400);
-        } else {
-          fog.style.opacity = cleared ? "0" : "0.85";
+            spikaFlyer.style.left = stage.mapPos.x + "%";
+            spikaFlyer.style.top = stage.mapPos.y + "%";
+            spikaFlyer.style.transform =
+              stage.mapPos.x < 50
+                ? "translate(-50%, -50%) scale(1.2) scaleX(-1)"
+                : "translate(-50%, -50%) scale(1.2) scaleX(1)";
+          }, 50);
+
+          setTimeout(function () {
+            clearInterval(trailInterval);
+            window.location.href = stage.href;
+          }, 850);
         }
-      }
-      if (blob) blob.classList.toggle("cleared", cleared);
-    });
 
-    if (newlyClearedStage) {
-      // Bloom Sweep Transition
-      var sweep = document.getElementById("bloomSweep");
-      if (sweep) {
-        GOGUi.restartAnimation(sweep, "run");
-      }
-      // Procedural Sounds
-      GaiaAudio.playBloom();
-      setTimeout(function () { GaiaAudio.playGrow(); }, 800);
-      
-      // Spika Mascot Guide Speech
-      GOGUi.say("Ta-da! The land bursts into color! 🌈");
-    } else {
-      if (save.stagesCleared.length >= 10) {
-        GOGUi.say("Yay, you did it! Spika's world is clean, healthy, and happy! 🌸🌍");
-      } else {
-        GOGUi.say("Hi, I'm Spika! Tap a stage marker to start clean-up! 🌍");
-      }
-    }
+        function spawnSpikaTrail(x, y) {
+          var sparkle = document.createElement("div");
+          sparkle.className = "spika-sparkle";
+          var items = ["🌱", "✨", "🍃", "🟢"];
+          sparkle.textContent = items[Math.floor(Math.random() * items.length)];
+          sparkle.style.left = x + "%";
+          sparkle.style.top = y + "%";
+          var angle = Math.random() * Math.PI * 2;
+          var dist = 10 + Math.random() * 15;
+          sparkle.style.setProperty("--tx", Math.cos(angle) * dist + "px");
+          sparkle.style.setProperty("--ty", Math.sin(angle) * dist + "px");
+          document.getElementById("mapStage").appendChild(sparkle);
+          setTimeout(function () {
+            sparkle.remove();
+          }, 600);
+        }
 
-    for (var i = 0; i < 10; i++) {
-      var leaf = document.getElementById("leaf" + i);
-      if (!leaf) continue;
-      var shouldBloom = save.seeds > i;
-      leaf.classList.toggle("bloom", shouldBloom);
-      leaf.setAttribute("transform", shouldBloom ? "scale(1)" : "scale(0.4)");
-      leaf.style.opacity = shouldBloom ? "1" : "0.4";
+        function spawnOwlLandingFeathers(owl) {
+          var parent = owl.offsetParent || owl.parentElement;
+          if (!parent) return;
+          var cx = owl.offsetLeft + owl.offsetWidth / 2;
+          var cy = owl.offsetTop + owl.offsetHeight / 2;
+          var items = ["🪶", "✨"];
+          for (var i = 0; i < 6; i++) {
+            var f = document.createElement("div");
+            f.className = "owl-feather";
+            f.textContent = items[Math.floor(Math.random() * items.length)];
+            f.style.left = cx + "px";
+            f.style.top = cy + "px";
+            var angle = Math.random() * Math.PI * 2;
+            var dist = 16 + Math.random() * 20;
+            f.style.setProperty("--tx", Math.cos(angle) * dist + "px");
+            f.style.setProperty("--ty", Math.sin(angle) * dist + "px");
+            parent.appendChild(f);
+            (function (el) {
+              setTimeout(function () {
+                el.remove();
+              }, 850);
+            })(f);
+          }
+        }
 
-      if (shouldBloom && prevSeeds <= i) {
-        (function (lId, idx) {
-          setTimeout(function () { triggerLeafSparkles(lId); }, 500 + idx * 100);
-        })("leaf" + i, i);
-      }
-    }
+        function triggerSmogDispersion(x, y) {
+          for (var i = 0; i < 15; i++) {
+            var puff = document.createElement("div");
+            puff.className = "smog-puff";
+            puff.style.left = x + "%";
+            puff.style.top = y + "%";
+            var size = 25 + Math.random() * 25;
+            var angle = Math.random() * Math.PI * 2;
+            var dist = 30 + Math.random() * 50;
+            puff.style.width = size + "px";
+            puff.style.height = size + "px";
+            puff.style.setProperty("--tx", Math.cos(angle) * dist + "px");
+            puff.style.setProperty("--ty", Math.sin(angle) * dist + "px");
+            document.getElementById("mapStage").appendChild(puff);
+            (function (p) {
+              setTimeout(function () {
+                p.remove();
+              }, 1100);
+            })(puff);
+          }
+        }
 
-    drawConstellationLines();
-    startAmbientEffects();
-    sessionStorage.setItem("gog_prev_cleared", JSON.stringify(save.stagesCleared));
-    sessionStorage.setItem("gog_prev_seeds", save.seeds.toString());
-    prevCleared = save.stagesCleared; prevSeeds = save.seeds;
-  }
+        function triggerLeafSparkles(leafId) {
+          var leaf = document.getElementById(leafId);
+          if (!leaf) return;
+          var zone = document.querySelector(".tree-zone");
+          var rect = leaf.getBoundingClientRect(),
+            zRect = zone.getBoundingClientRect();
+          var cx = rect.left - zRect.left + rect.width / 2;
+          var cy = rect.top - zRect.top + rect.height / 2;
 
-  buildMarkers();
-  renderState();
+          for (var i = 0; i < 8; i++) {
+            var sparkle = document.createElement("div");
+            sparkle.className = "leaf-sparkle";
+            sparkle.textContent = Math.random() > 0.5 ? "✨" : "🍃";
+            sparkle.style.left = cx + "px";
+            sparkle.style.top = cy + "px";
+            var angle = Math.random() * Math.PI * 2;
+            var dist = 15 + Math.random() * 20;
+            sparkle.style.setProperty("--tx", Math.cos(angle) * dist + "px");
+            sparkle.style.setProperty("--ty", Math.sin(angle) * dist + "px");
+            zone.appendChild(sparkle);
+            (function (s) {
+              setTimeout(function () {
+                s.remove();
+              }, 750);
+            })(sparkle);
+          }
+        }
 
-  document.getElementById("resetBtn").addEventListener("click", function () {
-    if (!confirm("Reset all progress?")) return;
-    save = GOGSave.reset();
-    buildMarkers();
-    renderState();
-    GaiaAudio.playWhoosh();
-    GOGUi.say("Let's make the world clean and green again! 🌱");
-  });
+        // Interactive Hover Micro-Weather System Engine Loops
+        var ambientIntervals = [];
+        function startAmbientEffects() {
+          ambientIntervals.forEach(clearInterval);
+          ambientIntervals = [];
+          STAGES.forEach(function (stage) {
+            if (save.stagesCleared.indexOf(stage.id) === -1) return;
+            var blob = document.getElementById("blob-" + stage.id);
+            if (!blob) return;
 
-  document.getElementById("settingsBtn").addEventListener("click", function () {
-    var overlay = GOGUi.showOverlay({
-      title: "⚙️ Settings",
-      body: '<div class="settings-panel"><div class="settings-row"><span>🔊 Sound FX Engine</span><label class="switch"><input type="checkbox" id="soundToggle" ' + (save.settings.sound ? "checked" : "") + '><span class="track"></span><span class="knob"></span></label></div><div class="settings-row"><span>🧘 Calm mode</span><label class="switch"><input type="checkbox" id="calmToggle" ' + (save.settings.calmMode ? "checked" : "") + '><span class="track"></span><span class="knob"></span></label></div></div>',
-      primaryLabel: "Done", onPrimary: function () { GOGUi.closeOverlay(overlay); }
-    });
-    overlay.querySelector("#soundToggle").addEventListener("change", function (e) { save = GOGSave.patch({ settings: { sound: e.target.checked } }); });
-    overlay.querySelector("#calmToggle").addEventListener("change", function (e) { save = GOGSave.patch({ settings: { calmMode: e.target.checked } }); });
-  });
+            if (stage.id === "stage01") {
+              ambientIntervals.push(
+                setInterval(function () {
+                  spawnAmbientBubble(blob);
+                }, 1400),
+              );
+            } else if (
+              ["stage02", "stage06", "stage08"].indexOf(stage.id) !== -1
+            ) {
+              ambientIntervals.push(
+                setInterval(function () {
+                  spawnAmbientFloraFauna(blob, stage.id);
+                }, 2200),
+              );
+            } else if (stage.id === "stage03") {
+              ambientIntervals.push(
+                setInterval(function () {
+                  spawnAmbientFlower(blob);
+                }, 1800),
+              );
+            } else if (["stage04", "stage10"].indexOf(stage.id) !== -1) {
+              ambientIntervals.push(
+                setInterval(function () {
+                  spawnAmbientSparkle(blob);
+                }, 1500),
+              );
+            }
+          });
+        }
 
-  window.addEventListener("focus", function () { save = GOGSave.load(); buildMarkers(); renderState(); });
-})();
-</script>
-</body>
+        function spawnAmbientBubble(blob) {
+          var b = document.createElement("div");
+          b.className = "ambient-bubble";
+          b.textContent = Math.random() > 0.5 ? "🫧" : "💧";
+          b.style.left = 15 + Math.random() * 70 + "%";
+          b.style.setProperty("--drift", -20 + Math.random() * 40 + "px");
+          blob.appendChild(b);
+          setTimeout(function () {
+            b.remove();
+          }, 2800);
+        }
+
+        function spawnAmbientFloraFauna(blob, id) {
+          var e = document.createElement("div");
+          e.className = id === "stage06" ? "leaf-sparkle" : "ambient-butterfly";
+          e.textContent = id === "stage06" ? "🍃" : "🦋";
+          e.style.left = 20 + Math.random() * 60 + "%";
+          e.style.top = 20 + Math.random() * 60 + "%";
+          e.style.setProperty("--dx2", -40 + Math.random() * 80 + "px");
+          e.style.setProperty("--dy2", -40 + Math.random() * 80 + "px");
+          blob.appendChild(e);
+          setTimeout(function () {
+            e.remove();
+          }, 3800);
+        }
+
+        function spawnAmbientFlower(blob) {
+          var f = document.createElement("div");
+          f.className = "ambient-flower";
+          var fl = ["🌸", "🌼", "🌻", "🌺"];
+          f.textContent = fl[Math.floor(Math.random() * fl.length)];
+          f.style.left = 15 + Math.random() * 70 + "%";
+          f.style.top = 15 + Math.random() * 70 + "%";
+          blob.appendChild(f);
+          setTimeout(function () {
+            f.remove();
+          }, 4800);
+        }
+
+        function spawnAmbientSparkle(blob) {
+          var s = document.createElement("div");
+          s.className = "ambient-sparkle";
+          s.textContent = "✨";
+          s.style.left = 15 + Math.random() * 70 + "%";
+          s.style.top = 15 + Math.random() * 70 + "%";
+          blob.appendChild(s);
+          setTimeout(function () {
+            s.remove();
+          }, 2400);
+        }
+
+        function renderState() {
+          document.getElementById("seedsCount").textContent = save.seeds;
+          document.getElementById("sproutsCount").textContent = save.sprouts;
+          document.getElementById("clearedChip").textContent =
+            save.stagesCleared.length + "/10 awake";
+          document.getElementById("smogPct").textContent = save.smogLevel + "%";
+          document.getElementById("smogFill").style.width =
+            100 - save.smogLevel + "%";
+
+          var newlyClearedStage = null;
+          STAGES.forEach(function (stage) {
+            var cleared = save.stagesCleared.indexOf(stage.id) !== -1;
+            var fog = document.getElementById("fog-" + stage.id);
+            var blob = document.getElementById("blob-" + stage.id);
+            var marker = document.querySelector(
+              '[data-stage-id="' + stage.id + '"]',
+            );
+
+            if (fog) {
+              if (cleared && prevCleared.indexOf(stage.id) === -1) {
+                newlyClearedStage = stage;
+                setTimeout(function () {
+                  triggerSmogDispersion(stage.mapPos.x, stage.mapPos.y);
+                  if (fog) fog.style.opacity = "0";
+                }, 400);
+              } else {
+                fog.style.opacity = cleared ? "0" : "0.85";
+              }
+            }
+            if (blob) blob.classList.toggle("cleared", cleared);
+
+            // === NEW: Marker visual state update ===
+            if (marker) {
+              if (cleared && prevCleared.indexOf(stage.id) === -1) {
+                marker.classList.add("newly-cleared");
+                setTimeout(function () {
+                  marker.classList.remove("newly-cleared");
+                }, 800);
+              }
+            }
+          });
+
+          if (newlyClearedStage) {
+            // === NEW: Enhanced celebration sequence ===
+            var sweep = document.getElementById("bloomSweep");
+            if (sweep) {
+              sweep.classList.add("run");
+              setTimeout(function () {
+                sweep.classList.remove("run");
+              }, 800);
+            }
+
+            GaiaAudio.playBloom();
+            setTimeout(function () {
+              GaiaAudio.playGrow();
+            }, 800);
+
+            // === NEW: Play stage return story ===
+            setTimeout(function () {
+              StoryDirector.playStageReturn(
+                newlyClearedStage,
+                !prevCleared.includes(newlyClearedStage.id),
+              );
+            }, 1200);
+          } else {
+            // === NEW: Milestone celebrations ===
+            var clearedCount = save.stagesCleared.length;
+            var prevCount = prevCleared.length;
+
+            if (clearedCount > prevCount && clearedCount <= 10) {
+              StoryDirector.playMilestone(clearedCount);
+            }
+
+            if (clearedCount === 10 && prevCount < 10) {
+              setTimeout(function () {
+                StoryDirector.playFinalBloom();
+              }, 500);
+            }
+          }
+
+          for (var i = 0; i < 10; i++) {
+            var leaf = document.getElementById("leaf" + i);
+            if (!leaf) continue;
+            var shouldBloom = save.seeds > i;
+            leaf.classList.toggle("bloom", shouldBloom);
+            leaf.setAttribute(
+              "transform",
+              shouldBloom ? "scale(1)" : "scale(0.4)",
+            );
+            leaf.style.opacity = shouldBloom ? "1" : "0.4";
+
+            if (shouldBloom && prevSeeds <= i) {
+              (function (lId, idx) {
+                setTimeout(
+                  function () {
+                    triggerLeafSparkles(lId);
+                  },
+                  500 + idx * 100,
+                );
+              })("leaf" + i, i);
+
+              // === NEW: Tree growth glow ===
+              var treeSvg = document.getElementById("treeSvg");
+              if (treeSvg && idx === 0) {
+                treeSvg.classList.add("grow-pulse");
+                setTimeout(function () {
+                  treeSvg.classList.remove("grow-pulse");
+                }, 600);
+              }
+            }
+          }
+
+          drawConstellationLines();
+          startAmbientEffects();
+          sessionStorage.setItem(
+            "gog_prev_cleared",
+            JSON.stringify(save.stagesCleared),
+          );
+          sessionStorage.setItem("gog_prev_seeds", save.seeds.toString());
+          prevCleared = save.stagesCleared.slice();
+          prevSeeds = save.seeds;
+        }
+
+        buildMarkers();
+        renderState();
+
+        // === NEW: Safe Reset Confirmation Modal ===
+        document
+          .getElementById("resetBtn")
+          .addEventListener("click", function () {
+            var modal = document.createElement("div");
+            modal.className = "modal-overlay";
+
+            var content = document.createElement("div");
+            content.className = "modal-content";
+
+            var emoji = document.createElement("div");
+            emoji.className = "modal-emoji";
+            emoji.textContent = "🌍";
+
+            var title = document.createElement("div");
+            title.className = "modal-title";
+            title.textContent = "Start Gala's adventure again?";
+
+            var text = document.createElement("div");
+            text.className = "modal-text";
+            text.textContent = "Your Seeds and Guardian progress will restart.";
+
+            var buttons = document.createElement("div");
+            buttons.className = "modal-buttons";
+
+            var keepBtn = document.createElement("button");
+            keepBtn.className = "modal-btn modal-btn-safe";
+            keepBtn.textContent = "Keep My World 🌍";
+            keepBtn.addEventListener("click", function () {
+              modal.parentElement.removeChild(modal);
+            });
+
+            var restartBtn = document.createElement("button");
+            restartBtn.className = "modal-btn modal-btn-caution";
+            restartBtn.textContent = "Restart Adventure";
+            restartBtn.addEventListener("click", function () {
+              save = GOGSave.reset();
+              buildMarkers();
+              renderState();
+              GaiaAudio.playWhoosh();
+              SpikaGuide.show("Let's make Gala bloom again! 🌱", {
+                priority: 8,
+                duration: 3000,
+              });
+              modal.parentElement.removeChild(modal);
+            });
+
+            buttons.appendChild(keepBtn);
+            buttons.appendChild(restartBtn);
+            content.appendChild(emoji);
+            content.appendChild(title);
+            content.appendChild(text);
+            content.appendChild(buttons);
+            modal.appendChild(content);
+            document.body.appendChild(modal);
+          });
+
+        document
+          .getElementById("settingsBtn")
+          .addEventListener("click", function () {
+            var overlay = GOGUi.showOverlay({
+              title: "⚙️ Settings",
+              body:
+                '<div class="settings-panel"><div class="settings-row"><span>🔊 Sound FX Engine</span><label class="switch"><input type="checkbox" id="soundToggle" ' +
+                (save.settings.sound ? "checked" : "") +
+                '><span class="track"></span><span class="knob"></span></label></div><div class="settings-row"><span>🧘 Calm mode</span><label class="switch"><input type="checkbox" id="calmToggle" ' +
+                (save.settings.calmMode ? "checked" : "") +
+                '><span class="track"></span><span class="knob"></span></label></div></div>',
+              primaryLabel: "Done",
+              onPrimary: function () {
+                GOGUi.closeOverlay(overlay);
+              },
+            });
+            overlay
+              .querySelector("#soundToggle")
+              .addEventListener("change", function (e) {
+                save = GOGSave.patch({ settings: { sound: e.target.checked } });
+              });
+            overlay
+              .querySelector("#calmToggle")
+              .addEventListener("change", function (e) {
+                save = GOGSave.patch({
+                  settings: { calmMode: e.target.checked },
+                });
+              });
+          });
+
+        // === NEW: Tree zone click interaction ===
+        document
+          .getElementById("treeZone")
+          .addEventListener("click", function () {
+            var messages = [
+              "The Guardian Tree grows with every Seed we bring! 🌳✨",
+              "Each Seed is a piece of Gala waking up... 🌱💚",
+              "Look how many Guardians we've awakened! 🌟",
+              "The Tree glows brighter with hope! ✨",
+            ];
+            var msg = messages[Math.floor(Math.random() * messages.length)];
+            SpikaGuide.show(msg, { priority: 3, duration: 2500 });
+          });
+
+        window.addEventListener("focus", function () {
+          save = GOGSave.load();
+          buildMarkers();
+          renderState();
+        });
+
+        // === NEW: Initialize Story Director ===
+        StoryDirector.init();
+      })();
+    </script>
+  </body>
 </html>
