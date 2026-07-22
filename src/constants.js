@@ -27,7 +27,7 @@ const GOGConstants = {
   // ========================================================================
   // STAGE-SPECIFIC CONSTANTS
   // ========================================================================
-  
+
   // Stage 1: Splash & the Plastic Tide
   STAGE1: {
     name: "Splash & the Plastic Tide",
@@ -41,20 +41,20 @@ const GOGConstants = {
   },
 
   // Stage 2: Ravi & the Smog Cycle
-STAGE2: {
-  name: "Ravi & the Smog Cycle",
-  gameTime: 20, // TOTAL TIME FOR ENTIRE STAGE (all 3 waves)
-  waves: 3,
-  
-  // Auto-calculated:
-  get timePerWave() {
-    return 20;  // 60 / 3 = 20 seconds
+  STAGE2: {
+    name: "Ravi & the Smog Cycle",
+    gameTime: 20, // TOTAL TIME FOR ENTIRE STAGE (all 3 waves)
+    waves: 3,
+
+    // Auto-calculated:
+    get timePerWave() {
+      return 20; // 60 / 3 = 20 seconds
+    },
+
+    get timePerWaveMs() {
+      return this.timePerWave * 1000; // 20000 ms per wave
+    },
   },
-  
-  get timePerWaveMs() {
-    return this.timePerWave * 1000;  // 20000 ms per wave
-  }
-},
 
   // Stage 3: Buzz & the Last Blooms
   STAGE3: {
@@ -125,13 +125,13 @@ STAGE2: {
    * @param {string} format - 'seconds' or 'milliseconds'
    * @returns {number}
    */
-  getStageTime(stageNum, format = 'seconds') {
+  getStageTime(stageNum, format = "seconds") {
     const stage = this[`STAGE${stageNum}`];
     if (!stage) {
       console.error(`Stage ${stageNum} not found in constants`);
       return this.STANDARD_GAME_TIME;
     }
-    return format === 'milliseconds' ? stage.gameTimeMs : stage.gameTime;
+    return format === "milliseconds" ? stage.gameTimeMs : stage.gameTime;
   },
 
   /**
@@ -140,11 +140,11 @@ STAGE2: {
    * @param {string} format - 'seconds' or 'milliseconds'
    * @returns {number}
    */
-  getAdjustedGameTime(difficulty = 'NORMAL', format = 'seconds') {
+  getAdjustedGameTime(difficulty = "NORMAL", format = "seconds") {
     const multiplier = this.DIFFICULTY[difficulty]?.timeMultiplier || 1.0;
     const baseTime = this.STANDARD_GAME_TIME;
     const adjustedTime = baseTime * multiplier;
-    return format === 'milliseconds' ? adjustedTime * 1000 : adjustedTime;
+    return format === "milliseconds" ? adjustedTime * 1000 : adjustedTime;
   },
 
   /**
@@ -178,11 +178,11 @@ STAGE2: {
 };
 
 // Make available globally
-if (typeof window !== 'undefined') {
+if (typeof window !== "undefined") {
   window.GOGConstants = GOGConstants;
 }
 
 // Export for module systems if needed
-if (typeof module !== 'undefined' && module.exports) {
+if (typeof module !== "undefined" && module.exports) {
   module.exports = GOGConstants;
 }
