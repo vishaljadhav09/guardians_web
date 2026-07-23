@@ -626,27 +626,27 @@
         const spriteSheets = {
           idle: {
             img: new Image(),
-            src: "assets/sprites/stage04/Penguin_idel.png",
+            src: "assets/sprites/stage04/penny_idle.png",
             cols: 3,
-            rows: 3,
+            rows: 1,
             loaded: false,
             frameW: 0,
             frameH: 0,
           },
           running: {
             img: new Image(),
-            src: "assets/sprites/stage04/penguin-running.png",
-            cols: 3,
-            rows: 3,
+            src: "assets/sprites/stage04/penny_running.png",
+            cols: 5,
+            rows: 1,
             loaded: false,
             frameW: 0,
             frameH: 0,
           },
           jump: {
             img: new Image(),
-            src: "assets/sprites/stage04/Penguin_jump.png",
+            src: "assets/sprites/stage04/penny_jump.png",
             cols: 3,
-            rows: 3,
+            rows: 1,
             loaded: false,
             frameW: 0,
             frameH: 0,
@@ -662,6 +662,22 @@
             sheet.loaded = true;
           };
         });
+
+        const chickSprite = {
+          img: new Image(),
+          src: "assets/sprites/stage04/penny_chicks_idel.png",
+          cols: 3,
+          rows: 2,
+          loaded: false,
+          frameW: 0,
+          frameH: 0,
+        };
+        chickSprite.img.src = chickSprite.src;
+        chickSprite.img.onload = function () {
+          chickSprite.frameW = chickSprite.img.naturalWidth / chickSprite.cols;
+          chickSprite.frameH = chickSprite.img.naturalHeight / chickSprite.rows;
+          chickSprite.loaded = true;
+        };
 
         const bgLayers = [
           { img: new Image(), speed: 0.15 },
@@ -683,6 +699,9 @@
         // Determine active dynamic animation state sheet
         function getActiveSpriteSheet() {
           if (!state) return spriteSheets.idle;
+          if (state.state === "failed") {
+            return spriteSheets.jump; // Return jump sheet because it has the crying frame
+          }
           const p = state.player;
           if (!p.onGround) {
             return spriteSheets.jump;
@@ -692,15 +711,49 @@
           return spriteSheets.idle;
         }
 
+        let lastActiveSheet = null;
+        let idleTimer = 0;
+
         function updatePenguinAnim(dt) {
           const sheet = getActiveSpriteSheet();
-          penguinAnim.elapsed += dt;
-          var frameTime = 1 / penguinAnim.fps;
-          const totalFrames = sheet.cols * sheet.rows;
+          if (sheet !== lastActiveSheet) {
+            penguinAnim.frameIndex = 0;
+            penguinAnim.elapsed = 0;
+            lastActiveSheet = sheet;
+          }
 
-          while (penguinAnim.elapsed >= frameTime) {
-            penguinAnim.elapsed -= frameTime;
-            penguinAnim.frameIndex = (penguinAnim.frameIndex + 1) % totalFrames;
+          if (sheet === spriteSheets.idle) {
+            idleTimer += dt;
+            // Realistic idle cycle (4 seconds):
+            // 0s to 3s: Stand still looking forward (Frame 0)
+            // 3s to 3.15s: Quick blink (Frame 2)
+            // 3.15s to 3.5s: Stand still looking forward (Frame 0)
+            // 3.5s to 4.0s: Warm happy smile (Frame 1)
+            const cycleTime = idleTimer % 4.0;
+            if (cycleTime < 3.0) {
+              penguinAnim.frameIndex = 0;
+            } else if (cycleTime < 3.15) {
+              penguinAnim.frameIndex = 2; // Blink
+            } else if (cycleTime < 3.5) {
+              penguinAnim.frameIndex = 0;
+            } else {
+              penguinAnim.frameIndex = 1; // Smile
+            }
+          } else if (sheet === spriteSheets.running) {
+            const p = state.player;
+            // Dynamically scale running animation speed based on velocity
+            const fps = Math.max(6, Math.abs(p.vx) * 0.07);
+            penguinAnim.elapsed += dt;
+            var frameTime = 1 / fps;
+            const totalFrames = sheet.cols * sheet.rows;
+
+            while (penguinAnim.elapsed >= frameTime) {
+              penguinAnim.elapsed -= frameTime;
+              penguinAnim.frameIndex = (penguinAnim.frameIndex + 1) % totalFrames;
+            }
+          } else {
+            // Jump sheet frames (crying/soaring/sliding) are physics-selected in drawPlayer
+            penguinAnim.frameIndex = 0;
           }
         }
 
@@ -894,7 +947,9 @@
           const chicks = [
             {
               x: 380,
-              y: 380,
+              y: 378, // Aligned to platform 0 top (396 - 18)
+              baseX: 380,
+              platformIndex: 0,
               rescued: false,
               delivered: false,
               carrier: false,
@@ -902,7 +957,9 @@
             },
             {
               x: 600,
-              y: 350,
+              y: 372, // Aligned to platform 1 top (390 - 18)
+              baseX: 600,
+              platformIndex: 1,
               rescued: false,
               delivered: false,
               carrier: false,
@@ -910,7 +967,9 @@
             },
             {
               x: 805,
-              y: 310,
+              y: 332, // Aligned to platform 2 top (350 - 18)
+              baseX: 805,
+              platformIndex: 2,
               rescued: false,
               delivered: false,
               carrier: false,
@@ -918,7 +977,9 @@
             },
             {
               x: 1405,
-              y: 320,
+              y: 342, // Aligned to platform 5 top (360 - 18)
+              baseX: 1405,
+              platformIndex: 5,
               rescued: false,
               delivered: false,
               carrier: false,
@@ -926,7 +987,9 @@
             },
             {
               x: 1635,
-              y: 260,
+              y: 282, // Aligned to platform 6 top (300 - 18)
+              baseX: 1635,
+              platformIndex: 6,
               rescued: false,
               delivered: false,
               carrier: false,
@@ -1443,6 +1506,22 @@
               }
               continue;
             }
+
+            // If not carried, make it slide back and forth with the platform or fall if gone
+            if (!chick.rescued && chick.platformIndex !== undefined) {
+              const pl = state.meltPlatforms[chick.platformIndex];
+              if (pl) {
+                if (!pl.gone) {
+                  const drift = Math.cos(state.time * 0.55 + pl.phase) * pl.drift;
+                  chick.x = chick.baseX + drift;
+                } else {
+                  // Platform has melted! Apply gravity to make the chick fall
+                  chick.vy = (chick.vy || 0) + 1450 * dt;
+                  chick.y += chick.vy * dt;
+                }
+              }
+            }
+
             const chickRect = { x: chick.x, y: chick.y, w: 18, h: 18 };
             if (!chick.rescued && rectsOverlap(p, chickRect)) {
               chick.rescued = true;
@@ -1451,7 +1530,8 @@
               spawnBurst(chick.x, chick.y, 10, "#FFE680");
               spawnFloatText(chick.x, chick.y - 12, "Got one! 🐥", "#2e5ee8");
             }
-            if (chick.y + 16 >= state.seaLevel) {
+
+            if (chick.y + 18 >= state.seaLevel) {
               const homeRestock = state.chicks.find(
                 (c) => !c.rescued && !c.delivered && c !== chick,
               );
@@ -1810,12 +1890,42 @@
           const delivered = state.chicks.filter((c) => c.delivered);
           delivered.forEach((c, i) => {
             const dance = Math.sin(state.time * 4 + i * 1.7) * 4;
-            drawEmoji(
-              "🐥",
-              b.x + 52 + i * 28,
-              b.y - 6 - (i % 2) * 6 + dance,
-              22,
-            );
+            const destW = 32;
+            const destH = chickSprite.loaded
+              ? (chickSprite.frameH / chickSprite.frameW) * destW
+              : 34;
+
+            if (chickSprite.loaded) {
+              // Delivered chicks are dancing! Cycle between happy frame (0), walking left (4), walking right (5)
+              const danceCycle = Math.floor(state.time * 6 + i) % 3;
+              let frame = 0; // Happy open mouth
+              if (danceCycle === 1) frame = 4; // left foot
+              else if (danceCycle === 2) frame = 5; // right foot
+
+              const col = frame % chickSprite.cols;
+              const row = Math.floor(frame / chickSprite.cols);
+              const sx = col * chickSprite.frameW;
+              const sy = row * chickSprite.frameH;
+
+              ctx.save();
+              // Center horizontally and align to bottom at home base
+              ctx.translate(b.x + 52 + i * 28, b.y - (i % 2) * 6 + dance);
+              ctx.drawImage(
+                chickSprite.img,
+                sx,
+                sy,
+                chickSprite.frameW,
+                chickSprite.frameH,
+                -destW / 2,
+                -destH,
+                destW,
+                destH,
+              );
+              ctx.restore();
+            } else {
+              drawEmoji("🐥", b.x + 52 + i * 28, b.y - 6 - (i % 2) * 6 + dance, 22);
+            }
+
             if (Math.sin(state.time * 3 + i) > 0.85) {
               drawEmoji("💚", b.x + 52 + i * 28 + 10, b.y - 22 - (i % 2) * 6 + dance, 12);
             }
@@ -2053,33 +2163,88 @@
 
         function drawChicks() {
           for (const chick of state.chicks) {
-            if (chick.delivered) continue;
+            if (chick.delivered || state.player.carrying.includes(chick)) continue;
             const bob = Math.sin(chick.bob) * 3;
-            const carried = state.player.carrying.includes(chick);
             let shiver = 0;
             let crying = false;
-            if (!carried) {
-              // Find the nearest floe under the chick to decide if it
-              // should look scared (shiver + tear) or just wave happily.
-              let nearest = null;
-              let bestDist = Infinity;
-              for (const pl of state.meltPlatforms) {
-                if (pl.gone) continue;
-                const d = Math.abs(pl.x + pl.w / 2 - chick.x);
-                if (d < bestDist) {
-                  bestDist = d;
-                  nearest = pl;
-                }
-              }
-              if (nearest && bestDist < 120) {
-                const ratio = 1 - nearest.w / nearest.baseW;
-                if (ratio > 0.5) {
-                  shiver = Math.sin(state.time * 22 + chick.bob) * 2.2;
-                  crying = ratio > 0.7;
-                }
+
+            // Find the nearest floe under the chick to decide if it
+            // should look scared (shiver + tear) or just wave happily.
+            let nearest = null;
+            let bestDist = Infinity;
+            for (const pl of state.meltPlatforms) {
+              if (pl.gone) continue;
+              const d = Math.abs(pl.x + pl.w / 2 - chick.x);
+              if (d < bestDist) {
+                bestDist = d;
+                nearest = pl;
               }
             }
-            drawEmoji("🐥", chick.x + 8 + shiver, chick.y + 8 + bob, 22);
+            if (nearest && bestDist < 120) {
+              const ratio = 1 - nearest.w / nearest.baseW;
+              if (ratio > 0.5) {
+                shiver = Math.sin(state.time * 22 + chick.bob) * 2.2;
+                crying = ratio > 0.7;
+              }
+            }
+
+            const destW = 32;
+            let destH = 34;
+
+            if (chickSprite.loaded) {
+              destH = (chickSprite.frameH / chickSprite.frameW) * destW;
+              let frame = 3; // Default standing
+              if (crying) {
+                // Worried fast-blink animation when platform is melting
+                const worryTime = (state.time * 4.0 + chick.bob) % 3.0;
+                if (worryTime < 1.5) {
+                  frame = 1; // Worried eyes
+                } else if (worryTime < 2.0) {
+                  frame = 2; // Eyes shut tight
+                } else {
+                  frame = 3; // Normal standing
+                }
+              } else {
+                // Happy normal idle cycle
+                const chickTime = (state.time * 1.5 + chick.bob) % 5.0;
+                if (chickTime < 3.5) {
+                  frame = 3; // Normal look
+                } else if (chickTime < 3.7) {
+                  frame = 1; // Eyes half closed
+                } else if (chickTime < 3.95) {
+                  frame = 2; // Eyes closed
+                } else if (chickTime < 4.15) {
+                  frame = 1; // Eyes half closed
+                } else {
+                  frame = 0; // Happy open mouth
+                }
+              }
+
+              const col = frame % chickSprite.cols;
+              const row = Math.floor(frame / chickSprite.cols);
+              const sx = col * chickSprite.frameW;
+              const sy = row * chickSprite.frameH;
+
+              ctx.save();
+              // Center horizontally and align to bottom of the 18px physical box
+              ctx.translate(chick.x + 9 + shiver, chick.y + 18 + bob);
+              ctx.drawImage(
+                chickSprite.img,
+                sx,
+                sy,
+                chickSprite.frameW,
+                chickSprite.frameH,
+                -destW / 2,
+                -destH,
+                destW,
+                destH,
+              );
+              ctx.restore();
+            } else {
+              // Fallback
+              drawEmoji("🐥", chick.x + 8 + shiver, chick.y + 8 + bob, 22);
+            }
+
             if (crying) {
               drawEmoji("💧", chick.x + 16, chick.y + 20, 12);
             }
@@ -2099,26 +2264,36 @@
           const jitterX = nervous ? Math.sin(state.time * 30) * 2.2 : 0;
           const tilt = nervous ? Math.sin(state.time * 16) * 0.06 : 0;
 
+          // Mother penguin is visually larger
+          const destW = 72;
+          let destH = 108; // Fallback size
+
           if (sheet.loaded) {
-            const frame = penguinAnim.frameIndex;
+            destH = (sheet.frameH / sheet.frameW) * destW;
+            let frame = penguinAnim.frameIndex;
+
+            // Physics-based jump frame selection & fail frame override
+            if (state.state === "failed") {
+              frame = 0; // Crying
+            } else if (sheet === spriteSheets.jump) {
+              frame = p.vy < 0 ? 1 : 2; // Rising: Soaring (1), Falling/Landing: Sliding (2)
+            } else {
+              const totalFrames = sheet.cols * sheet.rows;
+              frame = frame % totalFrames;
+            }
+
             const col = frame % sheet.cols;
             const row = Math.floor(frame / sheet.cols);
 
             const sx = col * sheet.frameW;
             const sy = row * sheet.frameH;
-            const destW = 60;
-            const destH = (sheet.frameH / sheet.frameW) * destW;
 
             ctx.save();
             ctx.translate(x + p.w / 2 + jitterX, y + p.h);
             ctx.rotate(tilt);
 
-            // FIX: If the running sheet naturally faces left, invert the scale multiplier for that state
+            // Penny sprite sheets face right naturally, so scale direction directly matches facing
             let faceDirection = p.facing;
-            if (sheet === spriteSheets.running) {
-              // Flipping the orientation specifically for the running animation sheet
-              faceDirection = -p.facing;
-            }
 
             ctx.scale(faceDirection, 1);
             ctx.drawImage(
@@ -2134,17 +2309,12 @@
             );
             ctx.restore();
           } else {
-            // Direct asset fallback layout to render instantly even if network paths differ locally
-            const destW = 60;
-            const destH = 60;
+            // Fallback render
             ctx.save();
             ctx.translate(x + p.w / 2 + jitterX, y + p.h);
             ctx.rotate(tilt);
 
             let faceDirection = p.facing;
-            if (sheet === spriteSheets.running) {
-              faceDirection = -p.facing;
-            }
 
             ctx.scale(faceDirection, 1);
             try {
@@ -2158,12 +2328,59 @@
           }
 
           if (nervous) {
-            drawEmoji("💦", x + p.w / 2 + 16, y - 6 + Math.sin(state.time * 10) * 2, 16);
+            // Draw sweat drop relative to Mother Penguin's visual head height
+            drawEmoji("💦", x + p.w / 2 + 18, y + p.h - destH + 8 + Math.sin(state.time * 10) * 2, 16);
           }
 
           if (p.carrying && p.carrying.length > 0) {
+            // Stack chicks starting above Mother Penguin's visual head
             p.carrying.forEach((chick, index) => {
-              drawEmoji("🐥", x + p.w / 2, y - 8 - index * 14, 20);
+              const cW = 28; // slightly smaller than ground chicks (32)
+              const cH = chickSprite.loaded
+                ? (chickSprite.frameH / chickSprite.frameW) * cW
+                : 30;
+
+              const stackY = y + p.h - destH - 6 - index * 20;
+
+              if (chickSprite.loaded) {
+                // Carried chicks on Mother's back: they look happy (frame 0) or look around
+                const carriedTime = (state.time * 2 + index * 1.3) % 6.0;
+                let frame = 3; // Normal look
+                if (carriedTime < 3.5) {
+                  frame = 0; // Happy open mouth (yay, riding!)
+                } else if (carriedTime < 3.7) {
+                  frame = 1; // Blink transition
+                } else if (carriedTime < 3.9) {
+                  frame = 2; // Eyes closed happy
+                } else if (carriedTime < 4.1) {
+                  frame = 1; // Blink transition
+                } else {
+                  frame = 3; // Normal standing
+                }
+
+                const col = frame % chickSprite.cols;
+                const row = Math.floor(frame / chickSprite.cols);
+                const sx = col * chickSprite.frameW;
+                const sy = row * chickSprite.frameH;
+
+                ctx.save();
+                ctx.translate(x + p.w / 2, stackY);
+                ctx.scale(p.facing, 1); // Face same direction as Mother!
+                ctx.drawImage(
+                  chickSprite.img,
+                  sx,
+                  sy,
+                  chickSprite.frameW,
+                  chickSprite.frameH,
+                  -cW / 2,
+                  -cH,
+                  cW,
+                  cH,
+                );
+                ctx.restore();
+              } else {
+                drawEmoji("🐥", x + p.w / 2, stackY - 10, 20);
+              }
             });
           }
         }
