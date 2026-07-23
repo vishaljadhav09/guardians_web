@@ -744,32 +744,12 @@
   var hareImg = new Image();
   hareImg.src = "assets/sprites/stage03/Hare_Run_with_shadow.png";
 
-  var flowerSpriteFrames = [];
-  var FLOWER_SPRITE_CROP = { x: 1248, y: 864, w: 1376, h: 1504 };
-  for (var frameIndex = 0; frameIndex < 3; frameIndex++) {
-    var flowerImg = new Image();
-    flowerImg.src = "assets/sprites/stage03/sprites_" + frameIndex + ".png";
-    flowerSpriteFrames.push(flowerImg);
-  }
+  var flowerGrowingImg = new Image();
+  flowerGrowingImg.src = "assets/sprites/stage03/flower_1.png";
 
-function getFlowerSpriteSheet(f) {
-  if (!flowerSpriteFrames.length) return null;
+  var flowerWiltingImg = new Image();
+  flowerWiltingImg.src = "assets/sprites/stage03/flower_2.png";
 
-  if (!f.spriteAnimDone) {
-    var frameDuration = 220;
-
-    var frame = Math.floor((performance.now() - f.bornAt) / frameDuration);
-
-    if (frame >= flowerSpriteFrames.length - 1) {
-      frame = flowerSpriteFrames.length - 1;
-      f.spriteAnimDone = true;
-    }
-
-    f.spriteFrame = frame;
-  }
-
-  return flowerSpriteFrames[f.spriteFrame];
-}
 
   var CRITTER_DEFS = {
     boar: { img: boarImg, frames: 5, emoji: "🐗", defaultFacing: -1 },
@@ -1634,17 +1614,53 @@ flowers.push({
   }
 
   function drawGrass() {
-    // Wind-swaying blades replace the old static tick marks — same visual
-    // budget (one blade per former tick), just animated off a shared clock.
     ctx.save();
-    ctx.strokeStyle = "#5b8a2a";
-    ctx.lineWidth = 3;
     ctx.lineCap = "round";
     for (var x = 6; x < W; x += GRASS_SPACING) {
-      var bend = Math.sin(windPhase * 1.6 + x * 0.06) * 5;
+      var wind = Math.sin(windPhase * 1.6 + x * 0.06);
+      var bend = wind * 6;
+
+      // --- Rear blades (darker green, slightly offset/shorter for depth) ---
+      ctx.strokeStyle = "#4d7424";
+      ctx.lineWidth = 2.5;
+
+      // Left rear blade
+      var hRearLeft = 10;
       ctx.beginPath();
-      ctx.moveTo(x, GROUND_Y + 10);
-      ctx.quadraticCurveTo(x + bend * 0.6, GROUND_Y + 3, x + bend, GROUND_Y - 6);
+      ctx.moveTo(x - 3, GROUND_Y + 1);
+      ctx.quadraticCurveTo(x - 3 - hRearLeft * 0.2 + bend * 0.6, GROUND_Y - hRearLeft * 0.4, x - 3 - 3 + bend * 0.8, GROUND_Y - hRearLeft);
+      ctx.stroke();
+
+      // Right rear blade
+      var hRearRight = 11;
+      ctx.beginPath();
+      ctx.moveTo(x + 3, GROUND_Y + 1);
+      ctx.quadraticCurveTo(x + 3 + hRearRight * 0.2 + bend * 0.6, GROUND_Y - hRearRight * 0.4, x + 3 + 2 + bend * 0.8, GROUND_Y - hRearRight);
+      ctx.stroke();
+
+      // --- Front blades (brighter/standard green) ---
+      ctx.strokeStyle = "#689F38";
+      ctx.lineWidth = 3;
+
+      // Tall center blade
+      var hCenter = 16;
+      ctx.beginPath();
+      ctx.moveTo(x, GROUND_Y + 1);
+      ctx.quadraticCurveTo(x + bend * 0.6, GROUND_Y - hCenter * 0.4, x + bend, GROUND_Y - hCenter);
+      ctx.stroke();
+
+      // Left front blade
+      var hLeft = 12;
+      ctx.beginPath();
+      ctx.moveTo(x - 2, GROUND_Y + 1);
+      ctx.quadraticCurveTo(x - 2 - hLeft * 0.1 + bend * 0.6, GROUND_Y - hLeft * 0.4, x - 2 - 2 + bend * 0.8, GROUND_Y - hLeft);
+      ctx.stroke();
+
+      // Right front blade
+      var hRight = 13;
+      ctx.beginPath();
+      ctx.moveTo(x + 2, GROUND_Y + 1);
+      ctx.quadraticCurveTo(x + 2 + hRight * 0.1 + bend * 0.6, GROUND_Y - hRight * 0.4, x + 2 + 2 + bend * 0.8, GROUND_Y - hRight);
       ctx.stroke();
     }
     ctx.restore();
@@ -1672,15 +1688,18 @@ flowers.push({
     ctx.fillRect(0, GROUND_Y, W, H - GROUND_Y);
 
     drawCloudShadows();
-    drawGrass();
     drawDepthFog();
 
+    // ground outline
     ctx.strokeStyle = "#111";
     ctx.lineWidth = 4;
     ctx.beginPath();
     ctx.moveTo(0, GROUND_Y);
     ctx.lineTo(W, GROUND_Y);
     ctx.stroke();
+
+    // grass on top of ground outline
+    drawGrass();
   }
 
   /* ---------------- Ambient background drawing ---------------- */
@@ -1859,6 +1878,23 @@ flowers.push({
       var f = flowers[i];
       var glyph, scale = 1, alpha = 1;
 
+      // Base dimensions for alignment
+      var baseWidth = f.r * 2.2;
+      var baseHeight = baseWidth * (154 / 152); // Normal growing height
+      var baseYOffset = baseHeight / 2; // Offset to bottom baseline
+
+      // Check if we can use our spritesheets
+      var useSprite = false;
+      if (f.state === "active" || f.state === "pollinated") {
+        if (flowerGrowingImg.complete && flowerGrowingImg.naturalWidth > 0) {
+          useSprite = true;
+        }
+      } else if (f.state === "wilted") {
+        if (flowerWiltingImg.complete && flowerWiltingImg.naturalWidth > 0) {
+          useSprite = true;
+        }
+      }
+
       if (f.state === "active") {
         var isHover = hoverTargetId === f.id;
         var isSource = dragSourceId === f.id;
@@ -1882,24 +1918,25 @@ flowers.push({
         ctx.restore();
         drawFlowerRing(f);
 
-        var sheet = getFlowerSpriteSheet(f);
-        if (sheet && sheet.complete && sheet.naturalWidth > 0) {
-          var spriteScale = f.r * 2;
-          var spriteAspect = FLOWER_SPRITE_CROP.h / FLOWER_SPRITE_CROP.w;
-          var dw = spriteScale;
-          var dh = spriteScale * spriteAspect;
+        if (useSprite) {
+          var frameDuration = 220; // ms per frame
+          var frame = Math.floor((performance.now() - f.bornAt) / frameDuration);
+          var frameIndex = Math.min(3, frame); // Frames 0, 1, 2, 3
+
+          var sw = 152;
+          var sh = 154;
+          var sx = frameIndex * sw;
+          var sy = 0;
+
+          var dw = baseWidth;
+          var dh = baseHeight;
+
           ctx.save();
           ctx.translate(f.x, f.y);
           ctx.drawImage(
-            sheet,
-            FLOWER_SPRITE_CROP.x,
-            FLOWER_SPRITE_CROP.y,
-            FLOWER_SPRITE_CROP.w,
-            FLOWER_SPRITE_CROP.h,
-            -dw / 2,
-            -dh / 2,
-            dw,
-            dh
+            flowerGrowingImg,
+            sx, sy, sw, sh,
+            -dw / 2, baseYOffset - dh, dw, dh
           );
           ctx.restore();
           continue;
@@ -1907,12 +1944,58 @@ flowers.push({
 
         glyph = "🌱";
       } else if (f.state === "pollinated") {
-        glyph = "🌸";
         var pT = 1 - Collision.clamp((f.showUntil - performance.now()) / 650, 0, 1);
         scale = 1 + Math.sin(pT * Math.PI) * 0.35;
+
+        if (useSprite) {
+          var sw = 152;
+          var sh = 154;
+          var sx = 4 * sw; // Frame 4 is pollinated
+          var sy = 0;
+
+          var dw = baseWidth * scale;
+          var dh = baseHeight * scale;
+
+          ctx.save();
+          ctx.translate(f.x, f.y);
+          ctx.drawImage(
+            flowerGrowingImg,
+            sx, sy, sw, sh,
+            -dw / 2, baseYOffset - dh, dw, dh
+          );
+          ctx.restore();
+          continue;
+        }
+
+        glyph = "🌸";
       } else if (f.state === "wilted") {
-        glyph = "🥀";
         alpha = Collision.clamp((f.showUntil - performance.now()) / 850, 0.35, 1);
+
+        if (useSprite) {
+          var elapsed = 850 - (f.showUntil - performance.now());
+          var frameIndex = Math.max(0, Math.min(4, Math.floor(elapsed / 170)));
+
+          var sw = 153.2;
+          var sh = 119;
+          var sx = frameIndex * sw;
+          var sy = 0;
+
+          var dw = baseWidth;
+          var dh = dw * (sh / sw);
+
+          ctx.save();
+          ctx.globalAlpha = alpha;
+          ctx.translate(f.x, f.y);
+          ctx.drawImage(
+            flowerWiltingImg,
+            sx, sy, sw, sh,
+            -dw / 2, baseYOffset - dh, dw, dh
+          );
+          ctx.restore();
+          continue;
+        }
+
+        glyph = "🥀";
       }
 
       var sprite = EmojiSprite.get(glyph, f.r * 1.5 * scale);
