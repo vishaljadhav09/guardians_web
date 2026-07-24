@@ -82,14 +82,14 @@
     border: 4px solid var(--gog-ink);
     border-radius: 999px;
     padding: 8px 16px 8px 12px;
-    box-shadow: 4px 4px 0 var(--gog-ink);
+    box-shadow: 4px 4px 0 var(--gog-ink), 0 0 12px rgba(0,0,0,0.08);
     min-width: 190px;
     position: relative;
     transition: transform 0.2s, box-shadow 0.2s;
   }
   .meter:hover {
     transform: translateY(-2px);
-    box-shadow: 6px 6px 0 var(--gog-ink);
+    box-shadow: 6px 6px 0 var(--gog-ink), 0 0 16px rgba(0,0,0,0.12);
   }
 
   .meter .label,
@@ -120,13 +120,13 @@
     height: 100%;
     width: 0%;
     background: linear-gradient(90deg, #FFD23F, #FF9F1C);
-    box-shadow: inset 0 2px 4px rgba(255,255,255,0.6);
+    box-shadow: inset 0 2px 4px rgba(255,255,255,0.6), 0 0 8px rgba(255,159,28,0.4);
     transition: width 0.25s ease-out;
   }
 
   #clarityFill {
     background: linear-gradient(90deg, #00C6FF, #0072FF);
-    box-shadow: inset 0 2px 4px rgba(255,255,255,0.6);
+    box-shadow: inset 0 2px 4px rgba(255,255,255,0.6), 0 0 10px rgba(0,114,255,0.5);
     transition: width 0.2s linear;
   }
 
@@ -139,14 +139,14 @@
     overflow: hidden;
     border: 6px solid var(--gog-ink);
     border-radius: 28px;
-    box-shadow: 8px 8px 0 var(--gog-ink);
-    background: repeating-linear-gradient(45deg, #efece3, #efece3 12px, #e7e3d7 12px, #e7e3d7 24px);
+    box-shadow: 8px 8px 0 var(--gog-ink), 0 0 20px rgba(0,0,0,0.12);
+    background: linear-gradient(135deg, #f9f8f5 0%, #f0ede6 100%);
     transition: border-color 0.2s, box-shadow 0.2s;
   }
 
   @keyframes skyDangerPulse {
-    0%, 100% { box-shadow: 8px 8px 0 var(--gog-ink), 0 0 0 0 rgba(90,90,90,0); }
-    50% { box-shadow: 8px 8px 0 var(--gog-ink), 0 0 26px 8px rgba(90,90,90,0.5); }
+    0%, 100% { box-shadow: 8px 8px 0 var(--gog-ink), 0 0 0 0 rgba(255,59,125,0.2); }
+    50% { box-shadow: 8px 8px 0 var(--gog-ink), 0 0 30px 10px rgba(255,59,125,0.15); }
   }
   .canvas-frame.sky-danger {
     animation: skyDangerPulse 1.2s ease-in-out infinite;
@@ -188,7 +188,7 @@
     background: var(--gog-white);
     border: 4px solid var(--gog-ink);
     border-radius: 50%;
-    box-shadow: 4px 4px 0 var(--gog-ink);
+    box-shadow: 4px 4px 0 var(--gog-ink), 0 0 8px rgba(0,0,0,0.08);
     font-size: 1.35rem;
     line-height: 1;
     touch-action: manipulation;
@@ -197,7 +197,7 @@
   }
   .icon-btn:hover {
     transform: translate(-1px, -1px) scale(1.05);
-    box-shadow: 5px 5px 0 var(--gog-ink);
+    box-shadow: 5px 5px 0 var(--gog-ink), 0 0 12px rgba(0,0,0,0.12);
   }
   .icon-btn:active {
     transform: translate(1px, 1px) scale(0.95);
@@ -219,7 +219,7 @@
   .brutal-btn.ghost:hover {
     background: #FFE3AD;
     transform: translateY(-2px);
-    box-shadow: 5px 5px 0 var(--gog-ink);
+    box-shadow: 5px 5px 0 var(--gog-ink), 0 0 10px rgba(255,195,60,0.3);
   }
   .brutal-btn.ghost:active {
     transform: translate(2px, 2px);
@@ -234,20 +234,20 @@
     background: linear-gradient(135deg, #FFFDEB 0%, #FFF8C6 100%);
     border: 4px solid var(--gog-ink);
     border-radius: 24px;
-    box-shadow: 5px 5px 0 var(--gog-ink);
+    box-shadow: 5px 5px 0 var(--gog-ink), 0 0 16px rgba(0,0,0,0.08);
     margin-bottom: 18px;
     position: relative;
   }
   
   .guideAvatar {
     font-size: 2.5rem;
-    filter: drop-shadow(2px 2px 0 rgba(0,0,0,0.1));
+    filter: drop-shadow(3px 3px 2px rgba(0,0,0,0.12));
     animation: guideBob 2.6s ease-in-out infinite;
   }
 
   @keyframes guideBob {
-    0%, 100% { transform: translateY(0) rotate(-4deg); }
-    50% { transform: translateY(-4px) rotate(4deg); }
+    0%, 100% { transform: translateY(0) rotate(-4deg) scale(1); }
+    50% { transform: translateY(-4px) rotate(4deg) scale(1.05); }
   }
 
   .guideBubble {
@@ -346,11 +346,11 @@
   /* ---------- Overlays (start / win / fail) ---------- */
   .overlay {
     position: absolute; inset: 0;
-    background: rgba(253, 251, 247, 0.96);
+    background: rgba(253, 251, 247, 0.97);
     display: flex; align-items: center; justify-content: center;
     z-index: 20;
     padding: 20px;
-    backdrop-filter: blur(4px);
+    backdrop-filter: blur(6px);
   }
   .hidden { display: none !important; }
 
@@ -358,12 +358,18 @@
     background: var(--gog-white, var(--cream));
     border: 6px solid var(--gog-ink, var(--ink));
     border-radius: 28px;
-    box-shadow: 10px 10px 0 var(--gog-ink, var(--ink));
+    box-shadow: 10px 10px 0 var(--gog-ink, var(--ink)), 0 0 20px rgba(0,0,0,0.12);
     max-width: 480px;
     width: 100%;
     padding: 32px 30px;
     text-align: center;
     font-family: 'Quicksand', sans-serif;
+    animation: panelSlideIn 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+  }
+
+  @keyframes panelSlideIn {
+    from { opacity: 0; transform: scale(0.92) translateY(20px); }
+    to { opacity: 1; transform: scale(1) translateY(0); }
   }
 
   .panel h1 {
@@ -400,9 +406,9 @@
     justify-content: center;
     align-items: center;
     border-radius: 50%;
-    background: radial-gradient(circle, #ffffff 50%, #eef6ff 100%);
+    background: radial-gradient(circle at 30% 30%, rgba(255,255,255,0.8), rgba(230,239,255,0.6) 100%);
     border: 4px solid var(--ink);
-    box-shadow: 4px 4px 0 var(--ink);
+    box-shadow: 4px 4px 0 var(--ink), inset 0 -4px 8px rgba(0,0,0,0.08), 0 0 16px rgba(0,114,255,0.15);
   }
 
   .breezy-avatar-anim {
@@ -469,7 +475,7 @@
     color: var(--ink);
     border: 4px solid var(--ink);
     border-radius: 16px;
-    box-shadow: 5px 5px 0 var(--ink);
+    box-shadow: 5px 5px 0 var(--ink), 0 0 12px rgba(198, 255, 61, 0.3);
     padding: 12px 28px;
     cursor: pointer;
     transition: transform 0.1s ease, box-shadow 0.1s ease, background-color 0.1s;
@@ -481,7 +487,7 @@
   .btn:hover {
     background: var(--lime-dark);
     transform: translateY(-2px);
-    box-shadow: 7px 7px 0 var(--ink);
+    box-shadow: 7px 7px 0 var(--ink), 0 0 16px rgba(143, 203, 26, 0.4);
   }
   .btn:active {
     transform: translate(4px, 4px);
@@ -490,9 +496,11 @@
   .btn.blue {
     background: #0072FF;
     color: var(--cream);
+    box-shadow: 5px 5px 0 var(--ink), 0 0 12px rgba(0, 114, 255, 0.3);
   }
   .btn.blue:hover {
     background: #0056C6;
+    box-shadow: 7px 7px 0 var(--ink), 0 0 16px rgba(0, 114, 255, 0.4);
   }
 
   .legend {
@@ -543,7 +551,7 @@
     background: var(--cream);
     border: 4px solid var(--ink);
     border-radius: 24px;
-    box-shadow: 6px 6px 0 var(--ink);
+    box-shadow: 6px 6px 0 var(--ink), 0 4px 12px rgba(0,0,0,0.08);
     padding: 20px;
     margin-top: 20px;
     font-family: 'Quicksand', sans-serif;
@@ -551,7 +559,7 @@
   }
   .smog-customizer-panel:hover {
     transform: translateY(-2px);
-    box-shadow: 8px 8px 0 var(--ink);
+    box-shadow: 8px 8px 0 var(--ink), 0 6px 16px rgba(0,0,0,0.1);
   }
   .smog-customizer-panel .panel-title {
     font-family: 'Baloo 2', sans-serif;
@@ -586,15 +594,16 @@
     flex-direction: column;
     align-items: center;
     text-align: center;
+    box-shadow: 0 4px 8px rgba(0,0,0,0.06);
   }
   .design-card:hover {
     transform: scale(1.03) translateY(-4px);
-    box-shadow: 4px 4px 0 var(--ink);
+    box-shadow: 4px 4px 0 var(--ink), 0 6px 12px rgba(0,0,0,0.1);
   }
   .design-card.active {
     background: #FFFDEB;
     border-color: var(--cobalt);
-    box-shadow: 5px 5px 0 var(--ink);
+    box-shadow: 5px 5px 0 var(--ink), 0 0 16px rgba(44, 75, 255, 0.2);
     transform: scale(1.02);
   }
   .design-card .card-glow {
@@ -946,6 +955,7 @@
   // AUDIO (using shared GOGEngine.Audio)
   // ---------------------------------------------------------------
   const audio = new GOGEngine.Audio(!save.settings.sound);
+  audio.initBgm("assets/audio/stage05/stage_5.mp3");
 
   // Sync mute button
   const muteBtn = document.getElementById('muteBtn');
@@ -1111,6 +1121,7 @@
     resetWindSystem(); // WIND HOOK — clear/reset Clean Wind Currents on every new run
     updateHUD();
     updateGuide("Hi, I'm Spika! 🦉 Let's help Breezy gather energy orbs to light up the city! Let's go! ⚡", true);
+    audio.playBgm();
   }
 
   function updateHUD(){
@@ -1537,6 +1548,7 @@
   }
 
   function triggerWin(){
+    audio.stopBgm();
     gameState = 'winning';
     winWipeRadius = 0;
     sfxWin();
@@ -1552,6 +1564,7 @@
     winOverlay.classList.remove('hidden');
   }
   function triggerFail(){
+    audio.stopBgm();
     gameState = 'fail';
     sfxFail();
     failOverlay.classList.remove('hidden');

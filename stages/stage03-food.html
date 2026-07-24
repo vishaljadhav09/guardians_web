@@ -678,6 +678,7 @@
   var save = window.GOGSave ? window.GOGSave.load() : { settings: { sound: true } };
   var muted = save.settings ? !save.settings.sound : false;
   audio.setMuted(muted);
+  audio.initBgm("assets/audio/stage03/stage_3.mp3");
   muteBtn.textContent = muted ? "🔇" : "🔊";
 
   var activeOverlay = null;
@@ -1273,6 +1274,7 @@ flowers.push({
     buzz.trail = []; buzz.emitTimer = 0;
     winWipeRadius = 0;
     gameState = "playing";
+    audio.playBgm();
     fruitIdSeq = 1;
     if (activeOverlay) {
       GOGUi.closeOverlay(activeOverlay);
@@ -1285,6 +1287,7 @@ flowers.push({
 
   function triggerWin() {
     if (gameState !== "playing") return;
+    audio.stopBgm();
     gameState = "winning";
     winWipeRadius = 0;
     audio.win();
@@ -1301,6 +1304,7 @@ flowers.push({
 
   function triggerFail() {
     if (gameState !== "playing") return;
+    audio.stopBgm();
     gameState = "fail";
     dragging = false; dragTrail = [];
     

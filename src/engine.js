@@ -241,6 +241,10 @@
   function Audio(muted) {
     this.muted = !!muted;
     this._ctx = null;
+    this._bgmPlaying = false;
+    this._bgmMaxVol = 0.35;
+    this._bgMusic = null;
+    this._ambientMusic = null;
   }
 
   Audio.prototype._ensureCtx = function () {
@@ -265,7 +269,107 @@
     return this._ctx;
   };
 
-  Audio.prototype.setMuted = function (muted) { this.muted = muted; };
+  Audio.prototype.initBgm = function (musicPath, ambientPath, maxVolume) {
+    var self = this;
+    if (maxVolume !== undefined) {
+      this._bgmMaxVol = maxVolume;
+    }
+
+    if (musicPath) {
+      this._bgMusic = new global.Audio(musicPath);
+      this._bgMusic.loop = true;
+      this._bgMusic.volume = this._bgmMaxVol;
+      this._bgMusic.preload = "auto";
+    }
+
+    if (ambientPath) {
+      this._ambientMusic = new global.Audio(ambientPath);
+      this._ambientMusic.loop = true;
+      this._ambientMusic.volume = this._bgmMaxVol;
+      this._ambientMusic.preload = "auto";
+    }
+
+    // Auto pause/resume background music on visibility changes
+    document.addEventListener("visibilitychange", function () {
+      if (document.hidden) {
+        if (self._bgMusic) self._bgMusic.pause();
+        if (self._ambientMusic) self._ambientMusic.pause();
+      } else if (!self.muted && self._bgmPlaying) {
+        if (self._bgMusic) self._bgMusic.play().catch(function () {});
+        if (self._ambientMusic) self._ambientMusic.play().catch(function () {});
+      }
+    });
+
+    // Gesture fallback listener to kick off background music and context
+    function resumeAudioOnGesture() {
+      self._ensureCtx();
+      if (!self.muted && self._bgmPlaying) {
+        if (self._bgMusic && self._bgMusic.paused) self._bgMusic.play().catch(function () {});
+        if (self._ambientMusic && self._ambientMusic.paused) self._ambientMusic.play().catch(function () {});
+      }
+      ["click", "keydown", "pointerdown", "touchstart"].forEach(function (e) {
+        document.removeEventListener(e, resumeAudioOnGesture);
+      });
+    }
+    ["click", "keydown", "pointerdown", "touchstart"].forEach(function (e) {
+      document.addEventListener(e, resumeAudioOnGesture);
+    });
+  };
+
+  Audio.prototype.playBgm = function () {
+    this._bgmPlaying = true;
+    if (this.muted) return;
+    
+    var self = this;
+    var plays = [];
+    if (this._bgMusic) {
+      this._bgMusic.volume = 0;
+      this._bgMusic.currentTime = 0;
+      plays.push(this._bgMusic.play());
+    }
+    if (this._ambientMusic) {
+      this._ambientMusic.volume = 0;
+      this._ambientMusic.currentTime = 0;
+      plays.push(this._ambientMusic.play());
+    }
+
+    if (plays.length > 0) {
+      Promise.all(plays)
+        .then(function () {
+          var v = 0;
+          var fade = setInterval(function () {
+            v += 0.02;
+            if (self._bgMusic) self._bgMusic.volume = Math.min(v, self._bgmMaxVol);
+            if (self._ambientMusic) self._ambientMusic.volume = Math.min(v, self._bgmMaxVol);
+            if (v >= self._bgmMaxVol) clearInterval(fade);
+          }, 120);
+        })
+        .catch(function () {});
+    }
+  };
+
+  Audio.prototype.stopBgm = function () {
+    this._bgmPlaying = false;
+    if (this._bgMusic) {
+      this._bgMusic.pause();
+      this._bgMusic.currentTime = 0;
+    }
+    if (this._ambientMusic) {
+      this._ambientMusic.pause();
+      this._ambientMusic.currentTime = 0;
+    }
+  };
+
+  Audio.prototype.setMuted = function (muted) {
+    this.muted = !!muted;
+    if (this.muted) {
+      if (this._bgMusic) this._bgMusic.pause();
+      if (this._ambientMusic) this._ambientMusic.pause();
+    } else if (this._bgmPlaying) {
+      if (this._bgMusic && this._bgMusic.paused) this._bgMusic.play().catch(function () {});
+      if (this._ambientMusic && this._ambientMusic.paused) this._ambientMusic.play().catch(function () {});
+    }
+  };
 
   Audio.prototype.tone = function (freq, dur, type, peak, glideTo, delay) {
     if (this.muted) return;

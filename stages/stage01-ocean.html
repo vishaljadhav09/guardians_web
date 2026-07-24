@@ -1168,56 +1168,16 @@
         var particles = new GOGEngine.ParticleSystem(140);
         var audio = new GOGEngine.Audio(!save.settings.sound);
 
-        // Background music & ambient sound
-        var bgMusic = new Audio("assets/audio/stage01/underwater.mp3");
-        bgMusic.loop = true;
-        bgMusic.volume = 0.35;
-        bgMusic.preload = "auto";
-
-        var ambientMusic = new Audio("assets/audio/stage01/bombinsound.mp3");
-        ambientMusic.loop = true;
-        ambientMusic.volume = 0.35;
-        ambientMusic.preload = "auto";
+        // Initialize background music & ambient sound
+        audio.initBgm("assets/audio/stage01/underwater.mp3", "assets/audio/stage01/bombinsound.mp3", 0.35);
 
         function playBackgroundMusic() {
-          if (audio.muted) return;
-          bgMusic.volume = 0;
-          bgMusic.currentTime = 0;
-          ambientMusic.volume = 0;
-          ambientMusic.currentTime = 0;
-
-          var p1 = bgMusic.play();
-          var p2 = ambientMusic.play();
-
-          Promise.all([p1, p2])
-            .then(function () {
-              var v = 0;
-              var fade = setInterval(function () {
-                v += 0.02;
-                bgMusic.volume = Math.min(v, 0.35);
-                ambientMusic.volume = Math.min(v, 0.35);
-                if (v >= 0.35) clearInterval(fade);
-              }, 120);
-            })
-            .catch(() => {});
+          audio.playBgm();
         }
 
         function stopBackgroundMusic() {
-          bgMusic.pause();
-          bgMusic.currentTime = 0;
-          ambientMusic.pause();
-          ambientMusic.currentTime = 0;
+          audio.stopBgm();
         }
-
-        document.addEventListener("visibilitychange", function () {
-          if (document.hidden) {
-            bgMusic.pause();
-            ambientMusic.pause();
-          } else if (!audio.muted) {
-            bgMusic.play().catch(() => {});
-            ambientMusic.play().catch(() => {});
-          }
-        });
         var Collision = GOGEngine.Collision;
 
         var calmMode = !!save.settings.calmMode;
@@ -1233,13 +1193,6 @@
         muteBtn.addEventListener("click", function () {
           var nowMuted = !audio.muted;
           audio.setMuted(nowMuted);
-          if (nowMuted) {
-            bgMusic.pause();
-            ambientMusic.pause();
-          } else {
-            bgMusic.play().catch(() => {});
-            ambientMusic.play().catch(() => {});
-          }
           save = GOGSave.patch({ settings: { sound: !nowMuted } });
           syncMuteBtn();
 
@@ -1276,27 +1229,7 @@
           }
         })();
 
-        // Resume AudioContext & start bgMusic on first user interaction
-        function resumeAudioOnGesture() {
-          if (audio && typeof audio._ensureCtx === "function") {
-            var ctx = audio._ensureCtx();
-            if (ctx && ctx.state === "suspended") {
-              ctx.resume();
-            }
-          }
-          if (!audio.muted) {
-            if (bgMusic && bgMusic.paused) bgMusic.play().catch(function () {});
-            if (ambientMusic && ambientMusic.paused)
-              ambientMusic.play().catch(function () {});
-          }
-          // Remove listeners once done
-          document.removeEventListener("click", resumeAudioOnGesture);
-          document.removeEventListener("keydown", resumeAudioOnGesture);
-          document.removeEventListener("pointerdown", resumeAudioOnGesture);
-        }
-        document.addEventListener("click", resumeAudioOnGesture);
-        document.addEventListener("keydown", resumeAudioOnGesture);
-        document.addEventListener("pointerdown", resumeAudioOnGesture);
+        // Note: gesture context resume is handled automatically by audio.initBgm
 
         // Tap/click ripples — pure delight, doesn't affect gameplay input at all
         var ripples = [];

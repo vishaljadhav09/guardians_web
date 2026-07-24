@@ -593,6 +593,7 @@
         let calmMode = !!save.settings.calmMode;
 
         const audio = new GOGEngine.Audio(!save.settings.sound);
+        audio.initBgm("assets/audio/stage04/stage_4.mp3");
 
         const ui = {
           warmFill: document.getElementById("warmFill"),
@@ -1094,6 +1095,7 @@
           state = createState();
           cameraX = 0;
           gameRunning = true;
+          audio.playBgm();
           if (activeOverlay) {
             GOGUi.closeOverlay(activeOverlay);
             activeOverlay = null;
@@ -1112,6 +1114,7 @@
         }
 
         function failGame(reason) {
+          audio.stopBgm();
           state.state = "failed";
           gameRunning = false;
           audio.oops();
@@ -1141,6 +1144,7 @@
         }
 
         function winGame() {
+          audio.stopBgm();
           state.state = "won";
           state.endTimer = 0;
           audio.win();

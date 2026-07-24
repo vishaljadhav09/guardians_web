@@ -1163,6 +1163,7 @@
         var input = new GOGEngine.Input(canvas);
         var particles = new GOGEngine.ParticleSystem(120);
         var audio = new GOGEngine.Audio(!save.settings.sound);
+        audio.initBgm("assets/audio/stage02/stage_2.mp3");
         var calmMode = !!save.settings.calm;
 
         var treeImg = null;
@@ -2001,6 +2002,7 @@
         }
 
         function endWin() {
+          audio.stopBgm();
           if (winWiping || winWipeDone) return;
           state.running = false;
           audio.win();
@@ -2061,6 +2063,7 @@
         }
 
         function endLose() {
+          audio.stopBgm();
           state.running = false;
           audio.oops();
           canvasFrame.classList.add("flash-lose");
@@ -3147,6 +3150,7 @@
         });
 
         initBackground().finally(function () {
+          audio.playBgm();
           loop.start();
           showIntro();
         });
