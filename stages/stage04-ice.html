@@ -89,6 +89,42 @@
         font-weight: 700;
         min-width: 64px;
         text-align: center;
+        position: relative;
+      }
+      .timer-chip::after {
+        content: "";
+        position: absolute;
+        inset: -3px;
+        border-radius: inherit;
+        box-shadow: 0 0 16px rgba(232, 46, 93, 0.65);
+        opacity: 0;
+        pointer-events: none;
+        z-index: -1;
+      }
+      .timer-chip.timer-urgent {
+        animation: timerPulseScale 0.8s ease-in-out infinite;
+        color: #e82e5d;
+      }
+      .timer-chip.timer-urgent::after {
+        animation: timerPulseGlow 0.8s ease-in-out infinite;
+      }
+      @keyframes timerPulseScale {
+        0%,
+        100% {
+          transform: scale(1);
+        }
+        50% {
+          transform: scale(1.14);
+        }
+      }
+      @keyframes timerPulseGlow {
+        0%,
+        100% {
+          opacity: 0;
+        }
+        50% {
+          opacity: 1;
+        }
       }
       .canvas-frame {
         position: relative;
@@ -499,6 +535,7 @@
             <span class="label" id="warmthText">0%</span>
           </div>
           <span class="chip" id="rescuedChip">🐥 0 / 5 rescued</span>
+          <span class="chip timer-chip" id="timerChip">60s</span>
           <span class="chip" id="iceChip">🧊 0 floes left</span>
           <span class="chip" id="seaChip">🌊 Sea 0%</span>
           <button
@@ -520,7 +557,7 @@
       <div class="guideBar">
         <div class="guideAvatar" aria-hidden="true">🐧</div>
         <div class="guideBubble" id="guideText">
-          Rescue 5 chicks and carry them back to the safe iceberg! 🐧
+          Stand near a chick and press E (or tap ☸️) to pick it up! Carry them to the safe iceberg! 🐧
         </div>
       </div>
 
@@ -599,6 +636,7 @@
           warmFill: document.getElementById("warmFill"),
           warmthText: document.getElementById("warmthText"),
           rescuedText: document.getElementById("rescuedChip"),
+          timerText: document.getElementById("timerChip"),
           iceText: document.getElementById("iceChip"),
           seaText: document.getElementById("seaChip"),
           muteBtn: document.getElementById("muteBtn"),
@@ -1000,6 +1038,7 @@
 
           return {
             time: 0,
+            timeLeft: 60,
             seaLevel: 560,
             warmth: 0,
             coolingTimer: 0,
@@ -1052,7 +1091,7 @@
           activeOverlay = GOGUi.showOverlay({
             accent: "var(--gog-lime)",
             title: "🐧 Penny on Thin Ice",
-            body: "Penny wakes in a warming polar dream. The floating ice shrinks faster when she stands still, so keep hopping, cool the valve, rescue chicks, and bring them home to the safe iceberg.<br><br><strong>Move:</strong> Arrow keys / WASD or touch buttons.<br><strong>Jump:</strong> Up / W / Space.<br><strong>Cool Valve:</strong> Stand near the valve, press E (or tap ☸️).",
+            body: "Penny wakes in a warming polar dream. The floating ice shrinks faster when she stands still, so keep hopping, cool the valve, rescue chicks, and bring them home to the safe iceberg.<br><br><strong>Move:</strong> Arrow keys / WASD or touch buttons.<br><strong>Jump:</strong> Up / W / Space.<br><strong>Cool Valve:</strong> Stand near the valve, press E (or tap ☸️).<br><strong>Rescue Chick:</strong> Stand near a chick, press E (or tap ☸️) to pick them up.",
             primaryLabel: "Start Dream",
             onPrimary: function () {
               GOGUi.closeOverlay(activeOverlay);
@@ -1236,6 +1275,13 @@
             updateUI();
             updateParticles(dt);
             updateFloatingTexts(dt);
+            return;
+          }
+
+          // Game loop countdown
+          state.timeLeft = Math.max(0, state.timeLeft - dt);
+          if (state.timeLeft <= 0) {
+            failGame("Time is up! Try to rescue the chicks faster next time.");
             return;
           }
 
@@ -1488,8 +1534,14 @@
 
             const carryIndex = p.carrying.indexOf(chick);
             if (carryIndex !== -1) {
-              chick.x = p.x + p.w / 2 - 8;
-              chick.y = p.y - 18 - carryIndex * 14;
+              const offsetX = -14 * p.facing;
+              const sheet = getActiveSpriteSheet();
+              const destW = 72;
+              const destH = sheet && sheet.loaded ? (sheet.frameH / sheet.frameW) * destW : 108;
+              const offsetY = -destH * 0.65;
+              
+              chick.x = p.x + p.w / 2 + offsetX - 9;
+              chick.y = p.y + p.h + offsetY - 18;
               const homeZone = {
                 x: state.stableBase.x,
                 y: state.stableBase.y - 100,
@@ -1527,12 +1579,19 @@
             }
 
             const chickRect = { x: chick.x, y: chick.y, w: 18, h: 18 };
-            if (!chick.rescued && rectsOverlap(p, chickRect)) {
-              chick.rescued = true;
-              p.carrying.push(chick);
-              audio.collect();
-              spawnBurst(chick.x, chick.y, 10, "#FFE680");
-              spawnFloatText(chick.x, chick.y - 12, "Got one! 🐥", "#2e5ee8");
+            const nearChick = rectsOverlap(p, chickRect);
+            if (!chick.rescued && nearChick) {
+              if (p.carrying.length >= 1) {
+                continue;
+              }
+              if (input.actionPressed) {
+                chick.rescued = true;
+                p.carrying.push(chick);
+                audio.collect();
+                spawnBurst(chick.x, chick.y, 10, "#FFE680");
+                spawnFloatText(chick.x, chick.y - 12, "Got one! 🐥", "#2e5ee8");
+                input.actionPressed = false;
+              }
             }
 
             if (chick.y + 18 >= state.seaLevel) {
@@ -1606,6 +1665,14 @@
           if (ui.rescuedText)
             ui.rescuedText.textContent =
               "🐥 " + state.rescuedCount + " / " + TARGET_RESCUES + " rescued";
+          if (ui.timerText) {
+            ui.timerText.textContent = Math.ceil(state.timeLeft) + "s";
+            if (state.timeLeft <= 10) {
+              ui.timerText.classList.add("timer-urgent");
+            } else {
+              ui.timerText.classList.remove("timer-urgent");
+            }
+          }
           if (ui.iceText)
             ui.iceText.textContent =
               "🧊 " +
@@ -2166,6 +2233,7 @@
         }
 
         function drawChicks() {
+          const p = state.player;
           for (const chick of state.chicks) {
             if (chick.delivered || state.player.carrying.includes(chick)) continue;
             const bob = Math.sin(chick.bob) * 3;
@@ -2247,6 +2315,51 @@
             } else {
               // Fallback
               drawEmoji("🐥", chick.x + 8 + shiver, chick.y + 8 + bob, 22);
+            }
+
+            // Draw Ice Left progress bar
+            if (!chick.rescued && nearest && bestDist < 120) {
+              const icePct = Math.round((nearest.w / nearest.baseW) * 100);
+              if (icePct < 100) {
+                const barW = 32;
+                const barH = 5;
+                const bx = chick.x + 9 - barW / 2;
+                const by = chick.y - 8 + bob;
+
+                ctx.save();
+                ctx.fillStyle = "rgba(15, 23, 42, 0.65)";
+                ctx.fillRect(bx, by, barW, barH);
+
+                let fillColor = "#80E0FF"; // Ice Blue
+                if (icePct < 35) {
+                  fillColor = "#FF3B30"; // Danger Red
+                } else if (icePct < 65) {
+                  fillColor = "#FFCC00"; // Warning Yellow
+                }
+
+                const fillW = (icePct / 100) * barW;
+                ctx.fillStyle = fillColor;
+                ctx.fillRect(bx, by, fillW, barH);
+
+                ctx.strokeStyle = "#1e293b";
+                ctx.lineWidth = 1;
+                ctx.strokeRect(bx, by, barW, barH);
+                ctx.restore();
+              }
+            }
+
+            // Draw "Press E / ☸️" prompt when overlapping
+            if (!chick.rescued && rectsOverlap(p, { x: chick.x, y: chick.y, w: 18, h: 18 }) && p.carrying.length === 0) {
+              ctx.save();
+              ctx.fillStyle = "#ffffff";
+              ctx.strokeStyle = "#111111";
+              ctx.lineWidth = 3;
+              ctx.font = 'bold 12px "Quicksand", sans-serif';
+              ctx.textAlign = "center";
+              const promptText = "Press E / ☸️";
+              ctx.strokeText(promptText, chick.x + 9, chick.y - 16 + bob);
+              ctx.fillText(promptText, chick.x + 9, chick.y - 16 + bob);
+              ctx.restore();
             }
 
             if (crying) {
@@ -2337,14 +2450,17 @@
           }
 
           if (p.carrying && p.carrying.length > 0) {
-            // Stack chicks starting above Mother Penguin's visual head
             p.carrying.forEach((chick, index) => {
               const cW = 28; // slightly smaller than ground chicks (32)
               const cH = chickSprite.loaded
                 ? (chickSprite.frameH / chickSprite.frameW) * cW
                 : 30;
 
-              const stackY = y + p.h - destH - 6 - index * 20;
+              // Offset on Penny's shoulder/back inside her coordinate frame
+              // -14 is backwards from her beak (since in sprite sheets she naturally faces right)
+              // -destH * 0.65 is about 65% up from her feet (y + p.h)
+              const offsetX = -14;
+              const offsetY = -destH * 0.65;
 
               if (chickSprite.loaded) {
                 // Carried chicks on Mother's back: they look happy (frame 0) or look around
@@ -2368,8 +2484,9 @@
                 const sy = row * chickSprite.frameH;
 
                 ctx.save();
-                ctx.translate(x + p.w / 2, stackY);
+                ctx.translate(x + p.w / 2, y + p.h);
                 ctx.scale(p.facing, 1); // Face same direction as Mother!
+                ctx.translate(offsetX, offsetY);
                 ctx.drawImage(
                   chickSprite.img,
                   sx,
@@ -2383,7 +2500,7 @@
                 );
                 ctx.restore();
               } else {
-                drawEmoji("🐥", x + p.w / 2, stackY - 10, 20);
+                drawEmoji("🐥", x + p.w / 2 + offsetX * p.facing, y + p.h + offsetY - 10, 20);
               }
             });
           }
