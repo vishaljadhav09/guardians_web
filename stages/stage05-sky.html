@@ -74,6 +74,25 @@
     flex-wrap: wrap;
   }
 
+  .timer-chip {
+    font-family: 'Baloo 2', sans-serif;
+    font-weight: 700;
+    min-width: 68px;
+    text-align: center;
+    background: #FFD23F !important;
+    border: 3px solid var(--gog-ink);
+    box-shadow: 3px 3px 0 var(--gog-ink);
+  }
+  .timer-chip.timer-urgent {
+    animation: timerPulseScale 0.8s ease-in-out infinite;
+    color: #e82e5d !important;
+    background: #ffcbd8 !important;
+  }
+  @keyframes timerPulseScale {
+    0%, 100% { transform: scale(1); }
+    50% { transform: scale(1.15); }
+  }
+
   .meter {
     display: flex;
     align-items: center;
@@ -412,19 +431,20 @@
   }
 
   .breezy-avatar-anim {
-    height: 178px;
+    width: 609px;
+    height: 861px;
     background-image: url('assets/sprites/stage05/happy-breezy.png');
     background-repeat: no-repeat;
-    transform: scale(0.62);
+    transform: scale(0.14);
     transform-origin: center;
-    margin-top: -6px;
-    animation: playBreezyHappy 0.6s infinite step-end, bobSprite 2.2s ease-in-out infinite;
+    flex-shrink: 0;
+    margin: 0;
+    animation: playBreezyHappy 0.9s steps(3) infinite, bobSprite 3s ease-in-out infinite;
   }
 
   @keyframes playBreezyHappy {
-    0% { width: 202px; background-position: 0px 0px; }
-    33.33% { width: 142px; background-position: -202px 0px; }
-    66.66% { width: 156px; background-position: -344px 0px; }
+    from { background-position: 0px 0px; }
+    to { background-position: -1827px 0px; }
   }
 
   .building-lit-anim {
@@ -443,18 +463,20 @@
   }
 
   .sad-clouds-anim {
-    width: 150px;
-    height: 100px;
+    width: 964px;
+    height: 816px;
     background-image: url('assets/sprites/stage05/sad-clouds.png');
     background-repeat: no-repeat;
-    transform: scale(0.85);
+    transform: scale(0.13);
     transform-origin: center;
-    animation: playSadClouds 1.2s infinite step-end, bobSprite 2s ease-in-out infinite;
+    flex-shrink: 0;
+    margin: 0;
+    animation: playSadClouds 1.2s steps(2) infinite, bobSprite 2s ease-in-out infinite;
   }
 
   @keyframes playSadClouds {
-    0% { background-position: 0px 0px; }
-    50% { background-position: -150px 0px; }
+    from { background-position: 0px 0px; }
+    to { background-position: -1928px 0px; }
   }
 
   @keyframes bobSprite {
@@ -462,9 +484,9 @@
     50% { transform: scale(var(--scale-base, 1)) translateY(-6px); }
   }
   
-  .breezy-avatar-anim { --scale-base: 0.62; }
+  .breezy-avatar-anim { --scale-base: 0.14; }
   .building-lit-anim { --scale-base: 0.75; }
-  .sad-clouds-anim { --scale-base: 0.85; }
+  .sad-clouds-anim { --scale-base: 0.13; }
 
   .btn {
     font-family: 'Baloo 2', sans-serif;
@@ -514,11 +536,31 @@
   }
   .legend span { display: flex; align-items: center; gap: 8px; }
   .legend .swatch {
-    width: 20px;
-    height: 20px;
-    border-radius: 6px;
+    width: 32px;
+    height: 32px;
+    border-radius: 8px;
     border: 3px solid var(--ink);
     display: inline-block;
+    background-repeat: no-repeat;
+    background-position: center;
+    background-color: var(--cream);
+    box-shadow: 2px 2px 0 var(--ink);
+  }
+  .legend .swatch.updraft {
+    background-image: url('assets/sprites/stage05/wind-orbit.png');
+    background-size: contain;
+    background-color: #e0f7fa;
+  }
+  .legend .swatch.smoke {
+    background-image: url('assets/sprites/stage05/sad-clouds.png');
+    background-size: 200% 100%;
+    background-position: 0px center;
+    background-color: #eceff1;
+  }
+  .legend .swatch.orb {
+    background-image: url('assets/sprites/stage05/sun-orbit.png');
+    background-size: contain;
+    background-color: #fff9c4;
   }
 
   .seedcard {
@@ -570,20 +612,23 @@
         </div>
       </div>
       <div class="hud-mid">
-        <div class="meter" title="City Power">
-          <span class="label">⚡ POWER</span>
+        <div class="meter" title="City Power" style="min-width: 230px;">
+          <span class="label">⚡ Clean Energy</span>
           <div class="meter-track">
             <div class="meter-fill" id="progressFill"></div>
           </div>
           <span class="label" id="progressText">0/8</span>
         </div>
-        <div class="meter" title="Clear Skies">
-          <span class="label">🌤️ SKIES</span>
+        <div class="meter" title="Clear Skies" style="min-width: 230px;">
+          <span class="label">🌤️ Sky Health</span>
           <div class="meter-track">
             <div class="meter-fill" id="clarityFill"></div>
           </div>
           <span class="label" id="clarityText">100%</span>
         </div>
+        
+        <span class="chip timer-chip" id="timerChip">60s</span>
+
         <button
           class="icon-btn"
           id="muteBtn"
@@ -620,9 +665,9 @@
           <h2>Breezy & the Two Skies</h2>
           <p>Guide Breezy through the sky and gather glowing energy orbs ✨ to light up the sleepy city below.</p>
           <div class="legend">
-            <span><span class="swatch" style="background:var(--lime)"></span>Updrafts boost you</span>
-            <span><span class="swatch" style="background:var(--grey-dark)"></span>Smoke slows you</span>
-            <span><span class="swatch" style="background:var(--gold)"></span>Orbs power the city</span>
+            <span><span class="swatch updraft"></span>Updrafts boost you</span>
+            <span><span class="swatch smoke"></span>Smoke slows you</span>
+            <span><span class="swatch orb"></span>Orbs power the city</span>
           </div>
           <button class="btn" id="startBtn">Let's Glide!</button>
         </div>
@@ -653,7 +698,7 @@
           </div>
           <h1>Let's Catch Some Air!</h1>
           <h2>Breezy just needs a little breather</h2>
-          <p>The skies got a bit foggy — take a breath and try gliding through those clean updrafts again.</p>
+          <p id="failReason">The skies got a bit foggy — take a breath and try gliding through those clean updrafts again.</p>
           <button class="btn blue" id="retryBtn">Try Again</button>
           <a class="btn" href="../index.html" style="background:#5a5a5a; color:var(--cream);">Back to Map</a>
         </div>
@@ -755,17 +800,17 @@
 
   const sprites = {
     breezyFly: GOGSpriteSheet('flying-breezy.png', 6, [
-      { sx: 0, sw: 180, cx: 97.5 },
-      { sx: 180, sw: 152, cx: 255.5 },
-      { sx: 332, sw: 171, cx: 415 },
-      { sx: 503, sw: 133, cx: 571.5 },
-      { sx: 636, sw: 136, cx: 706.5 },
-      { sx: 772, sw: 128, cx: 831.5 }
+      { sx: 74, sw: 254, cx: 201 },
+      { sx: 447, sw: 258, cx: 576 },
+      { sx: 829, sw: 223, cx: 941 },
+      { sx: 1177, sw: 217, cx: 1286 },
+      { sx: 1520, sw: 218, cx: 1629 },
+      { sx: 1871, sw: 225, cx: 1984 }
     ]),
     breezyHappy: GOGSpriteSheet('happy-breezy.png', 3, [
-      { sx: 0, sw: 202, cx: 105 },
-      { sx: 202, sw: 142, cx: 276.5 },
-      { sx: 344, sw: 156, cx: 411.5 }
+      { sx: 30, sw: 600, cx: 330 },
+      { sx: 744, sw: 489, cx: 989 },
+      { sx: 1330, sw: 459, cx: 1560 }
     ]),
     birds: GOGSpriteSheet('flying-birds.png', 2),        // 2-frame wing flap
     cloudHappy: GOGSpriteSheet('happy-clouds.png', 2),   // 2-frame ambient cloud
@@ -819,6 +864,7 @@
   let winWipeRadius = 0;
   let winWipeMax = Math.hypot(W, H) * 0.6;
   let winWipeDone = false;
+  let winTimer = 0;
 
   let lastTime = 0;
 
@@ -826,8 +872,10 @@
   const PLAY_TOP = 50;
   const PLAY_BOTTOM = 555;
 
-  const BUILDING_COUNT = 8;
+  const BUILDING_COUNT = 6;
   const ENERGY_TARGET = BUILDING_COUNT;
+  const STAGE_DURATION = 60; // 60 seconds stage timer
+  let timeLeft = STAGE_DURATION;
 
   let scrollBase = 2.4;
   let bgOffset1 = 0, bgOffset2 = 0, groundOffset = 0;
@@ -857,23 +905,25 @@
   };
 
   let score = 0;
-  let clarity = 100;
+  let clarity = 35;
   let smokeOverlapThisFrame = false;
 
   let updrafts = [], smokes = [], orbs = [], particles = [];
   let birds = [], ambientClouds = [], floatTexts = [];
+  let foregroundClouds = [];
   let spawnTimers = { updraft: 40, smoke: 60, orb: 20, bird: 30, cloud: 5 };
+  let solarSpawnTimer = 100;
 
   // -----------------------------------------------------------------
   // SOFT SMOG CURRENTS — same flowing-ribbon length language as clean wind,
   // but with soft black/grey smoke colors, fewer overlaps, and wide passable gaps.
   // -----------------------------------------------------------------
   const SMOG_CURRENT_TIERS = {
-    easy:   { lenMin:480, lenMax:1620, thickMin:34, thickMax:44, ampMin:8,  ampMax:16, speedMin:0.58, speedMax:0.72, gapMin:240, gapMax:280 },
-    medium: { lenMin:340, lenMax:440, thickMin:30, thickMax:40, ampMin:14, ampMax:24, speedMin:0.72, speedMax:0.90, gapMin:200, gapMax:250 },
-    hard:   { lenMin:260, lenMax:360, thickMin:26, thickMax:36, ampMin:20, ampMax:32, speedMin:0.88, speedMax:1.05, gapMin:170, gapMax:210 }
+    easy:   { lenMin:480, lenMax:1620, thickMin:34, thickMax:44, ampMin:8,  ampMax:16, speedMin:0.58, speedMax:0.72, gapMin:255, gapMax:325 },
+    medium: { lenMin:340, lenMax:440, thickMin:30, thickMax:40, ampMin:14, ampMax:24, speedMin:0.72, speedMax:0.90, gapMin:230, gapMax:290 },
+    hard:   { lenMin:260, lenMax:360, thickMin:26, thickMax:36, ampMin:20, ampMax:32, speedMin:0.88, speedMax:1.05, gapMin:200, gapMax:250 }
   };
-  const MAX_VISIBLE_AIR_WAVES = 2;
+  const MAX_VISIBLE_AIR_WAVES = 4;
   const MAX_SMOG_CURRENTS = 2;
 
   function visibleAirWaveCount(){
@@ -908,7 +958,7 @@
     const slotW = W / n;
     for(let i=0;i<n;i++){
       const w = slotW * rand(0.55, 0.8);
-      const h = rand(70, 170);
+      const h = rand(80, 180);
       const x = i*slotW + (slotW - w)/2;
       const windows = [];
       const cols = Math.max(2, Math.floor(w/16));
@@ -918,7 +968,12 @@
           windows.push({ lit: Math.random() < 0.5 });
         }
       }
-      buildings.push({ x, w, h, y: H - h, lit:false, cols, rows, windows, litProgress:0, variant: i % 2 });
+      // Designated buildings (e.g. 2nd and 5th building) have solar panels!
+      const hasSolar = (i === 1 || i === 4 || i === 6);
+      buildings.push({ 
+        x, w, h, y: H - h, lit:false, cols, rows, windows, litProgress:0, variant: i % 2,
+        hasSolar, solarGlowTimer: 0 
+      });
     }
   }
 
@@ -947,7 +1002,12 @@
         const bx = buildings[i].x + buildings[i].w/2;
         const by = buildings[i].y;
         spawnBurst(bx, by, COLORS.gold, 12);
+        spawnBurst(bx, by, COLORS.lime, 10); // green leaf particles!
         spawnFloatText(bx, by - 14, '+1 ⚡', COLORS.gold);
+        
+        // Increase sky health when building lights up!
+        clarity = clamp(clarity + 15, 0, 100);
+        spawnFloatText(bx - 30, by - 32, '+15% 🌤️', '#7fa0ff');
         return;
       }
     }
@@ -958,13 +1018,15 @@
   // ---------------------------------------------------------------
   function initGame(){
     score = 0;
-    clarity = 100;
+    clarity = 35;
+    timeLeft = STAGE_DURATION;
     player.y = 300; player.targetY = 300; player.prevY = 300;
     player.speedFactor = 1; player.boostTimer = 0; player.angle = 0;
     player.animFrame = 0; player.animTimer = 0;
     updrafts = []; smokes = []; orbs = []; particles = [];
     birds = []; ambientClouds = []; floatTexts = [];
-    spawnTimers = { updraft: 40, smoke: 90, orb: 20, bird: 30, cloud: 5 };
+    foregroundClouds = [];
+    spawnTimers = { updraft: 40, smoke: 90, orb: 20, bird: 30, cloud: 5, fgCloud: 120 };
     msgCooldown = 0;
     scrollX = 0;
     seedAmbientClouds();
@@ -987,10 +1049,21 @@
     } else {
       clarityFill.style.background = 'linear-gradient(90deg, var(--cobalt), #7fa0ff)';
     }
-    // Full-frame pulse once the skies are dangerously smoggy — a
-    // screen-level "uh-oh" that reads instantly, on top of the meter.
+
+    // Update Timer Chip
+    const timerChip = document.getElementById('timerChip');
+    if (timerChip) {
+      timerChip.textContent = Math.ceil(timeLeft) + 's';
+      if (timeLeft <= 10) {
+        timerChip.classList.add('timer-urgent');
+      } else {
+        timerChip.classList.remove('timer-urgent');
+      }
+    }
+
+    // Full-frame pulse once the skies are dangerously smoggy or time is running out
     if(canvasFrame){
-      canvasFrame.classList.toggle('sky-danger', clarity < 30 && gameState === 'playing');
+      canvasFrame.classList.toggle('sky-danger', (clarity < 30 || timeLeft <= 10) && gameState === 'playing');
     }
   }
 
@@ -1039,25 +1112,19 @@
     });
   }
   function spawnSmoke(){
-    if(smokes.length >= MAX_SMOG_CURRENTS || visibleAirWaveCount() >= MAX_VISIBLE_AIR_WAVES) return;
-    const y = rand(PLAY_TOP+30, PLAY_BOTTOM-80);
+    if(smokes.length >= MAX_SMOG_CURRENTS) return;
+    if(score >= 5) return; // Environmental progression: stop spawning dirty factories!
     const smogTier = pickSmogCurrentTier();
-    console.log('spawnSmoke tier:', smogTier);
     const tCfg = SMOG_CURRENT_TIERS[smogTier];
     smokes.push({
-      x: W + 70, y, baseY: y,
-      radius: rand(tCfg.thickMin, tCfg.thickMax),
+      x: W + 120,
+      y: GROUND_Y,
+      radius: rand(tCfg.thickMin, tCfg.thickMax) * 0.9,
       wobble: rand(0, Math.PI*2),
-      speed: rand(tCfg.speedMin, tCfg.speedMax),
+      speed: 1.0, // scroll at matching speed with ground
       smogTier: smogTier,
-      waveLen: tCfg.lenMax,
-      amplitude: rand(tCfg.ampMin, tCfg.ampMax),
-      gapCenter: rand(0.32, 0.68),   // fraction along the wave where the safe gap sits
-      gapWidth: rand(tCfg.gapMin, tCfg.gapMax),
-      phase: rand(0, Math.PI*2),
-      waveSpeed: rand(0.45, 0.75),
-      driftAmp: rand(3, 8),
-      splitGap: smogTier === 'easy' ? 0 : rand(8, 18),
+      gapY: rand(160, 360),
+      gapWidth: rand(100, 140),
       glintOffset: rand(0, 1)
     });
   }
@@ -1168,6 +1235,40 @@
     if (msgCooldown > 0) {
       msgCooldown -= dt;
     }
+    
+    if (gameState === 'playing') {
+      timeLeft = Math.max(0, timeLeft - dt / 60);
+    }
+    
+    // --- solar panels ticking & spawning orbs ---
+    buildings.forEach(b => {
+      if (b.solarGlowTimer > 0) b.solarGlowTimer -= dt;
+    });
+    if (gameState === 'playing') {
+      solarSpawnTimer -= dt;
+      if (solarSpawnTimer <= 0) {
+        const activeSolar = buildings.filter(b => b.hasSolar && b.x > 50 && b.x < W - 50);
+        if (activeSolar.length > 0) {
+          const b = activeSolar[Math.floor(Math.random() * activeSolar.length)];
+          b.solarGlowTimer = 45;
+          const orbX = b.x + b.w / 2;
+          const orbY = b.y - 18;
+          orbs.push({
+            x: orbX,
+            y: orbY,
+            baseY: orbY,
+            radius: 18,
+            wobble: rand(0, Math.PI * 2),
+            collected: false,
+            floatUpSpeed: rand(1.1, 1.8) // floats upwards!
+          });
+          spawnFloatText(orbX, orbY - 14, "Solar Energy! ☀️", '#FFC93C');
+          spawnBurst(orbX, orbY, '#FFC93C', 8);
+        }
+        solarSpawnTimer = rand(150, 240);
+      }
+    }
+
     // --- background scroll ---
     const effScroll = scrollBase * player.speedFactor;
     bgOffset1 = (bgOffset1 + effScroll*0.3*dt) % W;
@@ -1212,16 +1313,17 @@
     }
 
     // --- spawn timers ---
-    spawnTimers.updraft -= dt;
     spawnTimers.smoke -= dt;
     spawnTimers.orb -= dt;
     spawnTimers.bird -= dt;
     spawnTimers.cloud -= dt;
-    if(spawnTimers.updraft <= 0){ spawnUpdraft(); spawnTimers.updraft = rand(70,110); }
-    if(spawnTimers.smoke <= 0){ spawnSmoke(); spawnTimers.smoke = rand(150,230); }
+    spawnTimers.fgCloud -= dt;
+    if(spawnTimers.smoke <= 0){ spawnSmoke(); spawnTimers.smoke = rand(160,240); }
     if(spawnTimers.orb <= 0){ spawnOrb(); spawnTimers.orb = rand(55,90); }
-    if(spawnTimers.bird <= 0){ spawnBird(); spawnTimers.bird = rand(90,160); }
+    // Birds spawn more frequently as clean energy progress increases!
+    if(spawnTimers.bird <= 0){ spawnBird(); spawnTimers.bird = rand(90,160) / (1.0 + score * 0.35); }
     if(spawnTimers.cloud <= 0){ spawnAmbientCloud(); spawnTimers.cloud = rand(140,220); }
+    if(spawnTimers.fgCloud <= 0){ spawnForegroundCloud(); spawnTimers.fgCloud = rand(180,300); }
 
     // --- update updrafts ---
     smokeOverlapThisFrame = false;
@@ -1248,48 +1350,52 @@
     for(let i=smokes.length-1;i>=0;i--){
       const s = smokes[i];
       s.x -= s.speed * effScroll * dt;
-      s.wobble += 0.03*dt;
-      s.y = s.baseY + Math.sin(s.wobble)*6;
+      s.wobble += 0.02 * dt;
 
-      if (gameState === 'playing' && Math.random() < 0.08 * dt) {
-        const lx = rand(s.waveLen * 0.08, s.waveLen * 0.92);
-        if (!isSmogGap(s, lx)) {
+      // Spawn ambient smoke particles rising from the chimney
+      if (gameState === 'playing' && Math.random() < 0.2 * dt) {
+        const chimneyY = GROUND_Y - 56;
+        const ry = rand(PLAY_TOP, chimneyY);
+        // If the particle is not inside the gap
+        if (Math.abs(ry - s.gapY) > s.gapWidth / 2) {
+          const age = (chimneyY - ry) / (chimneyY + 40);
+          const twist = Math.sin(age * Math.PI * 1.8 - Date.now() * 0.0025 + s.wobble) * 45 * age;
           particles.push({
-            x: s.x + lx,
-            y: s.y + smogWaveY(s, lx) + rand(-s.radius*0.2, s.radius*0.2),
-            vx: -s.speed * effScroll - rand(0.4, 1.2),
-            vy: rand(-0.25, 0.25),
-            life: 1, maxLife: rand(0.6, 1.1),
-            color: Math.random() < 0.45 ? '#50545b' : '#2f3338',
-            size: rand(2.2, 4.2)
+            x: s.x + twist + rand(-10, 10),
+            y: ry,
+            vx: -s.speed * effScroll - rand(0.2, 0.8),
+            vy: rand(-0.4, -0.1), // slowly rising
+            life: 1, maxLife: rand(0.5, 0.9),
+            color: Math.random() < 0.5 ? '#363a40' : '#52575f',
+            size: rand(3, 6)
           });
         }
       }
 
-      if(s.x + s.waveLen < -100){ smokes.splice(i,1); continue; }
+      if(s.x < -150){ smokes.splice(i,1); continue; }
 
-      const lx = player.x - s.x;
       let hit = false;
-      if (lx >= s.waveLen * 0.05 && lx <= s.waveLen * 0.95 && !isSmogGap(s, lx)) {
-        let centerY = s.y + smogWaveY(s, lx);
-        if(s.splitGap > 1){
-          const offset = smogSplitOffset(s, lx, 1);
-          const topY = centerY - offset;
-          const botY = centerY + offset;
-          centerY = Math.abs(player.y - topY) < Math.abs(player.y - botY) ? topY : botY;
+      const chimneyY = GROUND_Y - 56;
+      if (player.y < chimneyY && player.y > -50) {
+        const inGap = Math.abs(player.y - s.gapY) < s.gapWidth / 2;
+        if (!inGap) {
+          const age = (chimneyY - player.y) / (chimneyY + 40);
+          const twist = Math.sin(age * Math.PI * 1.8 - Date.now() * 0.0025 + s.wobble) * 45 * age;
+          const plumeX = s.x + twist;
+          const pr = s.radius * (1.0 + age * 1.6);
+          
+          if (Math.abs(player.x - plumeX) < (player.radius * 0.45 + pr * 0.50)) {
+            hit = true;
+          }
         }
-        const halfThickness = s.radius * 0.4 + player.radius * 0.35;
-        hit = Math.abs(player.y - centerY) < halfThickness;
-      } else {
-        hit = false;
       }
 
       if(hit){
         smokeOverlapThisFrame = true;
         player.boostTimer = 0;
-        player.speedFactor = Math.max(0.4, player.speedFactor - 0.06*dt);
-        const clarityDrop = calmMode ? 0.3 * dt : 0.9 * dt;
-        const minClarity = calmMode ? 10 : 0;
+        player.speedFactor = Math.max(0.4, player.speedFactor - 0.04*dt);
+        const clarityDrop = calmMode ? 0.15 * dt : 0.45 * dt;
+        const minClarity = calmMode ? 25 : 0;
         clarity = clamp(clarity - clarityDrop, minClarity, 100);
         updateGuide("Uh-oh! Watch out for the dirty smoke! Catch a green breeze to go fast! 🌤️🌫️");
       }
@@ -1305,6 +1411,9 @@
     for(let i=orbs.length-1;i>=0;i--){
       const o = orbs[i];
       o.x -= effScroll * dt;
+      if (o.floatUpSpeed) {
+        o.baseY = clamp(o.baseY - o.floatUpSpeed * dt, PLAY_TOP + 10, GROUND_Y - 40);
+      }
       o.wobble += 0.08*dt;
       o.y = o.baseY + Math.sin(o.wobble)*8;
       if(o.x < -40){ orbs.splice(i,1); continue; }
@@ -1314,6 +1423,7 @@
         if (canCollect) {
           orbs.splice(i,1);
           score++;
+          clarity = clamp(clarity + 12, 0, 100); // Clean energy heals the sky!
           lightNextBuilding();
           spawnBurst(player.x, player.y, 'rainbow', 18);
           sfxOrb();
@@ -1362,6 +1472,13 @@
       if(c.x < -100){ ambientClouds.splice(i,1); }
     }
 
+    // --- update foreground clouds (decorative, Layer 6) ---
+    for(let i=foregroundClouds.length-1;i>=0;i--){
+      const c = foregroundClouds[i];
+      c.x -= c.speed * effScroll * dt;
+      if(c.x < -160){ foregroundClouds.splice(i,1); }
+    }
+
     // --- particles ---
     for(let i=particles.length-1;i>=0;i--){
       const p = particles[i];
@@ -1398,6 +1515,11 @@
     audio.stopBgm();
     gameState = 'winning';
     winWipeRadius = 0;
+    winTimer = 0;
+    smokes = []; // Clear all smoke instantly!
+    buildings.forEach(b => {
+      b.lit = true;
+    });
     sfxWin();
     GOGSave.recordStageClear(STAGE_ID, {
       stars: 3,
@@ -1421,45 +1543,61 @@
   // ---------------------------------------------------------------
   // RENDER
   // ---------------------------------------------------------------
-  function skyColors(){
-    const t = clamp(score/ENERGY_TARGET,0,1);
-    const dirtyTop = [176,190,197], dirtyBot=[214,223,214];
-    const cleanTop = [110,169,255], cleanBot=[203,239,255];
-    const top = dirtyTop.map((v,i)=>Math.round(lerp(v,cleanTop[i],t)));
-    const bot = dirtyBot.map((v,i)=>Math.round(lerp(v,cleanBot[i],t)));
-    return {
-      top:`rgb(${top[0]},${top[1]},${top[2]})`,
-      bot:`rgb(${bot[0]},${bot[1]},${bot[2]})`
-    };
-  }
-
   function drawSky(){
-    // Check if any layer is ready. If not, draw fallback gradient sky and clouds.
-    let anyLoaded = bgLayers.some(l => l.img.complete && l.img.naturalWidth > 0);
-    if (!anyLoaded) {
-      const c = skyColors();
-      const g = ctx.createLinearGradient(0,0,0,H);
-      g.addColorStop(0, c.top);
-      g.addColorStop(1, c.bot);
-      ctx.fillStyle = g;
-      ctx.fillRect(0,0,W,H);
+    const progress = score / ENERGY_TARGET;
+    const cleanGradX = progress * W;
 
-      // parallax clouds layer 1 (slow, far)
-      ctx.fillStyle = 'rgba(255,255,255,0.55)';
-      for(let i=0;i<5;i++){
-        const x = ((i*220 - bgOffset1) % (W+220)) - 110;
-        drawCloud(x, 80 + (i%3)*40, 44);
-      }
-      // parallax clouds layer 2 (faster, near)
-      ctx.fillStyle = 'rgba(255,255,255,0.75)';
-      for(let i=0;i<4;i++){
-        const x = ((i*260 - bgOffset2) % (W+260)) - 130;
-        drawCloud(x, 150 + (i%2)*70, 60);
-      }
-      return;
+    // Left and right bounds for slice blending
+    const x0 = clamp(cleanGradX - 120, 0, W);
+    const x1 = clamp(cleanGradX + 120, 0, W);
+
+    // Clean sky gradient
+    const cleanGrad = ctx.createLinearGradient(0, 0, 0, H);
+    cleanGrad.addColorStop(0, '#1a5bf7'); // bright blue
+    cleanGrad.addColorStop(1, '#a1d4ff'); // very soft blue-cyan
+
+    // Polluted sky gradient
+    const dirtyGrad = ctx.createLinearGradient(0, 0, 0, H);
+    dirtyGrad.addColorStop(0, '#50535a'); // dark grey
+    dirtyGrad.addColorStop(1, '#7a7a72'); // grey-yellow bottom
+
+    // 1. Draw clean sky on the left
+    if (x0 > 0) {
+      ctx.fillStyle = cleanGrad;
+      ctx.fillRect(0, 0, x0, H);
     }
 
-    // Draw the stage 2 parallax forest backgrounds as they are, scaled proportionally to canvas height
+    // 2. Draw polluted sky on the right
+    if (x1 < W) {
+      ctx.fillStyle = dirtyGrad;
+      ctx.fillRect(x1, 0, W - x1, H);
+    }
+
+    // 3. Draw transition slices in the middle (blend them together)
+    const slices = 20;
+    const sliceW = (x1 - x0) / slices;
+    for (let i = 0; i < slices; i++) {
+      const sx = x0 + i * sliceW;
+      const t = i / (slices - 1); // 0 at clean end, 1 at dirty end
+      
+      // Draw clean part
+      ctx.save();
+      ctx.globalAlpha = 1 - t;
+      ctx.fillStyle = cleanGrad;
+      ctx.fillRect(sx, 0, sliceW + 0.5, H); // overlap to prevent gaps
+      ctx.restore();
+      
+      // Draw dirty part
+      ctx.save();
+      ctx.globalAlpha = t;
+      ctx.fillStyle = dirtyGrad;
+      ctx.fillRect(sx, 0, sliceW + 0.5, H);
+      ctx.restore();
+    }
+
+    // 4. Draw bgLayers with low opacity (0.2) so they act as distant landscape silhouettes
+    ctx.save();
+    ctx.globalAlpha = 0.2;
     bgLayers.forEach(layer => {
       const img = layer.img;
       if (!img.complete || img.naturalWidth === 0) return;
@@ -1471,6 +1609,17 @@
         ctx.drawImage(img, dx, 0, tileW, H);
       }
     });
+    ctx.restore();
+
+    // 5. Draw screen-wide smog fog overlay (based on Sky Health meter)
+    const fogAlpha = (100 - clarity) / 100 * 0.65; // up to 65% opacity
+    if (fogAlpha > 0.01) {
+      const fogGrad = ctx.createLinearGradient(0, 0, 0, H);
+      fogGrad.addColorStop(0, `rgba(130, 135, 145, ${fogAlpha})`);
+      fogGrad.addColorStop(1, `rgba(165, 165, 155, ${fogAlpha * 0.8})`);
+      ctx.fillStyle = fogGrad;
+      ctx.fillRect(0, 0, W, H);
+    }
   }
 
   function drawCloud(x,y,scale){
@@ -1524,14 +1673,119 @@
         }
         ctx.restore();
 
-        // warm glow halo once lit
+        // Eco green-gold glow halo once lit
         ctx.save();
-        ctx.globalAlpha = b.litProgress*0.3;
-        ctx.fillStyle = COLORS.gold;
+        ctx.globalAlpha = b.litProgress * 0.35;
+        // Radial gradient that transitions from warm yellow to eco-green!
+        const bGlow = ctx.createRadialGradient(b.x+b.w/2, b.y+b.h/2, 10, b.x+b.w/2, b.y+b.h/2, b.w*0.9);
+        bGlow.addColorStop(0, '#FFE066'); // gold core
+        bGlow.addColorStop(0.5, '#C6FF3D'); // eco-green middle
+        bGlow.addColorStop(1, 'rgba(198,255,61,0)'); // transparent edges
+        ctx.fillStyle = bGlow;
         ctx.beginPath();
-        ctx.arc(b.x+b.w/2, b.y+b.h/2, b.w*0.85, 0, Math.PI*2);
+        ctx.arc(b.x+b.w/2, b.y+b.h/2, b.w*0.9, 0, Math.PI*2);
         ctx.fill();
         ctx.restore();
+
+        // 1. Draw a small spinning wind turbine on top of lit buildings!
+        ctx.save();
+        ctx.translate(b.x + b.w * 0.2, b.y);
+        ctx.strokeStyle = COLORS.ink;
+        ctx.lineWidth = 2.5;
+        ctx.fillStyle = '#f4f7fb';
+        
+        // Windmill Tower
+        ctx.beginPath();
+        ctx.moveTo(-3, 0); ctx.lineTo(-1.5, -24); ctx.lineTo(1.5, -24); ctx.lineTo(3, 0);
+        ctx.closePath(); ctx.fill(); ctx.stroke();
+        
+        // Spinning blades
+        ctx.translate(0, -24);
+        const spin = Date.now() * 0.003 * b.litProgress + b.x;
+        ctx.rotate(spin);
+        ctx.fillStyle = '#ffffff';
+        for (let i = 0; i < 3; i++) {
+          ctx.rotate(Math.PI * 2 / 3);
+          ctx.beginPath();
+          ctx.moveTo(0, 0);
+          ctx.quadraticCurveTo(3, -5, 1.5, -12);
+          ctx.quadraticCurveTo(-1.5, -5, 0, 0);
+          ctx.closePath();
+          ctx.fill(); ctx.stroke();
+        }
+        ctx.restore();
+
+        // 2. Draw climbing green ivy leaves on the side of lit buildings!
+        ctx.save();
+        ctx.fillStyle = COLORS.limeDark;
+        ctx.strokeStyle = COLORS.ink;
+        ctx.lineWidth = 2;
+        for (let leaf = 0; leaf < 3; leaf++) {
+          const ly = b.y + b.h * (0.28 + leaf * 0.2);
+          const lx = b.x + (leaf % 2 === 0 ? 4 : b.w - 4);
+          const r = 5.5 * b.litProgress;
+          ctx.beginPath();
+          ctx.arc(lx, ly, r, 0, Math.PI * 2);
+          ctx.fill(); ctx.stroke();
+        }
+        ctx.restore();
+      }
+
+      // Draw solar panels on the roof if the building has them
+      if (b.hasSolar) {
+        ctx.save();
+        ctx.translate(b.x + b.w/2, b.y);
+        
+        // Solar panel support frame
+        ctx.strokeStyle = COLORS.ink;
+        ctx.lineWidth = 3.5;
+        ctx.beginPath();
+        ctx.moveTo(-16, 0); ctx.lineTo(-12, -8);
+        ctx.moveTo(16, 0); ctx.lineTo(12, -8);
+        ctx.stroke();
+        
+        // Solar panel face (blue silicon)
+        ctx.rotate(-0.15); // slight clean tilt
+        ctx.fillStyle = '#1c34a1'; // silicon blue
+        ctx.fillRect(-22, -14, 44, 10);
+        ctx.strokeRect(-22, -14, 44, 10);
+        
+        // Grid lines
+        ctx.strokeStyle = 'rgba(255,255,255,0.7)';
+        ctx.lineWidth = 1;
+        ctx.beginPath();
+        ctx.moveTo(-11, -14); ctx.lineTo(-11, -4);
+        ctx.moveTo(0, -14); ctx.lineTo(0, -4);
+        ctx.moveTo(11, -14); ctx.lineTo(11, -4);
+        ctx.stroke();
+        
+        // Draw active charging glow if solarGlowTimer is active
+        if (b.solarGlowTimer > 0) {
+          const glowAlpha = clamp(b.solarGlowTimer / 30, 0, 1);
+          ctx.fillStyle = `rgba(255, 230, 100, ${glowAlpha * 0.45})`;
+          ctx.beginPath();
+          ctx.arc(0, -12, 28, 0, Math.PI*2);
+          ctx.fill();
+        }
+        ctx.restore();
+
+        // Draw a golden sunlight beam shooting down from the sun at (80, 80) to the solar panel!
+        if (b.solarGlowTimer > 0) {
+          ctx.save();
+          const beamGrad = ctx.createLinearGradient(80, 80, b.x + b.w/2, b.y - 12);
+          beamGrad.addColorStop(0, 'rgba(255, 224, 100, 0.48)');
+          beamGrad.addColorStop(1, 'rgba(255, 224, 100, 0.04)');
+          ctx.fillStyle = beamGrad;
+          
+          ctx.beginPath();
+          ctx.moveTo(80 - 16, 80);
+          ctx.lineTo(b.x + b.w/2 - 22, b.y - 12);
+          ctx.lineTo(b.x + b.w/2 + 22, b.y - 12);
+          ctx.lineTo(80 + 16, 80);
+          ctx.closePath();
+          ctx.fill();
+          ctx.restore();
+        }
       }
     });
   }
@@ -1566,12 +1820,38 @@
   }
 
   function drawAmbientClouds(){
+    const progress = score / ENERGY_TARGET;
+    const cleanZoneX = progress * W;
     ambientClouds.forEach(c=>{
-      if(!drawSpriteFrame(sprites.cloudHappy, c.frame, c.x, c.y, c.h)){
+      const isDirty = c.x > cleanZoneX;
+      const sheet = isDirty ? sprites.cloudSad : sprites.cloudHappy;
+      if(!drawSpriteFrame(sheet, c.frame, c.x, c.y, c.h)){
         // fallback while sprite loads
-        ctx.fillStyle = 'rgba(255,255,255,0.7)';
+        ctx.fillStyle = isDirty ? 'rgba(90,95,105,0.65)' : 'rgba(255,255,255,0.7)';
         drawCloud(c.x, c.y, c.h*0.9);
       }
+    });
+  }
+
+  function spawnForegroundCloud(x){
+    foregroundClouds.push({
+      x: x !== undefined ? x : W + 120,
+      y: rand(PLAY_TOP + 30, PLAY_BOTTOM - 130),
+      h: rand(90, 135),
+      speed: rand(1.5, 2.2),
+      frame: 0
+    });
+  }
+
+  function drawForegroundClouds(){
+    foregroundClouds.forEach(c=>{
+      ctx.save();
+      ctx.globalAlpha = 0.50; // semi-transparent
+      if(!drawSpriteFrame(sprites.cloudHappy, c.frame, c.x, c.y, c.h)){
+        ctx.fillStyle = 'rgba(255,255,255,0.6)';
+        drawCloud(c.x, c.y, c.h*0.9);
+      }
+      ctx.restore();
     });
   }
 
@@ -1591,201 +1871,131 @@
     });
   }
 
-  // Samples the smog current's wavy centerline. Exposed separately so the
-  // collision check can use the exact same math as the drawing does —
-  // what the child sees is exactly what can hit them.
-  function smogWaveY(s, lx) {
-    const u = lx / s.waveLen;
-    const fade = Math.sin(u * Math.PI); // fade out at both ends
-    const drift = Math.sin(Date.now() * 0.0018 + s.phase) * s.driftAmp;
-    return (Math.sin(u * Math.PI * 2.2 + s.phase - Date.now() * 0.0015 * s.waveSpeed) * s.amplitude + drift) * fade;
-  }
-
-  function isSmogGap(s, lx) {
-    const gapCenterX = s.gapCenter * s.waveLen;
-    return Math.abs(lx - gapCenterX) < s.gapWidth / 2;
-  }
-
-  function smogSplitOffset(s, lx, widthFactor) {
-    const u = lx / s.waveLen;
-    return (s.splitGap || 0) * Math.sin(u * Math.PI) * (widthFactor || 1);
-  }
-
-  function drawSmogPath(s, widthFactor, branchSign) {
-    const sign = branchSign || 0;
-    ctx.beginPath();
-    let penDown = false;
-    for (let lx = 0; lx <= s.waveLen; lx += 8) {
-      if (isSmogGap(s, lx)) {
-        penDown = false; // lift the pen — this is the safe opening to fly through
+  function drawCustomSmoke(s) {
+    const chimneyY = GROUND_Y - 56;
+    
+    // 1. Draw the smoke plume rising from the chimneys (from chimneyY to -40)
+    ctx.save();
+    
+    // We draw overlapping puff circles that grow and twist
+    for (let y = chimneyY; y >= -40; y -= 10) {
+      // Is this height inside the safe gap?
+      if (Math.abs(y - s.gapY) < s.gapWidth / 2) {
+        // Draw a clean air pocket instead of black smoke
+        if (Math.random() < 0.1) {
+          ctx.fillStyle = 'rgba(198, 255, 61, 0.3)';
+          ctx.beginPath();
+          ctx.arc(s.x + Math.sin((GROUND_Y - y) * 0.01 + s.wobble) * 10, y, rand(3, 7), 0, Math.PI*2);
+          ctx.fill();
+        }
         continue;
       }
-      const ly = smogWaveY(s, lx) + sign * smogSplitOffset(s, lx, widthFactor);
-      if (!penDown) {
-        ctx.moveTo(lx, ly);
-        penDown = true;
-      } else {
-        ctx.lineTo(lx, ly);
-      }
+      
+      const age = (chimneyY - y) / (chimneyY + 40); // 0 at chimney, 1 at top
+      const twist = Math.sin(age * Math.PI * 1.8 - Date.now() * 0.0025 + s.wobble) * 45 * age;
+      const px = s.x + twist;
+      
+      // Billowing wave to make the size fluctuate organically
+      const billow = Math.sin(y * 0.03 + Date.now() * 0.003 + s.wobble) * 8;
+      const size = s.radius * (1.0 + age * 1.6) + billow;
+      
+      // Double-layered soft volumetric rendering
+      // Outer grey smoke haze (semi-transparent, wide, soft fade)
+      const outerGrad = ctx.createRadialGradient(px - size * 0.1, y - size * 0.1, 0, px, y, size * 1.3);
+      outerGrad.addColorStop(0, `rgba(45, 48, 55, ${0.45 * (1 - age * 0.4)})`);
+      outerGrad.addColorStop(0.5, `rgba(35, 37, 42, ${0.25 * (1 - age * 0.4)})`);
+      outerGrad.addColorStop(1, `rgba(20, 20, 22, 0)`);
+      ctx.fillStyle = outerGrad;
+      ctx.beginPath();
+      ctx.arc(px, y, size * 1.3, 0, Math.PI * 2);
+      ctx.fill();
+      
+      // Inner heavy billowing smoke core (fades to transparent at edge for soft volume)
+      const coreGrad = ctx.createRadialGradient(px - size * 0.2, y - size * 0.2, 0, px, y, size);
+      coreGrad.addColorStop(0, `rgba(75, 78, 85, ${0.85 * (1 - age * 0.45)})`); // lighter highlight center
+      coreGrad.addColorStop(0.5, `rgba(35, 37, 42, ${0.75 * (1 - age * 0.45)})`); // darker main body
+      coreGrad.addColorStop(0.9, `rgba(20, 21, 23, ${0.45 * (1 - age * 0.45)})`); // fading out
+      coreGrad.addColorStop(1, `rgba(15, 15, 17, 0)`); // fully transparent at edge!
+      
+      ctx.fillStyle = coreGrad;
+      ctx.beginPath();
+      ctx.arc(px, y, size, 0, Math.PI * 2);
+      ctx.fill();
     }
-  }
-
-  function drawSmogFactorySource(s){
-    const sourceX = s.waveLen + 8;
-    const sourceY = smogWaveY(s, s.waveLen * 0.96) + 8;
-
-    ctx.save();
-    ctx.translate(sourceX, sourceY);
     
-    // FACTORY BUILDING (enlarged & more visible)
-    ctx.fillStyle = '#c0c5cc';
-    ctx.strokeStyle = COLORS.ink;
+    // Draw the green glowing gap boundaries so players can spot the opening
+    ctx.restore();
+    ctx.save();
+    // Soft glowing circle background for the gap
+    const gapGrad = ctx.createRadialGradient(s.x, s.gapY, 0, s.x, s.gapY, s.gapWidth * 0.7);
+    gapGrad.addColorStop(0, 'rgba(198, 255, 61, 0.15)');
+    gapGrad.addColorStop(1, 'rgba(198, 255, 61, 0)');
+    ctx.fillStyle = gapGrad;
+    ctx.beginPath();
+    ctx.arc(s.x, s.gapY, s.gapWidth * 0.7, 0, Math.PI * 2);
+    ctx.fill();
+    
+    // Dotted guide rings
+    ctx.strokeStyle = 'rgba(198, 255, 61, 0.5)';
     ctx.lineWidth = 2.5;
+    ctx.setLineDash([4, 6]);
     ctx.beginPath();
-    ctx.rect(-24, 0, 40, 32);
-    ctx.fill();
+    ctx.arc(s.x, s.gapY - s.gapWidth / 2, 16, 0, Math.PI * 2);
+    ctx.arc(s.x, s.gapY + s.gapWidth / 2, 16, 0, Math.PI * 2);
     ctx.stroke();
+    ctx.setLineDash([]); // clear dash array
+    ctx.restore();
 
-    // Windows (golden yellow)
-    ctx.fillStyle = '#f6d35f';
-    for(let r=0;r<3;r++){
-      for(let c=0;c<2;c++){
-        ctx.fillRect(-18 + c*15, 6 + r*8, 6, 7);
-        ctx.strokeRect(-18 + c*15, 6 + r*8, 6, 7);
-      }
+    // 2. Draw the factory on the ground *on top* of the smoke base (if it's on screen)
+    if (s.x > -100 && s.x < W + 100) {
+      ctx.save();
+      // Factory building shadow
+      ctx.fillStyle = 'rgba(0,0,0,0.15)';
+      ctx.fillRect(s.x - 20, GROUND_Y - 30, 48, 30);
+      
+      // Factory building
+      ctx.fillStyle = '#3c4046';
+      ctx.strokeStyle = COLORS.ink;
+      ctx.lineWidth = 4;
+      ctx.beginPath();
+      ctx.rect(s.x - 24, GROUND_Y - 32, 48, 32);
+      ctx.fill(); ctx.stroke();
+      
+      // Chimneys
+      ctx.fillStyle = '#52575f';
+      ctx.beginPath();
+      ctx.rect(s.x - 16, GROUND_Y - 52, 10, 20);
+      ctx.rect(s.x + 6, GROUND_Y - 52, 10, 20);
+      ctx.fill(); ctx.stroke();
+      
+      // Chimney rims
+      ctx.fillStyle = '#ff3d3d';
+      ctx.fillRect(s.x - 17, GROUND_Y - 56, 12, 4);
+      ctx.fillRect(s.x + 5, GROUND_Y - 56, 12, 4);
+      ctx.strokeRect(s.x - 17, GROUND_Y - 56, 12, 4);
+      ctx.strokeRect(s.x + 5, GROUND_Y - 56, 12, 4);
+      
+      // Glowing factory windows (dirty orange, pulsing)
+      const windowPulse = 0.7 + Math.sin(Date.now() * 0.005 + s.wobble) * 0.3;
+      ctx.fillStyle = `rgba(255, 124, 59, ${windowPulse})`;
+      ctx.fillRect(s.x - 16, GROUND_Y - 22, 10, 10);
+      ctx.fillRect(s.x + 6, GROUND_Y - 22, 10, 10);
+      ctx.strokeRect(s.x - 16, GROUND_Y - 22, 10, 10);
+      ctx.strokeRect(s.x + 6, GROUND_Y - 22, 10, 10);
+      
+      // 1. Draw animated, rotating smoke puffs right at the chimney tops
+      const puffTime = Date.now() * 0.004 + s.wobble;
+      const pRadius = 13 + Math.sin(puffTime) * 3;
+      ctx.fillStyle = 'rgba(45, 48, 54, 0.9)';
+      ctx.beginPath();
+      ctx.arc(s.x - 11, GROUND_Y - 56, pRadius, 0, Math.PI * 2);
+      ctx.arc(s.x - 11 + Math.sin(puffTime)*4, GROUND_Y - 68, pRadius * 0.8, 0, Math.PI * 2);
+      ctx.arc(s.x + 11, GROUND_Y - 56, pRadius, 0, Math.PI * 2);
+      ctx.arc(s.x + 11 - Math.sin(puffTime)*4, GROUND_Y - 68, pRadius * 0.8, 0, Math.PI * 2);
+      ctx.fill();
+      
+      ctx.restore();
     }
-
-    // CHIMNEYS (2 larger smokestacks)
-    ctx.fillStyle = '#959ca5';
-    ctx.strokeStyle = COLORS.ink;
-    ctx.lineWidth = 2;
-    
-    // Left chimney
-    ctx.beginPath();
-    ctx.rect(-14, -20, 8, 20);
-    ctx.fill();
-    ctx.stroke();
-    
-    // Right chimney
-    ctx.beginPath();
-    ctx.rect(2, -20, 8, 20);
-    ctx.fill();
-    ctx.stroke();
-
-    // DARK SMOKE PUFFS (prominent, visible)
-    ctx.fillStyle = 'rgba(54, 58, 64, 0.65)';
-    ctx.beginPath();
-    ctx.arc(-10, -28, 8, 0, Math.PI*2);
-    ctx.arc(6, -32, 9, 0, Math.PI*2);
-    ctx.arc(-2, -38, 7, 0, Math.PI*2);
-    ctx.fill();
-
-    // FACTORY LABEL indicator (small text/symbol)
-    ctx.fillStyle = 'rgba(54, 58, 64, 0.85)';
-    ctx.font = 'bold 10px Arial';
-    ctx.textAlign = 'center';
-    ctx.fillText('⚙', 0, 44);
-
-    ctx.restore();
-  }
-
-  function drawCustomSmoke(s) {
-    ctx.save();
-    ctx.translate(s.x, s.y);
-
-    const len = s.waveLen;
-    const pulse = 0.65 + Math.sin(Date.now() * 0.003 + s.wobble) * 0.18;
-    const branches = s.splitGap > 1 ? [-1, 1] : [0];
-
-    drawSmogFactorySource(s);
-
-    ctx.save();
-    ctx.lineCap = 'round';
-    ctx.lineJoin = 'round';
-    ctx.strokeStyle = 'rgba(18, 18, 15, 0.16)';
-    ctx.lineWidth = s.radius * 1.55;
-    branches.forEach(sign=>{
-      drawSmogPath(s, 1, sign);
-      ctx.stroke();
-    });
-    ctx.restore();
-
-    ctx.save();
-    ctx.lineCap = 'round';
-    ctx.lineJoin = 'round';
-    const haze = ctx.createLinearGradient(0, 0, len, 0);
-    haze.addColorStop(0, 'rgba(60, 64, 70, 0)');
-    haze.addColorStop(0.22, 'rgba(61, 65, 72, 0.55)');
-    haze.addColorStop(0.5, 'rgba(42, 45, 50, 0.62)');
-    haze.addColorStop(0.78, 'rgba(61, 65, 72, 0.55)');
-    haze.addColorStop(1, 'rgba(60, 64, 70, 0)');
-    ctx.strokeStyle = haze;
-    ctx.lineWidth = s.radius * 0.95;
-    branches.forEach(sign=>{
-      drawSmogPath(s, 1, sign);
-      ctx.stroke();
-    });
-    ctx.restore();
-
-    ctx.save();
-    ctx.lineCap = 'round';
-    ctx.lineJoin = 'round';
-    const core = ctx.createLinearGradient(0, 0, len, 0);
-    core.addColorStop(0, 'rgba(255,255,255,0)');
-    core.addColorStop(0.5, 'rgba(34, 37, 42, 0.78)');
-    core.addColorStop(1, 'rgba(255,255,255,0)');
-    ctx.strokeStyle = core;
-    ctx.lineWidth = Math.max(5, s.radius * 0.28);
-    branches.forEach(sign=>{
-      drawSmogPath(s, 1, sign);
-      ctx.stroke();
-    });
-    ctx.restore();
-
-    ctx.save();
-    ctx.lineCap = 'round';
-    ctx.lineJoin = 'round';
-    ctx.strokeStyle = `rgba(190, 197, 205, ${0.18 + pulse * 0.08})`;
-    ctx.lineWidth = Math.max(2, s.radius * 0.12);
-    branches.forEach(sign=>{
-      drawSmogPath(s, 0.48, sign);
-      ctx.stroke();
-    });
-    ctx.restore();
-
-    const gapCenterX = s.gapCenter * len;
-    const gapY = smogWaveY(s, gapCenterX);
-    ctx.save();
-    const gapGlow = ctx.createRadialGradient(gapCenterX, gapY, 2, gapCenterX, gapY, s.gapWidth * 0.5);
-    gapGlow.addColorStop(0, 'rgba(255,255,255,0.34)');
-    gapGlow.addColorStop(1, 'rgba(255,255,255,0)');
-    ctx.fillStyle = gapGlow;
-    ctx.beginPath();
-    ctx.arc(gapCenterX, gapY, s.gapWidth * 0.5, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.restore();
-
-    const glintCount = 3;
-    const t = Date.now() * 0.0014 + s.glintOffset;
-    for (let g = 0; g < glintCount; g++) {
-      const u = ((t + g / glintCount) % 1 + 1) % 1;
-      const lx = u * len;
-      if (isSmogGap(s, lx)) continue;
-      const fade = Math.sin(u * Math.PI);
-      branches.forEach(sign=>{
-        const ly = smogWaveY(s, lx) + sign * smogSplitOffset(s, lx, 1);
-        ctx.save();
-        ctx.globalAlpha = 0.26 * fade;
-        ctx.fillStyle = '#f4f7fb';
-        ctx.translate(lx, ly);
-        ctx.beginPath();
-        ctx.ellipse(0, 0, 10, 2.5, 0, 0, Math.PI * 2);
-        ctx.fill();
-        ctx.restore();
-      });
-    }
-
-    ctx.restore();
   }
   function drawSmokes(){
     smokes.forEach(s=>{
@@ -1835,9 +2045,12 @@
   function drawPlayer(){
     ctx.save();
     ctx.translate(player.x, player.y);
-    ctx.rotate(player.angle);
+    
+    // Leans forward slightly when surfing the wind current!
+    const surfTilt = (player.windInfluence || 0) * 0.18;
+    ctx.rotate(player.angle + surfTilt);
 
-    const glowing = player.boostTimer > 0;
+    const glowing = player.boostTimer > 0 && !smokeOverlapThisFrame;
 
     // hard offset shadow disc
     ctx.fillStyle = 'rgba(0,0,0,0.18)';
@@ -1854,8 +2067,8 @@
       ctx.beginPath(); ctx.arc(0,0,player.radius*1.9,0,Math.PI*2); ctx.fill();
     } else if(smokeOverlapThisFrame){
       const g = ctx.createRadialGradient(0,0,player.radius*0.6,0,0,player.radius*1.7);
-      g.addColorStop(0,'rgba(90,90,90,0.5)');
-      g.addColorStop(1,'rgba(90,90,90,0)');
+      g.addColorStop(0,'rgba(80,80,80,0.6)');
+      g.addColorStop(1,'rgba(80,80,80,0)');
       ctx.fillStyle = g;
       ctx.beginPath(); ctx.arc(0,0,player.radius*1.7,0,Math.PI*2); ctx.fill();
     }
@@ -1863,18 +2076,35 @@
     ctx.restore();
 
     // Breezy sprite: happy pose while boosted, flight loop otherwise.
-    // Drawn un-rotated (fairy sprite already reads correctly at any bob angle)
-    // but nudged slightly by angle for a gentle tilt-into-motion feel.
     ctx.save();
     ctx.translate(player.x, player.y);
-    ctx.rotate(player.angle*0.35);
+    
+    // Squash & Stretch based on vertical velocity and wind riding
+    const dy = player.y - player.prevY;
+    const stretch = clamp(Math.abs(dy) * 0.03, 0, 0.12);
+    const scaleX = 1 - stretch + (player.windInfluence || 0) * 0.05;
+    const scaleY = 1 + stretch - (player.windInfluence || 0) * 0.05;
+    ctx.scale(scaleX, scaleY);
+    
+    const surfTiltSprite = (player.windInfluence || 0) * 0.12;
+    ctx.rotate(player.angle*0.35 + surfTiltSprite);
+    
     const spriteH = player.radius * 3.0;
-    const sheet = glowing ? sprites.breezyHappy : sprites.breezyFly;
-    if(smokeOverlapThisFrame) ctx.globalAlpha = 0.6;
+    const sheet = (player.boostTimer > 0 && !smokeOverlapThisFrame) ? sprites.breezyHappy : sprites.breezyFly;
+    
+    if(smokeOverlapThisFrame) {
+      ctx.globalAlpha = 0.55;
+      ctx.filter = 'grayscale(100%)'; // turns Breezy grey!
+    }
+    
     const drawn = drawSpriteFrame(sheet, player.animFrame, 0, 0, spriteH, false);
+    if(smokeOverlapThisFrame) {
+      ctx.filter = 'none'; // reset filter
+    }
+    
     if(!drawn){
       // fallback while sprite loads: original neo-brutalist disc
-      ctx.fillStyle = glowing ? COLORS.lime : (smokeOverlapThisFrame ? '#cfcfcf' : COLORS.cream);
+      ctx.fillStyle = glowing ? COLORS.lime : (smokeOverlapThisFrame ? '#888' : COLORS.cream);
       ctx.strokeStyle = COLORS.ink;
       ctx.lineWidth = 4;
       ctx.beginPath();
@@ -1882,15 +2112,53 @@
       ctx.fill(); ctx.stroke();
       ctx.font = '30px Arial';
       ctx.textAlign='center'; ctx.textBaseline='middle';
-      ctx.fillText('🌀', 0, 2);
+      ctx.fillText(smokeOverlapThisFrame ? '😷' : '🌀', 0, 2);
     }
     ctx.restore();
+
+    // Coughing speech bubble above Breezy when she hits smoke
+    if (smokeOverlapThisFrame) {
+      ctx.save();
+      ctx.translate(player.x, player.y - player.radius * 1.75);
+      
+      // Bubble box shadow
+      ctx.fillStyle = COLORS.ink;
+      roundRectPath(-32 + 3, -18 + 3, 64, 20, 6);
+      ctx.fill();
+
+      // Bubble box
+      ctx.fillStyle = COLORS.cream;
+      ctx.strokeStyle = COLORS.ink;
+      ctx.lineWidth = 3;
+      roundRectPath(-32, -18, 64, 20, 6);
+      ctx.fill(); ctx.stroke();
+      
+      // Little pointer at bottom
+      ctx.beginPath();
+      ctx.moveTo(-6, 2); ctx.lineTo(0, 8); ctx.lineTo(6, 2);
+      ctx.fillStyle = COLORS.cream; ctx.fill();
+      ctx.beginPath();
+      ctx.moveTo(-6, 2); ctx.lineTo(0, 8); ctx.lineTo(6, 2);
+      ctx.strokeStyle = COLORS.ink; ctx.lineWidth = 3;
+      ctx.stroke();
+      
+      // Text inside bubble
+      ctx.fillStyle = '#ff3d8a'; // pink/red text
+      ctx.font = "800 11px 'Quicksand', sans-serif";
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText("😷 *cough*", 0, -8);
+      ctx.restore();
+    }
   }
 
   function drawSmokeVignette(){
     if(smokeOverlapThisFrame){
       ctx.save();
-      ctx.fillStyle = 'rgba(90,90,90,0.18)';
+      const vig = ctx.createRadialGradient(W/2, H/2, W*0.35, W/2, H/2, W*0.7);
+      vig.addColorStop(0, 'rgba(40, 40, 40, 0)');
+      vig.addColorStop(1, 'rgba(15, 15, 15, 0.45)');
+      ctx.fillStyle = vig;
       ctx.fillRect(0,0,W,H);
       ctx.restore();
     }
@@ -1898,18 +2166,57 @@
 
   function render(time){
     ctx.clearRect(0,0,W,H);
+    
+    // Base Sky & Landscape
     drawSky();
+    
+    // Crepuscular Sunlight Rays
+    drawSunlightRays();
+    
+    // Layer 1: Very distant clouds
     drawAmbientClouds();
+    
+    // Layer 2: Birds
     drawBirds();
+    
+    // Victory Rainbow (drawn behind buildings and player)
+    if (gameState === 'winning' && winTimer >= 160) {
+      const alpha = clamp((winTimer - 160) / 65, 0, 1);
+      drawRainbow(alpha);
+    }
+    
+    // Skyline buildings (stands in middle-ground behind wind/player/smoke)
     drawSkyline();
-    drawSmokes();
-    drawUpdrafts();
-    drawWind(time);       // WIND HOOK — ribbons, turbines, particles, ambient flyers
+    
+    // Layer 3: Wind ribbons, wind turbines, ambient flyers
+    drawWind(time);
+    
+    // Collectible Orbs
     drawOrbs(time);
-    drawParticles();
-    drawWindAura();       // WIND HOOK — glow behind Breezy while riding a current
+    
+    // Surfing glow behind Breezy
+    drawWindAura();
+    
+    // Layer 4: Breezy (the player)
     drawPlayer();
+    
+    // Layer 5: Smoke plumes (overlaps Breezy & buildings)
+    drawSmokes();
+    
+    // Particles & Floating texts
+    drawParticles();
     drawFloatTexts();
+    
+    // Victory Seed of Life (drawn in front of Breezy)
+    if (gameState === 'winning' && winTimer >= 320) {
+      const alpha = clamp((winTimer - 320) / 45, 0, 1);
+      drawSeedOfLife(alpha);
+    }
+    
+    // Layer 6: Foreground clouds (overlaps everything)
+    drawForegroundClouds();
+    
+    // HUD overlays
     drawSmokeVignette();
     drawWinWipe();
   }
@@ -1972,9 +2279,9 @@
   };
 
   const WIND_TIER_CONFIG = {
-    easy:   { lenMin:480, lenMax:620, thickMin:46, thickMax:60, ampMin:6,  ampMax:14, freqMin:0.5, freqMax:0.9, speedMin:0.85, speedMax:1.0,  driftMin:4,  driftMax:8,  driftSpeedMin:0.15, driftSpeedMax:0.28, bendMin:4,  bendMax:10 },
-    medium: { lenMin:340, lenMax:440, thickMin:34, thickMax:44, ampMin:18, ampMax:30, freqMin:1.0, freqMax:1.5, speedMin:1.0,  speedMax:1.15, driftMin:8,  driftMax:14, driftSpeedMin:0.28, driftSpeedMax:0.45, bendMin:10, bendMax:18 },
-    hard:   { lenMin:260, lenMax:360, thickMin:24, thickMax:34, ampMin:30, ampMax:48, freqMin:1.5, freqMax:2.2, speedMin:1.15, speedMax:1.35, driftMin:14, driftMax:22, driftSpeedMin:0.45, driftSpeedMax:0.75, bendMin:18, bendMax:28 }
+    easy:   { lenMin:650, lenMax:800, thickMin:65, thickMax:85, ampMin:15, ampMax:25, freqMin:0.4, freqMax:0.7, speedMin:0.85, speedMax:1.0,  driftMin:5,  driftMax:10, driftSpeedMin:0.15, driftSpeedMax:0.28, bendMin:4,  bendMax:10 },
+    medium: { lenMin:550, lenMax:700, thickMin:55, thickMax:70, ampMin:25, ampMax:40, freqMin:0.7, freqMax:1.2, speedMin:1.0,  speedMax:1.15, driftMin:10, driftMax:18, driftSpeedMin:0.28, driftSpeedMax:0.45, bendMin:10, bendMax:18 },
+    hard:   { lenMin:450, lenMax:600, thickMin:45, thickMax:55, ampMin:35, ampMax:55, freqMin:1.2, freqMax:1.8, speedMin:1.15, speedMax:1.35, driftMin:15, driftMax:25, driftSpeedMin:0.45, driftSpeedMax:0.75, bendMin:18, bendMax:28 }
   };
 
   // ---- state (all new, does not touch any existing variable) -----
@@ -2027,8 +2334,12 @@
     if(influence > 0.05){
       initWindAmbientSound();
       if(windNoiseGain){
-        const targetGain = clamp(influence,0,1) * 0.10; // subtle, never overpowering
+        const targetGain = clamp(influence,0,1) * 0.18; // whoosh volume
         windNoiseGain.gain.value = lerp(windNoiseGain.gain.value, targetGain, clamp(0.12*dt,0,1));
+      }
+      if(windNoiseFilter){
+        const targetFreq = 600 + influence * 1200; // sweep frequency from 600Hz to 1800Hz
+        windNoiseFilter.frequency.value = lerp(windNoiseFilter.frequency.value, targetFreq, clamp(0.15*dt,0,1));
       }
     } else if(windNoiseGain){
       windNoiseGain.gain.value = lerp(windNoiseGain.gain.value, 0, clamp(0.12*dt,0,1));
@@ -2216,17 +2527,28 @@
 
   function updateWindCurrentSamples(cur){
     const n = cur.points.length;
+    const hubY = GROUND_Y - 80;
     for(let i=0;i<n;i++){
-      const u = i/(n-1);
+      const u = i/(n-1); // 0 at left (tail), 1 at right (source/turbine)
       const worldX = cur.x + u*cur.length;
+      
       const wave = Math.sin(u*cur.freq*Math.PI*2 + cur.phase + windTime*cur.waveSpeed) * cur.amplitude;
       const drift = Math.sin(windTime*cur.driftSpeed + cur.driftPhase) * cur.driftAmp;
       const bend = Math.sin(u*Math.PI) * cur.bendAmount * Math.sin(windTime*0.35 + cur.bendPhase);
-      const y = cur.baseY + wave + drift + bend;
-      const thick = cur.thickness * (0.82 + 0.18*Math.sin(u*4 + windTime*cur.thickWobbleSpeed + cur.thickWobblePhase));
+      const targetY = cur.baseY + wave + drift + bend;
+      
+      // Bends down towards the turbine hub on the right side
+      const blend = Math.pow(u, 3.0); // Bends more near the right end
+      const y = lerp(targetY, hubY, blend);
+      
+      // Tapers at both ends: thin at the tail (left) and thin at the hub (right)
+      const taper = Math.sin(u * Math.PI);
+      const thick = cur.thickness * (0.8 + 0.2*Math.sin(u*4 + windTime*cur.thickWobbleSpeed + cur.thickWobblePhase)) * (0.3 + 0.7 * taper);
+      
       const splitOff = cur.canSplit
         ? cur.splitGap * Math.sin(u*Math.PI) * (0.7 + 0.3*Math.sin(windTime*0.6 + cur.phase))
         : 0;
+      
       const p = cur.points[i];
       p.x = worldX; p.y = y; p.thick = thick; p.splitOff = splitOff;
     }
@@ -2264,7 +2586,7 @@
         const dBot = Math.abs(py - (s.y + s.splitOff));
         centerY = dTop < dBot ? s.y - s.splitOff : s.y + s.splitOff;
       }
-      const halfSpan = s.thick*0.55 + 26;
+      const halfSpan = s.thick*0.70 + 40;
       const dist = Math.abs(py - centerY);
       let infl = clamp(1 - dist/halfSpan, 0, 1);
       infl = infl*infl*(3-2*infl); // smoothstep for a soft, non-linear falloff
@@ -2294,12 +2616,16 @@
     windSpawnTimer -= dt;
     if(windSpawnTimer <= 0 && windCurrents.length < WIND_MAX_CONCURRENT && visibleAirWaveCount() < MAX_VISIBLE_AIR_WAVES){
       spawnWindCurrent();
-      windSpawnTimer = rand(230,340);
+      windSpawnTimer = rand(110,160); // spawn more frequently!
     }
     for(let i=windCurrents.length-1;i>=0;i--){
       const cur = windCurrents[i];
       cur.x -= effScroll * cur.speedMult * dt;
-      cur.bladeAngle += 0.12*dt;
+      
+      // Spinning blades rotate faster if player is riding wind!
+      const rideSpeed = (player.windInfluence || 0) * 0.24;
+      cur.bladeAngle += (0.08 + rideSpeed) * dt;
+      
       if(cur.x + cur.length < -80){
         windCurrents.splice(i,1);
         windCurrentPool.push(cur);
@@ -2330,6 +2656,10 @@
     if(nowActive && !wasActive){
       playWindChime();
       updateGuide("Ooh, a clean wind current! Ride it, Breezy! 🌬️✨");
+    }
+    
+    if(nowActive) {
+      clarity = clamp(clarity + 0.18 * dt, 0, 100); // wind currents clean the sky!
     }
     updateWindAudio(wi, dt);
 
@@ -2469,40 +2799,92 @@
     if(p.x > W+70 || p.x < -70) return;
     ctx.save();
     ctx.translate(p.x, p.y);
+    
+    const groundH = GROUND_Y - p.y;
+    
     if(cur.sourceType === 'turbine'){
+      // Draw tower shadow
+      ctx.fillStyle = 'rgba(0,0,0,0.12)';
+      ctx.beginPath();
+      ctx.moveTo(-5, 0); ctx.lineTo(-2, groundH); ctx.lineTo(10, groundH); ctx.lineTo(3, 0);
+      ctx.fill();
+
+      // Tower
       ctx.fillStyle = WIND_COLORS.turbineBody;
       ctx.strokeStyle = COLORS.ink;
-      ctx.lineWidth = 2;
-      ctx.fillRect(-3, 0, 6, 26);
-      ctx.strokeRect(-3, 0, 6, 26);
-      ctx.beginPath(); ctx.arc(0,0,5,0,Math.PI*2);
+      ctx.lineWidth = 3.5;
+      ctx.beginPath();
+      ctx.moveTo(-6, groundH);
+      ctx.lineTo(-2.5, 0);
+      ctx.lineTo(2.5, 0);
+      ctx.lineTo(6, groundH);
+      ctx.closePath();
+      ctx.fill(); ctx.stroke();
+      
+      // Hub
+      ctx.beginPath(); ctx.arc(0,0,7,0,Math.PI*2);
       ctx.fillStyle = WIND_COLORS.turbineAccent; ctx.fill(); ctx.stroke();
+      
+      // Blades
       for(let b=0;b<3;b++){
         const a = cur.bladeAngle + b*(Math.PI*2/3);
         ctx.save();
         ctx.rotate(a);
         ctx.beginPath();
         ctx.moveTo(0,0);
-        ctx.quadraticCurveTo(4,-14,2,-26);
-        ctx.quadraticCurveTo(-2,-14,0,0);
+        ctx.quadraticCurveTo(5,-15,2.5,-35);
+        ctx.quadraticCurveTo(-2,-15,0,0);
         ctx.fillStyle = WIND_COLORS.turbineBody;
-        ctx.strokeStyle = COLORS.ink; ctx.lineWidth = 1.5;
+        ctx.strokeStyle = COLORS.ink; ctx.lineWidth = 2;
         ctx.fill(); ctx.stroke();
         ctx.restore();
       }
-    } else {
+    } else { // Solar updraft tower
+      // Draw glass canopy shadow
+      ctx.fillStyle = 'rgba(0,0,0,0.12)';
+      ctx.fillRect(-35, groundH - 4, 70, 4);
+
+      // Solar canopy at the base (glass collector)
+      ctx.fillStyle = 'rgba(46, 94, 232, 0.45)'; // glass blue canopy
+      ctx.strokeStyle = COLORS.ink;
+      ctx.lineWidth = 3;
+      ctx.beginPath();
+      ctx.moveTo(-35, groundH);
+      ctx.quadraticCurveTo(0, groundH - 24, 35, groundH);
+      ctx.closePath();
+      ctx.fill(); ctx.stroke();
+      
+      // Support pillars for canopy
+      ctx.fillStyle = COLORS.ink;
+      ctx.fillRect(-32, groundH - 4, 3, 4);
+      ctx.fillRect(-16, groundH - 6, 3, 6);
+      ctx.fillRect(16, groundH - 6, 3, 6);
+      ctx.fillRect(29, groundH - 4, 3, 4);
+
+      // Tower chimney
       ctx.fillStyle = WIND_COLORS.turbineBody;
       ctx.strokeStyle = COLORS.ink;
-      ctx.lineWidth = 2;
-      roundRectPath(-4,0,8,28,3); ctx.fill(); ctx.stroke();
-      const pulse = 0.6 + Math.sin(windTime*3 + cur.phase)*0.3;
-      const g = ctx.createRadialGradient(0,-4,0,0,-4,16);
-      g.addColorStop(0, `rgba(255,214,102,${0.7*pulse})`);
-      g.addColorStop(1, 'rgba(255,214,102,0)');
+      ctx.lineWidth = 3.5;
+      ctx.beginPath();
+      ctx.moveTo(-10, groundH - 12);
+      ctx.lineTo(-6, 0);
+      ctx.lineTo(6, 0);
+      ctx.lineTo(10, groundH - 12);
+      ctx.closePath();
+      ctx.fill(); ctx.stroke();
+      
+      // Solar collector thermal core glow
+      const pulse = 0.7 + Math.sin(windTime*4 + cur.phase)*0.3;
+      const g = ctx.createRadialGradient(0, groundH - 12, 2, 0, groundH - 12, 24);
+      g.addColorStop(0, `rgba(255, 170, 50, ${0.85*pulse})`);
+      g.addColorStop(1, 'rgba(255, 170, 50, 0)');
       ctx.fillStyle = g;
-      ctx.beginPath(); ctx.arc(0,-4,16,0,Math.PI*2); ctx.fill();
-      ctx.beginPath(); ctx.arc(0,-4,5,0,Math.PI*2);
-      ctx.fillStyle = COLORS.gold; ctx.fill(); ctx.stroke();
+      ctx.beginPath(); ctx.arc(0, groundH - 12, 24, 0, Math.PI*2); ctx.fill();
+      
+      // Top rim
+      ctx.fillStyle = WIND_COLORS.turbineAccent;
+      ctx.fillRect(-8, -4, 16, 6);
+      ctx.strokeRect(-8, -4, 16, 6);
     }
     ctx.restore();
   }
@@ -2590,14 +2972,36 @@
   function drawWindAura(){
     const wi = player.windInfluence || 0;
     if(wi < 0.03) return;
+    
+    // Radial light-blue glow behind Breezy
     ctx.save();
     ctx.translate(player.x, player.y);
     const g = ctx.createRadialGradient(0,0,player.radius*0.4,0,0,player.radius*2.4);
-    g.addColorStop(0, `rgba(255,255,255,${0.5*wi})`);
-    g.addColorStop(0.6, `rgba(173,216,255,${0.35*wi})`);
-    g.addColorStop(1, 'rgba(173,216,255,0)');
+    g.addColorStop(0, `rgba(255,255,255,${0.6*wi})`);
+    g.addColorStop(0.5, `rgba(135,206,250,${0.4*wi})`);
+    g.addColorStop(1, 'rgba(135,206,255,0)');
     ctx.fillStyle = g;
     ctx.beginPath(); ctx.arc(0,0, player.radius*2.4, 0, Math.PI*2); ctx.fill();
+    ctx.restore();
+
+    // Flowing wind streaks (trails) trailing from Breezy
+    ctx.save();
+    ctx.strokeStyle = `rgba(173, 216, 255, ${0.85 * wi})`;
+    ctx.lineWidth = 3.5;
+    ctx.lineCap = 'round';
+    
+    const time = Date.now() * 0.015;
+    for (let i = 0; i < 3; i++) {
+      const dy = -16 + i * 16 + Math.sin(time + i * 2) * 4;
+      const length = 55 + Math.sin(time + i) * 15;
+      ctx.beginPath();
+      ctx.moveTo(player.x - player.radius*0.5, player.y + dy);
+      ctx.quadraticCurveTo(
+        player.x - player.radius*0.5 - length/2, player.y + dy + Math.sin(time + i)*5,
+        player.x - player.radius*0.5 - length, player.y + dy
+      );
+      ctx.stroke();
+    }
     ctx.restore();
   }
 
@@ -2616,6 +3020,116 @@
     player.windMultiplierActive = false;
     player.windFeatherTimer = 0;
     if(windNoiseGain) windNoiseGain.gain.value = 0;
+  }
+
+  function drawSunlightRays() {
+    // Determine alpha based on sky health and score progression
+    const progress = score / ENERGY_TARGET;
+    const baseAlpha = (clarity / 100) * (0.15 + progress * 0.22);
+    if (baseAlpha < 0.02) return;
+    
+    ctx.save();
+    
+    const time = Date.now() * 0.0007;
+    const rayCount = 6;
+    const sunX = 80, sunY = 80;
+    
+    // Draw Sun core glow
+    const sunGlow = ctx.createRadialGradient(sunX, sunY, 5, sunX, sunY, 65);
+    sunGlow.addColorStop(0, `rgba(255, 220, 60, ${baseAlpha * 1.5})`);
+    sunGlow.addColorStop(0.3, `rgba(255, 200, 50, ${baseAlpha * 0.8})`);
+    sunGlow.addColorStop(1, 'rgba(255, 200, 50, 0)');
+    ctx.fillStyle = sunGlow;
+    ctx.beginPath();
+    ctx.arc(sunX, sunY, 65, 0, Math.PI * 2);
+    ctx.fill();
+    
+    // Draw fanning crepuscular god rays
+    ctx.globalAlpha = baseAlpha;
+    for (let i = 0; i < rayCount; i++) {
+      const angle = 0.35 + i * (Math.PI * 0.18) + Math.sin(time + i * 1.8) * 0.07;
+      const width = 0.10 + Math.sin(time * 1.1 + i) * 0.035;
+      
+      const g = ctx.createRadialGradient(sunX, sunY, 15, sunX, sunY, W * 1.3);
+      g.addColorStop(0, 'rgba(255, 225, 100, 0.45)');
+      g.addColorStop(0.4, 'rgba(255, 225, 100, 0.15)');
+      g.addColorStop(1, 'rgba(255, 225, 100, 0)');
+      ctx.fillStyle = g;
+      
+      ctx.beginPath();
+      ctx.moveTo(sunX, sunY);
+      ctx.arc(sunX, sunY, W * 1.3, angle - width, angle + width);
+      ctx.closePath();
+      ctx.fill();
+    }
+    
+    ctx.restore();
+  }
+
+  function drawRainbow(alpha) {
+    ctx.save();
+    ctx.globalAlpha = alpha * 0.85;
+    const colors = ['#ff3d8a', '#ff8a3d', '#ffc93c', '#c6ff3d', '#2c4bff', '#b6a6ff'];
+    ctx.lineWidth = 9;
+    ctx.lineCap = 'round';
+    
+    // Draw arc from x=80 to x=720, curving up
+    const startX = 80, endX = 720;
+    const centerX = (startX + endX) / 2;
+    const centerY = H - 120;
+    const radius = 280;
+    
+    for (let i = 0; i < colors.length; i++) {
+      ctx.strokeStyle = colors[i];
+      ctx.beginPath();
+      ctx.arc(centerX, centerY, radius + i * 9, Math.PI, 0, false);
+      ctx.stroke();
+    }
+    ctx.restore();
+  }
+
+  function drawSeedOfLife(alpha) {
+    ctx.save();
+    
+    // 1. Draw glowing vertical light beam
+    ctx.globalAlpha = alpha * 0.4;
+    const beamGrad = ctx.createLinearGradient(W/2, 0, W/2, H);
+    beamGrad.addColorStop(0, 'rgba(198, 255, 61, 0.45)');
+    beamGrad.addColorStop(1, 'rgba(198, 255, 61, 0)');
+    ctx.fillStyle = beamGrad;
+    ctx.fillRect(W/2 - 40, 0, 80, H);
+    
+    // 2. Draw glowing Seed leaf droplet icon bobbing in the center
+    ctx.globalAlpha = alpha;
+    ctx.translate(W/2, H/2 + 25 + Math.sin(Date.now() * 0.005) * 8);
+    ctx.rotate(Date.now() * 0.0015);
+    
+    // Outer radial aura
+    const sg = ctx.createRadialGradient(0, 0, 2, 0, 0, 36);
+    sg.addColorStop(0, 'rgba(198, 255, 61, 0.9)');
+    sg.addColorStop(1, 'rgba(198, 255, 61, 0)');
+    ctx.fillStyle = sg;
+    ctx.beginPath(); ctx.arc(0, 0, 36, 0, Math.PI * 2); ctx.fill();
+    
+    // leaf outline + body (neo-brutalist styling)
+    ctx.fillStyle = COLORS.lime;
+    ctx.strokeStyle = COLORS.ink;
+    ctx.lineWidth = 4;
+    ctx.beginPath();
+    ctx.moveTo(0, -18);
+    ctx.quadraticCurveTo(12, 0, 0, 18);
+    ctx.quadraticCurveTo(-12, 0, 0, -18);
+    ctx.closePath();
+    ctx.fill(); ctx.stroke();
+    
+    // Draw leaf vein line
+    ctx.strokeStyle = COLORS.ink;
+    ctx.lineWidth = 2.5;
+    ctx.beginPath();
+    ctx.moveTo(0, -10); ctx.lineTo(0, 10);
+    ctx.stroke();
+    
+    ctx.restore();
   }
 
   // ---------------------------------------------------------------
@@ -2648,12 +3162,94 @@
         b.flapTimer += dt/60*b.flapRate;
         if(b.x < -60){ birds.splice(i,1); }
       }
+
+      // 1. Update Breezy's wing flapping animation
+      const frameCount = sprites.breezyFly.frameCount;
+      player.animTimer += dt / 60 * 11;
+      player.animFrame = Math.floor(player.animTimer) % frameCount;
+
+      // 2. Gentle hover bobbing in place
+      player.y = 280 + Math.sin(Date.now() * 0.0035) * 10;
+      player.prevY = player.y; // keep previous y aligned to prevent stretch triggers
+      player.angle = Math.sin(Date.now() * 0.002) * 0.04;
     }
     if(gameState === 'winning'){
-      winWipeRadius += dt * (winWipeMax * 1.6 / 60);
-      if(winWipeRadius >= winWipeMax){
-        winWipeDone = true;
-        finishWin();
+      winTimer += dt;
+      
+      // Update background scrolling slightly during win celebration
+      scrollX += 0.5 * dt;
+      bgOffset1 = (bgOffset1 + 0.15 * dt) % W;
+      bgOffset2 = (bgOffset2 + 0.3 * dt) % W;
+      
+      // Update ambient clouds
+      for(let i=ambientClouds.length-1;i>=0;i--){
+        const c = ambientClouds[i];
+        c.x -= c.speed*0.6*dt;
+        if(c.x < -100){ ambientClouds.splice(i,1); spawnAmbientCloud(W+rand(20,80)); }
+      }
+      
+      // Update birds
+      for(let i=birds.length-1;i>=0;i--){
+        const b = birds[i];
+        b.x -= b.speed*1.2*dt;
+        b.flapTimer += dt/60*b.flapRate;
+        if(b.x < -60) birds.splice(i,1);
+      }
+
+      // Update particles
+      for(let i=particles.length-1;i>=0;i--){
+        const p = particles[i];
+        p.x += p.vx*dt; p.y += p.vy*dt;
+        p.life -= dt/60/p.maxLife*3.6;
+        if(p.life <= 0) particles.splice(i,1);
+      }
+      updateFloatTexts(dt);
+
+      // 1. Spawning birds flock
+      if (winTimer >= 45 && winTimer < 45 + dt * 1.5) {
+        for (let i = 0; i < 9; i++) {
+          birds.push({
+            x: W + rand(20, 240),
+            y: rand(PLAY_TOP, PLAY_TOP + 120),
+            baseY: rand(PLAY_TOP, PLAY_TOP + 120),
+            speed: rand(1.3, 1.9),
+            h: rand(22, 32),
+            flapTimer: rand(0, 1),
+            flapRate: rand(8, 12),
+            wobble: rand(0, Math.PI*2)
+          });
+        }
+      }
+
+      // 2. Happy clouds conversion
+      if (winTimer >= 100 && winTimer < 100 + dt * 1.5) {
+        ambientClouds.forEach(c => { c.frame = 0; });
+        for (let i = 0; i < 3; i++) {
+          spawnAmbientCloud(W + rand(10, 120));
+        }
+      }
+
+      // 3. Move Breezy to center and celebrate
+      if (winTimer >= 240) {
+        player.x = lerp(player.x, W/2, clamp(0.06*dt, 0, 1));
+        player.y = lerp(player.y, H/2 - 40, clamp(0.06*dt, 0, 1));
+        player.targetY = player.y;
+        player.angle = Math.sin(winTimer * 0.15) * 0.15;
+        player.boostTimer = 999; // happy anim
+        
+        // Spawn party sparkles!
+        if (Math.random() < 0.18 * dt) {
+          spawnBurst(player.x + rand(-20, 20), player.y + rand(-20, 20), 'rainbow', 6);
+        }
+      }
+
+      // 4. Wipe transition
+      if (winTimer >= 400) {
+        winWipeRadius += dt * (winWipeMax * 1.6 / 60);
+        if(winWipeRadius >= winWipeMax){
+          winWipeDone = true;
+          finishWin();
+        }
       }
     }
     render(ts);
