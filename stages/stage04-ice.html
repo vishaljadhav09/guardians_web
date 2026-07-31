@@ -528,7 +528,7 @@
         </div>
         <div class="hud-mid">
           <div class="meter" title="Ice Warmth" id="warmthMeter">
-            <span class="label">WARMTH</span>
+            <span class="label" id="warmthLabel">WARMTH ❄️❄️❄️❄️❄️</span>
             <div class="meter-track">
               <div class="meter-fill" id="warmFill"></div>
             </div>
@@ -635,6 +635,7 @@
         const ui = {
           warmFill: document.getElementById("warmFill"),
           warmthText: document.getElementById("warmthText"),
+          warmthLabel: document.getElementById("warmthLabel"),
           rescuedText: document.getElementById("rescuedChip"),
           timerText: document.getElementById("timerChip"),
           iceText: document.getElementById("iceChip"),
@@ -838,6 +839,28 @@
           });
         }
 
+        const snowfallParticles = [];
+        for (let i = 0; i < 60; i++) {
+          snowfallParticles.push({
+            x: Math.random() * canvas.width,
+            y: Math.random() * canvas.height,
+            size: 1.5 + Math.random() * 2.5,
+            speedY: 25 + Math.random() * 25,
+            speedX: -15 - Math.random() * 20,
+          });
+        }
+
+        const waterIceChunks = [];
+        for (let i = 0; i < 6; i++) {
+          waterIceChunks.push({
+            x: (i * 260) % WORLD_W,
+            w: 16 + (i % 3) * 6,
+            h: 8 + (i % 3) * 3,
+            wobble: i * 1.5,
+            speed: 12 + (i % 3) * 6,
+          });
+        }
+
         const input = {
           left: false,
           right: false,
@@ -981,6 +1004,8 @@
             pl.meltStage = 0;
             pl.shapePts = null;
             pl.crackSeed = pl.seed * 7 + 3;
+            pl.baseY = pl.y;
+            pl.glowTimer = 0;
           }
 
           const chicks = [
@@ -1245,15 +1270,76 @@
           state.time += dt;
           updatePenguinAnim(dt);
           const p = state.player;
+          const wasOnGround = p.onGround;
+
+          // Update snowfall particles (screen-relative)
+          for (const s of snowfallParticles) {
+            s.y += s.speedY * dt;
+            s.x += s.speedX * dt;
+            if (s.y > canvas.height) {
+              s.y = -10;
+              s.x = Math.random() * canvas.width;
+            }
+            if (s.x < -10) {
+              s.x = canvas.width + 10;
+              s.y = Math.random() * canvas.height;
+            }
+          }
 
           if (state.state === "won") {
             state.endTimer += dt;
-            state.seaLevel = Math.min(600, state.seaLevel + 80 * dt);
-            state.warmth = Math.max(0, state.warmth - 0.35 * dt);
+            
+            // Phase 1 (0s to 1.5s): Recede sea level, freeze valve, blow wind
+            if (state.endTimer <= 1.5) {
+              state.seaLevel = Math.min(560, state.seaLevel + 120 * dt);
+              state.warmth = Math.max(0, state.warmth - 0.7 * dt);
+              state.valve.frozen = true;
+              
+              if (Math.random() < 0.15) {
+                state.particles.push({
+                  x: canvas.width + Math.random() * 200,
+                  y: 100 + Math.random() * 400,
+                  vx: -350 - Math.random() * 200,
+                  vy: (Math.random() - 0.5) * 10,
+                  life: 2.0,
+                  maxLife: 2.0,
+                  kind: "wind",
+                  color: "rgba(200, 245, 255, 0.55)",
+                  size: 60 + Math.random() * 60,
+                });
+              }
+            }
+            // Phase 2 (1.5s to 3.5s): Reform ice platforms
+            else if (state.endTimer <= 3.5) {
+              for (const pl of state.meltPlatforms) {
+                pl.gone = false;
+                pl.shrink = Math.max(0, pl.shrink - 180 * dt);
+                pl.w = pl.baseW - pl.shrink;
+                pl.y = pl.baseY || pl.y;
+              }
+            }
+            // Phase 3 (3.5s to 5.5s): Sparkles and dance
+            else if (state.endTimer <= 5.5) {
+              if (Math.random() < 0.25) {
+                state.particles.push({
+                  x: state.stableBase.x + Math.random() * state.stableBase.w,
+                  y: state.stableBase.y - 30 - Math.random() * 40,
+                  vx: (Math.random() - 0.5) * 15,
+                  vy: -15 - Math.random() * 20,
+                  life: 1.0,
+                  maxLife: 1.0,
+                  kind: "emoji",
+                  text: "✨",
+                  size: 12,
+                });
+              }
+            }
+
             p.vx *= 0.92;
             p.vy += p.gravity * dt * 0.25;
             movePlayer(p, dt, true);
-            if (state.endTimer > 1.1 && !winWiping && !winWipeDone) {
+
+            if (state.endTimer > 5.5 && !winWiping && !winWipeDone) {
               let stars = 1;
               if (!calmMode) {
                 if (state.warmth <= 0.25) stars = 3;
@@ -1301,7 +1387,25 @@
           state.valve.pulse += dt;
 
           const seaRise = calmMode ? 0 : 1.5 + state.warmth * 5;
-          state.seaLevel = clamp(state.seaLevel - seaRise * dt, 480, 560);
+          state.seaLevel = clamp(state.seaLevel - seaRise * dt, 368, 560);
+
+          // Update fish jump timer
+          if (state.fishJumpTimer > 0) {
+            state.fishJumpTimer -= dt;
+          }
+
+          // Check if standing on melting ice to apply slippage
+          let onIce = false;
+          const solids = getSolids();
+          const under = solids.find(
+            (s) =>
+              p.x + p.w > s.x &&
+              p.x < s.x + s.w &&
+              Math.abs(p.y + p.h - s.y) < 4,
+          );
+          if (under && under.drift !== undefined) {
+            onIce = true;
+          }
 
           const accel = p.speed * dt;
           if (input.left) {
@@ -1313,7 +1417,8 @@
             p.facing = 1;
           }
           if (!input.left && !input.right) {
-            p.vx *= Math.pow(p.drag, dt * 60);
+            const currentDrag = onIce ? 0.94 : p.drag;
+            p.vx *= Math.pow(currentDrag, dt * 60);
             if (Math.abs(p.vx) < 3) p.vx = 0;
           }
           p.vx = clamp(p.vx, -p.maxSpeed, p.maxSpeed);
@@ -1337,7 +1442,76 @@
           updateCamera(dt);
           updateUI();
 
-          if (p.y > WORLD_H + 120 || p.y + p.h >= state.seaLevel) {
+          // Spawning footprints when running on ice
+          if (p.onGround && Math.abs(p.vx) > 30 && onIce) {
+            if (!p.stepTimer) p.stepTimer = 0;
+            p.stepTimer -= dt;
+            if (p.stepTimer <= 0) {
+              p.stepTimer = 0.22;
+              state.particles.push({
+                x: p.x + p.w / 2 + (p.facing === 1 ? -12 : 6),
+                y: p.y + p.h - 2,
+                vx: 0,
+                vy: 0,
+                life: 1.5,
+                maxLife: 1.5,
+                kind: "footprint",
+                color: "rgba(100, 150, 200, 0.45)",
+              });
+            }
+          }
+
+          // Handle landing footprints & snow puff
+          if (p.onGround && !wasOnGround) {
+            spawnBurst(p.x + p.w / 2, p.y + p.h, 6, "#E4F7FF");
+            if (onIce) {
+              state.particles.push({
+                x: p.x + p.w / 2 - 8,
+                y: p.y + p.h - 2,
+                vx: 0,
+                vy: 0,
+                life: 2.0,
+                maxLife: 2.0,
+                kind: "footprint",
+                color: "rgba(100, 150, 200, 0.5)",
+              });
+              state.particles.push({
+                x: p.x + p.w / 2 + 2,
+                y: p.y + p.h - 2,
+                vx: 0,
+                vy: 0,
+                life: 2.0,
+                maxLife: 2.0,
+                kind: "footprint",
+                color: "rgba(100, 150, 200, 0.5)",
+              });
+            }
+          }
+
+          // Spawning carried chick emojis (hearts/sparkles)
+          if (p.carrying && p.carrying.length > 0) {
+            if (!p.carryHeartTimer) p.carryHeartTimer = 0;
+            p.carryHeartTimer -= dt;
+            if (p.carryHeartTimer <= 0) {
+              p.carryHeartTimer = 0.5;
+              state.particles.push({
+                x: p.x + p.w / 2 + p.facing * 16 + (Math.random() - 0.5) * 10,
+                y: p.y + p.h - 55,
+                vx: (Math.random() - 0.5) * 15,
+                vy: -35 - Math.random() * 20,
+                life: 1.0,
+                maxLife: 1.0,
+                kind: "emoji",
+                text: Math.random() < 0.65 ? "❤️" : "✨",
+                size: 13,
+              });
+            }
+          }
+
+          const inWater = p.y + p.h >= state.seaLevel;
+          const onSolid = p.onGround;
+          const deeplySubmerged = inWater && state.seaLevel < p.y + p.h - 16;
+          if (p.y > WORLD_H + 120 || (inWater && !onSolid) || deeplySubmerged) {
             failGame(
               "Penny splashed into the rising water. Try a faster route and cool the valve sooner.",
             );
@@ -1351,22 +1525,55 @@
           const p = state.player;
           p.onCriticalIce = false;
           for (const pl of state.meltPlatforms) {
+            if (pl.glowTimer > 0) pl.glowTimer -= dt;
+            if (pl.baseY === undefined) pl.baseY = pl.y;
+
             if (pl.gone) {
               pl.refreezeTimer = (pl.refreezeTimer || 0) + dt;
               if (pl.refreezeTimer > 4.0) {
                 pl.gone = false;
                 pl.shrink = 0;
                 pl.w = pl.baseW;
+                pl.y = pl.baseY;
                 pl.refreezeTimer = 0;
                 pl.cachedCrackStage = -1;
                 spawnBurst(pl.x + pl.baseW / 2, pl.y + 6, 8, "#A0E0FF");
               }
               continue;
             }
+
+            if (pl.meltingState === "sinking") {
+              pl.sinkTimer -= dt;
+              pl.y += 45 * dt;
+              
+              if (Math.random() < 0.25) {
+                state.particles.push({
+                  x: pl.x + Math.random() * pl.w,
+                  y: pl.y + pl.h,
+                  vx: 0,
+                  vy: 35,
+                  life: 0.5,
+                  maxLife: 0.5,
+                  color: "#6FB6E8",
+                  size: 3,
+                  kind: "drip",
+                });
+              }
+              
+              if (pl.sinkTimer <= 0) {
+                pl.gone = true;
+                pl.meltingState = null;
+                pl.meltStage = 0;
+                state.meltedCount += 1;
+                spawnBurst(pl.x + pl.w / 2, state.seaLevel, 16, "#E4F7FF");
+                audio.blip(100, 160);
+              }
+              continue;
+            }
+
             pl.t = (pl.t || 0) + dt;
             pl.y += Math.sin(state.time * 0.55 + pl.phase) * 4 * dt;
-            // Gentle rotational bob — bigger floes barely tilt, small
-            // melting ones wobble more, like real drift physics.
+            
             const meltRatioNow = 1 - pl.w / pl.baseW;
             pl.rot =
               Math.sin(state.time * 0.4 + pl.phase) *
@@ -1399,8 +1606,6 @@
             const meltRatio = 1 - pl.w / pl.baseW;
             if (standing && meltRatio > 0.55) p.onCriticalIce = true;
 
-            // Crack-stage sound cue: a soft crack plays the moment a floe
-            // worsens a stage, not every frame while it stays there.
             const stage =
               meltRatio < 0.15
                 ? 1
@@ -1414,10 +1619,22 @@
             if (stage > (pl.meltStage || 0)) {
               pl.meltStage = stage;
               if (stage >= 2) audio.blip(200 - stage * 12, 70);
+              if (stage === 4) {
+                for (let k = 0; k < 6; k++) {
+                  state.particles.push({
+                    x: pl.x + Math.random() * pl.w,
+                    y: pl.y + 4,
+                    vx: (Math.random() - 0.5) * 30,
+                    vy: -10 - Math.random() * 20,
+                    life: 0.9,
+                    maxLife: 0.9,
+                    color: "#DDF6FF",
+                    size: 4 + Math.random() * 4,
+                  });
+                }
+              }
             }
 
-            // Pooled ambient drips/snow: capped total count, timers reset
-            // rather than allocating a growing array of emitters.
             if (state.particles.length < AMBIENT_PARTICLE_CAP) {
               pl.snowTimer -= dt;
               if (pl.snowTimer <= 0) {
@@ -1452,11 +1669,8 @@
             }
 
             if (pl.shrink > pl.baseW - 42) {
-              pl.gone = true;
-              pl.refreezeTimer = 0;
-              pl.meltStage = 0;
-              state.meltedCount += 1;
-              spawnBurst(pl.x + pl.baseW / 2, pl.y + 6, 12, "#DFF6FF");
+              pl.meltingState = "sinking";
+              pl.sinkTimer = 1.0;
               if (standing) {
                 p.onGround = false;
               }
@@ -1620,9 +1834,50 @@
           if (near && input.actionPressed) {
             state.warmth = Math.max(0, state.warmth - state.valve.coolAmount);
             state.coolingTimer = 8;
-            state.valve.activeFlash = 1;
+            state.valve.activeFlash = 1.0;
             audio.blip(520, 150);
-            spawnBurst(state.valve.x, state.valve.y, 16, "#87E1FF");
+            
+            // Spawn dramatic snow sparks at the valve
+            spawnBurst(state.valve.x, state.valve.y, 24, "#87E1FF");
+            
+            // Spawn wind streaks sweeping across the screen
+            for (let k = 0; k < 12; k++) {
+              state.particles.push({
+                x: canvas.width + Math.random() * 200,
+                y: 50 + Math.random() * 450,
+                vx: -300 - Math.random() * 250,
+                vy: (Math.random() - 0.5) * 15,
+                life: 2.2,
+                maxLife: 2.2,
+                kind: "wind",
+                color: "rgba(180, 242, 255, 0.55)",
+                size: 50 + Math.random() * 70
+              });
+            }
+
+            // Heal ice platforms slightly
+            for (const pl of state.meltPlatforms) {
+              if (!pl.gone) {
+                pl.shrink = Math.max(0, pl.shrink - pl.baseW * 0.25);
+                pl.w = pl.baseW - pl.shrink;
+                pl.glowTimer = 1.5;
+                
+                // Spawn healing particles rising from the platform
+                for (let k = 0; k < 5; k++) {
+                  state.particles.push({
+                    x: pl.x + Math.random() * pl.w,
+                    y: pl.y + 4,
+                    vx: (Math.random() - 0.5) * 16,
+                    vy: -15 - Math.random() * 15,
+                    life: 0.7,
+                    maxLife: 0.7,
+                    color: "#80F5FF",
+                    size: 2 + Math.random() * 2,
+                    kind: "snow"
+                  });
+                }
+              }
+            }
           }
           input.actionPressed = false;
         }
@@ -1662,6 +1917,16 @@
           }
           if (ui.warmthText)
             ui.warmthText.textContent = (state.warmth * 100).toFixed(0) + "%";
+          if (ui.warmthLabel) {
+            let labelText = "WARMTH ";
+            if (state.warmth <= 0.2) labelText += "❄️❄️❄️❄️❄️";
+            else if (state.warmth <= 0.4) labelText += "❄️❄️❄️❄️";
+            else if (state.warmth <= 0.6) labelText += "❄️❄️❄️";
+            else if (state.warmth <= 0.8) labelText += "❄️❄️";
+            else if (state.warmth <= 0.9) labelText += "❄️";
+            else labelText += "🔥🔥🔥🔥🔥";
+            ui.warmthLabel.textContent = labelText;
+          }
           if (ui.rescuedText)
             ui.rescuedText.textContent =
               "🐥 " + state.rescuedCount + " / " + TARGET_RESCUES + " rescued";
@@ -1747,6 +2012,15 @@
           ctx.restore();
         }
 
+        function drawSnowfall() {
+          ctx.save();
+          ctx.fillStyle = "#ffffff";
+          for (const s of snowfallParticles) {
+            circle(s.x, s.y, s.size, true);
+          }
+          ctx.restore();
+        }
+
         function render() {
           if (!state) {
             drawIdleScene();
@@ -1766,6 +2040,7 @@
           drawParticles();
           drawFloatingTexts();
           ctx.restore();
+          drawSnowfall();
           drawWater();
           drawWorldHud();
           drawWinWipe();
@@ -1808,30 +2083,67 @@
           ctx.restore();
         }
 
-        function drawBackground() {
-          // Check if background layers are ready. If not, draw default sky and clouds.
-          const anyLoaded = bgLayers.some(l => l.img.complete && l.img.naturalWidth > 0);
-          if (!anyLoaded) {
-            ctx.fillStyle = "#FDFBF7";
-            ctx.fillRect(0, 0, canvas.width, canvas.height);
-
-            ctx.fillStyle = "#FFE6F2";
-            circle(120, 95, 52, true);
-            ctx.fillStyle = "#DFF2FF";
-            circle(700, 90, 58, true);
-
-            for (const cloud of clouds) {
-              drawCloud(cloud.x, cloud.y, cloud.scale, cloud.layer);
+        function lerpColor(c1, c2, pct) {
+          const parseHex = (hex) => {
+            const h = hex.replace("#", "");
+            if (h.length === 3) {
+              return [
+                parseInt(h[0] + h[0], 16),
+                parseInt(h[1] + h[1], 16),
+                parseInt(h[2] + h[2], 16),
+              ];
             }
-            return;
-          }
+            return [
+              parseInt(h.substring(0, 2), 16),
+              parseInt(h.substring(2, 4), 16),
+              parseInt(h.substring(4, 6), 16),
+            ];
+          };
+          const rgb1 = parseHex(c1);
+          const rgb2 = parseHex(c2);
+          const r = Math.round(rgb1[0] + (rgb2[0] - rgb1[0]) * pct);
+          const g = Math.round(rgb1[1] + (rgb2[1] - rgb1[1]) * pct);
+          const b = Math.round(rgb1[2] + (rgb2[2] - rgb1[2]) * pct);
+          return `rgb(${r}, ${g}, ${b})`;
+        }
 
+        function drawBackground() {
           const W = canvas.width;
           const H = canvas.height;
-          
-          // Use cameraX during active play, or slow drift scroll when idle/intro overlay is open
+          const warmthVal = state ? state.warmth : 0.0;
+          const timeVal = state ? state.time : Date.now() * 0.001;
           const scrollVal = gameRunning ? cameraX : (state ? cameraX + state.time * 25 : Date.now() * 0.025);
 
+          // 1. Sky Gradient
+          const skyGrad = ctx.createLinearGradient(0, 0, 0, H);
+          const skyColor1 = lerpColor("#0A1C40", "#4B286C", warmthVal);
+          const skyColor2 = lerpColor("#1C3A73", "#D27D2D", warmthVal);
+          skyGrad.addColorStop(0, skyColor1);
+          skyGrad.addColorStop(1, skyColor2);
+          ctx.fillStyle = skyGrad;
+          ctx.fillRect(0, 0, W, H);
+
+          // 2. Aurora Borealis (Layer 1)
+          ctx.save();
+          ctx.globalAlpha = 0.15 + (1 - warmthVal) * 0.25;
+          const aurColor = (state && state.state === "won") ? "rgba(0, 255, 127, 0.4)" : "rgba(80, 240, 210, 0.25)";
+          ctx.fillStyle = aurColor;
+          for (let j = 0; j < 2; j++) {
+            ctx.beginPath();
+            ctx.moveTo(0, 60 + j * 30);
+            for (let x = 0; x <= W + 20; x += 20) {
+              const y = 60 + j * 30 + Math.sin(timeVal * 1.0 + x * 0.004 + j * 1.5) * 22 * Math.cos(timeVal * 0.35 + x * 0.002);
+              ctx.lineTo(x, y);
+            }
+            ctx.lineTo(W, 0);
+            ctx.lineTo(0, 0);
+            ctx.closePath();
+            ctx.fill();
+          }
+          ctx.restore();
+
+          // 3. Preloaded Background images
+          // 3. Preloaded Background images
           bgLayers.forEach(layer => {
             const img = layer.img;
             if (!img.complete || img.naturalWidth === 0) return;
@@ -1839,9 +2151,12 @@
             const tileW = img.naturalWidth * scale;
             let x = -(scrollVal * layer.speed) % tileW;
             if (x > 0) x -= tileW;
+            ctx.save();
+            ctx.globalAlpha = 0.85; // Increased opacity for rich background display
             for (let dx = x; dx < W; dx += tileW) {
               ctx.drawImage(img, dx, 0, tileW, H);
             }
+            ctx.restore();
           });
         }
 
@@ -1912,23 +2227,49 @@
 
         function drawHomeBase() {
           const b = state.stableBase;
-          ctx.fillStyle = "#DDF5FF";
+          
+          // 1. Warm cozy sun glow halo over the safe iceberg
+          ctx.save();
+          const safeGrad = ctx.createRadialGradient(b.x + b.w/2, b.y - 10, 10, b.x + b.w/2, b.y - 10, 150);
+          safeGrad.addColorStop(0, "rgba(255, 226, 110, 0.32)");
+          safeGrad.addColorStop(0.5, "rgba(255, 185, 90, 0.12)");
+          safeGrad.addColorStop(1, "rgba(255, 255, 255, 0)");
+          ctx.fillStyle = safeGrad;
+          ctx.beginPath();
+          ctx.arc(b.x + b.w/2, b.y - 10, 150, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.restore();
+
+          // 2. Draw main safe base platform (3D block)
+          ctx.save();
+          const ibGrad = ctx.createLinearGradient(b.x, b.y, b.x, b.y + b.h);
+          ibGrad.addColorStop(0, "#DDF5FF");
+          ibGrad.addColorStop(0.3, "#A8DAF0");
+          ibGrad.addColorStop(1, "#2C5E7A");
+          
+          ctx.fillStyle = ibGrad;
           roundedRect(b.x, b.y, b.w, b.h, 20, true, false);
           ctx.strokeStyle = "#111";
           ctx.lineWidth = 4;
           roundedRect(b.x, b.y, b.w, b.h, 20, false, true);
 
-          // A bright mint "safe zone" trim along the top edge — an
-          // unmistakable "this is the good place" signal, readable before
-          // any label text.
+          // Crevice texture lines on the front face
+          ctx.strokeStyle = "rgba(40, 110, 150, 0.4)";
+          ctx.lineWidth = 3.5;
+          for (let offset = 40; offset < b.w; offset += 55) {
+            ctx.beginPath();
+            ctx.moveTo(b.x + offset, b.y + 15);
+            ctx.lineTo(b.x + offset + (offset % 12 - 6), b.y + b.h - 10);
+            ctx.stroke();
+          }
+          ctx.restore();
+
           ctx.fillStyle = "#7CE6A6";
           roundedRect(b.x, b.y, b.w, 14, 7, true, false);
           ctx.strokeStyle = "#111";
           ctx.lineWidth = 3;
           roundedRect(b.x, b.y, b.w, 14, 7, false, true);
 
-          // A simple happy face — a friendly, always-smiling landmark
-          // kids can spot from across the level without reading text.
           ctx.fillStyle = "#241c30";
           circle(b.x + b.w * 0.32, b.y + b.h * 0.42, 6, true);
           circle(b.x + b.w * 0.5, b.y + b.h * 0.42, 6, true);
@@ -1947,6 +2288,55 @@
           ctx.stroke();
           ctx.restore();
 
+          // 3. Draw Parent Penguins
+          // Dad: waddles slightly
+          const dadWaddle = Math.sin(state.time * 2.5) * 3;
+          const dadX = b.x + b.w * 0.72;
+          const dadY = b.y - 16;
+          ctx.save();
+          ctx.translate(dadX, dadY + Math.abs(dadWaddle));
+          ctx.rotate(dadWaddle * 0.05);
+          drawEmoji("🐧", 0, -18, 42); // Larger Dad
+          ctx.restore();
+
+          // Mom: waves happily
+          const momWave = Math.sin(state.time * 4.5) * 4;
+          const momX = b.x + b.w * 0.85;
+          const momY = b.y - 16;
+          ctx.save();
+          ctx.translate(momX, momY + Math.abs(momWave));
+          ctx.scale(-1, 1);
+          drawEmoji("🐧", 0, -16, 38); // Mom
+          ctx.restore();
+
+          // 4. Draw Rescued fish jumping
+          if (state.fishJumpTimer > 0) {
+            const progress = (1.5 - state.fishJumpTimer) / 1.5;
+            const jumpHeight = 75;
+            const fishX = b.x + b.w * 0.5 + (progress * 80 - 40);
+            const fishY = b.y - Math.sin(progress * Math.PI) * jumpHeight - 10;
+            ctx.save();
+            ctx.translate(fishX, fishY);
+            ctx.rotate(progress * Math.PI - Math.PI / 2);
+            drawEmoji("🐟", 0, 0, 18);
+            ctx.restore();
+          }
+
+          // 5. Draw snow sparkles rising from base
+          if (Math.random() < 0.12) {
+            state.particles.push({
+              x: b.x + Math.random() * b.w,
+              y: b.y,
+              vx: (Math.random() - 0.5) * 8,
+              vy: -15 - Math.random() * 20,
+              life: 1.0,
+              maxLife: 1.0,
+              color: "#FFF59D",
+              size: 2 + Math.random() * 2,
+              kind: "snow"
+            });
+          }
+
           ctx.fillStyle = "#fff";
           roundedRect(b.x + 22, b.y - 38, 150, 36, 8, true, false);
           ctx.strokeStyle = "#111";
@@ -1958,20 +2348,20 @@
           ctx.textBaseline = "middle";
           ctx.fillText("💚 SAFE ICEBERG", b.x + 30, b.y - 20);
 
+          // 6. Draw Delivered chicks dancing
           const delivered = state.chicks.filter((c) => c.delivered);
           delivered.forEach((c, i) => {
-            const dance = Math.sin(state.time * 4 + i * 1.7) * 4;
+            const dance = Math.sin(state.time * 6.5 + i * 1.5) * 8; // Higher jump!
             const destW = 32;
             const destH = chickSprite.loaded
               ? (chickSprite.frameH / chickSprite.frameW) * destW
               : 34;
 
             if (chickSprite.loaded) {
-              // Delivered chicks are dancing! Cycle between happy frame (0), walking left (4), walking right (5)
-              const danceCycle = Math.floor(state.time * 6 + i) % 3;
-              let frame = 0; // Happy open mouth
-              if (danceCycle === 1) frame = 4; // left foot
-              else if (danceCycle === 2) frame = 5; // right foot
+              const danceCycle = Math.floor(state.time * 7 + i) % 3;
+              let frame = 0;
+              if (danceCycle === 1) frame = 4;
+              else if (danceCycle === 2) frame = 5;
 
               const col = frame % chickSprite.cols;
               const row = Math.floor(frame / chickSprite.cols);
@@ -1979,8 +2369,7 @@
               const sy = row * chickSprite.frameH;
 
               ctx.save();
-              // Center horizontally and align to bottom at home base
-              ctx.translate(b.x + 52 + i * 28, b.y - (i % 2) * 6 + dance);
+              ctx.translate(b.x + 48 + i * 26, b.y - (i % 2) * 4 + dance);
               ctx.drawImage(
                 chickSprite.img,
                 sx,
@@ -1994,11 +2383,22 @@
               );
               ctx.restore();
             } else {
-              drawEmoji("🐥", b.x + 52 + i * 28, b.y - 6 - (i % 2) * 6 + dance, 22);
+              drawEmoji("🐥", b.x + 48 + i * 26, b.y - 6 - (i % 2) * 4 + dance, 22);
             }
 
-            if (Math.sin(state.time * 3 + i) > 0.85) {
-              drawEmoji("💚", b.x + 52 + i * 28 + 10, b.y - 22 - (i % 2) * 6 + dance, 12);
+            // Celebratory particles
+            if (Math.random() < 0.02) {
+              state.particles.push({
+                x: b.x + 48 + i * 26 + (Math.random() - 0.5) * 8,
+                y: b.y - 45 + dance,
+                vx: (Math.random() - 0.5) * 12,
+                vy: -20 - Math.random() * 20,
+                life: 1.0,
+                maxLife: 1.0,
+                kind: "emoji",
+                text: Math.random() < 0.55 ? "❤️" : "✨",
+                size: 11
+              });
             }
           });
         }
@@ -2013,18 +2413,36 @@
 
           ctx.save();
           ctx.translate(state.valve.x, state.valve.y);
-          const spin = state.valve.pulse * 1.3 + state.valve.activeFlash * 2.8;
+          const spin = state.valve.pulse * 1.3 + state.valve.activeFlash * 12.0;
           ctx.rotate(spin);
-          ctx.fillStyle = state.coolingTimer > 0 ? "#87E1FF" : "#FFD84D";
+          
+          if (state.valve.frozen) {
+            ctx.fillStyle = "#B3F0FF";
+          } else {
+            ctx.fillStyle = state.coolingTimer > 0 ? "#87E1FF" : "#FFD84D";
+          }
+          
           circle(0, 0, state.valve.r, true);
           ctx.strokeStyle = "#111";
           ctx.lineWidth = 4;
           circle(0, 0, state.valve.r, false);
+          
           for (let i = 0; i < 4; i++) {
             ctx.rotate(Math.PI / 2);
             ctx.fillRect(-4, -state.valve.r - 12, 8, 22);
             ctx.strokeRect(-4, -state.valve.r - 12, 8, 22);
           }
+          
+          if (state.valve.frozen) {
+            ctx.save();
+            ctx.fillStyle = "rgba(255, 255, 255, 0.8)";
+            for (let j = 0; j < 6; j++) {
+              ctx.rotate(Math.PI / 3);
+              ctx.fillRect(-2, -state.valve.r + 4, 4, 14);
+            }
+            ctx.restore();
+          }
+
           circle(0, 0, 8, true);
           circle(0, 0, 8, false);
           ctx.restore();
@@ -2038,7 +2456,7 @@
           ctx.textAlign = "center";
           ctx.textBaseline = "middle";
           ctx.fillText(
-            state.coolingTimer > 0 ? "COOLING!" : "SPIN VALVE",
+            state.valve.frozen ? "FROZEN ❄️" : (state.coolingTimer > 0 ? "COOLING!" : "SPIN VALVE"),
             p.x + 165,
             p.y - 31,
           );
@@ -2104,7 +2522,6 @@
         // shading, and stage-appropriate cracks/puddles/fragment gaps.
         function drawIceFloe(pl, x, w, meltRatio) {
           const h = pl.h;
-          const pts = getIceShapePoints(pl);
           const stage =
             meltRatio < 0.15
               ? 1
@@ -2121,49 +2538,76 @@
           ctx.rotate(pl.rot || 0);
           ctx.translate(-w / 2, -h / 2);
 
-          // Jagged organic body
-          ctx.beginPath();
-          for (let i = 0; i < pts.outline.length; i++) {
-            const o = pts.outline[i];
-            const ang = o.t * Math.PI * 2;
-            const rx = (w / 2) * o.bulge;
-            const ry = (h / 2) * o.bulge;
-            const px = w / 2 + Math.cos(ang) * rx;
-            const py = h / 2 + Math.sin(ang) * ry;
-            if (i === 0) ctx.moveTo(px, py);
-            else ctx.lineTo(px, py);
+          // Apply blue healing glow if active
+          if (pl.glowTimer > 0) {
+            ctx.shadowColor = "#87E1FF";
+            ctx.shadowBlur = 15 * (pl.glowTimer / 1.5);
           }
-          ctx.closePath();
 
-          const fade = stage >= 5 ? 0.55 : stage >= 4 ? 0.72 : 0.92;
-          ctx.globalAlpha = fade;
-          ctx.fillStyle = stage >= 4 ? "#B7E2FF" : "#E4F7FF";
-          ctx.fill();
-          ctx.globalAlpha = 1;
+          // Shading colors
+          let topColor = "#ffffff";
+          let sideColor1 = "#A8DAF0";
+          let sideColor2 = "#2C5E7A";
+          
+          if (stage === 1) {
+            topColor = "#ffffff";
+            sideColor1 = "#BCE3F7";
+            sideColor2 = "#3E7E9E";
+          } else if (stage === 2) {
+            topColor = "#E4F7FF";
+            sideColor1 = "#A8DCEF";
+            sideColor2 = "#2C5E7A";
+          } else if (stage === 3) {
+            topColor = "#C2DCEE";
+            sideColor1 = "#8CBED9";
+            sideColor2 = "#1E475E";
+          } else if (stage === 4) {
+            topColor = "#A5C6DC";
+            sideColor1 = "#739FBD";
+            sideColor2 = "#123042";
+          } else {
+            topColor = "#92AFCE";
+            sideColor1 = "#5E82A1";
+            sideColor2 = "#081E2E";
+          }
+
+          const thickness = 16;
+
+          // 1. Draw 3D side/front face (extruded downward)
+          ctx.save();
+          ctx.fillStyle = sideColor2;
+          roundedRect(0, thickness, w, h, 12, true, false);
           ctx.strokeStyle = "#111";
-          ctx.lineWidth = 3.5;
-          ctx.stroke();
+          ctx.lineWidth = 4;
+          roundedRect(0, thickness, w, h, 12, false, true);
+          ctx.restore();
 
-          // Snow cap: a jagged bright strip hugging the top edge
-          ctx.beginPath();
-          const teeth = pts.snowTeeth;
-          const step = w / (teeth.length - 1);
-          ctx.moveTo(0, h * 0.16);
-          for (let i = 0; i < teeth.length; i++) {
-            ctx.lineTo(i * step, h * 0.16 * teeth[i]);
+          // 2. Draw Top surface
+          ctx.save();
+          ctx.fillStyle = topColor;
+          roundedRect(0, 0, w, h, 12, true, false);
+          ctx.strokeStyle = "#111";
+          ctx.lineWidth = 4;
+          roundedRect(0, 0, w, h, 12, false, true);
+          ctx.restore();
+          
+          // Reset shadow blur
+          ctx.shadowBlur = 0;
+
+          // 3. Draw clean ice cube emojis lined up on top
+          for (let i = 0; i < Math.max(2, Math.floor(w / 38)); i++) {
+            drawEmoji(
+              "🧊",
+              22 + i * 32,
+              h / 2 + Math.sin(i + state.time * 2) * 1.5,
+              18,
+            );
           }
-          ctx.lineTo(w, h * 0.3);
-          ctx.lineTo(0, h * 0.3);
-          ctx.closePath();
-          ctx.fillStyle = "#ffffff";
-          ctx.globalAlpha = 0.9;
-          ctx.fill();
-          ctx.globalAlpha = 1;
 
-          // Cracks / puddles that thicken with each melt stage
+          // 4. Cracks / puddles
           if (stage >= 2) {
             const cracks = getCrackLines(pl, stage);
-            ctx.strokeStyle = stage >= 4 ? "#3B7FB8" : "#7FB8E0";
+            ctx.strokeStyle = stage >= 4 ? "#1D4F73" : "#3B7FB8";
             ctx.lineWidth = stage >= 4 ? 2.4 : 1.6;
             for (const c of cracks) {
               const cx = c.cx * w;
@@ -2179,17 +2623,6 @@
               ctx.stroke();
             }
           }
-          if (stage >= 3) {
-            // small melt puddles pooling on the surface
-            const rand = seededRandom((pl.crackSeed || 1) * 3 + 5);
-            ctx.fillStyle = "rgba(60, 130, 200, 0.35)";
-            const puddles = 2 + (stage >= 4 ? 1 : 0);
-            for (let i = 0; i < puddles; i++) {
-              const px = (0.2 + rand() * 0.6) * w;
-              const py = (0.35 + rand() * 0.35) * h;
-              ellipse(px, py, 10 + rand() * 8, 4 + rand() * 3, true, false);
-            }
-          }
           ctx.restore();
         }
 
@@ -2198,18 +2631,12 @@
             if (pl.gone) continue;
             const x = pl.x + pl.shrink * 0.5;
             const meltRatio = 1 - pl.w / pl.baseW;
-            const critical = meltRatio > 0.55;
-            ctx.fillStyle = critical ? "#B7E2FF" : "#DDF6FF";
-            roundedRect(x, pl.y, pl.w, pl.h, 12, true, false);
-            ctx.strokeStyle = "#111";
-            ctx.lineWidth = 4;
-            roundedRect(x, pl.y, pl.w, pl.h, 12, false, true);
+            
+            // Draw the beautiful, organic, bobbing/rotating ice floe!
+            drawIceFloe(pl, x, pl.w, meltRatio);
 
+            const critical = meltRatio > 0.55;
             if (critical) {
-              // Hazard cue: a pulsing amber/red marching-dash outline so
-              // kids read "get off, this one's about to go!" before it
-              // actually vanishes — the same danger language as the Smog
-              // and factory, applied to a shrinking hazard here.
               const pulse = 0.5 + Math.sin(state.time * 9) * 0.5;
               ctx.save();
               ctx.strokeStyle = `rgba(239, 68, 68, ${(0.5 + pulse * 0.4).toFixed(2)})`;
@@ -2221,13 +2648,29 @@
               ctx.restore();
             }
 
-            for (let i = 0; i < Math.max(2, Math.floor(pl.w / 38)); i++) {
-              drawEmoji(
-                "🧊",
-                x + 22 + i * 32,
-                pl.y + pl.h / 2 + Math.sin(i + state.time * 2) * 2,
-                18,
-              );
+            // Draw visual segmented health bar underneath if it is melting
+            if (meltRatio > 0.05) {
+              const barW = pl.w * 0.65;
+              const barH = 7;
+              const bx = x + (pl.w - barW) / 2;
+              const by = pl.y + pl.h + 9 + (Math.sin(state.time * 2.0 + pl.phase) * 2);
+              
+              ctx.save();
+              // Neo-brutalist health bar container
+              ctx.fillStyle = "#1e293b";
+              ctx.fillRect(bx - 2, by - 2, barW + 4, barH + 4);
+              
+              // Fill bar
+              const healthPct = 1 - meltRatio;
+              let fillCol = "#7CE6A6";
+              if (healthPct < 0.35) {
+                fillCol = "#FF3B30";
+              } else if (healthPct < 0.65) {
+                fillCol = "#FFCC00";
+              }
+              ctx.fillStyle = fillCol;
+              ctx.fillRect(bx, by, barW * healthPct, barH);
+              ctx.restore();
             }
           }
         }
@@ -2254,17 +2697,47 @@
             }
             if (nearest && bestDist < 120) {
               const ratio = 1 - nearest.w / nearest.baseW;
-              if (ratio > 0.5) {
-                shiver = Math.sin(state.time * 22 + chick.bob) * 2.2;
-                crying = ratio > 0.7;
+              if (ratio > 0.35) {
+                shiver = Math.sin(state.time * 26 + chick.bob) * 2.8;
+                crying = ratio > 0.55;
               }
             }
 
             const destW = 32;
             let destH = 34;
-
             if (chickSprite.loaded) {
               destH = (chickSprite.frameH / chickSprite.frameW) * destW;
+            }
+
+            // Calculate exact rotated positioning to stay glued to bobbing/tilting platforms
+            let drawX = chick.x + 9 + shiver;
+            let drawY = chick.y + 18 + bob;
+            let drawRot = 0;
+            
+            if (!chick.rescued && chick.platformIndex !== undefined) {
+              const pl = state.meltPlatforms[chick.platformIndex];
+              if (pl && !pl.gone) {
+                const plX = pl.x + pl.shrink * 0.5;
+                const plCenterW = pl.w / 2;
+                const plCenterH = pl.h / 2;
+                
+                const relX = (chick.x + 9) - (plX + plCenterW);
+                const relY = -plCenterH;
+                
+                const rot = pl.rot || 0;
+                const cos = Math.cos(rot);
+                const sin = Math.sin(rot);
+                
+                const rotX = relX * cos - relY * sin;
+                const rotY = relX * sin + relY * cos;
+                
+                drawX = plX + plCenterW + rotX + shiver;
+                drawY = pl.y + plCenterH + rotY + bob;
+                drawRot = rot;
+              }
+            }
+
+            if (chickSprite.loaded) {
               let frame = 3; // Default standing
               if (crying) {
                 // Worried fast-blink animation when platform is melting
@@ -2298,8 +2771,8 @@
               const sy = row * chickSprite.frameH;
 
               ctx.save();
-              // Center horizontally and align to bottom of the 18px physical box
-              ctx.translate(chick.x + 9 + shiver, chick.y + 18 + bob);
+              ctx.translate(drawX, drawY);
+              ctx.rotate(drawRot);
               ctx.drawImage(
                 chickSprite.img,
                 sx,
@@ -2311,44 +2784,45 @@
                 destW,
                 destH,
               );
+
+              // Draw Ice Left progress bar inside coordinate space so it tilts & stays glued
+              if (!chick.rescued && nearest && bestDist < 120) {
+                const icePct = Math.round((nearest.w / nearest.baseW) * 100);
+                if (icePct < 100) {
+                  const barW = 32;
+                  const barH = 5;
+                  const bx = -barW / 2;
+                  const by = -destH - 8;
+
+                  ctx.fillStyle = "rgba(15, 23, 42, 0.65)";
+                  ctx.fillRect(bx, by, barW, barH);
+
+                  let fillColor = "#80E0FF";
+                  if (icePct < 35) {
+                    fillColor = "#FF3B30";
+                  } else if (icePct < 65) {
+                    fillColor = "#FFCC00";
+                  }
+
+                  const fillW = (icePct / 100) * barW;
+                  ctx.fillStyle = fillColor;
+                  ctx.fillRect(bx, by, fillW, barH);
+
+                  ctx.strokeStyle = "#1e293b";
+                  ctx.lineWidth = 1;
+                  ctx.strokeRect(bx, by, barW, barH);
+                }
+              }
               ctx.restore();
             } else {
-              // Fallback
-              drawEmoji("🐥", chick.x + 8 + shiver, chick.y + 8 + bob, 22);
+              ctx.save();
+              ctx.translate(drawX, drawY);
+              ctx.rotate(drawRot);
+              drawEmoji("🐥", 0, -11, 22);
+              ctx.restore();
             }
 
-            // Draw Ice Left progress bar
-            if (!chick.rescued && nearest && bestDist < 120) {
-              const icePct = Math.round((nearest.w / nearest.baseW) * 100);
-              if (icePct < 100) {
-                const barW = 32;
-                const barH = 5;
-                const bx = chick.x + 9 - barW / 2;
-                const by = chick.y - 8 + bob;
-
-                ctx.save();
-                ctx.fillStyle = "rgba(15, 23, 42, 0.65)";
-                ctx.fillRect(bx, by, barW, barH);
-
-                let fillColor = "#80E0FF"; // Ice Blue
-                if (icePct < 35) {
-                  fillColor = "#FF3B30"; // Danger Red
-                } else if (icePct < 65) {
-                  fillColor = "#FFCC00"; // Warning Yellow
-                }
-
-                const fillW = (icePct / 100) * barW;
-                ctx.fillStyle = fillColor;
-                ctx.fillRect(bx, by, fillW, barH);
-
-                ctx.strokeStyle = "#1e293b";
-                ctx.lineWidth = 1;
-                ctx.strokeRect(bx, by, barW, barH);
-                ctx.restore();
-              }
-            }
-
-            // Draw "Press E / ☸️" prompt when overlapping
+            // Draw "Press E / ☸️" prompt when overlapping (upright, at drawX/drawY)
             if (!chick.rescued && rectsOverlap(p, { x: chick.x, y: chick.y, w: 18, h: 18 }) && p.carrying.length === 0) {
               ctx.save();
               ctx.fillStyle = "#ffffff";
@@ -2357,8 +2831,8 @@
               ctx.font = 'bold 12px "Quicksand", sans-serif';
               ctx.textAlign = "center";
               const promptText = "Press E / ☸️";
-              ctx.strokeText(promptText, chick.x + 9, chick.y - 16 + bob);
-              ctx.fillText(promptText, chick.x + 9, chick.y - 16 + bob);
+              ctx.strokeText(promptText, drawX, drawY - destH - 12);
+              ctx.fillText(promptText, drawX, drawY - destH - 12);
               ctx.restore();
             }
 
@@ -2380,6 +2854,30 @@
           const nervous = !!p.onCriticalIce;
           const jitterX = nervous ? Math.sin(state.time * 30) * 2.2 : 0;
           const tilt = nervous ? Math.sin(state.time * 16) * 0.06 : 0;
+
+          // Exaggerated penguin waddle sway (tilt & lift feet)
+          let waddleTilt = 0;
+          let waddleY = 0;
+          if (sheet === spriteSheets.running) {
+            const runCycle = state.time * Math.max(9, Math.abs(p.vx) * 0.08);
+            waddleTilt = Math.sin(runCycle) * 0.16; // side-to-side body tilt
+            waddleY = -Math.abs(Math.cos(runCycle)) * 4.5; // waddle bounce
+          }
+
+          // Match tilt of bobbing/rotating platforms if standing on one
+          let platformRot = 0;
+          if (p.onGround) {
+            const solids = getSolids();
+            const under = solids.find(
+              (s) =>
+                p.x + p.w > s.x &&
+                p.x < s.x + s.w &&
+                Math.abs(p.y + p.h - s.y) < 6,
+            );
+            if (under && under.rot !== undefined) {
+              platformRot = under.rot;
+            }
+          }
 
           // Mother penguin is visually larger
           const destW = 72;
@@ -2406,8 +2904,8 @@
             const sy = row * sheet.frameH;
 
             ctx.save();
-            ctx.translate(x + p.w / 2 + jitterX, y + p.h);
-            ctx.rotate(tilt);
+            ctx.translate(x + p.w / 2 + jitterX, y + p.h + waddleY);
+            ctx.rotate(tilt + waddleTilt + platformRot);
 
             // Penny sprite sheets face right naturally, so scale direction directly matches facing
             let faceDirection = p.facing;
@@ -2428,8 +2926,8 @@
           } else {
             // Fallback render
             ctx.save();
-            ctx.translate(x + p.w / 2 + jitterX, y + p.h);
-            ctx.rotate(tilt);
+            ctx.translate(x + p.w / 2 + jitterX, y + p.h + waddleY);
+            ctx.rotate(tilt + waddleTilt + platformRot);
 
             let faceDirection = p.facing;
 
@@ -2450,33 +2948,23 @@
           }
 
           if (p.carrying && p.carrying.length > 0) {
+            // Draw hugging emoji above Penny
+            drawEmoji("🤗", x + p.w / 2 - p.facing * 18, y + p.h - destH - 12 + Math.sin(state.time * 6) * 3, 18);
+
             p.carrying.forEach((chick, index) => {
               const cW = 28; // slightly smaller than ground chicks (32)
               const cH = chickSprite.loaded
                 ? (chickSprite.frameH / chickSprite.frameW) * cW
                 : 30;
 
-              // Offset on Penny's shoulder/back inside her coordinate frame
-              // -14 is backwards from her beak (since in sprite sheets she naturally faces right)
-              // -destH * 0.65 is about 65% up from her feet (y + p.h)
-              const offsetX = -14;
-              const offsetY = -destH * 0.65;
+              // Hold the chick above the belly in front!
+              const offsetX = 12;
+              const offsetY = -destH * 0.4;
 
               if (chickSprite.loaded) {
-                // Carried chicks on Mother's back: they look happy (frame 0) or look around
-                const carriedTime = (state.time * 2 + index * 1.3) % 6.0;
-                let frame = 3; // Normal look
-                if (carriedTime < 3.5) {
-                  frame = 0; // Happy open mouth (yay, riding!)
-                } else if (carriedTime < 3.7) {
-                  frame = 1; // Blink transition
-                } else if (carriedTime < 3.9) {
-                  frame = 2; // Eyes closed happy
-                } else if (carriedTime < 4.1) {
-                  frame = 1; // Blink transition
-                } else {
-                  frame = 3; // Normal standing
-                }
+                // Alternately flap wings/cycle walking frames
+                const flapCycle = Math.floor(state.time * 8 + index) % 2;
+                let frame = flapCycle === 0 ? 0 : 4; // Alternate smile/happy frame 0 and flapping waddle frame 4!
 
                 const col = frame % chickSprite.cols;
                 const row = Math.floor(frame / chickSprite.cols);
@@ -2484,7 +2972,7 @@
                 const sy = row * chickSprite.frameH;
 
                 ctx.save();
-                ctx.translate(x + p.w / 2, y + p.h);
+                ctx.translate(x + p.w / 2, y + p.h + waddleY);
                 ctx.scale(p.facing, 1); // Face same direction as Mother!
                 ctx.translate(offsetX, offsetY);
                 ctx.drawImage(
@@ -2500,7 +2988,7 @@
                 );
                 ctx.restore();
               } else {
-                drawEmoji("🐥", x + p.w / 2 + offsetX * p.facing, y + p.h + offsetY - 10, 20);
+                drawEmoji("🐥", x + p.w / 2 + offsetX * p.facing, y + p.h + waddleY + offsetY - 10, 20);
               }
             });
           }
@@ -2516,6 +3004,24 @@
             } else if (pt.kind === "drip") {
               ctx.fillStyle = pt.color;
               ellipse(pt.x, pt.y, pt.size * 0.6, pt.size * 1.3, true, false);
+            } else if (pt.kind === "wind") {
+              ctx.strokeStyle = pt.color;
+              ctx.lineWidth = 3;
+              ctx.beginPath();
+              ctx.moveTo(pt.x, pt.y);
+              ctx.lineTo(pt.x + pt.size, pt.y);
+              ctx.stroke();
+            } else if (pt.kind === "emoji") {
+              ctx.fillStyle = "#111"; // Fallback color, though filled emojis don't care
+              ctx.font = `${pt.size || 14}px Arial`;
+              ctx.textAlign = "center";
+              ctx.textBaseline = "middle";
+              ctx.fillText(pt.text, pt.x, pt.y);
+            } else if (pt.kind === "footprint") {
+              ctx.fillStyle = pt.color;
+              ctx.beginPath();
+              ctx.ellipse(pt.x, pt.y, 4, 2, 0, 0, Math.PI * 2);
+              ctx.fill();
             } else {
               ctx.fillStyle = pt.color;
               ctx.strokeStyle = "#111";
@@ -2529,72 +3035,95 @@
 
         function drawWater() {
           const top = state.seaLevel;
-          const roughness = 1 + state.warmth * 1.6;
+          const warmthVal = state ? state.warmth : 0;
+          const roughness = 1 + warmthVal * 2.2;
+          
           ctx.save();
-          ctx.fillStyle = "#2F6FD0";
+          ctx.fillStyle = lerpColor("#2F6FD0", "#0D1B3E", warmthVal);
           ctx.beginPath();
-          ctx.moveTo(0, canvas.height);
-          ctx.lineTo(0, top);
-          for (let x = 0; x <= canvas.width; x += 16) {
-            const y = top + Math.sin(state.time * 2.8 * roughness + x * 0.02) * 7 * roughness;
-            ctx.lineTo(x, y);
+
+          const W = canvas.width;
+          const H = canvas.height;
+          const scrollVal = cameraX;
+
+          ctx.moveTo(0, H);
+          for (let x = 0; x <= W + 20; x += 15) {
+            const worldX = x + scrollVal;
+            const amp = (6 + warmthVal * 16) * Math.sin(worldX * 0.015 + state.time * (2.2 + warmthVal * 2.0));
+            const amp2 = 3 * Math.cos(worldX * 0.04 - state.time * 3.5);
+            ctx.lineTo(x, top + amp + amp2);
           }
-          ctx.lineTo(canvas.width, canvas.height);
+          ctx.lineTo(W, H);
           ctx.closePath();
           ctx.fill();
-          ctx.strokeStyle = "#111";
-          ctx.lineWidth = 4;
-          ctx.stroke();
 
-          // Foam highlight riding the crest of the wave line
-          ctx.strokeStyle = "rgba(255,255,255,0.55)";
-          ctx.lineWidth = 2;
+          ctx.strokeStyle = lerpColor("#76C4FF", "#2E5088", warmthVal);
+          ctx.lineWidth = 2.5;
           ctx.beginPath();
-          for (let x = 0; x <= canvas.width; x += 16) {
-            const y = top + Math.sin(state.time * 2.8 * roughness + x * 0.02) * 7 * roughness - 2;
-            if (x === 0) ctx.moveTo(x, y);
-            else ctx.lineTo(x, y);
+          for (let x = 0; x <= W + 20; x += 15) {
+            const worldX = x + scrollVal;
+            const amp = (6 + warmthVal * 16) * Math.sin(worldX * 0.015 + state.time * (2.2 + warmthVal * 2.0));
+            const amp2 = 3 * Math.cos(worldX * 0.04 - state.time * 3.5);
+            if (x === 0) ctx.moveTo(0, top + amp + amp2);
+            else ctx.lineTo(x, top + amp + amp2);
           }
           ctx.stroke();
 
-          // Fish swimming beneath the surface, wrapping around the world
-          ctx.font = "16px Arial";
-          ctx.textAlign = "center";
-          ctx.textBaseline = "middle";
-          for (const f of waterFish) {
-            const worldX =
-              ((f.baseX + state.time * f.speed * f.dir) % WORLD_W + WORLD_W) %
-              WORLD_W;
-            const sx = worldX - cameraX;
-            if (sx < -20 || sx > canvas.width + 20) continue;
-            const sy = top + f.depth + Math.sin(state.time * 1.6 + f.phase) * 6;
-            if (sy > canvas.height - 4) continue;
+          ctx.fillStyle = "rgba(230, 248, 255, 0.85)";
+          ctx.strokeStyle = "rgba(100, 180, 220, 0.5)";
+          ctx.lineWidth = 1.5;
+          for (const chunk of waterIceChunks) {
+            const cx = ((chunk.x - scrollVal) % (W + 200) + (W + 200)) % (W + 200) - 100;
+            const worldX = cx + scrollVal;
+            const amp = (6 + warmthVal * 16) * Math.sin(worldX * 0.015 + state.time * (2.2 + warmthVal * 2.0));
+            const cy = top + amp - 4 + Math.sin(state.time * 2.5 + chunk.wobble) * 3;
+            
+            ctx.beginPath();
+            ctx.moveTo(cx - chunk.w/2, cy);
+            ctx.lineTo(cx - chunk.w/4, cy - chunk.h);
+            ctx.lineTo(cx + chunk.w/4, cy - chunk.h);
+            ctx.lineTo(cx + chunk.w/2, cy);
+            ctx.closePath();
+            ctx.fill();
+            ctx.stroke();
+          }
+
+          const sealX = ((900 - scrollVal) % (W + 500) + (W + 500)) % (W + 500) - 100;
+          const sealWorldX = sealX + scrollVal;
+          const sealWaveY = top + (6 + warmthVal * 16) * Math.sin(sealWorldX * 0.015 + state.time * (2.2 + warmthVal * 2.0)) - 10;
+          const sealBob = Math.sin(state.time * 1.8) * 4;
+          drawEmoji("🦭", sealX, sealWaveY + sealBob, 26);
+
+          const whaleCycle = (state.time) % 24;
+          if (whaleCycle < 4.0) {
+            const progress = whaleCycle / 4.0;
+            const whaleX = ((1400 - scrollVal) % (W + 600) + (W + 600)) % (W + 600) - 100;
+            const whaleY = top - 10 - Math.sin(progress * Math.PI) * 45;
             ctx.save();
-            ctx.translate(sx, sy);
-            ctx.scale(f.dir, 1);
-            ctx.fillText("🐟", 0, 0);
+            ctx.translate(whaleX, whaleY);
+            ctx.rotate(progress * Math.PI - Math.PI / 2);
+            drawEmoji("🐋", 0, 0, 36);
             ctx.restore();
           }
 
-          // Rising bubbles, looping in depth
-          ctx.fillStyle = "rgba(255,255,255,0.55)";
-          ctx.strokeStyle = "rgba(255,255,255,0.8)";
+          ctx.globalAlpha = 0.5 - warmthVal * 0.35;
+          ctx.fillStyle = "#A0D5FF";
           for (const b of waterBubbles) {
-            const worldX = b.x;
-            const sx = worldX - cameraX;
-            if (sx < -10 || sx > canvas.width + 10) continue;
-            const cycle = (state.time * b.speed + b.phase * 20) % (b.depth + 40);
-            const sy = canvas.height - cycle;
-            if (sy < top + 6) continue;
-            ctx.beginPath();
-            ctx.arc(sx + Math.sin(state.time + b.phase) * 4, sy, b.size, 0, Math.PI * 2);
-            ctx.fill();
+            const bx = ((b.x - scrollVal) % (W + 100) + (W + 100)) % (W + 100) - 50;
+            const by = top + b.depth + Math.sin(state.time * b.speed * 0.05 + b.phase) * 6;
+            circle(bx, by, b.size, true);
           }
 
-          ctx.globalAlpha = 0.28;
-          ctx.fillStyle = "#2F6FD0";
-          ctx.fillRect(0, top + 12, canvas.width, canvas.height - top);
-          ctx.globalAlpha = 1;
+          for (const f of waterFish) {
+            const fx = ((f.baseX + Math.sin(state.time * 0.5 + f.phase) * 110 - scrollVal) % (W + 200) + (W + 200)) % (W + 200) - 100;
+            const fy = top + f.depth + Math.cos(state.time * 0.8 + f.phase) * 10;
+            ctx.save();
+            ctx.translate(fx, fy);
+            ctx.scale(f.dir, 1);
+            drawEmoji("🐟", 0, 0, 15);
+            ctx.restore();
+          }
+
           ctx.restore();
         }
 
