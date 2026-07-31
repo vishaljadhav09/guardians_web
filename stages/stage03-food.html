@@ -766,6 +766,13 @@
   var flowerIdSeq = 1;
   var fruitIdSeq = 1;
 
+  var screenShake = 0;
+  var rainbowAlpha = 0;
+  var winPhase = 0;
+  var winTimer = 0;
+  var ambientBees = [];
+  var bgCritters = [];
+
   var score = 0, combo = 0, pollinatedCount = 0, consecutiveMisses = 0;
   var beatTimer = 0, nextBeatMs = BEAT_MS;
   var sessionTimeLeft = SESSION_MS;
@@ -903,6 +910,22 @@
   /* ---------------- Helpers ---------------- */
   function rand(min, max) { return min + Math.random() * (max - min); }
 
+  function lerpColor(a, b, amount) {
+    var ah = parseInt(a.replace(/#/g, ''), 16),
+        ar = ah >> 16, ag = ah >> 8 & 0xff, ab = ah & 0xff,
+        bh = parseInt(b.replace(/#/g, ''), 16),
+        br = bh >> 16, bg = bh >> 8 & 0xff, bb = bh & 0xff,
+        rr = ar + amount * (br - ar),
+        rg = ag + amount * (bg - ag),
+        rb = ab + amount * (bb - ab);
+    return '#' + ((1 << 24) + (Math.round(rr) << 16) + (Math.round(rg) << 8) + Math.round(rb)).toString(16).slice(1);
+  }
+
+  function drawEmoji(emoji, x, y, size) {
+    var sprite = EmojiSprite.get(emoji, size);
+    ctx.drawImage(sprite, x - sprite.width / 2, y - sprite.height / 2);
+  }
+
   function canvasPointFromEvent(e) {
     var rect = canvas.getBoundingClientRect();
     var scaleX = W / rect.width;
@@ -990,7 +1013,37 @@
       buzz.emitTimer -= dt;
       if (buzz.emitTimer <= 0) {
         buzz.emitTimer = BUZZ_EMIT_INTERVAL;
-        particles.burst(buzz.x, buzz.y, { glyphs: ["✨"], count: 1, life: 320, minSpeed: 15, maxSpeed: 45, gravity: 30 });
+        particles.burst(buzz.x, buzz.y, { glyphs: ["✨", "💛"], count: 1, life: 320, minSpeed: 10, maxSpeed: 30, gravity: 0 });
+      }
+
+      // Check if Buzz touches active flowers in flight
+      for (var i = 0; i < flowers.length; i++) {
+        var f = flowers[i];
+        if (f.state === "active" && Collision.distance(buzz.x, buzz.y, f.x, f.y) < f.r + 22) {
+          if (!f.collectedPollen) {
+            f.collectedPollen = true;
+            buzz.pollenCount = (buzz.pollenCount || 0) + 1;
+            f.wiggleTime = 0.5; // Start wiggle shake
+
+            particles.burst(f.x, f.y - 12, { glyphs: ["✨", "💛"], count: 8, life: 500, minSpeed: 10, maxSpeed: 40 });
+            audio.collect();
+
+            // Honey droplet visual collection
+            if (f.hasHoney) {
+              f.hasHoney = false;
+              spawnFloatLabel(f.x, f.y - 25, "Yum, Honey! 🍯", "#ffd500");
+              particles.burst(buzz.x, buzz.y, { glyphs: ["🍯", "💛"], count: 4, life: 600, minSpeed: 10, maxSpeed: 30 });
+            } else {
+              spawnFloatLabel(f.x, f.y - 25, "Pollen! 🌸", "#ffd23f");
+            }
+
+            if (buzz.pollenCount === 3) {
+              buzz.glowing = true;
+              spawnFloatLabel(buzz.x, buzz.y - 35, "Pollen Carrier Glow! 🌟", "#ffa800");
+              particles.burst(buzz.x, buzz.y, { glyphs: ["🌟", "✨", "💛"], count: 15, life: 750, minSpeed: 20, maxSpeed: 70 });
+            }
+          }
+        }
       }
     } else if (buzz.state === "landing") {
       buzz.landTimer -= dt;
@@ -1016,6 +1069,12 @@
       buzz.scaleY += (1 - buzz.scaleY) * Math.min(1, dt * 6);
     }
 
+    if (buzz.glowing) {
+      if (Math.random() < 0.22) {
+        particles.burst(buzz.x, buzz.y, { glyphs: ["✨"], count: 1, life: 350, minSpeed: 8, maxSpeed: 20 });
+      }
+    }
+
     // Takeoff stretch layers on top of whichever branch just ran.
     if (buzz.takeoffTimer > 0) {
       buzz.takeoffTimer -= dt;
@@ -1038,6 +1097,9 @@
      per frame (elements wrap/respawn in place instead). */
   function updateAmbient(dt) {
     windPhase += dt;
+
+    updateBackgroundBees(dt);
+    updateBgCritters(dt);
 
     // Smog scares off the delicate stuff and mutes the rest — ties into
     // the existing smogAlpha value so this reacts to Stage 3's smog waves
@@ -1147,6 +1209,11 @@ flowers.push({
   timeLeft: WILT_MS,
   bornAt: performance.now(),
   showUntil: 0,
+  variety: Math.floor(Math.random() * 5),
+  swayPhase: rand(0, Math.PI * 2),
+  wiggleTime: 0,
+  hasHoney: Math.random() < 0.22,
+  collectedPollen: false,
 
   // sprite animation
   spriteFrame: 0,
@@ -1175,26 +1242,38 @@ flowers.push({
     combo++;
     consecutiveMisses = 0;
     var gain = 50 + combo * 5;
+    
+    // Super Pollen carrying combo reward!
+    if (buzz.glowing) {
+      buzz.glowing = false;
+      buzz.pollenCount = 0;
+      gain += 150;
+      spawnFloatLabel(flower.x, flower.y - 60, "Super Pollen Combo! +150 🌟", "#ffa800");
+      particles.burst(flower.x, flower.y - 12, { glyphs: ["✨", "🌈", "🐝", "🌸", "💮"], count: 22, life: 800, minSpeed: 30, maxSpeed: 100, gravity: 30 });
+    } else {
+      particles.burst(flower.x, flower.y - 6, { glyphs: ["✨", "💛", "🟡"], count: 18, life: 750, minSpeed: 30, maxSpeed: 90, gravity: 40 });
+    }
+    
     score += gain;
     audio.collect();
-    particles.burst(flower.x, flower.y - 6, { glyphs: ["✨", "💮", "🌟"], count: 10, life: 620, minSpeed: 40, maxSpeed: 150, gravity: 120 });
     popFruitAt(flower.x, flower.y);
     pulseCombo();
     reactGuide("happy");
     spawnFloatLabel(flower.x, flower.y - 40, "+" + gain + "!", "#2fbf71");
 
-    // Cocomelon-style reinforcement: short, cheerful call-outs fired at
-    // the exact moment they become true, so the lesson ("bees make
-    // flowers bloom") lands through repetition, not one buried mention.
-    if (!saidFirstPollinate) {
-      saidFirstPollinate = true;
-      GOGUi.say("🐝 Yay! Buzz made a flower bloom!");
+    // Educational milestone callouts
+    if (pollinatedCount === 1) {
+      GOGUi.say("🐝 Flowers make fruit!");
+    } else if (pollinatedCount === 4) {
+      GOGUi.say("🍎 Fruit feeds animals!");
+    } else if (pollinatedCount === 8) {
+      GOGUi.say("🌳 Nature works together!");
+    } else if (pollinatedCount === 12) {
+      GOGUi.say("🌸 Pollination restores Gaia!");
     } else if (combo === 5) {
       GOGUi.say("🔥 5 in a row! Buzz is on fire!");
     } else if (combo === 10) {
       GOGUi.say("🌟 Wow, 10 in a row, Buzz!");
-    } else if (pollinatedCount === WIN_TARGET - 2) {
-      GOGUi.say("🎯 So close! Just 2 more flowers!");
     }
 
     if (pollinatedCount >= WIN_TARGET) triggerWin();
@@ -1265,6 +1344,14 @@ flowers.push({
     smogActive = false; smogTimer = 0; smogAlpha = 0; smogClouds = []; flightPaths = [];
     floatLabels = []; saidFirstPollinate = false; saidCritterFed = false;
     dragging = false; dragSourceId = null; dragTrail = [];
+    screenShake = 0;
+    rainbowAlpha = 0;
+    winPhase = 0;
+    winTimer = 0;
+    ambientBees = [];
+    bgCritters = [];
+    buzz.pollenCount = 0;
+    buzz.glowing = false;
     // reset Buzz to a calm idle hover in the middle of the meadow
     buzz.x = buzz.restX = W * 0.5;
     buzz.y = buzz.restY = GROUND_Y - 160;
@@ -1289,7 +1376,10 @@ flowers.push({
     if (gameState !== "playing") return;
     audio.stopBgm();
     gameState = "winning";
+    winPhase = 1;
+    winTimer = 0;
     winWipeRadius = 0;
+    critters = [];
     audio.win();
 
     if (window.GOGSave) {
@@ -1362,6 +1452,30 @@ flowers.push({
 
     ambientBee.t += dt;
     updateAmbient(dt); // meadow stays alive behind overlays too — no empty frames
+
+    // Decelerate screen shake
+    if (screenShake > 0) {
+      screenShake = Math.max(0, screenShake - dt * 25);
+    }
+
+    // Dynamic music muffling during smog active waves
+    if (audio._bgMusic) {
+      var maxVol = audio._bgmMaxVol !== undefined ? audio._bgmMaxVol : 0.5;
+      var targetVol = maxVol * (1 - smogAlpha * 0.7);
+      audio._bgMusic.volume = targetVol;
+    }
+
+    // Lerp rainbowAlpha: show fully on win, show partially on high combos
+    var targetRainbow = (gameState === "winning" && winPhase < 4) ? 0.8 : (combo >= 3 ? 0.45 : 0);
+    rainbowAlpha += (targetRainbow - rainbowAlpha) * Math.min(1, dt * 3);
+
+    // Update active flowers wiggles
+    for (var fIdx = 0; fIdx < flowers.length; fIdx++) {
+      var fl = flowers[fIdx];
+      if (fl.wiggleTime > 0) {
+        fl.wiggleTime -= dt;
+      }
+    }
 
     if (gameState === "playing") {
       // session timer
@@ -1442,14 +1556,28 @@ flowers.push({
         }
       }
 
-      // critters
+      // critters update
       for (var k = critters.length - 1; k >= 0; k--) {
         var c = critters[k];
         c.life += dt;
         c.hop += dt * 8;
         if (c.phase === "approach") {
           var dir = c.targetX > c.x ? 1 : -1;
-          c.x += dir * 90 * dt;
+          
+          if (c.type === "hare") {
+            c.x += dir * 65 * dt; // Rabbit hops slowly
+          } else if (c.type === "deer") {
+            c.x += dir * 55 * dt; // Deer walks gracefully
+          } else if (c.type === "boar") {
+            c.x += dir * 140 * dt; // Boar runs heavily!
+            if (Math.sin(c.life * 16) > 0.8) {
+              screenShake = 3.5; // shake screen
+              if (Math.random() < 0.25) {
+                particles.burst(c.x, GROUND_Y, { glyphs: ["💨"], count: 1, life: 300, minSpeed: 5, maxSpeed: 15 });
+              }
+            }
+          }
+
           if (Math.abs(c.targetX - c.x) < 6) {
             c.phase = "eat";
             c.eatUntil = c.life + 0.6;
@@ -1461,8 +1589,6 @@ flowers.push({
                 break;
               }
             }
-            // Make the pollination → fruit → food-chain link explicit and
-            // impossible to miss, right at the moment it happens.
             spawnFloatLabel(c.x, c.y - 46, "Yum! 🍎", "#ffb020");
             if (!saidCritterFed) {
               saidCritterFed = true;
@@ -1471,11 +1597,32 @@ flowers.push({
           }
         } else if (c.phase === "eat") {
           if (c.life >= c.eatUntil) {
+            c.phase = "celebrate";
+            c.celebrateUntil = c.life + 1.2;
+          }
+        } else if (c.phase === "celebrate") {
+          // Turn around, face player, bounce and spawn hearts!
+          c.facing = c.x < W / 2 ? 1 : -1;
+          c.bounce = Math.abs(Math.sin(c.life * 14)) * 14;
+          if (Math.random() < 0.08) {
+            particles.burst(c.x, c.y - 30, { glyphs: ["❤️", "✨"], count: 1, life: 500, minSpeed: 8, maxSpeed: 20 });
+          }
+          if (c.life >= c.celebrateUntil) {
             c.phase = "leave";
           }
         } else if (c.phase === "leave") {
           var awayDir = c.x < W / 2 ? -1 : 1;
-          c.x += awayDir * 110 * dt;
+          
+          if (c.type === "hare") {
+            c.x += awayDir * 80 * dt;
+          } else if (c.type === "deer") {
+            c.x += awayDir * 70 * dt;
+          } else if (c.type === "boar") {
+            c.x += awayDir * 160 * dt;
+            if (Math.sin(c.life * 16) > 0.8) {
+              screenShake = 3.5;
+            }
+          }
           c.facing = awayDir;
         }
         if ((c.phase === "leave" && (c.x < -60 || c.x > W + 60)) || c.life > 15) critters.splice(k, 1);
@@ -1483,28 +1630,112 @@ flowers.push({
     }
 
     if (gameState === "winning") {
-      winWipeRadius += dt * winWipeMax * 1.6;
-      if (winWipeRadius >= winWipeMax) {
-        gameState = "win";
+      winTimer += dtMs;
+
+      // Phase 1: Blooming and Rainbow (0 to 2500ms)
+      if (winPhase === 1) {
+        for (var fIdx = 0; fIdx < flowers.length; fIdx++) {
+          var fl = flowers[fIdx];
+          if (fl.state === "active") {
+            fl.state = "pollinated";
+            fl.showUntil = performance.now() + 5000;
+            particles.burst(fl.x, fl.y, { glyphs: ["✨", "🌸", "💛"], count: 3, life: 600, minSpeed: 10, maxSpeed: 40 });
+          }
+        }
+        smogActive = false;
+        smogAlpha = Math.max(0, smogAlpha - dt * 2);
         
-        triggerSeedReturnCutscene(function () {
-          activeOverlay = GOGUi.showOverlay({
-            accent: "var(--gog-tangerine)",
-            title: "🌼 The Meadow Blooms!",
-            body: "Buzz did it — every last flower is blooming again.",
-            factText: "About 1 in 3 bites of the food we eat depends on pollinators like bees!",
-            primaryLabel: "Play Again ▶",
-            onPrimary: function () {
-              GOGUi.closeOverlay(activeOverlay);
-              activeOverlay = null;
-              resetGame();
-            },
-            secondaryLabel: "Back to Map",
-            onSecondary: function () {
-              window.location.href = "../index.html";
+        if (winTimer >= 2500) {
+          winPhase = 2;
+          critters = [
+            { type: "deer", x: -50, y: GROUND_Y, targetX: W * 0.35, phase: "approach", hop: 0, life: 0, facing: 1 },
+            { type: "boar", x: W + 50, y: GROUND_Y, targetX: W * 0.65, phase: "approach", hop: 0, life: 0, facing: -1 },
+            { type: "hare", x: -30, y: GROUND_Y, targetX: W * 0.48, phase: "approach", hop: 0, life: 0, facing: 1 }
+          ];
+          birdFlock = { x: -60, y: 60, dir: 1, speed: 130, flapPhase: 0 };
+        }
+      }
+      
+      // Phase 2: Critters gather and celebrate (2500ms to 5000ms)
+      else if (winPhase === 2) {
+        for (var cIdx = 0; cIdx < critters.length; cIdx++) {
+          var c = critters[cIdx];
+          c.life += dt;
+          c.hop += dt * 8;
+          if (c.phase === "approach" && Math.abs(c.targetX - c.x) < 8) {
+            c.phase = "celebrate";
+            c.celebrateUntil = c.life + 12; // Celebrate continuously
+          }
+          if (c.phase === "celebrate") {
+            c.bounce = Math.abs(Math.sin(c.life * 14)) * 14;
+            if (Math.random() < 0.06) {
+              particles.burst(c.x, c.y - 30, { glyphs: ["❤️", "✨"], count: 1, life: 500, minSpeed: 8, maxSpeed: 20 });
             }
+          }
+          // Move approach critters
+          if (c.phase === "approach") {
+            var dir = c.targetX > c.x ? 1 : -1;
+            c.x += dir * 75 * dt;
+          }
+        }
+        
+        if (birdFlock) {
+          birdFlock.x += birdFlock.dir * birdFlock.speed * dt;
+          birdFlock.flapPhase += dt * 10;
+        }
+
+        if (winTimer >= 5000) {
+          winPhase = 3;
+          buzz.state = "flying";
+          buzz.restX = W / 2;
+          buzz.restY = -180;
+        }
+      }
+      
+      // Phase 3: Buzz flies up, sparkles fall (5000ms to 7000ms)
+      else if (winPhase === 3) {
+        // Smoothly ease Buzz upwards
+        var ease = easeAmount(dt, 5);
+        buzz.x += (buzz.restX - buzz.x) * ease;
+        buzz.y += (buzz.restY - buzz.y) * ease;
+        buzz.trail.push({ x: buzz.x, y: buzz.y, age: 0 });
+        if (buzz.trail.length > BUZZ_TRAIL_MAX) buzz.trail.shift();
+
+        // Spawn falling sparkles/stars
+        if (Math.random() < 0.28) {
+          particles.burst(rand(30, W - 30), 0, { glyphs: ["✨", "🌟", "💛"], count: 2, life: 800, minSpeed: 10, maxSpeed: 35, gravity: 15 });
+        }
+
+        if (winTimer >= 7000) {
+          winPhase = 4;
+        }
+      }
+      
+      // Phase 4: Wipe and show Seed Return
+      else if (winPhase === 4) {
+        winWipeRadius += dt * winWipeMax * 1.6;
+        if (winWipeRadius >= winWipeMax) {
+          gameState = "win";
+          
+          triggerSeedReturnCutscene(function () {
+            activeOverlay = GOGUi.showOverlay({
+              accent: "var(--gog-tangerine)",
+              title: "🌼 The Meadow Blooms!",
+              body: "Buzz did it — every last flower is blooming again.",
+              factText: "About 1 in 3 bites of the food we eat depends on pollinators like bees!",
+              primaryLabel: "Play Again ▶",
+              onPrimary: function () {
+                GOGUi.closeOverlay(activeOverlay);
+                activeOverlay = null;
+                resetGame();
+              },
+              secondaryLabel: "Back to Map",
+              onSecondary: function () {
+                window.location.href = "../index.html";
+              }
+            });
           });
-        });
+        }
       }
     }
 
@@ -1620,12 +1851,21 @@ flowers.push({
   function drawGrass() {
     ctx.save();
     ctx.lineCap = "round";
+
+    var progressPct = pollinatedCount / WIN_TARGET;
+    var rearCol = lerpColor("#7D7F4B", "#3E631A", progressPct);
+    var frontCol = lerpColor("#9BA85A", "#5C8D2B", progressPct);
+    if (smogAlpha > 0) {
+      rearCol = lerpColor(rearCol, "#555F4D", smogAlpha);
+      frontCol = lerpColor(frontCol, "#6D7863", smogAlpha);
+    }
+
     for (var x = 6; x < W; x += GRASS_SPACING) {
       var wind = Math.sin(windPhase * 1.6 + x * 0.06);
       var bend = wind * 6;
 
       // --- Rear blades (darker green, slightly offset/shorter for depth) ---
-      ctx.strokeStyle = "#4d7424";
+      ctx.strokeStyle = rearCol;
       ctx.lineWidth = 2.5;
 
       // Left rear blade
@@ -1643,7 +1883,7 @@ flowers.push({
       ctx.stroke();
 
       // --- Front blades (brighter/standard green) ---
-      ctx.strokeStyle = "#689F38";
+      ctx.strokeStyle = frontCol;
       ctx.lineWidth = 3;
 
       // Tall center blade
@@ -1782,6 +2022,160 @@ flowers.push({
     }
   }
 
+  function updateBackgroundBees(dt) {
+    var targetCount = 2 + Math.floor((pollinatedCount / WIN_TARGET) * 4);
+    if (gameState === "winning" && winPhase >= 2) {
+      targetCount = 8; // Extra bees during victory!
+    }
+    while (ambientBees.length < targetCount) {
+      ambientBees.push({
+        x: rand(-50, W + 50),
+        y: rand(80, GROUND_Y - 50),
+        vx: rand(45, 90) * (Math.random() < 0.5 ? 1 : -1),
+        vy: rand(-25, 25),
+        t: Math.random() * 100,
+        buzzScale: rand(0.65, 0.9)
+      });
+    }
+    while (ambientBees.length > targetCount) {
+      ambientBees.pop();
+    }
+
+    for (var i = 0; i < ambientBees.length; i++) {
+      var ab = ambientBees[i];
+      ab.t += dt;
+      ab.x += ab.vx * dt;
+      ab.y += ab.vy * dt + Math.sin(ab.t * 5.0) * 0.7;
+      if (ab.vx > 0 && ab.x > W + 60) {
+        ab.x = -60;
+        ab.y = rand(80, GROUND_Y - 50);
+      } else if (ab.vx < 0 && ab.x < -60) {
+        ab.x = W + 60;
+        ab.y = rand(80, GROUND_Y - 50);
+      }
+      if (Math.random() < 0.015) {
+        ab.vx = (ab.vx > 0 ? -1 : 1) * rand(45, 90);
+      }
+    }
+  }
+
+  function updateBgCritters(dt) {
+    if (bgCritters.length === 0) {
+      bgCritters = [
+        { type: "squirrel", emoji: "🐿", x: rand(100, W - 100), y: GROUND_Y, t: 0, state: "idle", dir: 1, walkTimer: 0 },
+        { type: "hedgehog", emoji: "🦔", x: rand(100, W - 100), y: GROUND_Y, t: 0, state: "idle", dir: -1, walkTimer: 0 }
+      ];
+    }
+    for (var i = 0; i < bgCritters.length; i++) {
+      var bc = bgCritters[i];
+      bc.t += dt;
+      if (bc.state === "idle") {
+        if (Math.random() < 0.012) {
+          bc.state = "walk";
+          bc.walkTimer = rand(1.5, 3.5);
+          bc.dir = Math.random() < 0.5 ? 1 : -1;
+        }
+      } else {
+        bc.x += bc.dir * 28 * dt;
+        bc.walkTimer -= dt;
+        if (bc.walkTimer <= 0 || bc.x < 40 || bc.x > W - 40) {
+          bc.state = "idle";
+        }
+      }
+    }
+  }
+
+  function drawAmbientBees() {
+    ctx.save();
+    ctx.globalAlpha = ambientVividness;
+    for (var i = 0; i < ambientBees.length; i++) {
+      var ab = ambientBees[i];
+      ctx.save();
+      ctx.translate(ab.x, ab.y);
+      if (ab.vx < 0) ctx.scale(-1, 1);
+      drawEmoji("🐝", 0, 0, 16 * ab.buzzScale);
+      ctx.restore();
+    }
+    ctx.restore();
+  }
+
+  function drawBgCritters() {
+    ctx.save();
+    ctx.globalAlpha = ambientVividness;
+    for (var i = 0; i < bgCritters.length; i++) {
+      var bc = bgCritters[i];
+      ctx.save();
+      var bounceY = bc.state === "walk" ? Math.abs(Math.sin(bc.t * 8.5)) * 3.5 : 0;
+      ctx.translate(bc.x, bc.y - bounceY);
+      if (bc.dir === -1) ctx.scale(-1, 1);
+      drawEmoji(bc.emoji, 0, -11, 20);
+      ctx.restore();
+    }
+    ctx.restore();
+  }
+
+  function drawSmogDesaturation() {
+    if (smogAlpha <= 0.001) return;
+    ctx.save();
+    ctx.globalAlpha = smogAlpha * 0.55;
+    ctx.globalCompositeOperation = "color";
+    ctx.fillStyle = "#666666";
+    ctx.fillRect(0, 0, W, H);
+    ctx.restore();
+  }
+
+  function drawRainbow(alpha) {
+    if (alpha <= 0.001) return;
+    ctx.save();
+    ctx.globalAlpha = alpha;
+    ctx.lineWidth = 10;
+    ctx.lineCap = "round";
+    var colors = ["#FF3B30", "#FF9500", "#FFCC00", "#4CD964", "#5AC8FA", "#5856D6", "#FF2D55"];
+    var rx = W / 2;
+    var ry = GROUND_Y;
+    var radius = 240;
+    for (var i = 0; i < colors.length; i++) {
+      ctx.strokeStyle = colors[i];
+      ctx.beginPath();
+      ctx.arc(rx, ry, radius - i * 8, Math.PI, 0, false);
+      ctx.stroke();
+    }
+    ctx.restore();
+  }
+
+  function drawFlowerStem(f, bendAmt, topX, topY) {
+    ctx.save();
+    // Greener grass/stem progression
+    var progressPct = pollinatedCount / WIN_TARGET;
+    var stemCol = lerpColor("#4CAF50", "#2E7D32", progressPct);
+    if (f.state === "wilted") {
+      stemCol = "#795548"; // brown withered stem
+    }
+    ctx.strokeStyle = stemCol;
+    ctx.lineWidth = 3.5;
+    ctx.beginPath();
+    ctx.moveTo(f.x, f.y + 44);
+    var cx = f.x + Math.sin(windPhase + f.swayPhase) * 10 - bendAmt * 20;
+    var cy = f.y + 22;
+    ctx.quadraticCurveTo(cx, cy, topX, topY);
+    ctx.stroke();
+
+    // Leaf
+    if (f.state !== "wilted" || bendAmt < 0.7) {
+      var leafX = (f.x + cx) / 2;
+      var leafY = (f.y + 44 + cy) / 2;
+      ctx.fillStyle = stemCol;
+      ctx.save();
+      ctx.translate(leafX, leafY);
+      ctx.rotate(Math.sin(windPhase) * 0.15 + (bendAmt * 0.5));
+      ctx.beginPath();
+      ctx.ellipse(0, 0, 8, 4, Math.PI / 4, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.restore();
+    }
+    ctx.restore();
+  }
+
   function drawBirdFlock() {
     if (!birdFlock) return;
     ctx.save();
@@ -1880,12 +2274,72 @@ flowers.push({
   function drawFlowers() {
     for (var i = 0; i < flowers.length; i++) {
       var f = flowers[i];
-      var glyph, scale = 1, alpha = 1;
+      var glyph = "🌸", scale = 1, alpha = 1;
+      var bendAmt = 0;
+      
+      // Map to flower diversity emojis
+      if (f.variety === 0) glyph = "🌷";
+      else if (f.variety === 1) glyph = "🌻";
+      else if (f.variety === 2) glyph = "🪻";
+      else if (f.variety === 3) glyph = "🌼";
+      else if (f.variety === 4) glyph = "💮";
 
-      // Base dimensions for alignment
+      // Calculate sway and wiggle rotations
+      var sway = Math.sin(windPhase * 2.0 + f.swayPhase) * 0.11;
+      var wiggle = 0;
+      if (f.wiggleTime > 0) {
+        wiggle = Math.sin(f.wiggleTime * 24) * 0.22 * Math.exp(-f.wiggleTime * 2);
+      }
+      var rot = sway + wiggle;
+
       var baseWidth = f.r * 2.2;
-      var baseHeight = baseWidth * (154 / 152); // Normal growing height
-      var baseYOffset = baseHeight / 2; // Offset to bottom baseline
+      var baseHeight = baseWidth * (154 / 152);
+
+      // Top coordinates of the stem (used for positioning honey and fallbacks)
+      var topX = f.x + Math.sin(windPhase * 1.5 + f.swayPhase) * 10;
+      var topY = f.y;
+
+      if (f.state === "active") {
+        var isHover = hoverTargetId === f.id;
+        var isSource = dragSourceId === f.id;
+        ctx.save();
+        ctx.beginPath();
+        ctx.arc(f.x, f.y, f.r + 6, 0, Math.PI * 2);
+        ctx.fillStyle = "rgba(255, 255, 255, 0.75)";
+        ctx.fill();
+        ctx.lineWidth = 3.5;
+        ctx.strokeStyle = "#111";
+        ctx.stroke();
+        if (isHover || isSource) {
+          ctx.beginPath();
+          ctx.arc(f.x, f.y, f.r + 14, 0, Math.PI * 2);
+          ctx.strokeStyle = "#FFD500";
+          ctx.lineWidth = 4;
+          ctx.setLineDash([6, 6]);
+          ctx.stroke();
+          ctx.setLineDash([]);
+        }
+        ctx.restore();
+        drawFlowerRing(f);
+
+        scale = 0.85;
+      } else if (f.state === "pollinated") {
+        var pT = 1 - Collision.clamp((f.showUntil - performance.now()) / 650, 0, 1);
+        scale = 1.35 + Math.sin(pT * Math.PI) * 0.35;
+      } else if (f.state === "wilted") {
+        alpha = Collision.clamp((f.showUntil - performance.now()) / 850, 0.35, 1);
+        var elapsed = 850 - (f.showUntil - performance.now());
+        bendAmt = Collision.clamp(elapsed / 850, 0, 1);
+        
+        glyph = "🥀";
+        scale = 0.9 - bendAmt * 0.15;
+        topX = f.x - bendAmt * 28;
+        topY = f.y + bendAmt * 22;
+        
+        if (Math.random() < 0.08) {
+          particles.burst(topX, topY, { glyphs: ["🍂", "🍃"], count: 1, life: 600, minSpeed: 10, maxSpeed: 25, gravity: 40 });
+        }
+      }
 
       // Check if we can use our spritesheets
       var useSprite = false;
@@ -1899,83 +2353,79 @@ flowers.push({
         }
       }
 
-      if (f.state === "active") {
-        var isHover = hoverTargetId === f.id;
-        var isSource = dragSourceId === f.id;
+      if (useSprite) {
         ctx.save();
-        ctx.beginPath();
-        ctx.arc(f.x, f.y, f.r + 6, 0, Math.PI * 2);
-        ctx.fillStyle = "#fff";
-        ctx.fill();
-        ctx.lineWidth = 4;
-        ctx.strokeStyle = "#111";
-        ctx.stroke();
-        if (isHover || isSource) {
-          ctx.beginPath();
-          ctx.arc(f.x, f.y, f.r + 14, 0, Math.PI * 2);
-          ctx.strokeStyle = "#FF007F";
-          ctx.lineWidth = 4;
-          ctx.setLineDash([6, 6]);
-          ctx.stroke();
-          ctx.setLineDash([]);
-        }
-        ctx.restore();
-        drawFlowerRing(f);
+        ctx.globalAlpha = alpha * ambientVividness;
+        
+        // Root the flower at (f.x, f.y + 44) so rotation/sway originates from ground base
+        ctx.translate(f.x, f.y + 44);
+        ctx.rotate(rot + bendAmt * 0.5);
 
-        if (useSprite) {
-          var frameDuration = 220; // ms per frame
-          var frame = Math.floor((performance.now() - f.bornAt) / frameDuration);
-          var frameIndex = Math.min(3, frame); // Frames 0, 1, 2, 3
+        if (f.state === "active" || f.state === "pollinated") {
+          // Calculate growth scale factor during first 500ms after spawn
+          var age = performance.now() - f.bornAt;
+          var bloomDuration = 500; // ms
+          var growScale = 1.0;
+          var frameIndex = 0; // 0 = Bud
+
+          var finalFrame = 1; // Pink
+          if (f.variety === 1 || f.variety === 3) finalFrame = 2; // Yellow
+          else if (f.variety === 2) finalFrame = 3; // Blue
+          else if (f.variety === 4) finalFrame = 1; // Pink
+
+          if (age < bloomDuration) {
+            var t = age / bloomDuration;
+            // Smooth springy ease-out scale
+            growScale = 1 - Math.cos(t * Math.PI * 1.5) * Math.exp(-t * 3);
+            if (age < bloomDuration / 2) {
+              frameIndex = 0; // Bud
+            } else {
+              frameIndex = finalFrame;
+            }
+          } else {
+            growScale = 1.0;
+            if (f.state === "pollinated") {
+              if (finalFrame === 1) {
+                frameIndex = 4; // Sparkly Pink (Frame 4)
+              } else {
+                frameIndex = finalFrame;
+                // Magical neon glow around Yellow/Blue pollinated flowers
+                ctx.shadowColor = (finalFrame === 2) ? "#FFD500" : "#00D5FF";
+                ctx.shadowBlur = 25;
+              }
+            } else {
+              frameIndex = finalFrame;
+            }
+          }
+
+          // Active hover/drag glowing effect
+          if (f.state === "active" && (hoverTargetId === f.id || dragSourceId === f.id)) {
+            ctx.shadowColor = "#FFD500";
+            ctx.shadowBlur = 15;
+          }
 
           var sw = 152;
           var sh = 154;
           var sx = frameIndex * sw;
           var sy = 0;
 
-          var dw = baseWidth;
-          var dh = baseHeight;
+          var dw = baseWidth * growScale;
+          var dh = baseHeight * growScale;
 
-          ctx.save();
-          ctx.translate(f.x, f.y);
+          if (f.state === "pollinated") {
+            var pT = 1 - Collision.clamp((f.showUntil - performance.now()) / 650, 0, 1);
+            var popScale = 1.35 + Math.sin(pT * Math.PI) * 0.35;
+            dw *= popScale;
+            dh *= popScale;
+          }
+
+          // Draw the sprite centered horizontally at root, and baseline at root
           ctx.drawImage(
             flowerGrowingImg,
             sx, sy, sw, sh,
-            -dw / 2, baseYOffset - dh, dw, dh
+            -dw / 2, -dh, dw, dh
           );
-          ctx.restore();
-          continue;
-        }
-
-        glyph = "🌱";
-      } else if (f.state === "pollinated") {
-        var pT = 1 - Collision.clamp((f.showUntil - performance.now()) / 650, 0, 1);
-        scale = 1 + Math.sin(pT * Math.PI) * 0.35;
-
-        if (useSprite) {
-          var sw = 152;
-          var sh = 154;
-          var sx = 4 * sw; // Frame 4 is pollinated
-          var sy = 0;
-
-          var dw = baseWidth * scale;
-          var dh = baseHeight * scale;
-
-          ctx.save();
-          ctx.translate(f.x, f.y);
-          ctx.drawImage(
-            flowerGrowingImg,
-            sx, sy, sw, sh,
-            -dw / 2, baseYOffset - dh, dw, dh
-          );
-          ctx.restore();
-          continue;
-        }
-
-        glyph = "🌸";
-      } else if (f.state === "wilted") {
-        alpha = Collision.clamp((f.showUntil - performance.now()) / 850, 0.35, 1);
-
-        if (useSprite) {
+        } else if (f.state === "wilted") {
           var elapsed = 850 - (f.showUntil - performance.now());
           var frameIndex = Math.max(0, Math.min(4, Math.floor(elapsed / 170)));
 
@@ -1987,29 +2437,45 @@ flowers.push({
           var dw = baseWidth;
           var dh = dw * (sh / sw);
 
-          ctx.save();
-          ctx.globalAlpha = alpha;
-          ctx.translate(f.x, f.y);
           ctx.drawImage(
             flowerWiltingImg,
             sx, sy, sw, sh,
-            -dw / 2, baseYOffset - dh, dw, dh
+            -dw / 2, -dh, dw, dh
           );
-          ctx.restore();
-          continue;
         }
 
-        glyph = "🥀";
+        ctx.restore();
+
+        // Draw honey droplet next to active flowers
+        if (f.state === "active" && f.hasHoney) {
+          ctx.save();
+          ctx.translate(topX, topY);
+          drawEmoji("🍯", f.r * 0.6, -f.r * 0.5, 14);
+          ctx.restore();
+        }
+        
+        continue;
       }
 
-      var sprite = EmojiSprite.get(glyph, f.r * 1.5 * scale);
+      // FALLBACK TO EMOJI RENDERING:
+      // Draw the organic rooted stem
+      drawFlowerStem(f, bendAmt, topX, topY);
+
+      var sprite = EmojiSprite.get(glyph, f.r * 1.6 * scale);
       ctx.save();
-      ctx.globalAlpha = alpha;
-      ctx.translate(f.x, f.y);
+      ctx.globalAlpha = alpha * ambientVividness;
+      ctx.translate(topX, topY);
+      ctx.rotate(rot + bendAmt * 0.5);
       ctx.drawImage(sprite, -sprite.width / 2, -sprite.height / 2);
+      
+      // Draw honey droplet next to active flowers
+      if (f.state === "active" && f.hasHoney) {
+        drawEmoji("🍯", f.r * 0.6, -f.r * 0.5, 14);
+      }
       ctx.restore();
     }
   }
+
 
   // Live "pollen ribbon" while actively dragging. Drawn as short segments
   // (not one long stroke) so each segment can fade independently by age —
@@ -2025,21 +2491,21 @@ flowers.push({
       var a = i / n; // 0 = oldest/tail (faded), 1 = newest/head (bright)
       var p0 = dragTrail[i - 1], p1 = dragTrail[i];
 
-      // outer glow pass
-      ctx.globalAlpha = a * 0.5;
-      ctx.shadowColor = "#FF9FC7";
-      ctx.shadowBlur = 18;
-      ctx.strokeStyle = "#FF007F";
-      ctx.lineWidth = 10 * a + 2;
+      // Outer golden glow pass
+      ctx.globalAlpha = a * 0.75;
+      ctx.shadowColor = "#FFD23F";
+      ctx.shadowBlur = 20;
+      ctx.strokeStyle = "#FFA800";
+      ctx.lineWidth = 10 * a + 3;
       ctx.beginPath();
       ctx.moveTo(p0.x, p0.y);
       ctx.lineTo(p1.x, p1.y);
       ctx.stroke();
 
-      // bright pollen-gold core on top, no glow (keeps it readable)
+      // Bright yellow-white core
       ctx.shadowBlur = 0;
-      ctx.globalAlpha = a * 0.9;
-      ctx.strokeStyle = "#FFD23F";
+      ctx.globalAlpha = a * 0.95;
+      ctx.strokeStyle = "#FFFFDD";
       ctx.lineWidth = 3 * a + 1;
       ctx.stroke();
     }
@@ -2216,6 +2682,13 @@ flowers.push({
       var img = def.img;
       var hasImage = img.complete && img.naturalWidth > 0;
 
+      var hopOffset = 0;
+      if (c.type === "hare" && (c.phase === "approach" || c.phase === "leave")) {
+        hopOffset = Math.abs(Math.sin(c.life * 9.5)) * 20;
+      } else if (c.phase === "celebrate") {
+        hopOffset = c.bounce || 0;
+      }
+
       if (hasImage) {
         var totalFrames = def.frames;
         var frameIndex = 0;
@@ -2234,15 +2707,12 @@ flowers.push({
         var dw = 64;
         var dh = 64;
 
-        ctx.translate(c.x, c.y);
+        ctx.translate(c.x, c.y - hopOffset);
         ctx.scale(c.facing * def.defaultFacing, 1);
 
-        // drawImage(image, sx, sy, sWidth, sHeight, dx, dy, dWidth, dHeight)
-        // With dh = 64, the feet are ~8px up from bottom of frame, so -dh + 8 aligns it nicely on ground
         ctx.drawImage(img, sx, sy, sw, sh, -dw / 2, -dh + 8, dw, dh);
       } else {
         var sprite = EmojiSprite.get(def.emoji, 40);
-        var hopOffset = c.phase === "approach" ? Math.abs(Math.sin(c.hop)) * 16 : 0;
         ctx.translate(c.x, c.y - hopOffset);
         if (c.facing === -1) ctx.scale(-1, 1);
         ctx.drawImage(sprite, -sprite.width / 2, -sprite.height);
@@ -2303,12 +2773,22 @@ flowers.push({
   }
 
   function draw() {
+    ctx.save();
+    if (screenShake > 0) {
+      var dx = (Math.random() - 0.5) * screenShake;
+      var dy = (Math.random() - 0.5) * screenShake;
+      ctx.translate(dx, dy);
+    }
+
     drawBackground();    // sky, sun glow, light rays, clouds+shadows, ground, wind grass, depth fog
+    drawRainbow(rainbowAlpha);
     drawFireflies();
     drawPollenMotes();
     drawFallingPetals();
     drawBgButterflies();
     drawBgLadybugs();
+    drawAmbientBees();
+    drawBgCritters();
     drawBirdFlock();
     drawAmbientBee();
     drawFruits();
@@ -2319,8 +2799,10 @@ flowers.push({
     drawBuzz();          // Buzz himself, always drawn on top
     particles.draw(ctx);
     drawSmog();
+    drawSmogDesaturation();
     drawFloatLabels();   // "+50!" / "Yum!" / "Oops!" — stays legible over smog
     drawWinWipe();
+    ctx.restore();
   }
 
   /* ---------------- Pointer / input ---------------- */
