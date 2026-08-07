@@ -181,7 +181,7 @@
         play: {
           emoji: "🎮",
           goal: "Collect plastic trash from the reef before the timer runs out or health drops!",
-          controls: "<strong>Move:</strong> Move mouse / drag finger to steer Splash.<br><strong>Boost:</strong> Click 💨 or press <strong>Spacebar</strong> to break clusters!"
+          controls: "<strong>Move:</strong> Move your mouse or drag your finger to swim.<br><strong>Collect:</strong> Pick up plastic to clean the reef.<br><strong>Help:</strong> Save 🐢 turtles for bonus points.<br><strong>Avoid:</strong> Stay away from 🐡 pufferfish—they hurt!<br><strong>Boost:</strong> Click 💨 or press <strong>Spacebar</strong> to dash through trash"
         }
       },
       "stage02": {
