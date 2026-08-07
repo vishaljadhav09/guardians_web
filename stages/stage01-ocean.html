@@ -101,6 +101,35 @@
         min-width: 64px;
         text-align: center;
       }
+      .lives-widget {
+        display: inline-flex;
+        align-items: center;
+        gap: 5px;
+        min-width: 100px;
+        height: 34px;
+        flex-shrink: 0;
+        vertical-align: middle;
+      }
+      .life-heart {
+        width: 30px;
+        height: 30px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 1.5rem;
+        line-height: 1;
+        transform-origin: center;
+        filter: drop-shadow(1px 2px 0 var(--gog-ink));
+        transition:
+          opacity 0.18s ease,
+          transform 0.18s ease,
+          filter 0.18s ease;
+      }
+      .life-heart.is-empty {
+        opacity: 0.24;
+        transform: scale(0.82);
+        filter: grayscale(1) drop-shadow(1px 1px 0 var(--gog-ink));
+      }
 
       /* Smooth HUD Punch Animations */
       .meter-pulse-up {
@@ -370,6 +399,18 @@
 
         .timer-chip {
           min-width: 44px;
+        }
+
+        .lives-widget {
+          min-width: 82px;
+          gap: 3px;
+          height: 30px;
+        }
+
+        .life-heart {
+          width: 24px;
+          height: 24px;
+          font-size: 1.18rem;
         }
 
         .icon-btn {
@@ -744,6 +785,15 @@
           animation-duration: 0.01s;
         }
       }
+
+      @keyframes heartShake {
+        0%, 100% { transform: scale(1); }
+        25% { transform: scale(1.15) rotate(-6deg); }
+        75% { transform: scale(0.95) rotate(6deg); }
+      }
+      .heart-shake {
+        animation: heartShake 0.4s ease-out;
+      }
     </style>
   </head>
   <body>
@@ -847,8 +897,13 @@
             <span class="label" id="reefPct">0%</span>
           </div>
           <span class="chip timer-chip" id="timerChip">60s</span>
+          <div class="lives-widget" id="livesWidget" title="Lives" aria-label="3 lives">
+            <span class="life-heart" aria-hidden="true">❤️</span>
+            <span class="life-heart" aria-hidden="true">❤️</span>
+            <span class="life-heart" aria-hidden="true">❤️</span>
+          </div>
           <span
-            class="chip"
+            class="chip visually-hidden"
             id="difficultyChip"
             title="Difficulty Level (increases over time)"
             style="
@@ -862,10 +917,10 @@
             "
             >⚡ Lvl 1</span
           >
-          <span class="chip">🌱 <span id="sproutsChip">0</span></span>
-          <span class="chip combo-chip" id="comboChip">🔥 x0</span>
+          <span class="chip visually-hidden">🌱 <span id="sproutsChip">0</span></span>
+          <span class="chip visually-hidden combo-chip" id="comboChip">🔥 x0</span>
           <button
-            class="icon-btn"
+            class="icon-btn visually-hidden"
             id="boostBtn"
             title="Echo Boost — dash & break through trash"
             aria-label="Echo Boost"
@@ -1289,6 +1344,13 @@
 
         var dolphinImg = null;
         var dolphinAttackImg = null;
+        var bottelImg = null;
+        var canImg = null;
+        var plasticBagImg = null;
+        var turtleImg = null;
+        var seaWedImg = null;
+        var seaWed2Img = null;
+        var purpleFishImg = null;
 
         // Pre-load background image assets asynchronously
         async function init() {
@@ -1300,12 +1362,29 @@
               loadImage("assets/4.png"),
               loadImage("assets/sprites/stage01/dolphine_swim.png"),
               loadImage("assets/sprites/stage01/dolphine_attack.png"),
+              loadImage("assets/sprites/stage01/bottel.png"),
+              loadImage("assets/sprites/stage01/can.png"),
+              loadImage("assets/sprites/stage01/plastic_bag.png"),
+              loadImage("assets/sprites/stage01/turtle.png"),
+              loadImage("assets/sprites/stage01/sea_wed.png"),
+              loadImage("assets/sprites/stage01/sea_wed_2.png"),
+              loadImage("assets/sprites/stage01/purple_fish.png"),
             ]);
             layers.forEach(function (layer, i) {
               layer.img = loaded[i];
             });
             dolphinImg = loaded[4];
             dolphinAttackImg = loaded[5];
+            bottelImg = loaded[6];
+            canImg = loaded[7];
+            plasticBagImg = loaded[8];
+            turtleImg = loaded[9];
+            seaWedImg = loaded[10];
+            seaWed2Img = loaded[11];
+            purpleFishImg = loaded[12];
+
+            initSeaweed();
+
             playBackgroundMusic();
           } catch (e) {
             console.error("Background load failed:", e);
@@ -1331,6 +1410,7 @@
           boostUntil: 0, // NEW: Echo Boost dash end time
           boostReadyAt: 0, // NEW: when the boost cools down and becomes available again
           slowMoUntil: 0, // NEW: brief bullet-time window on a perfect dodge
+          lives: 3,
         };
 
         var lastReefValue = null;
@@ -1341,7 +1421,7 @@
         var dolphin = {
           x: W * 0.5,
           y: H * 0.5,
-          r: 30,
+          r: 36,
           facing: 1,
           wobble: 0,
           state: "swim", // "swim" or "attack"
@@ -1413,6 +1493,40 @@
           }
         })();
 
+        var seaweedElements = [];
+        function initSeaweed() {
+          // Back layer (smaller, faded, deeper background)
+          for (var i = 0; i < 15; i++) {
+            seaweedElements.push({
+              x: rand(0, W),
+              y: H,
+              type: Math.random() < 0.5 ? 0 : 1,
+              scale: rand(0.08, 0.18),
+              phase: rand(0, Math.PI * 2),
+              speed: rand(0.5, 0.9),
+              opacity: rand(0.45, 0.6),
+              layer: "back"
+            });
+          }
+          // Front layer (larger, prominent foreground)
+          for (var i = 0; i < 20; i++) {
+            seaweedElements.push({
+              x: rand(0, W),
+              y: H,
+              type: Math.random() < 0.5 ? 0 : 1,
+              scale: rand(0.18, 0.3),
+              phase: rand(0, Math.PI * 2),
+              speed: rand(0.8, 1.3),
+              opacity: rand(0.8, 0.95),
+              layer: "front"
+            });
+          }
+          // Sort so smaller scales (further in the distance) are drawn first
+          seaweedElements.sort(function(a, b) {
+            return a.scale - b.scale;
+          });
+        }
+
         function rand(min, max) {
           return min + Math.random() * (max - min);
         }
@@ -1436,7 +1550,7 @@
             y: rand(60, H - 60),
             vx: vx,
             vy: rand(-12, 12),
-            r: 28,
+            r: 29,
             glyph: glyphs[Math.floor(Math.random() * glyphs.length)],
             bob: Math.random() * Math.PI * 2,
             age: 0,
@@ -1461,7 +1575,7 @@
             y: rand(80, H - 80),
             vx: vx,
             vy: rand(-8, 8),
-            r: 26,
+            r: 27,
             glyph: "🐢",
             bob: Math.random() * Math.PI * 2,
             age: 0,
@@ -1846,6 +1960,27 @@
             ctx.drawImage(sprite, -sprite.width / 2, -sprite.height / 2);
             ctx.restore();
           });
+        }
+
+        function drawSeaweed(t) {
+          if (!seaWedImg || !seaWed2Img) return;
+          ctx.save();
+          seaweedElements.forEach(function (sw) {
+            ctx.save();
+            // Completely screen-static position (no scrolling adjustment, stays fixed on screen)
+            var drawX = sw.x;
+            var sway = Math.sin(t * sw.speed + sw.phase) * 0.08; // gentle current sway
+            var img = sw.type === 0 ? seaWedImg : seaWed2Img;
+
+            ctx.translate(drawX, sw.y);
+            ctx.rotate(sway);
+            ctx.scale(sw.scale, sw.scale);
+            ctx.globalAlpha = sw.opacity;
+
+            // Draw seaweed anchored at the seabed floor
+            ctx.drawImage(img, -img.width / 2, -img.height);
+            ctx.restore();
+          });
           ctx.restore();
         }
 
@@ -2102,6 +2237,30 @@
           if (pearlTimer <= 0 && state.elapsed > 8) {
             spawnPearl();
             pearlTimer = rand(20, 30);
+          }
+        }
+
+        function updateLivesUi() {
+          var widget = document.getElementById("livesWidget");
+          if (!widget) return;
+          var hearts = widget.querySelectorAll(".life-heart");
+          hearts.forEach(function (heart, index) {
+            heart.classList.toggle("is-empty", index >= state.lives);
+            heart.textContent = index < state.lives ? "❤️" : "♡";
+          });
+          widget.setAttribute("aria-label", state.lives + " lives");
+        }
+
+        function damageLife() {
+          if (state.lives > 0) {
+            state.lives--;
+            updateLivesUi();
+            var widget = document.getElementById("livesWidget");
+            if (widget) {
+              widget.classList.remove("heart-shake");
+              void widget.offsetWidth; // trigger reflow
+              widget.classList.add("heart-shake");
+            }
           }
         }
 
@@ -2409,9 +2568,24 @@
             var offscreen = it.x < -80 || it.x > W + 80;
             if (offscreen) {
               if (it.type === "trash") {
-                GOGUi.say("A piece of trash escaped! 🗑️ Try again.");
-                endLose();
-                return;
+                damageLife();
+                if (state.lives <= 0) {
+                  GOGUi.say("Too much trash escaped! 🗑️ Try again.");
+                  endLose();
+                  return;
+                } else {
+                  GOGUi.say("A piece of trash escaped! 🗑️ Hearts: " + state.lives);
+                  GOGUi.floatLabel(
+                    canvasFrame,
+                    canvasXToClient(it.x < 0 ? 40 : W - 40),
+                    canvasYToClient(it.y),
+                    "Trash Escaped! ❤️ -1",
+                    "#ef4444",
+                  );
+                  audio.oops();
+                  pageFx("oops");
+                  state.hitFlashUntil = state.elapsed + 0.25;
+                }
               }
               items.splice(i, 1);
               continue;
@@ -2583,11 +2757,11 @@
               items.splice(i, 1);
 
               var damage = 12;
-              var labelText = "Oops! 🐡 -12 Reef";
+              var labelText = "Oops! 🐟 -12 Reef";
               if (dolphin.state === "attack") {
-                labelText = "Oops! 🐡 Puffer Spike! -12 Reef";
+                labelText = "Oops! 🐟 Purple Fish! -12 Reef";
                 particles.burst(dolphin.x, dolphin.y, {
-                  glyphs: ["💥", "🐡"],
+                  glyphs: ["💥", "🐟"],
                   count: 8,
                   life: 500,
                   gravity: 60,
@@ -2604,7 +2778,7 @@
               setReef(-damage, dolphin.x, dolphin.y);
               state.hits++;
               if (state.hits > 3) {
-                GOGUi.say("Too many pufferfish hits! Try again.");
+                GOGUi.say("Too many purple fish hits! Try again.");
                 endLose();
                 return;
               }
@@ -2841,8 +3015,8 @@
             var sx = col * sWidth;
             var sy = row * sHeight;
 
-            var dWidth = 150;
-            var dHeight = 150;
+            var dWidth = 180;
+            var dHeight = 180;
 
             ctx.drawImage(
               dolphinAttackImg,
@@ -2863,8 +3037,8 @@
             var sx = col * sWidth;
             var sy = row * sHeight;
 
-            var dWidth = 150;
-            var dHeight = 150;
+            var dWidth = 180;
+            var dHeight = 180;
 
             ctx.drawImage(
               dolphinImg,
@@ -2916,15 +3090,70 @@
 
             ctx.rotate(wiggle);
             ctx.scale(growScale, growScale);
-            var size = it.type === "trash" ? 54 : 40;
-            var sprite = EmojiSprite.get(it.glyph, size);
-            ctx.drawImage(sprite, -sprite.width / 2, -sprite.height / 2);
+
+            var img = null;
+            var drawW = 54;
+            var drawH = 54;
+
+            if (it.type === "trash") {
+              if (it.glyph === "🛍️" && plasticBagImg) {
+                img = plasticBagImg;
+              } else if (it.glyph === "🥤" && canImg) {
+                img = canImg;
+              } else if (bottelImg) {
+                img = bottelImg;
+              }
+              drawW = 75; // kid-friendly larger size
+              drawH = 75;
+            } else if (it.type === "turtle") {
+              if (turtleImg) {
+                img = turtleImg;
+              }
+              drawW = 70; // kid-friendly larger size
+              drawH = 70;
+            } else if (it.type === "pufferfish") {
+              if (purpleFishImg) {
+                img = purpleFishImg;
+              }
+              drawW = 75; // kid-friendly larger size
+              drawH = 75;
+            }
+
+            if (img) {
+              if (it.type === "turtle" || it.type === "pufferfish") {
+                // Spritesheet animation: 4 columns, 2 rows (8 frames)
+                var animSpeed = it.type === "turtle" ? 8 : 12;
+                var frameIndex = Math.floor((it.age * animSpeed + it.bob * 5) % 8);
+                var col = frameIndex % 4;
+                var row = Math.floor(frameIndex / 4);
+                var fw = img.width / 4;
+                var fh = img.height / 2;
+                ctx.drawImage(
+                  img,
+                  col * fw,
+                  row * fh,
+                  fw,
+                  fh,
+                  -drawW / 2,
+                  -drawH / 2,
+                  drawW,
+                  drawH
+                );
+              } else {
+                ctx.drawImage(img, -drawW / 2, -drawH / 2, drawW, drawH);
+              }
+            } else {
+              var size = it.type === "trash" ? 54 : 40;
+              var sprite = EmojiSprite.get(it.glyph, size);
+              ctx.drawImage(sprite, -sprite.width / 2, -sprite.height / 2);
+            }
             ctx.restore();
           });
         }
 
         function draw() {
           drawBackground();
+          drawSeaweed(state.elapsed);
           drawKelp(state.elapsed); // NEW: swaying kelp with leaves
           drawSeabedDecorations(); // NEW: crawling crabs, bobbing shells/snails
           drawBgFish(state.elapsed); // NEW: ambient background fish, behind everything
