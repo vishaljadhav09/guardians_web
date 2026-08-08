@@ -562,12 +562,12 @@
           gameState: "INTRO", // INTRO, WAVE_ACTIVE, WAVE_CLEARED, STAGE_WON, STAGE_LOST
           failureReason: "",
           timer: 0,
-          rows: 6,
+          rows: 4,
           cols: 10,
-          growthTime: 1.5, // current growth time (sec)
-          growthTimes: [1.2, 1.5, 1.8], // wave-specific growth time difficulty tuning (Phase 7)
-          smogSpeed: [0.07, 0.10, 0.15], // smog speeds per wave (cols per second)
-          canopyTargets: [20, 40, 55], // Target canopy percentages to win each wave (kid-friendly)
+          growthTime: 1.2, // current growth time (sec)
+          growthTimes: [1.2, 1.4, 1.7], // wave-specific growth time difficulty tuning (Phase 7)
+          smogSpeed: [0.18, 0.25, 0.35], // smog speeds per wave (cols per second)
+          canopyTargets: [25, 45, 60], // Target canopy percentages to win each wave (kid-friendly)
 
           getCanopyPercent: function () {
             var connectedCount = 0;
@@ -592,7 +592,7 @@
 
           // Initialize state
           init: function (rows, cols) {
-            this.rows = rows || 6;
+            this.rows = rows || 4;
             this.cols = cols || 10;
             this.grid = [];
             for (var r = 0; r < this.rows; r++) {
@@ -609,23 +609,33 @@
               this.grid.push(row);
             }
 
-            // Add rock obstacles for default 6x10 hillside layout
-            // Add rock obstacles for default 6x10 hillside layout[cite: 2]
-            if (this.rows === 6 && this.cols === 10) {
-              // Moved rows 1 and 2 down to rows 3, 4, and 5 to sit on the grass field layout
-              var rockCoords = [
-                [0,1],
-                [0,2],
-                [0,3],
-                [0,4],
-                [0,7],
-                [0,8],
-                [3, 1],
-                [3, 7],
-                [4, 3],
-                [5, 5],
-                [5, 8],
-              ];
+            // Add rock obstacles for default layouts
+            if (this.cols === 10) {
+              var rockCoords = [];
+              if (this.rows === 4) {
+                // Shifted coordinates for the 4-row layout (removing first 2 rows)
+                rockCoords = [
+                  [1, 1],
+                  [1, 7],
+                  [2, 3],
+                  [3, 5],
+                  [3, 8],
+                ];
+              } else if (this.rows === 6) {
+                rockCoords = [
+                  [0,1],
+                  [0,2],
+                  [0,3],
+                  [0,4],
+                  [0,7],
+                  [0,8],
+                  [3, 1],
+                  [3, 7],
+                  [4, 3],
+                  [5, 5],
+                  [5, 8],
+                ];
+              }
               var self = this;
               rockCoords.forEach(function (coord) {
                 var rr = coord[0],
@@ -1051,6 +1061,7 @@
               GOGStage2.init(4, 4);
               GOGStage2.saplings = 5;
               GOGStage2.transitionTo("WAVE_ACTIVE");
+              GOGStage2.growthTime = 3.0; // Enforce 3s growth time for this test
 
               // Plant at (0,0) and (2,2)
               GOGStage2.plant(0, 0);
@@ -1098,18 +1109,18 @@
 
             // Test 7: Rock obstacles and Smog cell locks
             (function () {
-              GOGStage2.init(6, 10);
+              GOGStage2.init(4, 10);
               GOGStage2.saplings = 5;
               GOGStage2.transitionTo("WAVE_ACTIVE");
 
               // Verify that rock cells were initialized correctly
               assert(
-                "Test 7 - Rock: (1,3) is indeed rock state",
-                GOGStage2.grid[1][3].state === "rock",
+                "Test 7 - Rock: (2,3) is indeed rock state",
+                GOGStage2.grid[2][3].state === "rock",
               );
 
               // Attempting to plant on rock should fail
-              var rockPlant = GOGStage2.plant(1, 3);
+              var rockPlant = GOGStage2.plant(2, 3);
               assert(
                 "Test 7 - Rock: Planting on rock cell fails",
                 rockPlant === false,
@@ -1187,6 +1198,11 @@
         var deerImg = null;
         var giraffeImg = null;
         var tigerImg = null;
+        var flyingBirdsImg = null;
+        var deerRunImg = null;
+        var beesFlyingImg = null;
+        var seaWedImg1 = null;
+        var seaWedImg2 = null;
 
         /* ---------------------------------------------------------------
            GOGSpriteSheet — shared sprite-sheet animation helper.
@@ -1280,7 +1296,7 @@
         // cell (1.0 = exactly cellW). Was effectively ~1.2-1.3x before;
         // bumped up so the finished tree feels like a real payoff and
         // overlaps neighbors into a proper canopy. Tune freely.
-        var TREE_SIZE_SCALE = 0.7;
+        var TREE_SIZE_SCALE = 1.4; // Doubled size of the canopy image
 
         /* ---------------------------------------------------------------
            WILDLIFE_DEFS — one animal per wave, appearing only while it's
@@ -1448,91 +1464,96 @@
         // --- AMBIENT JUNGLE FAUNA SYSTEM ---
         function initAmbientFauna() {
           state.ambientFauna = [];
-          
-          // Spawn Parrots
-          for (var i = 0; i < 2; i++) {
-            state.ambientFauna.push({
-              type: "parrot",
-              glyph: "🦜",
-              x: Math.random() * W,
-              y: 40 + Math.random() * 80,
-              vx: (Math.random() < 0.5 ? -1 : 1) * (60 + Math.random() * 40),
-              vy: 0,
-              phase: Math.random() * Math.PI,
-              scaleY: 1
-            });
-          }
-          
-          // Spawn Squirrels
-          for (var i = 0; i < 2; i++) {
-            state.ambientFauna.push({
-              type: "squirrel",
-              glyph: "🐿️",
-              x: Math.random() * W,
-              y: H - 18,
-              vx: (Math.random() < 0.5 ? -1 : 1) * (40 + Math.random() * 30),
-              state: "RUNNING",
-              timer: 1 + Math.random() * 2
-            });
-          }
 
-          // Spawn Frogs on Rocks
-          var rockCells = [];
-          for (var r = 0; r < GOGStage2.rows; r++) {
-            for (var c = 0; c < GOGStage2.cols; c++) {
-              if (GOGStage2.grid[r] && GOGStage2.grid[r][c] && GOGStage2.grid[r][c].state === "rock") {
-                rockCells.push({ r: r, c: c });
-              }
+          // 1. Spawn Flying Birds (only after second wave, i.e., Wave 3)
+          if (GOGStage2.wave >= 3) {
+            for (var i = 0; i < 3; i++) {
+              state.ambientFauna.push({
+                type: "flying-bird",
+                x: Math.random() * W,
+                y: 40 + Math.random() * 80,
+                vx: (Math.random() < 0.5 ? -1 : 1) * (70 + Math.random() * 40),
+                flapTimer: Math.random() * 2,
+                flapRate: 8 + Math.random() * 4,
+                wobble: Math.random() * Math.PI * 2,
+                h: 32 + Math.random() * 12
+              });
             }
           }
-          for (var i = 0; i < 2; i++) {
-            var cell = rockCells.length > 0 ? rockCells[i % rockCells.length] : { r: 5, c: 5 };
-            var cellW = W / GOGStage2.cols;
-            var gridH = H / 2;
-            var cellH = gridH / GOGStage2.rows;
-            var gridYOffset = H / 2;
-            var rx = cell.c * cellW + cellW / 2;
-            var ry = gridYOffset + cell.r * cellH + cellH / 2 - 4;
-            state.ambientFauna.push({
-              type: "frog",
-              glyph: "🐸",
-              homeX: rx,
-              homeY: ry,
-              x: rx,
-              y: ry,
-              jumpY: 0,
-              vy: 0,
-              state: "SITTING",
-              timer: 2 + Math.random() * 4
-            });
+
+          // 2. Spawn Deer (only after 1 wave, i.e., Wave 2+)
+          if (GOGStage2.wave >= 2) {
+            for (var i = 0; i < 2; i++) {
+              state.ambientFauna.push({
+                type: "deer-run",
+                x: Math.random() * W,
+                y: H - 18,
+                vx: (Math.random() < 0.5 ? -1 : 1) * (50 + Math.random() * 30),
+                frameTimer: Math.random() * 6
+              });
+            }
           }
 
-          // Spawn Monkeys
-          for (var i = 0; i < 2; i++) {
-            state.ambientFauna.push({
-              type: "monkey",
-              glyph: "🐒",
-              col: Math.floor(Math.random() * GOGStage2.cols),
-              yOffset: -10 + Math.random() * 20,
-              climbDir: Math.random() < 0.5 ? -1 : 1,
-              bobPhase: Math.random() * Math.PI
-            });
+          // 3. Spawn Bees (only after 1 wave, i.e., Wave 2+)
+          if (GOGStage2.wave >= 2) {
+            for (var i = 0; i < 4; i++) {
+              state.ambientFauna.push({
+                type: "bees-flying",
+                x: Math.random() * W,
+                y: H / 2 + Math.random() * (H / 2 - 40),
+                vx: (Math.random() < 0.5 ? -1 : 1) * (40 + Math.random() * 30),
+                baseY: H / 2 + Math.random() * (H / 2 - 60),
+                wobble: Math.random() * Math.PI * 2,
+                frameIndex: Math.floor(Math.random() * 8)
+              });
+            }
           }
         }
 
         function updateAmbientFauna(dt) {
           if (!state.running) return;
           var cellW = W / GOGStage2.cols;
-          var gridH = H / 2;
-          var cellH = gridH / GOGStage2.rows;
-          var gridYOffset = H / 2;
+
+          // Find canopy bounds (connected trees)
+          var minCol = -1;
+          var maxCol = -1;
+          for (var c = 0; c < GOGStage2.cols; c++) {
+            var hasConnected = false;
+            for (var r = 0; r < GOGStage2.rows; r++) {
+              if (
+                GOGStage2.grid[r] &&
+                GOGStage2.grid[r][c] &&
+                GOGStage2.grid[r][c].state === "tree" &&
+                GOGStage2.grid[r][c].connected
+              ) {
+                hasConnected = true;
+                break;
+              }
+            }
+            if (hasConnected) {
+              if (minCol === -1) minCol = c;
+              maxCol = c;
+            }
+          }
+
+          var minX = minCol * cellW;
+          var maxX = (maxCol + 1) * cellW;
+
           state.ambientFauna.forEach(function (f) {
             var colIndex = Math.floor(f.x / cellW);
             var inSmog = !calmMode && colIndex >= Math.floor(GOGStage2.smogPosition);
-            if (f.type === "parrot") {
+            
+            if (f.type === "flying-bird") {
+              if (GOGStage2.wave < 3) return;
+
               f.x += f.vx * dt;
-              f.phase += dt * 15;
-              f.scaleY = 0.7 + Math.abs(Math.sin(f.phase)) * 0.6;
+              f.wobble += 0.04 * dt * 60;
+              f.y = (40 + (f.wobble % 5) * 10) + Math.sin(f.wobble) * 6;
+              if (f.y < 20) f.y = 20;
+              if (f.y > 160) f.y = 160;
+              
+              f.flapTimer += dt * f.flapRate;
+              
               if (f.vx > 0 && f.x > W + 60) {
                 f.x = -60;
                 f.y = 40 + Math.random() * 80;
@@ -1543,70 +1564,49 @@
               if (inSmog) {
                 f.vx = (f.vx > 0 ? 1 : -1) * 150;
               }
-            } else if (f.type === "squirrel") {
-              f.timer -= dt;
-              if (f.timer <= 0) {
-                if (f.state === "RUNNING") {
-                  f.state = "IDLE";
-                  f.timer = 1.0 + Math.random() * 1.5;
-                } else {
-                  f.state = "RUNNING";
-                  f.timer = 2.0 + Math.random() * 3.0;
-                  f.vx = (Math.random() < 0.5 ? -1 : 1) * (45 + Math.random() * 35);
-                }
+            } else if (f.type === "deer-run") {
+              if (GOGStage2.wave < 2 || minCol === -1) return;
+
+              // Force deer inside canopy limits
+              if (f.x < minX || f.x > maxX) {
+                f.x = minX + Math.random() * (maxX - minX);
               }
-              if (f.state === "RUNNING") {
-                if (inSmog) {
-                  f.vx = -110;
-                }
-                f.x += f.vx * dt;
-                if (f.x < 10) { f.x = 10; f.vx = -f.vx; }
-                if (f.x > W - 10) { f.x = W - 10; f.vx = -f.vx; }
+
+              var speedMultiplier = inSmog ? 1.8 : 1.0;
+              f.x += f.vx * speedMultiplier * dt;
+              f.frameTimer += dt * 12 * speedMultiplier;
+
+              // Turn around at canopy edges
+              if (f.vx > 0 && f.x >= maxX - 16) {
+                f.x = maxX - 16;
+                f.vx = -Math.abs(f.vx);
+              } else if (f.vx < 0 && f.x <= minX + 16) {
+                f.x = minX + 16;
+                f.vx = Math.abs(f.vx);
               }
-            } else if (f.type === "frog") {
-              f.timer -= dt;
-              if (f.state === "SITTING" && f.timer <= 0) {
-                f.state = "JUMPING";
-                f.vy = -120 - Math.random() * 50;
-                f.timer = 0;
+            } else if (f.type === "bees-flying") {
+              if (GOGStage2.wave < 2 || minCol === -1) return;
+
+              // Force bees inside canopy limits
+              if (f.x < minX || f.x > maxX) {
+                f.x = minX + Math.random() * (maxX - minX);
               }
-              if (f.state === "JUMPING") {
-                f.vy += 380 * dt;
-                f.jumpY += f.vy * dt;
-                if (inSmog) {
-                  f.x -= 40 * dt;
-                } else {
-                  f.x += Math.sin(state.elapsed) * 15 * dt;
-                }
-                if (f.jumpY >= 0) {
-                  f.jumpY = 0;
-                  f.state = "SITTING";
-                  f.timer = 3 + Math.random() * 4;
-                  particles.burst(f.x, f.homeY, {
-                    glyphs: ["💧"],
-                    count: 2,
-                    lift: 5
-                  });
-                }
-              }
-            } else if (f.type === "monkey") {
-              f.bobPhase += dt * 4;
-              var hasTree = false;
-              var targetY = gridYOffset + 40;
-              for (var r = 0; r < GOGStage2.rows; r++) {
-                if (GOGStage2.grid[r] && GOGStage2.grid[r][f.col] && GOGStage2.grid[r][f.col].state === "tree") {
-                  hasTree = true;
-                  targetY = gridYOffset + r * cellH + 10;
-                  break;
-                }
-              }
-              f.x = f.col * cellW + cellW / 2;
-              f.y = targetY + f.yOffset + Math.sin(f.bobPhase) * 6;
-              if (Math.random() < 0.005) {
-                f.yOffset = -15 + Math.random() * 30;
-              }
-              if (colIndex >= Math.floor(GOGStage2.smogPosition) && f.col > 0) {
-                f.col--;
+
+              var speedMultiplier = inSmog ? 0.5 : 1.0;
+              f.x += f.vx * speedMultiplier * dt;
+              
+              // Smooth hovering oscillation (fix jumping)
+              f.wobble += dt * 3.5;
+              f.y = f.baseY + Math.sin(f.wobble) * 6;
+              f.frameIndex = Math.floor(state.elapsed * 12) % 8;
+
+              // Turn around at canopy edges
+              if (f.vx > 0 && f.x >= maxX - 12) {
+                f.x = maxX - 12;
+                f.vx = -Math.abs(f.vx);
+              } else if (f.vx < 0 && f.x <= minX + 12) {
+                f.x = minX + 12;
+                f.vx = Math.abs(f.vx);
               }
             }
           });
@@ -1614,29 +1614,103 @@
 
         function drawAmbientFauna(ctx) {
           ctx.save();
-          ctx.textAlign = "center";
-          ctx.textBaseline = "middle";
+
+          // Find canopy bounds
+          var minCol = -1;
+          for (var c = 0; c < GOGStage2.cols; c++) {
+            var hasConnected = false;
+            for (var r = 0; r < GOGStage2.rows; r++) {
+              if (
+                GOGStage2.grid[r] &&
+                GOGStage2.grid[r][c] &&
+                GOGStage2.grid[r][c].state === "tree" &&
+                GOGStage2.grid[r][c].connected
+              ) {
+                hasConnected = true;
+                break;
+              }
+            }
+            if (hasConnected) {
+              minCol = c;
+              break;
+            }
+          }
+
           state.ambientFauna.forEach(function (f) {
             ctx.save();
-            if (f.type === "parrot") {
-              ctx.translate(f.x, f.y);
-              if (f.vx < 0) ctx.scale(-1, 1);
-              ctx.scale(1, f.scaleY);
-              ctx.font = "24px sans-serif";
-              ctx.fillText(f.glyph, 0, 0);
-            } else if (f.type === "squirrel") {
-              ctx.translate(f.x, f.y);
-              if (f.vx < 0) ctx.scale(-1, 1);
-              ctx.font = "20px sans-serif";
-              ctx.fillText(f.glyph, 0, 0);
-            } else if (f.type === "frog") {
-              ctx.translate(f.x, f.homeY + f.jumpY);
-              ctx.font = "20px sans-serif";
-              ctx.fillText(f.glyph, 0, 0);
-            } else if (f.type === "monkey") {
-              ctx.translate(f.x, f.y);
-              ctx.font = "22px sans-serif";
-              ctx.fillText(f.glyph, 0, 0);
+            if (f.type === "flying-bird") {
+              if (GOGStage2.wave < 3) {
+                ctx.restore();
+                return;
+              }
+              var frame = Math.floor(f.flapTimer) % 2;
+              var hasImage = flyingBirdsImg && flyingBirdsImg.complete && flyingBirdsImg.naturalWidth > 0;
+              if (hasImage) {
+                var sw = Math.round(flyingBirdsImg.naturalWidth / 2);
+                var sh = flyingBirdsImg.naturalHeight;
+                var sx = frame * sw;
+                ctx.translate(f.x, f.y);
+                if (f.vx < 0) ctx.scale(-1, 1);
+                
+                var displayH = f.h;
+                var scale = displayH / sh;
+                var dw = sw * scale;
+                var dh = sh * scale;
+                ctx.drawImage(flyingBirdsImg, sx, 0, sw, sh, -dw / 2, -dh / 2, dw, dh);
+              } else {
+                ctx.translate(f.x, f.y);
+                if (f.vx < 0) ctx.scale(-1, 1);
+                ctx.font = "24px sans-serif";
+                ctx.textAlign = "center";
+                ctx.textBaseline = "middle";
+                ctx.fillText("🐦", 0, 0);
+              }
+            } else if (f.type === "deer-run") {
+              if (GOGStage2.wave < 2 || minCol === -1) {
+                ctx.restore();
+                return;
+              }
+              var frame = Math.floor(f.frameTimer) % 6;
+              var hasImage = deerRunImg && deerRunImg.complete && deerRunImg.naturalWidth > 0;
+              if (hasImage) {
+                var sw = 32;
+                var sh = 32;
+                var sx = frame * sw;
+                ctx.translate(f.x, f.y);
+                if (f.vx < 0) ctx.scale(-1, 1);
+                ctx.drawImage(deerRunImg, sx, 0, sw, sh, -40, -70, 80, 80);
+              } else {
+                ctx.translate(f.x, f.y);
+                if (f.vx < 0) ctx.scale(-1, 1);
+                ctx.font = "48px sans-serif";
+                ctx.textAlign = "center";
+                ctx.textBaseline = "middle";
+                ctx.fillText("🦌", 0, -12);
+              }
+            } else if (f.type === "bees-flying") {
+              if (GOGStage2.wave < 2 || minCol === -1) {
+                ctx.restore();
+                return;
+              }
+              var col = f.frameIndex % 4;
+              var row = Math.floor(f.frameIndex / 4);
+              var hasImage = beesFlyingImg && beesFlyingImg.complete && beesFlyingImg.naturalWidth > 0;
+              if (hasImage) {
+                var sw = 256;
+                var sh = 256;
+                var sx = col * sw;
+                var sy = row * sh;
+                ctx.translate(f.x, f.y);
+                if (f.vx < 0) ctx.scale(-1, 1);
+                ctx.drawImage(beesFlyingImg, sx, sy, sw, sh, -28, -28, 56, 56);
+              } else {
+                ctx.translate(f.x, f.y);
+                if (f.vx < 0) ctx.scale(-1, 1);
+                ctx.font = "32px sans-serif";
+                ctx.textAlign = "center";
+                ctx.textBaseline = "middle";
+                ctx.fillText("🐝", 0, 0);
+              }
             }
             ctx.restore();
           });
@@ -1861,8 +1935,8 @@
               ctx.fillStyle = "gold";
               ctx.strokeStyle = "#111";
               ctx.lineWidth = 4.5;
-              ctx.strokeText("Tree of Gaia", 0, -170);
-              ctx.fillText("Tree of Gaia", 0, -170);
+              ctx.strokeText("Tree of Gala", 0, -170);
+              ctx.fillText("Tree of Gala", 0, -170);
             }
             ctx.restore();
           }
@@ -1939,10 +2013,10 @@
 
         /* ---------------- parallax background layers ---------------- */
         var layers = [
-          { img: null, speed: 2, y: 0 },
-          { img: null, speed: 6, y: 0 },
-          { img: null, speed: 12, y: 0 },
-          { img: null, speed: 20, y: 0 },
+          { img: null, speed: 0, y: 0 },
+          { img: null, speed: 0, y: 0 },
+          { img: null, speed: 0, y: 0 },
+          { img: null, speed: 0, y: 0 },
         ];
         var scrollX = 0;
 
@@ -2011,6 +2085,27 @@
             );
           } catch (e) {
             console.warn("[sprites] Tiger sprite failed to load:", e);
+          }
+          try {
+            flyingBirdsImg = await loadImage("assets/sprites/stage05/flying-birds.png");
+          } catch (e) {
+            console.warn("[sprites] flying-birds sprite failed to load:", e);
+          }
+          try {
+            deerRunImg = await loadImage("assets/sprites/stage03/Deer_Run_with_shadow.png");
+          } catch (e) {
+            console.warn("[sprites] Deer_Run_with_shadow sprite failed to load:", e);
+          }
+          try {
+            beesFlyingImg = await loadImage("assets/sprites/stage03/bees-flying.png");
+          } catch (e) {
+            console.warn("[sprites] bees-flying sprite failed to load:", e);
+          }
+          try {
+            seaWedImg1 = await loadImage("assets/sprites/stage01/sea_wed.png");
+            seaWedImg2 = await loadImage("assets/sprites/stage01/sea_wed_2.png");
+          } catch (e) {
+            console.warn("[sprites] Seaweed sprites failed to load:", e);
           }
         }
 
@@ -2606,8 +2701,8 @@
 
         function startWave(waveNum) {
           if (waveNum === 1) {
-            GOGStage2.init(6, 10);
-            GOGStage2.saplings = 10;
+            GOGStage2.init(4, 10);
+            GOGStage2.saplings = 12;
           } else {
             GOGStage2.wave = waveNum;
             GOGStage2.timer = GOGConstants.STAGE2.timePerWave;
@@ -3145,34 +3240,54 @@
               var x = c * cellW;
               var y = gridYOffset + r * cellH;
 
-              // Empty planting spots - child-friendly design
+              // Empty planting spots - premium organic glowing vine plot design
               if (cell.state === "empty") {
                 var cx = x + cellW / 2;
                 var cy = y + cellH / 2;
                 var radius = Math.min(cellW, cellH) * 0.38;
 
                 ctx.save();
-                // Soft soil mound background
-                ctx.fillStyle = "rgba(110, 80, 50, 0.15)";
+                // 1. Pulsing scale for organic/alive feedback
+                var pulse = 1.0 + Math.sin(state.elapsed * 3.0 + (r * 1.7 + c * 2.3)) * 0.05;
+                var rScale = radius * pulse;
+
+                // 2. Soft earthy/soil radial gradient patch that fades out into grass
+                var soilGrad = ctx.createRadialGradient(cx, cy, 2, cx, cy, radius * 1.15);
+                soilGrad.addColorStop(0, "rgba(80, 50, 30, 0.35)"); 
+                soilGrad.addColorStop(0.6, "rgba(100, 70, 45, 0.15)");
+                soilGrad.addColorStop(1, "rgba(0, 0, 0, 0)");
+                ctx.fillStyle = soilGrad;
                 ctx.beginPath();
-                ctx.arc(cx, cy, radius, 0, Math.PI * 2);
+                ctx.arc(cx, cy, radius * 1.15, 0, Math.PI * 2);
                 ctx.fill();
 
-                // Child-friendly dashed border
-                ctx.strokeStyle = "rgba(8, 89, 46, 0.651)";
-                ctx.lineWidth = 2.5;
-                ctx.setLineDash([5, 5]);
+                // 3. Glowing circular vine indicator border (wavy, pulsing green/gold ring)
+                var alphaPulse = 0.32 + Math.sin(state.elapsed * 2.8 + (r + c)) * 0.12;
+                ctx.strokeStyle = "rgba(47, 191, 113, " + alphaPulse + ")";
+                ctx.lineWidth = 1.8;
                 ctx.beginPath();
-                ctx.arc(cx, cy, radius, 0, Math.PI * 2);
+                
+                // Draw a beautiful slightly irregular/organic ring
+                var ringSteps = 16;
+                for (var i = 0; i <= ringSteps; i++) {
+                  var angle = (i / ringSteps) * Math.PI * 2;
+                  var wave = Math.sin(angle * 4 + state.elapsed * 1.8) * 1.2;
+                  var currR = rScale + wave;
+                  var wx = cx + Math.cos(angle) * currR;
+                  var wy = cy + Math.sin(angle) * currR;
+                  if (i === 0) ctx.moveTo(wx, wy);
+                  else ctx.lineTo(wx, wy);
+                }
                 ctx.stroke();
-                ctx.setLineDash([]);
 
-                // Faint ghost sprout icon/emoji to show it is a planting spot
-                var fontSize = Math.max(16, Math.floor(Math.min(cellW, cellH) * 0.28));
+                // 4. Soft glowing ghost sprout emoji in the center
+                ctx.shadowColor = "rgba(47, 191, 113, 0.4)";
+                ctx.shadowBlur = 5;
+                var fontSize = Math.max(14, Math.floor(Math.min(cellW, cellH) * 0.26));
                 ctx.font = fontSize + "px Arial";
                 ctx.textAlign = "center";
                 ctx.textBaseline = "middle";
-                ctx.globalAlpha = 0.35;
+                ctx.globalAlpha = 0.45 + Math.sin(state.elapsed * 2.8 + (r + c)) * 0.15;
                 ctx.fillText("🌱", cx, cy - 2);
                 ctx.restore();
               }
@@ -3367,6 +3482,50 @@
 
                 // Check if tree is engulfed by smog
                 var isEngulfed = !calmMode && c >= Math.floor(GOGStage2.smogPosition);
+
+                // Draw seaweed from Stage 1 in between connected trees to build a thick canopy
+                if (cell.connected && !isEngulfed) {
+                  // Horizontal seaweed connection
+                  if (c + 1 < GOGStage2.cols) {
+                    var right = GOGStage2.grid[r][c + 1];
+                    if (right.state === "tree" && right.connected) {
+                      var midX = (c + 1) * cellW;
+                      var midY = gridYOffset + r * cellH + cellH / 2;
+                      var windSwayMid = Math.sin(state.elapsed * 1.8 + (r * 4.3 + (c + 0.5) * 2.7)) * 2.5;
+
+                      ctx.save();
+                      var seaImg = (r + c) % 2 === 0 ? seaWedImg1 : seaWedImg2;
+                      if (seaImg && seaImg.complete && seaImg.width > 0) {
+                        var seaW = cellW * 0.9;
+                        var seaH = (seaImg.height / seaImg.width) * seaW;
+                        ctx.translate(midX + windSwayMid, midY + cellH / 2 - 6);
+                        ctx.filter = "brightness(0.85) saturate(0.9) hue-rotate(-5deg)";
+                        ctx.drawImage(seaImg, -seaW / 2, -seaH + 12, seaW, seaH);
+                      }
+                      ctx.restore();
+                    }
+                  }
+                  // Vertical seaweed connection
+                  if (r + 1 < GOGStage2.rows) {
+                    var down = GOGStage2.grid[r + 1][c];
+                    if (down.state === "tree" && down.connected) {
+                      var midX = c * cellW + cellW / 2;
+                      var midY = gridYOffset + (r + 1) * cellH;
+                      var windSwayMid = Math.sin(state.elapsed * 1.8 + ((r + 0.5) * 4.3 + c * 2.7)) * 2.5;
+
+                      ctx.save();
+                      var seaImg = (r + c) % 2 === 0 ? seaWedImg2 : seaWedImg1;
+                      if (seaImg && seaImg.complete && seaImg.width > 0) {
+                        var seaW = cellW * 0.95;
+                        var seaH = (seaImg.height / seaImg.width) * seaW;
+                        ctx.translate(midX + windSwayMid, midY + cellH / 2 - 6);
+                        ctx.filter = "brightness(0.85) saturate(0.9) hue-rotate(-5deg)";
+                        ctx.drawImage(seaImg, -seaW / 2, -seaH + 12, seaW, seaH);
+                      }
+                      ctx.restore();
+                    }
+                  }
+                }
 
                 // Draw procedural tree style
                 drawProceduralTree(ctx, cx, cy, cellW, cellH, cell.variation, cell.connected, windSway, isEngulfed, popScale);

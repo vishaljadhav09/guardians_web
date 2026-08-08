@@ -193,7 +193,7 @@
         play: {
           emoji: "🌱",
           goal: "Plant trees to grow a protective canopy and stop the logging machines!",
-          controls: "<strong>Select:</strong> Tap a tree card at the bottom.<br><strong>Plant:</strong> Tap a green glowing plot.<br><strong>Seeds:</strong> Tap floating seeds to collect energy!"
+          controls: "<strong>Plant:</strong> Tap an empty spot to plant a tree.<br><strong>Grow:</strong> Connect grown trees to build a canopy.<br><strong>Collect:</strong> Tap ☁️ clouds to get more 🌱 saplings.<br><strong>Block:</strong> Build a strong canopy to stop the 🌫️ Smog.<br><strong>Win:</strong> Reach the canopy goal before time runs out!"
         }
       },
       "stage03": {
