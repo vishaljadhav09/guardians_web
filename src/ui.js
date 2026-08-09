@@ -217,7 +217,7 @@
         play: {
           emoji: "❄️",
           goal: "Rescue lost penguin chicks and bring them safely back to the safe iceberg!",
-          controls: "<strong>Walk:</strong> Use Left/Right Arrow / A/D keys (or ◀ ▶ buttons).<br><strong>Jump:</strong> Press Up Arrow / W / Space (or ▲ button).<br><strong>Cool Valve:</strong> Stand near valve and press E (or tap ☸️)."
+          controls: "<strong>Move:</strong> Guide Penny 🐧 across the melting ice.<br><strong>Jump:</strong> Hop between floating ice floes before they disappear.<br><strong>Rescue:</strong> Stand near a chick and press E (or tap ☸️) to pick it up.<br><strong>Cool:</strong> Reach the valve and spin it to slow the warming ice ❄️.<br><strong>Return:</strong> Carry the chicks safely back to the stable iceberg.<br><strong>Win:</strong> Rescue all 5 chicks before the ice melts or time runs out! 🎯"
         }
       },
       "stage05": {

@@ -1740,6 +1740,14 @@
           return solids;
         }
 
+        function getMaxCarryingCapacity() {
+          if (!state || !state.chicks) return 1;
+          const deliveredCount = state.chicks.filter((c) => c.delivered).length;
+          if (deliveredCount === 0) return 1;
+          if (deliveredCount === 1) return 2;
+          return 3;
+        }
+
         function updateChicks(dt) {
           const p = state.player;
           for (const chick of state.chicks) {
@@ -1748,11 +1756,13 @@
 
             const carryIndex = p.carrying.indexOf(chick);
             if (carryIndex !== -1) {
-              const offsetX = -14 * p.facing;
               const sheet = getActiveSpriteSheet();
               const destW = 72;
               const destH = sheet && sheet.loaded ? (sheet.frameH / sheet.frameW) * destW : 108;
-              const offsetY = -destH * 0.65;
+              // Stagger offsets for multiple carried chicks:
+              const baseOffsetX = -14 * p.facing;
+              const offsetX = baseOffsetX - p.facing * carryIndex * 4;
+              const offsetY = -destH * 0.65 - carryIndex * 12;
               
               chick.x = p.x + p.w / 2 + offsetX - 9;
               chick.y = p.y + p.h + offsetY - 18;
@@ -1795,7 +1805,8 @@
             const chickRect = { x: chick.x, y: chick.y, w: 18, h: 18 };
             const nearChick = rectsOverlap(p, chickRect);
             if (!chick.rescued && nearChick) {
-              if (p.carrying.length >= 1) {
+              const maxCarry = getMaxCarryingCapacity();
+              if (p.carrying.length >= maxCarry) {
                 continue;
               }
               if (input.actionPressed) {
@@ -2292,21 +2303,61 @@
           // Dad: waddles slightly
           const dadWaddle = Math.sin(state.time * 2.5) * 3;
           const dadX = b.x + b.w * 0.72;
-          const dadY = b.y - 16;
+          const dadY = b.y;
           ctx.save();
           ctx.translate(dadX, dadY + Math.abs(dadWaddle));
           ctx.rotate(dadWaddle * 0.05);
-          drawEmoji("🐧", 0, -18, 42); // Larger Dad
+          if (spriteSheets.idle.loaded) {
+            const frame = Math.floor(state.time * 1.5) % 2; // alternates standing/smiling
+            const col = frame % spriteSheets.idle.cols;
+            const sx = col * spriteSheets.idle.frameW;
+            const sy = 0;
+            const destW = 44; // Larger Dad
+            const destH = (spriteSheets.idle.frameH / spriteSheets.idle.frameW) * destW;
+            ctx.drawImage(
+              spriteSheets.idle.img,
+              sx,
+              sy,
+              spriteSheets.idle.frameW,
+              spriteSheets.idle.frameH,
+              -destW / 2,
+              -destH,
+              destW,
+              destH,
+            );
+          } else {
+            drawEmoji("🐧", 0, -18, 42); // Fallback Larger Dad
+          }
           ctx.restore();
 
           // Mom: waves happily
           const momWave = Math.sin(state.time * 4.5) * 4;
           const momX = b.x + b.w * 0.85;
-          const momY = b.y - 16;
+          const momY = b.y;
           ctx.save();
           ctx.translate(momX, momY + Math.abs(momWave));
           ctx.scale(-1, 1);
-          drawEmoji("🐧", 0, -16, 38); // Mom
+          if (spriteSheets.idle.loaded) {
+            const frame = Math.floor(state.time * 1.2 + 1) % 2;
+            const col = frame % spriteSheets.idle.cols;
+            const sx = col * spriteSheets.idle.frameW;
+            const sy = 0;
+            const destW = 40; // Smaller Mom
+            const destH = (spriteSheets.idle.frameH / spriteSheets.idle.frameW) * destW;
+            ctx.drawImage(
+              spriteSheets.idle.img,
+              sx,
+              sy,
+              spriteSheets.idle.frameW,
+              spriteSheets.idle.frameH,
+              -destW / 2,
+              -destH,
+              destW,
+              destH,
+            );
+          } else {
+            drawEmoji("🐧", 0, -16, 38); // Fallback Mom
+          }
           ctx.restore();
 
           // 4. Draw Rescued fish jumping
@@ -2823,7 +2874,8 @@
             }
 
             // Draw "Press E / ☸️" prompt when overlapping (upright, at drawX/drawY)
-            if (!chick.rescued && rectsOverlap(p, { x: chick.x, y: chick.y, w: 18, h: 18 }) && p.carrying.length === 0) {
+            const maxCarry = getMaxCarryingCapacity();
+            if (!chick.rescued && rectsOverlap(p, { x: chick.x, y: chick.y, w: 18, h: 18 }) && p.carrying.length < maxCarry) {
               ctx.save();
               ctx.fillStyle = "#ffffff";
               ctx.strokeStyle = "#111111";
@@ -2957,9 +3009,9 @@
                 ? (chickSprite.frameH / chickSprite.frameW) * cW
                 : 30;
 
-              // Hold the chick above the belly in front!
-              const offsetX = 12;
-              const offsetY = -destH * 0.4;
+              // Hold the chick above the belly in front! Staggered for multiple carried chicks
+              const offsetX = 12 + index * 4;
+              const offsetY = -destH * 0.4 - index * 12;
 
               if (chickSprite.loaded) {
                 // Alternately flap wings/cycle walking frames
