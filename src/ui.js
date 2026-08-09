@@ -205,7 +205,7 @@
         play: {
           emoji: "🐝",
           goal: "Fly Buzz along paths to pollinate flowers and make them bloom!",
-          controls: "<strong>Fly:</strong> Use Arrow keys / WASD (or tap screen sectors).<br><strong>Beat:</strong> Follow rhythm lines and fly over glowing flowers!"
+          controls: "<strong>Fly:</strong> Drag Buzz 🐝 from one glowing flower to another.<br><strong>Pollinate:</strong> Reach flowers before they wilt to make them bloom 🌸.<br><strong>Feed:</strong> Bloomed flowers create fruit 🍎 for hungry animals.<br><strong>Keep Going:</strong> Don't miss 3 flowers in a row or Smog appears 🌫️.<br><strong>Win:</strong> Pollinate 15 flowers before time runs out! 🎯"
         }
       },
       "stage04": {
