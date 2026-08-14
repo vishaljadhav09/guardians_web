@@ -646,7 +646,7 @@
               });
             }
 
-            this.saplings = 10; // starts with some saplings (kid-friendly starting count)
+            this.saplings = 12; // starts with 12 saplings (Requirement 3)
             this.wave = 1;
             this.smogPosition = this.cols; // Smog starts at the right edge
             this.smogDelay = 1.0; // short pre-smog planting delay
@@ -1178,6 +1178,8 @@
         var ctx = canvas.getContext("2d");
         var W = canvas.width;
         var H = canvas.height;
+        var GRID_Y_OFFSET = H * 0.42; // Grid start position (was H / 2)
+        var GRID_H = H * 0.55; // Grid height (was H / 2)
         var canvasFrame = document.getElementById("canvasFrame");
 
         var winWipeRadius = 0;
@@ -1293,10 +1295,9 @@
         ];
 
         // How much bigger the fully-grown "tree" state renders than one grid
-        // cell (1.0 = exactly cellW). Was effectively ~1.2-1.3x before;
-        // bumped up so the finished tree feels like a real payoff and
-        // overlaps neighbors into a proper canopy. Tune freely.
-        var TREE_SIZE_SCALE = 1.4; // Doubled size of the canopy image
+        // cell (1.0 = exactly cellW). Reduced from 1.4 to 1.1 to create space
+        // between each canopy and its surroundings.
+        var TREE_SIZE_SCALE = 1.1;
 
         /* ---------------------------------------------------------------
            WILDLIFE_DEFS — one animal per wave, appearing only while it's
@@ -1881,8 +1882,8 @@
         function drawStageWonCutscene() {
           var time = state.cutsceneTime || 0;
           var cellW = W / GOGStage2.cols;
-          var gridH = H / 2;
-          var gridYOffset = H / 2;
+          var gridH = GRID_H;
+          var gridYOffset = GRID_Y_OFFSET;
           var canopyProgress = Math.min(1.0, time / 1.5);
           ctx.save();
           ctx.fillStyle = "rgba(47, 191, 113, " + (canopyProgress * 0.35) + ")";
@@ -2223,9 +2224,9 @@
           }
 
           var cellW = W / GOGStage2.cols;
-          var gridH = H / 2;
+          var gridH = GRID_H;
           var cellH = gridH / GOGStage2.rows;
-          var gridYOffset = H / 2;
+          var gridYOffset = GRID_Y_OFFSET;
 
           var def = WILDLIFE_DEFS[waveIdx];
 
@@ -2391,13 +2392,20 @@
           });
         }
 
-        function drawWildlife() {
+        function drawWildlife(filterRow) {
           if (!state.wildlife || state.wildlife.length === 0) return;
 
           var cellW = W / GOGStage2.cols;
+          var cellH = GRID_H / GOGStage2.rows;
 
           state.wildlife.forEach(function (w) {
             if (!w.visible || w.defIndex < 0) return;
+
+            // Determine which row layer the animal is in dynamically from its Y coordinate
+            var animalRow = Math.floor((w.y - GRID_Y_OFFSET) / cellH);
+            animalRow = Math.max(0, Math.min(GOGStage2.rows - 1, animalRow));
+
+            if (filterRow !== undefined && animalRow !== filterRow) return;
 
             var def = WILDLIFE_DEFS[w.defIndex];
             var img = def.getImg();
@@ -2474,9 +2482,9 @@
           }
 
           var cellW = W / GOGStage2.cols;
-          var gridH = H / 2;
+          var gridH = GRID_H;
           var cellH = gridH / GOGStage2.rows;
-          var gridYOffset = H / 2;
+          var gridYOffset = GRID_Y_OFFSET;
 
           var spanMinX = bounds.minCol * cellW;
           var spanMaxX = (bounds.maxCol + 1) * cellW;
@@ -2706,7 +2714,14 @@
           } else {
             GOGStage2.wave = waveNum;
             GOGStage2.timer = GOGConstants.STAGE2.timePerWave;
-            GOGStage2.saplings += 8; // bonus saplings per wave
+            // Set starting saplings: Wave 2 -> 8, Wave 3 -> 4
+            if (waveNum === 2) {
+              GOGStage2.saplings = 8;
+            } else if (waveNum === 3) {
+              GOGStage2.saplings = 4;
+            } else {
+              GOGStage2.saplings = 4;
+            }
             GOGStage2.transitionTo("WAVE_ACTIVE");
           }
           state.clouds = [];
@@ -2883,16 +2898,16 @@
               // 2. Check grid click
               if (!hitCloud) {
                 var cellW = W / GOGStage2.cols;
-                var gridH = H / 2; // Grid is restricted to the bottom half
+                var gridH = GRID_H;
                 var cellH = gridH / GOGStage2.rows;
 
-                // Shift calculation by subtracting the top half height
+                // Shift calculation by subtracting the grid Y offset
                 var col = Math.floor(ptX / cellW);
-                var row = Math.floor((ptY - H / 2) / cellH);
+                var row = Math.floor((ptY - GRID_Y_OFFSET) / cellH);
 
-                // Ensure click is inside the bounds of the bottom half grid
+                // Ensure click is inside the bounds of the grid
                 if (
-                  ptY >= H / 2 &&
+                  ptY >= GRID_Y_OFFSET &&
                   col >= 0 &&
                   col < GOGStage2.cols &&
                   row >= 0 &&
@@ -2913,7 +2928,7 @@
                     if (success) {
                       audio.blip(440, 120, "triangle");
                       var cx = col * cellW + cellW / 2;
-                      var cy = H / 2 + row * cellH + cellH / 2; // Adjusted particle center
+                      var cy = GRID_Y_OFFSET + row * cellH + cellH / 2; // Adjusted particle center
                       particles.burst(cx, cy, {
                         glyphs: ["🌱", "🍃"],
                         count: 8,
@@ -3227,11 +3242,11 @@
           drawForestBackground(state.elapsed);
           drawFog(state.elapsed);
 
-          // Grid dimension recalculations to bound interaction to the bottom half
+          // Grid dimension recalculations
           var cellW = W / GOGStage2.cols;
-          var gridH = H / 2; // Height of the actionable zone
-          var cellH = gridH / GOGStage2.rows; // Scale rows within the half-screen height
-          var gridYOffset = H / 2; // Shift everything downwards past the sky
+          var gridH = GRID_H; // Height of the actionable zone
+          var cellH = gridH / GOGStage2.rows; // Scale rows within the grid height
+          var gridYOffset = GRID_Y_OFFSET; // Shift everything downwards past the sky
 
           // 1. Draw Grid Cells
           for (var r = 0; r < GOGStage2.rows; r++) {
@@ -3382,6 +3397,9 @@
 
           // 3. Draw Sprites / Glyphs (Saplings, Rocks and Trees)
           for (var r = 0; r < GOGStage2.rows; r++) {
+            // Draw wildlife for this row (behind this row's trees, but in front of previous rows)
+            drawWildlife(r);
+
             for (var c = 0; c < GOGStage2.cols; c++) {
               var cell = GOGStage2.grid[r][c];
               var cx = c * cellW + cellW / 2;
@@ -3554,7 +3572,6 @@
 
           // 3b. Draw ambient canopy wildlife — layered on top of the grown
           // trees so it visibly stands within the connected canopy patch.
-          drawWildlife();
           drawAmbientCreatures();
           drawAmbientFauna(ctx);
 
