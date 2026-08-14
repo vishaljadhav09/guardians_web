@@ -1462,35 +1462,35 @@
 
         var bgFish = [];
         (function initBgFish() {
-          var glyphs = ["🐟", "🐠", "🐡", "🐙", "🦑", "🦐"];
-          for (var f = 0; f < 9; f++) {
-            bgFish.push({
-              x: rand(0, W),
-              y: rand(40, H - 120),
-              dir: Math.random() < 0.5 ? 1 : -1,
-              speed: rand(14, 32),
-              glyph: glyphs[Math.floor(Math.random() * glyphs.length)],
-              bob: rand(0, Math.PI * 2),
-              size: rand(16, 28),
-            });
-          }
+          // var glyphs = ["🐟", "🐠", "🐡", "🐙", "🦑", "🦐"];
+          // for (var f = 0; f < 9; f++) {
+          //   bgFish.push({
+          //     x: rand(0, W),
+          //     y: rand(40, H - 120),
+          //     dir: Math.random() < 0.5 ? 1 : -1,
+          //     speed: rand(14, 32),
+          //     glyph: glyphs[Math.floor(Math.random() * glyphs.length)],
+          //     bob: rand(0, Math.PI * 2),
+          //     size: rand(16, 28),
+          //   });
+          // }
         })();
 
         // NEW: seabed decorations (crabs crawling, seashells, starfish)
         var seabedDecorations = [];
         (function initSeabedDecorations() {
-          var count = 5;
-          var glyphs = ["🦀", "🐚", "🐌", "🐚"];
-          for (var i = 0; i < count; i++) {
-            seabedDecorations.push({
-              x: rand(50, W - 50),
-              y: H - 15,
-              glyph: glyphs[Math.floor(Math.random() * glyphs.length)],
-              speed: rand(10, 22),
-              dir: Math.random() < 0.5 ? 1 : -1,
-              bob: rand(0, Math.PI * 2),
-            });
-          }
+          // var count = 5;
+          // var glyphs = ["🦀", "🐚", "🐌", "🐚"];
+          // for (var i = 0; i < count; i++) {
+          //   seabedDecorations.push({
+          //     x: rand(50, W - 50),
+          //     y: H - 15,
+          //     glyph: glyphs[Math.floor(Math.random() * glyphs.length)],
+          //     speed: rand(10, 22),
+          //     dir: Math.random() < 0.5 ? 1 : -1,
+          //     bob: rand(0, Math.PI * 2),
+          //   });
+          // }
         })();
 
         var seaweedElements = [];
