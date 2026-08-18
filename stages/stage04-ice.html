@@ -1181,7 +1181,7 @@
           audio.stopBgm();
           state.state = "failed";
           gameRunning = false;
-          audio.oops();
+          audio.lose();
           if (ui.canvasFrame) {
             ui.canvasFrame.classList.add("flash-lose");
           }

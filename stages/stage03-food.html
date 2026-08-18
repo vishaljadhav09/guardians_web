@@ -1425,6 +1425,7 @@ flowers.push({
   function triggerFail() {
     if (gameState !== "playing") return;
     audio.stopBgm();
+    audio.lose();
     gameState = "fail";
     dragging = false; dragTrail = [];
     

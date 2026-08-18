@@ -430,8 +430,25 @@
       self.tone(f, 0.22, 'triangle', 0.08, null, i * 0.09);
     });
   };
+  Audio.prototype.playSfxFile = function (path) {
+    if (this.muted) return;
+    try {
+      var sfx = new global.Audio(path);
+      sfx.volume = 0.65;
+      sfx.play();
+    } catch (e) {
+      console.warn("SFX play failed:", e);
+    }
+  };
+
   Audio.prototype.win = function () {
     this.bloom();
+    this.playSfxFile("assets/audio/winning.mp3");
+  };
+
+  Audio.prototype.lose = function () {
+    this.oops();
+    this.playSfxFile("assets/audio/failed.mp3");
   };
 
   global.GOGEngine = {

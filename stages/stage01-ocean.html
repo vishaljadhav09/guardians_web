@@ -3336,6 +3336,7 @@
 
         function endLose() {
           stopBackgroundMusic();
+          audio.lose();
           state.running = false;
           // NEW: a gentle desaturating fade signals "not quite yet" without feeling harsh
           document.getElementById("canvasFrame").classList.add("flash-lose");

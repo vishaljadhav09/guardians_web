@@ -1664,7 +1664,7 @@
                 ctx.font = "24px sans-serif";
                 ctx.textAlign = "center";
                 ctx.textBaseline = "middle";
-                ctx.fillText("🐦", 0, 0);
+                // ctx.fillText("🐦", 0, 0);
               }
             } else if (f.type === "deer-run") {
               if (GOGStage2.wave < 2 || minCol === -1) {
@@ -1686,7 +1686,7 @@
                 ctx.font = "48px sans-serif";
                 ctx.textAlign = "center";
                 ctx.textBaseline = "middle";
-                ctx.fillText("🦌", 0, -12);
+                // ctx.fillText("🦌", 0, -12);
               }
             } else if (f.type === "bees-flying") {
               if (GOGStage2.wave < 2 || minCol === -1) {
@@ -1710,7 +1710,7 @@
                 ctx.font = "32px sans-serif";
                 ctx.textAlign = "center";
                 ctx.textBaseline = "middle";
-                ctx.fillText("🐝", 0, 0);
+                // ctx.fillText("🐝", 0, 0);
               }
             }
             ctx.restore();
@@ -2574,7 +2574,7 @@
             ctx.save();
             ctx.translate(bird.x, bird.y);
             if (bird.vx < 0) ctx.scale(-1, 1);
-            ctx.fillText("🐦", 0, 0);
+            // ctx.fillText("🐦", 0, 0);
             ctx.restore();
           });
 
@@ -2823,7 +2823,7 @@
         function endLose() {
           audio.stopBgm();
           state.running = false;
-          audio.oops();
+          audio.lose();
           canvasFrame.classList.add("flash-lose");
           var canopyNow = GOGStage2.getCanopyPercent();
           var canopyTarget = GOGStage2.getCanopyTarget();
@@ -3013,12 +3013,12 @@
             state.cutsceneTime += dt;
             state.cutsceneSparkleTimer -= dt;
             if (state.cutsceneSparkleTimer <= 0) {
-              particles.burst(W / 2 + (Math.random() - 0.5) * 160, H / 2 + (Math.random() - 0.5) * 80, {
-                glyphs: ["✨", "🍃", "🌸", "❤️"],
-                count: 3,
-                lift: 15
-              });
-              state.cutsceneSparkleTimer = 0.15;
+              // particles.burst(W / 2 + (Math.random() - 0.5) * 160, H / 2 + (Math.random() - 0.5) * 80, {
+              //   glyphs: ["✨", "🍃", "🌸", "❤️"],
+              //   count: 3,
+              //   lift: 15
+              // });
+              // state.cutsceneSparkleTimer = 0.15;
             }
 
             if (state.cutsceneBirds) {
@@ -3600,9 +3600,9 @@
             ctx.save();
             ctx.font = "24px Arial";
             var birdX = ((state.elapsed * 60) % (W + 200)) - 100;
-            ctx.fillText("🐦", birdX, 50);
-            ctx.fillText("🐦", birdX - 35, 75);
-            ctx.fillText("🦋", birdX + 20, 110);
+            // ctx.fillText("🐦", birdX, 50);
+            // ctx.fillText("🐦", birdX - 35, 75);
+            // ctx.fillText("🦋", birdX + 20, 110);
             ctx.restore();
           }
 
