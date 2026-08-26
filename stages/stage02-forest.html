@@ -845,6 +845,9 @@
             this.smogPosition = Math.max(0, targetPos);
 
             // If smog reaches the left edge (column 0), the forest is overrun
+            if (this.smogPosition < 1.0 && state.elapsed < 15 && !diff.softClutched) {
+              diff.softClutch();
+            }
             if (this.smogPosition <= 0) {
               this.loseWave("SMOG_REACHED_RAVI");
             }

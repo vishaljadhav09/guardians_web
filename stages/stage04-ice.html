@@ -1392,6 +1392,9 @@
               ? 0.005
               : 0.012) * diff.enemySpeedMul();
           state.warmth = clamp(state.warmth + warmingRate * dt, 0, 1);
+          if (state.warmth > 0.8 && (STAGE_DURATION - state.timeLeft) < 15 && !diff.softClutched) {
+            diff.softClutch();
+          }
           if (state.coolingTimer > 0) {
             state.coolingTimer = Math.max(0, state.coolingTimer - dt);
             state.valve.activeFlash = Math.max(
@@ -1432,7 +1435,7 @@
             p.facing = 1;
           }
           if (!input.left && !input.right) {
-            const currentDrag = onIce ? 0.94 : p.drag;
+            const currentDrag = onIce ? (0.94 - (0.94 - p.drag) * diff.gentleness()) : p.drag;
             p.vx *= Math.pow(currentDrag, dt * 60);
             if (Math.abs(p.vx) < 3) p.vx = 0;
           }
@@ -1608,13 +1611,13 @@
               p.x + p.w > topBand.x + 8 &&
               p.x < topBand.x + topBand.w - 8 &&
               Math.abs(p.y + p.h - topBand.y) < 8;
-            const meltRate = calmMode
+            const meltRate = (calmMode
               ? standing
                 ? 1
                 : 0
               : 0.1 +
                 state.warmth * 0.4 +
-                (standing ? 3 + state.warmth * 5 : 0);
+                (standing ? 3 + state.warmth * 5 : 0)) * diff.enemySpeedMul();
             pl.shrink += meltRate * dt;
             pl.w = Math.max(48, pl.baseW - pl.shrink);
 

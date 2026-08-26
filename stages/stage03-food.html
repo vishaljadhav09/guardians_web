@@ -1318,6 +1318,9 @@ flowers.push({
     flower.state = "wilted";
     flower.showUntil = performance.now() + 850;
     consecutiveMisses++;
+    if (consecutiveMisses === FAIL_MISS_THRESHOLD - 1 && (SESSION_MS - sessionTimeLeft) < 15000 && !diff.softClutched) {
+      diff.softClutch();
+    }
     combo = 0;
     comboBreaks++;
     audio.oops();

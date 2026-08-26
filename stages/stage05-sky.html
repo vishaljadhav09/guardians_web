@@ -1490,6 +1490,11 @@
     }
     updateFloatTexts(dt);
 
+    // --- soft clutch check ---
+    if (clarity < 20 && (STAGE_DURATION - timeLeft) < 15 && !diff.softClutched && gameState === 'playing') {
+      diff.softClutch();
+    }
+
     // --- fail check ---
     if(clarity <= 0 && gameState === 'playing'){
       triggerFail();
