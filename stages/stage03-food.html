@@ -613,7 +613,7 @@
   <script src="../src/save.js"></script>
   <script src="../src/engine.js"></script>
   <script src="../src/ui.js"></script>
-
+  <script src="../src/progression.js"></script>
 <script>
 /* ============================================================
    STAGE 3 — BUZZ & THE LAST BLOOMS
@@ -676,6 +676,10 @@
   /* ---------------- Save & Sound State ---------------- */
   var STAGE_ID = "stage03";
   var save = window.GOGSave ? window.GOGSave.load() : { settings: { sound: true } };
+  var diff = GOGProgress.difficulty(STAGE_ID);
+  var pendingStars = 1;
+  var comboBreaks = 0;
+  var maxCombo = 0;
   var muted = save.settings ? !save.settings.sound : false;
   audio.setMuted(muted);
   audio.initBgm("assets/audio/stage03/stage_3.mp3");
@@ -705,10 +709,10 @@
   }
 
   /* ---------------- Constants ---------------- */
-  var WIN_TARGET = 15;
+  var WIN_TARGET = Math.round(15 * diff.goalMul());
   var SESSION_MS = GOGConstants.STAGE3.gameTimeMs; // 60 seconds from constants
-  var WILT_MS = 3000;
-  var BEAT_MS = 2000;
+  var WILT_MS = 3000 * diff.spawnIntervalMul();
+  var BEAT_MS = 2000 * diff.spawnIntervalMul();
   var BEAT_JITTER = 300;
   var MAX_ACTIVE_FLOWERS = 4;
   var SMOG_MISS_THRESHOLD = 3;
@@ -1049,7 +1053,7 @@
       // Check if Buzz touches active flowers in flight
       for (var i = 0; i < flowers.length; i++) {
         var f = flowers[i];
-        if (f.state === "active" && Collision.distance(buzz.x, buzz.y, f.x, f.y) < f.r + 22) {
+        if (f.state === "active" && Collision.distance(buzz.x, buzz.y, f.x, f.y) < (f.r + 22) * diff.forgivenessMul()) {
           if (!f.collectedPollen) {
             f.collectedPollen = true;
             buzz.pollenCount = (buzz.pollenCount || 0) + 1;
@@ -1212,7 +1216,7 @@
       if (f.state !== "active") continue;
       if (excludeId != null && f.id === excludeId) continue;
       var d = Collision.distance(x, y, f.x, f.y);
-      if (d <= f.r + 12 && d < bestDist) { best = f; bestDist = d; }
+      if (d <= (f.r + 12) * diff.forgivenessMul() && d < bestDist) { best = f; bestDist = d; }
     }
     return best;
   }
@@ -1270,6 +1274,7 @@ flowers.push({
     flower.showUntil = performance.now() + 650;
     pollinatedCount++;
     combo++;
+    if (combo > maxCombo) maxCombo = combo;
     consecutiveMisses = 0;
     var gain = 50 + combo * 5;
     
@@ -1314,6 +1319,7 @@ flowers.push({
     flower.showUntil = performance.now() + 850;
     consecutiveMisses++;
     combo = 0;
+    comboBreaks++;
     audio.oops();
     particles.burst(flower.x, flower.y, { glyphs: ["💨"], count: 6, life: 500, minSpeed: 20, maxSpeed: 60, gravity: 30 });
     reactGuide("oops");
@@ -1368,7 +1374,7 @@ flowers.push({
   /* ---------------- State transitions ---------------- */
   function resetGame() {
     flowers = []; fruits = []; critters = [];
-    score = 0; combo = 0; pollinatedCount = 0; consecutiveMisses = 0;
+    score = 0; combo = 0; comboBreaks = 0; maxCombo = 0; pollinatedCount = 0; consecutiveMisses = 0;
     beatTimer = 0; nextBeatMs = BEAT_MS;
     sessionTimeLeft = SESSION_MS;
     smogActive = false; smogTimer = 0; smogAlpha = 0; smogClouds = []; flightPaths = [];
@@ -1412,9 +1418,18 @@ flowers.push({
     critters = [];
     audio.win();
 
+    var stars = GOGProgress.stars.fromRules([
+      { stars: 3, when: comboBreaks === 0 || maxCombo >= 10 },
+      { stars: 2, when: comboBreaks <= 2 },
+      { stars: 1, when: true }
+    ]);
+
+    var rec = GOGProgress.finishStage(STAGE_ID, { stars: stars, diff: diff });
+    pendingStars = rec.stars;
+
     if (window.GOGSave) {
       GOGSave.recordStageClear(STAGE_ID, {
-        stars: 3,
+        stars: stars,
         sprouts: 15,
         smogDrop: 10
       });
@@ -1428,6 +1443,8 @@ flowers.push({
     audio.lose();
     gameState = "fail";
     dragging = false; dragTrail = [];
+
+    GOGProgress.failStage(STAGE_ID, { diff: diff });
     
     activeOverlay = GOGUi.showOverlay({
       accent: "var(--gog-tangerine)",
@@ -1749,11 +1766,13 @@ flowers.push({
           gameState = "win";
           
           triggerSeedReturnCutscene(function () {
+            var stageMeta = window.GOGContent ? window.GOGContent.byId(STAGE_ID) : null;
             activeOverlay = GOGUi.showOverlay({
               accent: "var(--gog-tangerine)",
               title: "🌼 The Meadow Blooms!",
               body: "Buzz did it — every last flower is blooming again.",
-              factText: "About 1 in 3 bites of the food we eat depends on pollinators like bees!",
+              stars: pendingStars,
+              factText: stageMeta ? stageMeta.fact : "About 1 in 3 bites of the food we eat depends on pollinators like bees!",
               primaryLabel: "Play Again ▶",
               onPrimary: function () {
                 GOGUi.closeOverlay(activeOverlay);

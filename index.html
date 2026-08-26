@@ -932,6 +932,24 @@
         transform: translateX(-50%) translateY(0);
       }
 
+      .marker-stars {
+        position: absolute;
+        top: -12px;
+        left: 50%;
+        transform: translateX(-50%);
+        background: rgba(15, 23, 42, 0.95);
+        border: 1px solid rgba(255, 215, 0, 0.5);
+        border-radius: 999px;
+        padding: 2px 6px;
+        font-size: 0.7rem;
+        line-height: 1;
+        white-space: nowrap;
+        color: #ffd700;
+        box-shadow: 0 4px 8px rgba(0, 0, 0, 0.35);
+        font-weight: 700;
+        z-index: 20;
+      }
+
       /* ---------- Fog Canvas Overlays ---------- */
       .fog-layer {
         position: absolute;
@@ -1412,6 +1430,9 @@
           </div>
         </div>
         <div class="hud-right">
+          <div class="chip" title="Total Stars Earned">
+            ⭐ <span id="starsCount">0</span>/30
+          </div>
           <div class="chip" title="Seeds of Life returned to the Guardian Tree">
             🌱 <span id="seedsCount">0</span>/10
           </div>
@@ -1636,6 +1657,7 @@
     <script src="data/content.js"></script>
     <script src="src/save.js"></script>
     <script src="src/ui.js"></script>
+    <script src="src/progression.js"></script>
     <script>
       (function () {
         "use strict";
@@ -2235,6 +2257,18 @@
               el.classList.add("cleared");
               el.textContent = stage.icon;
               el.style.boxShadow = "0 0 20px " + stage.color;
+
+              var bestStars = GOGProgress.stars.best(stage.id);
+              if (bestStars > 0) {
+                var starsBadge = document.createElement("div");
+                starsBadge.className = "marker-stars";
+                var starStr = "";
+                for (var s = 0; s < bestStars; s++) {
+                  starStr += "⭐";
+                }
+                starsBadge.textContent = starStr;
+                el.appendChild(starsBadge);
+              }
             } else if (unlocked && stage.playable) {
               el.classList.add("unlocked-ready");
               el.textContent = stage.icon;
@@ -2504,6 +2538,9 @@
         }
 
         function renderState() {
+          if (document.getElementById("starsCount")) {
+            document.getElementById("starsCount").textContent = GOGProgress.stars.total();
+          }
           document.getElementById("seedsCount").textContent = save.seeds;
           document.getElementById("sproutsCount").textContent = save.sprouts;
           document.getElementById("clearedChip").textContent =

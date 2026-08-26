@@ -160,6 +160,7 @@
   }
 
   function isUnlocked(stage, save) {
+    // if (stage.playable) return true;
     if (stage.order === 1) return true;
     var prev = STAGES[stage.order - 2];
     return prev ? save.stagesCleared.indexOf(prev.id) !== -1 : false;

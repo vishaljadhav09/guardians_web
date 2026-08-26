@@ -18,6 +18,9 @@
       starsPerStage: {},   // { stage01: 3, ... }
       stagesCleared: [],   // ["stage01", ...]
       smogLevel: 100,      // 100 -> 0
+      stageStars: {},      // { stage01: 3, ... } best-ever stars per stage
+      stageAssist: {},     // { stage01: 0, ... } current assist notch per stage
+      stageAttempts: {},   // reserved for future use
       settings: {
         sound: false,      // off by default per spec recommendation
         calmMode: false
@@ -69,6 +72,23 @@
       }
     }
 
+    // 5. Stage Stars, Assist, Attempts: sanitize them similarly
+    var stageKeys = ["stageStars", "stageAssist", "stageAttempts"];
+    stageKeys.forEach(function (prop) {
+      if (data[prop] && typeof data[prop] === 'object') {
+        for (var key in data[prop]) {
+          if (Object.prototype.hasOwnProperty.call(data[prop], key)) {
+            if (/^[a-zA-Z0-9_\-]+$/.test(key) && key.length < 64) {
+              var val = Number(data[prop][key]);
+              if (!isNaN(val)) {
+                clean[prop][key] = Math.max(0, Math.floor(val));
+              }
+            }
+          }
+        }
+      }
+    });
+
     return clean;
   }
 
@@ -88,6 +108,9 @@
       // Merge onto defaults so missing/new fields never crash older saves, then sanitize
       var merged = Object.assign({}, defaultSave(), parsed);
       merged.starsPerStage = Object.assign({}, defaultSave().starsPerStage, parsed.starsPerStage || {});
+      merged.stageStars = Object.assign({}, defaultSave().stageStars, parsed.stageStars || {});
+      merged.stageAssist = Object.assign({}, defaultSave().stageAssist, parsed.stageAssist || {});
+      merged.stageAttempts = Object.assign({}, defaultSave().stageAttempts, parsed.stageAttempts || {});
       merged.settings = Object.assign({}, defaultSave().settings, parsed.settings || {});
       merged.stagesCleared = Array.isArray(parsed.stagesCleared) ? parsed.stagesCleared : [];
       
@@ -116,6 +139,15 @@
     var next = Object.assign({}, current, partial);
     if (partial.starsPerStage) {
       next.starsPerStage = Object.assign({}, current.starsPerStage, partial.starsPerStage);
+    }
+    if (partial.stageStars) {
+      next.stageStars = Object.assign({}, current.stageStars, partial.stageStars);
+    }
+    if (partial.stageAssist) {
+      next.stageAssist = Object.assign({}, current.stageAssist, partial.stageAssist);
+    }
+    if (partial.stageAttempts) {
+      next.stageAttempts = Object.assign({}, current.stageAttempts, partial.stageAttempts);
     }
     if (partial.settings) {
       next.settings = Object.assign({}, current.settings, partial.settings);

@@ -1173,6 +1173,7 @@
     <script src="../src/save.js"></script>
     <script src="../src/engine.js"></script>
     <script src="../src/ui.js"></script>
+    <script src="../src/progression.js"></script>
     <script>
       (function () {
         "use strict";
@@ -1180,6 +1181,7 @@
         var STAGE_ID = "stage01";
         var stageMeta = GOGContent.byId(STAGE_ID);
         var save = GOGSave.load();
+        var diff = GOGProgress.difficulty(STAGE_ID);
 
         var canvas = document.getElementById("gameCanvas");
         var ctx = canvas.getContext("2d");
@@ -1384,6 +1386,7 @@
             purpleFishImg = loaded[12];
 
             initSeaweed();
+            initLivesWidget();
 
             playBackgroundMusic();
           } catch (e) {
@@ -1410,7 +1413,7 @@
           boostUntil: 0, // NEW: Echo Boost dash end time
           boostReadyAt: 0, // NEW: when the boost cools down and becomes available again
           slowMoUntil: 0, // NEW: brief bullet-time window on a perfect dodge
-          lives: 3,
+          lives: 3 + diff.bonusLives(),
         };
 
         var lastReefValue = null;
@@ -2204,7 +2207,7 @@
           var level = getDifficultyLevel();
 
           // Scale intervals down (which means faster spawning)
-          var spawnFreqMultiplier = 1.0;
+          var spawnFreqMultiplier = 1.0 * diff.spawnIntervalMul();
           if (level === 2) spawnFreqMultiplier = 0.8;
           else if (level === 3) spawnFreqMultiplier = 0.65;
           else if (level === 4) spawnFreqMultiplier = 0.5;
@@ -2238,6 +2241,21 @@
             spawnPearl();
             pearlTimer = rand(20, 30);
           }
+        }
+
+        function initLivesWidget() {
+          var widget = document.getElementById("livesWidget");
+          if (!widget) return;
+          widget.innerHTML = "";
+          var maxLives = 3 + diff.bonusLives();
+          for (var i = 0; i < maxLives; i++) {
+            var span = document.createElement("span");
+            span.className = "life-heart";
+            span.setAttribute("aria-hidden", "true");
+            span.textContent = "❤️";
+            widget.appendChild(span);
+          }
+          updateLivesUi();
         }
 
         function updateLivesUi() {
@@ -2381,6 +2399,11 @@
           }
 
           if (!state.running) return;
+
+          if (state.lives === 1 && state.elapsed < 15 && !diff.softClutched) {
+            diff.softClutch();
+            initLivesWidget();
+          }
 
           // NEW: brief bullet-time window after a perfect dodge. Ambient FX above
           // already ran at full speed, so only the "scene itself" slows down here.
@@ -2548,9 +2571,14 @@
               if (el) speedMult = parseFloat(el.value);
             }
 
-            it.x += it.vx * speedMult * dt * gameSpeedMult;
+            var dynamicSpeedMul = 1.0;
+            if (it.type === "trash" || it.type === "pufferfish") {
+              dynamicSpeedMul = diff.enemySpeedMul();
+            }
+
+            it.x += it.vx * speedMult * dynamicSpeedMul * dt * gameSpeedMult;
             it.y +=
-              it.vy * speedMult * dt * gameSpeedMult +
+              (it.vy * speedMult * dynamicSpeedMul * dt * gameSpeedMult) +
               Math.sin(state.elapsed * 2 + it.bob) * 6 * dt * gameSpeedMult;
 
             // NEW: keep items inside the vertical play area so they always flow
@@ -2595,13 +2623,20 @@
             if (it.type === "pufferfish" && !it.armed && it.age > 0.5)
               it.armed = true;
 
+            var dolphinHitR = dolphin.r * 0.8;
+            var itemHitR = it.r * 0.8;
+            if (it.type === "trash" || it.type === "turtle" || it.type === "pearl") {
+              dolphinHitR *= diff.forgivenessMul();
+              itemHitR *= diff.forgivenessMul();
+            }
+
             var hit = Collision.circleHit(
               dolphin.x,
               dolphin.y,
-              dolphin.r * 0.8,
+              dolphinHitR,
               it.x,
               it.y,
-              it.r * 0.8,
+              itemHitR,
             );
             if (it.type === "pufferfish" && !it.armed) hit = false; // not dangerous yet, just a visual warning
 
@@ -3276,9 +3311,11 @@
         }
 
         function computeStars() {
-          if (state.hits === 0 && state.timeLeft > TOTAL_TIME * 0.3) return 3;
-          if (state.hits <= 2) return 2;
-          return 1;
+          return GOGProgress.stars.fromRules([
+            { stars: 3, when: state.hits === 0 && state.timeLeft > TOTAL_TIME * 0.3 },
+            { stars: 2, when: state.hits <= 2 },
+            { stars: 1, when: true }
+          ]);
         }
 
         function endWin() {
@@ -3293,6 +3330,11 @@
 
         function finishWin() {
           var stars = pendingStars;
+          
+          // 1. Report win to difficulty and record stars in progression system
+          var rec = GOGProgress.finishStage(STAGE_ID, { stars: stars, diff: diff });
+
+          // 2. Clear stage in original GOGSave system
           var nextSave = GOGSave.recordStageClear(STAGE_ID, {
             stars: stars,
             sprouts: state.sproutsEarned,
@@ -3319,7 +3361,7 @@
                 accent: "var(--gog-white)",
                 title: "🪸 The reef is blooming!",
                 body: "Splash wakes up and a Seed of Life flies back to the Guardian Tree.",
-                stars: stars,
+                stars: rec.stars,
                 factText: stageMeta.fact,
                 primaryLabel: "Back to Map",
                 secondaryLabel: "Play Again",
@@ -3338,6 +3380,10 @@
           stopBackgroundMusic();
           audio.lose();
           state.running = false;
+          
+          // Report loss to difficulty assist
+          GOGProgress.failStage(STAGE_ID, { diff: diff });
+
           // NEW: a gentle desaturating fade signals "not quite yet" without feeling harsh
           document.getElementById("canvasFrame").classList.add("flash-lose");
           GOGUi.say("Don't worry, Splash is ready to try again! 💙");

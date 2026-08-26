@@ -619,6 +619,7 @@
     <script src="../src/save.js"></script>
     <script src="../src/engine.js"></script>
     <script src="../src/ui.js"></script>
+    <script src="../src/progression.js"></script>
     <script>
       (() => {
         const canvas = document.getElementById("game");
@@ -627,6 +628,7 @@
         const STAGE_ID = "stage04";
         const stageMeta = GOGContent.byId(STAGE_ID);
         let save = GOGSave.load();
+        const diff = GOGProgress.difficulty(STAGE_ID);
         let calmMode = !!save.settings.calmMode;
 
         const audio = new GOGEngine.Audio(!save.settings.sound);
@@ -1182,6 +1184,9 @@
           state.state = "failed";
           gameRunning = false;
           audio.lose();
+
+          GOGProgress.failStage(STAGE_ID, { diff: diff });
+
           if (ui.canvasFrame) {
             ui.canvasFrame.classList.add("flash-lose");
           }
@@ -1212,6 +1217,16 @@
           state.state = "won";
           state.endTimer = 0;
           audio.win();
+
+          const deliveredCount = state.chicks.filter((c) => c.delivered).length;
+          let stars = GOGProgress.stars.fromRules([
+            { stars: 3, when: deliveredCount === 5 && state.warmth <= 0.25 },
+            { stars: 2, when: state.warmth <= 0.6 },
+            { stars: 1, when: true }
+          ]);
+
+          const rec = GOGProgress.finishStage(STAGE_ID, { stars: stars, diff: diff });
+          pendingStars = rec.stars;
         }
 
         let pendingStars = 1;
@@ -1371,11 +1386,11 @@
             return;
           }
 
-          const warmingRate = calmMode
+          const warmingRate = (calmMode
             ? 0
             : state.coolingTimer > 0
               ? 0.005
-              : 0.012;
+              : 0.012) * diff.enemySpeedMul();
           state.warmth = clamp(state.warmth + warmingRate * dt, 0, 1);
           if (state.coolingTimer > 0) {
             state.coolingTimer = Math.max(0, state.coolingTimer - dt);
@@ -1843,7 +1858,7 @@
           const dy = p.y + p.h / 2 - state.valve.y;
           const near = Math.hypot(dx, dy) < 78;
           if (near && input.actionPressed) {
-            state.warmth = Math.max(0, state.warmth - state.valve.coolAmount);
+            state.warmth = Math.max(0, state.warmth - state.valve.coolAmount * diff.forgivenessMul());
             state.coolingTimer = 8;
             state.valve.activeFlash = 1.0;
             audio.blip(520, 150);

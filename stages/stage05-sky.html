@@ -712,6 +712,7 @@
   <script src="../src/save.js"></script>
   <script src="../src/engine.js"></script>
   <script src="../src/ui.js"></script>
+  <script src="../src/progression.js"></script>
 
 <script>
 (function(){
@@ -722,6 +723,7 @@
   // ---------------------------------------------------------------
   const STAGE_ID = 'stage05';
   let save = GOGSave.load();
+  const diff = GOGProgress.difficulty(STAGE_ID);
   let calmMode = !!save.settings.calmMode;
 
   const canvas = document.getElementById('game');
@@ -873,7 +875,7 @@
   const PLAY_BOTTOM = 555;
 
   const BUILDING_COUNT = 6;
-  const ENERGY_TARGET = BUILDING_COUNT;
+  const ENERGY_TARGET = Math.round(BUILDING_COUNT * diff.goalMul());
   const STAGE_DURATION = 60; // 60 seconds stage timer
   let timeLeft = STAGE_DURATION;
 
@@ -1318,7 +1320,7 @@
     spawnTimers.bird -= dt;
     spawnTimers.cloud -= dt;
     spawnTimers.fgCloud -= dt;
-    if(spawnTimers.smoke <= 0){ spawnSmoke(); spawnTimers.smoke = rand(160,240); }
+    if(spawnTimers.smoke <= 0){ spawnSmoke(); spawnTimers.smoke = rand(160,240) * diff.spawnIntervalMul(); }
     if(spawnTimers.orb <= 0){ spawnOrb(); spawnTimers.orb = rand(55,90); }
     // Birds spawn more frequently as clean energy progress increases!
     if(spawnTimers.bird <= 0){ spawnBird(); spawnTimers.bird = rand(90,160) / (1.0 + score * 0.35); }
@@ -1382,7 +1384,7 @@
           const age = (chimneyY - player.y) / (chimneyY + 40);
           const twist = Math.sin(age * Math.PI * 1.8 - Date.now() * 0.0025 + s.wobble) * 45 * age;
           const plumeX = s.x + twist;
-          const pr = s.radius * (1.0 + age * 1.6);
+          const pr = s.radius * (1.0 + age * 1.6) * diff.enemySpeedMul();
           
           if (Math.abs(player.x - plumeX) < (player.radius * 0.45 + pr * 0.50)) {
             hit = true;
@@ -1394,7 +1396,7 @@
         smokeOverlapThisFrame = true;
         player.boostTimer = 0;
         player.speedFactor = Math.max(0.4, player.speedFactor - 0.04*dt);
-        const clarityDrop = calmMode ? 0.15 * dt : 0.45 * dt;
+        const clarityDrop = (calmMode ? 0.15 * dt : 0.45 * dt) * diff.enemySpeedMul();
         const minClarity = calmMode ? 25 : 0;
         clarity = clamp(clarity - clarityDrop, minClarity, 100);
         updateGuide("Uh-oh! Watch out for the dirty smoke! Catch a green breeze to go fast! 🌤️🌫️");
@@ -1418,7 +1420,7 @@
       o.y = o.baseY + Math.sin(o.wobble)*8;
       if(o.x < -40){ orbs.splice(i,1); continue; }
       const d = Math.hypot(o.x-player.x, o.y-player.y);
-      if(d < o.radius + player.radius*0.75){
+      if(d < (o.radius + player.radius*0.75) * diff.forgivenessMul()){
         const canCollect = (player.windInfluence || 0) > 0.15;
         if (canCollect) {
           orbs.splice(i,1);
@@ -1511,6 +1513,9 @@
     updateHUD();
   }
 
+  let pendingStars = 1;
+  let activeOverlay = null;
+
   function triggerWin(){
     audio.stopBgm();
     gameState = 'winning';
@@ -1521,8 +1526,17 @@
       b.lit = true;
     });
     sfxWin();
+
+    var stars = GOGProgress.stars.fromRules([
+      { stars: 3, when: clarity >= 90 },
+      { stars: 2, when: clarity >= 60 },
+      { stars: 1, when: true }
+    ]);
+    var rec = GOGProgress.finishStage(STAGE_ID, { stars: stars, diff: diff });
+    pendingStars = rec.stars;
+
     GOGSave.recordStageClear(STAGE_ID, {
-      stars: 3,
+      stars: stars,
       sprouts: 15,
       smogDrop: 10
     });
@@ -1530,13 +1544,40 @@
   }
   function finishWin(){
     gameState = 'win';
-    winOverlay.classList.remove('hidden');
+    activeOverlay = GOGUi.showOverlay({
+      accent: "var(--gog-white)",
+      title: "⚡ The City is Powered!",
+      body: "Breezy wakes completely as the clean winds sweep away the smog.",
+      stars: pendingStars,
+      factText: stageMeta ? stageMeta.fact : "Wind and sun make electricity without polluting the air.",
+      primaryLabel: "Back to Map",
+      secondaryLabel: "Play Again",
+      onPrimary: function () {
+        window.location.href = "../index.html";
+      },
+      onSecondary: function () {
+        window.location.reload();
+      },
+    });
   }
   function triggerFail(){
     audio.stopBgm();
     gameState = 'fail';
     sfxFail();
-    failOverlay.classList.remove('hidden');
+    GOGProgress.failStage(STAGE_ID, { diff: diff });
+
+    activeOverlay = GOGUi.showOverlay({
+      title: "Let's Catch Some Air!",
+      body: "The skies got a bit foggy — take a breath and try gliding through those clean updrafts again.",
+      primaryLabel: "Try Again",
+      secondaryLabel: "Back to Map",
+      onPrimary: function () {
+        window.location.reload();
+      },
+      onSecondary: function () {
+        window.location.href = "../index.html";
+      },
+    });
     updateGuide("It's okay! Let's take a deep breath and try gliding together again! 💖", true);
   }
 

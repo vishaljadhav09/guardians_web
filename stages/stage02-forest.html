@@ -537,6 +537,7 @@
     <script src="../src/save.js"></script>
     <script src="../src/engine.js"></script>
     <script src="../src/ui.js"></script>
+    <script src="../src/progression.js"></script>
     <script>
       /* ============================================================
    GUARDIANS OF GAIA — STAGE 2 CORE LOGIC & STATE MACHINE
@@ -568,6 +569,18 @@
           growthTimes: [1.2, 1.4, 1.7], // wave-specific growth time difficulty tuning (Phase 7)
           smogSpeed: [0.18, 0.25, 0.35], // smog speeds per wave (cols per second)
           canopyTargets: [25, 45, 60], // Target canopy percentages to win each wave (kid-friendly)
+          difficulty: {
+            enemySpeedMul: function () {
+              return 1;
+            },
+            goalMul: function () {
+              return 1;
+            },
+          },
+
+          setDifficulty: function (difficulty) {
+            this.difficulty = difficulty || this.difficulty;
+          },
 
           getCanopyPercent: function () {
             var connectedCount = 0;
@@ -809,7 +822,9 @@
           advanceSmog: function (dt) {
             if (this.gameState !== "WAVE_ACTIVE") return;
 
-            var speed = this.smogSpeed[this.wave - 1] || 0.15;
+            var speed =
+              (this.smogSpeed[this.wave - 1] || 0.15) *
+              this.difficulty.enemySpeedMul();
             var targetPos = this.smogPosition - speed * dt;
 
             // Check if we hit any blocked columns as we move left
@@ -868,7 +883,7 @@
             if (this.gameState !== "WAVE_ACTIVE") return grown;
 
             var currentPct = this.getCanopyPercent();
-            var targetPct = this.getCanopyTarget();
+            var targetPct = this.getCanopyTarget() * this.difficulty.goalMul();
             if (currentPct >= targetPct) {
               this.winWave();
             } else if (this.timer <= 0) {
@@ -1173,6 +1188,8 @@
         var STAGE_ID = "stage02";
         var stageMeta = GOGContent.byId(STAGE_ID);
         var save = GOGSave.load();
+        var diff = GOGProgress.difficulty(STAGE_ID);
+        GOGStage2.setDifficulty(diff);
 
         var canvas = document.getElementById("gameCanvas");
         var ctx = canvas.getContext("2d");
@@ -2783,11 +2800,23 @@
           }
           var canopyPercent = Math.round((connectedCount / totalCells) * 100);
 
-          var stars = 1;
-          if (!calmMode) {
-            if (canopyPercent >= 70) stars = 3;
-            else if (canopyPercent >= 40) stars = 2;
+          var treesLost = 0;
+          for (var r = 0; r < GOGStage2.rows; r++) {
+            for (var c = 0; c < GOGStage2.cols; c++) {
+              var cell = GOGStage2.grid[r][c];
+              if ((cell.state === "tree" || cell.state === "sapling") && c >= Math.floor(GOGStage2.smogPosition)) {
+                treesLost++;
+              }
+            }
           }
+
+          var stars = GOGProgress.stars.fromRules([
+            { stars: 3, when: canopyPercent >= 70 && treesLost === 0 },
+            { stars: 2, when: treesLost <= 2 },
+            { stars: 1, when: true }
+          ]);
+
+          var rec = GOGProgress.finishStage(STAGE_ID, { stars: stars, diff: diff });
 
           var nextSave = GOGSave.recordStageClear(STAGE_ID, {
             stars: stars,
@@ -2805,7 +2834,7 @@
                 accent: "var(--gog-white)",
                 title: "🌳 Canopy Restored!",
                 body: "Ravi wakes up and a Seed of Life flies back to the Guardian Tree.<br><br><b>Did you know?</b><br>🦜 \"Rainforests are home to more than half of the world's plant and animal species!\"",
-                stars: stars,
+                stars: rec.stars,
                 factText: stageMeta.fact,
                 primaryLabel: "Back to Map",
                 secondaryLabel: "Play Again",
@@ -2824,6 +2853,9 @@
           audio.stopBgm();
           state.running = false;
           audio.lose();
+          
+          GOGProgress.failStage(STAGE_ID, { diff: diff });
+
           canvasFrame.classList.add("flash-lose");
           var canopyNow = GOGStage2.getCanopyPercent();
           var canopyTarget = GOGStage2.getCanopyTarget();
@@ -2868,7 +2900,7 @@
                 if (
                   c.active &&
                   !c.raining &&
-                  GOGEngine.Collision.distance(ptX, ptY, c.x, c.y) < 60
+                  GOGEngine.Collision.distance(ptX, ptY, c.x, c.y) < 60 * diff.forgivenessMul()
                 ) {
                   hitCloud = true;
                   GOGStage2.saplings++;
