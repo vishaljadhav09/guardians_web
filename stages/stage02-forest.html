@@ -726,6 +726,24 @@
             this.saplings--;
             this.grid[r][c].state = "sapling";
             this.grid[r][c].growTimer = this.growthTime;
+
+            // NEW: "Grove bonus" — a sapling planted within 2 grid cells of
+            // existing growth (tree or sapling) grows 25% faster, rewarding
+            // clustered planting over scattering saplings thinly.
+            var hasNearbyGrowth = false;
+            for (var gr = r - 2; gr <= r + 2 && !hasNearbyGrowth; gr++) {
+              for (var gc = c - 2; gc <= c + 2; gc++) {
+                if (gr === r && gc === c) continue;
+                if (gr < 0 || gr >= this.rows || gc < 0 || gc >= this.cols) continue;
+                var neighborState = this.grid[gr][gc].state;
+                if (neighborState === "tree" || neighborState === "sapling") {
+                  hasNearbyGrowth = true;
+                  break;
+                }
+              }
+            }
+            this.grid[r][c].groveBonus = hasNearbyGrowth;
+            this.grid[r][c].growthSpeedMul = hasNearbyGrowth ? 1.25 : 1.0;
             return true;
           },
 
@@ -739,7 +757,7 @@
                   cell.growPopTimer = Math.max(0, cell.growPopTimer - dt);
                 }
                 if (cell.state === "sapling") {
-                  cell.growTimer -= dt;
+                  cell.growTimer -= dt * (cell.growthSpeedMul || 1.0);
                   if (cell.growTimer <= 0) {
                     cell.state = "tree";
                     cell.growTimer = 0;
@@ -1211,7 +1229,7 @@
         var particles = new GOGEngine.ParticleSystem(120);
         var audio = new GOGEngine.Audio(!save.settings.sound);
         audio.initBgm("assets/audio/stage02/stage_2.mp3");
-        var calmMode = !!save.settings.calm;
+        var calmMode = !!save.settings.calmMode;
 
         var treeImg = null;
         var treeDisImg = null;
@@ -1220,6 +1238,17 @@
         var deerImg = null;
         var giraffeImg = null;
         var tigerImg = null;
+
+        // NEW: Ravi's on-screen character arc — he watches from the edge of
+        // the grove and his mood/pace tracks the canopy's health. The
+        // Tiger-Spritesheet is a single 2x3 walk-cycle (no distinct
+        // fearful/confident/pounce art), so the arc is expressed through
+        // animation speed + a squash-and-stretch "pounce" bounce, paired
+        // with dialogue at each threshold — not through separate sprite art.
+        var raviArcStage = -1; // -1 = not yet announced; 0 = fearful, 1 = confident, 2 = joyful
+        var raviAnimTimer = 0;
+        var raviFrame = 0;
+        var raviPounce = 0; // 0..1 decaying bounce pulse, triggered once at 100%
         var flyingBirdsImg = null;
         var deerRunImg = null;
         var beesFlyingImg = null;
@@ -2171,6 +2200,42 @@
           ctx.restore();
         }
 
+        // NEW: dappled sunbeams — soft drifting light shafts through the
+        // leaves, fading in as the canopy fills out. Barely visible over
+        // bare dirt (nothing to filter light through yet), full strength
+        // once the canopy is thriving.
+        function drawDappledSunbeams(elapsed) {
+          var canopyT = Math.max(0, Math.min(1, (state.canopyPercent || 0) / 100));
+          if (canopyT <= 0.02) return;
+          ctx.save();
+          ctx.globalAlpha = 0.10 + canopyT * 0.22;
+          ctx.fillStyle = "#fff6c9";
+          var rayCount = 4;
+          for (var i = 0; i < rayCount; i++) {
+            var rx = (((i / rayCount) * W + elapsed * 14) % (W + 300)) - 150;
+            ctx.save();
+            ctx.translate(rx, 0);
+            ctx.rotate(0.18);
+            ctx.fillRect(0, -40, 46, H + 80);
+            ctx.restore();
+          }
+          ctx.restore();
+
+          // Small drifting dapples of light on the ground, denser with more canopy.
+          ctx.save();
+          ctx.globalAlpha = 0.16 + canopyT * 0.24;
+          ctx.fillStyle = "#fffbe0";
+          var dappleCount = Math.round(canopyT * 10);
+          for (var d = 0; d < dappleCount; d++) {
+            var dx = (d * 97 + elapsed * 14) % W;
+            var dy = (d * 53) % (GRID_H - 20) + GRID_Y_OFFSET + 10 + Math.sin(elapsed * 1.4 + d) * 6;
+            ctx.beginPath();
+            ctx.arc(dx, dy, 5 + (d % 3) * 2, 0, Math.PI * 2);
+            ctx.fill();
+          }
+          ctx.restore();
+        }
+
         /* ---------------- ambient canopy wildlife ---------------- */
         // Only one animal is "in play" at a time — whichever one matches
         // the current wave (1=deer, 2=giraffe, 3=tiger) — and it's only
@@ -2711,6 +2776,23 @@
           cutsceneTimer = setTimeout(closeCutscene, 2200);
         }
 
+        // NEW: "meet the guardian" beat — Ravi in trouble, before the rules overlay.
+        function showRaviIntroBeat() {
+          GOGUi.showGuardianBeat({
+            emoji: "🐯",
+            name: "Ravi",
+            role: "Guardian of the Rainforest",
+            line: "They cut down my home… Can you help me grow it back?",
+            audio: audio,
+            audioPath: "assets/audio/stage02/ravi_intro_lines.mp3",
+            buttonLabel: "Let's plant trees!",
+            autoDismissMs: 10000,
+            onDone: function () {
+              showIntro();
+            },
+          });
+        }
+
         function showIntro() {
           GOGUi.say(
             "Welcome! Plant trees to shield the rainforest from the Smog! 🌳",
@@ -2752,14 +2834,20 @@
           state.cutsceneBirds = null;
           initAmbientFauna();
           GOGStage2.transitionTo("WAVE_ACTIVE");
-          GOGUi.say("Wave " + waveNum + " starts! Tap clouds and plant trees!");
+
+          // NEW: reinforce the "next wave" speed preview right as it starts,
+          // in case the wave-cleared overlay was tapped through quickly.
+          var prevSpeed = GOGStage2.smogSpeed[waveNum - 2];
+          var thisSpeed = GOGStage2.smogSpeed[waveNum - 1] || 0;
+          var speedNote = (prevSpeed != null && thisSpeed > prevSpeed) ? " The Smog is faster now! 💨" : "";
+          GOGUi.say("Wave " + waveNum + " starts! Tap clouds and plant trees!" + speedNote);
         }
 
         function endWaveCleared() {
           state.running = false;
           audio.heal();
           var nextWave = GOGStage2.wave + 1;
-          
+
           var factText = "";
           if (GOGStage2.wave === 1) {
             factText = "🐯 \"Animals need forests. Trees provide safe homes and food for many forest creatures!\"";
@@ -2767,10 +2855,18 @@
             factText = "🌳 \"Trees clean our air. Their leaves absorb greenhouse gases and release fresh oxygen!\"";
           }
 
+          // NEW: "next wave" preview — warn kids up front if the Smog is about
+          // to creep faster, so a harder wave never feels like a surprise.
+          var currSpeed = GOGStage2.smogSpeed[GOGStage2.wave - 1] || 0;
+          var nextSpeed = GOGStage2.smogSpeed[nextWave - 1] || currSpeed;
+          var speedPreview = nextSpeed > currSpeed
+            ? "⚠️ <b>Heads up:</b> the Smog creeps faster in Wave " + nextWave + " — plant quickly!"
+            : "😌 The Smog moves at the same steady pace next wave.";
+
           var clearedOverlay = GOGUi.showOverlay({
             accent: "var(--gog-lime)",
             title: "🌳 Wave " + GOGStage2.wave + " Cleared!",
-            body: "The canopy held! Ravi is recovering. Reach a " + (GOGStage2.canopyTargets[nextWave - 1] || 50) + "% connected canopy in the next wave!<br><br><b>Forest Fact:</b><br>" + factText,
+            body: "The canopy held! Ravi is recovering. Reach a " + (GOGStage2.canopyTargets[nextWave - 1] || 50) + "% connected canopy in the next wave!<br><br>" + speedPreview + "<br><br><b>Forest Fact:</b><br>" + factText,
             primaryLabel: "Start Wave " + nextWave,
             onPrimary: function () {
               GOGUi.closeOverlay(clearedOverlay);
@@ -2827,27 +2923,36 @@
             smogDrop: 10,
           });
 
-          GOGUi.say(
-            "Incredible! You reforested the canopy and saved Ravi! 🐯🎉",
-          );
-
+          // NEW: "thank you" beat — Ravi grateful, braver now that the canopy grows.
           setTimeout(function () {
-            triggerSeedReturnCutscene(function () {
-              GOGUi.showOverlay({
-                accent: "var(--gog-white)",
-                title: "🌳 Canopy Restored!",
-                body: "Ravi wakes up and a Seed of Life flies back to the Guardian Tree.<br><br><b>Did you know?</b><br>🦜 \"Rainforests are home to more than half of the world's plant and animal species!\"",
-                stars: rec.stars,
-                factText: stageMeta.fact,
-                primaryLabel: "Back to Map",
-                secondaryLabel: "Play Again",
-                onPrimary: function () {
-                  window.location.href = "../index.html";
-                },
-                onSecondary: function () {
-                  window.location.reload();
-                },
-              });
+            GOGUi.showGuardianBeat({
+              emoji: "🐯",
+              name: "Ravi",
+              role: "Guardian of the Rainforest",
+              line: "You grew my forest back! Now my friends have a home again! 🌳",
+              audio: audio,
+              audioPath: "assets/audio/stage02/ravi_outro_lines.mp3",
+              buttonLabel: "Yay!",
+              autoDismissMs: 4200,
+              onDone: function () {
+                triggerSeedReturnCutscene(function () {
+                  GOGUi.showOverlay({
+                    accent: "var(--gog-white)",
+                    title: "🌳 Canopy Restored!",
+                    body: "Ravi wakes up and a Seed of Life flies back to the Guardian Tree.<br><br><b>Did you know?</b><br>🦜 \"Rainforests are home to more than half of the world's plant and animal species!\"",
+                    stars: rec.stars,
+                    factText: stageMeta.fact,
+                    primaryLabel: "Back to Map",
+                    secondaryLabel: "Play Again",
+                    onPrimary: function () {
+                      window.location.href = "../index.html";
+                    },
+                    onSecondary: function () {
+                      window.location.reload();
+                    },
+                  });
+                });
+              },
             });
           }, 600);
         }
@@ -2925,6 +3030,32 @@
                   c.raining = true;
                   c.rainTimer = 1.4;
                   c.dropSpawnTimer = 0;
+
+                  // NEW: Rain cloud power-up — saplings under the shower
+                  // instantly gain +50% growth (their remaining grow time
+                  // is halved), rewarding tapping clouds near planted spots.
+                  var rainCellW = W / GOGStage2.cols;
+                  var rainCol = Math.floor(c.x / rainCellW);
+                  var rainBoosted = false;
+                  for (var rr = 0; rr < GOGStage2.rows; rr++) {
+                    for (var rc = rainCol - 1; rc <= rainCol + 1; rc++) {
+                      if (rc < 0 || rc >= GOGStage2.cols) continue;
+                      var rainCell = GOGStage2.grid[rr][rc];
+                      if (rainCell.state === "sapling") {
+                        rainCell.growTimer = Math.max(0, rainCell.growTimer * 0.5);
+                        rainBoosted = true;
+                      }
+                    }
+                  }
+                  if (rainBoosted) {
+                    GOGUi.floatLabel(
+                      canvasFrame,
+                      ptX,
+                      ptY - 30,
+                      "Rain Boost! 💧 +50% growth",
+                      "#5ec8f2",
+                    );
+                  }
                   break;
                 }
               }
@@ -2964,16 +3095,17 @@
                       audio.blip(440, 120, "triangle");
                       var cx = col * cellW + cellW / 2;
                       var cy = GRID_Y_OFFSET + row * cellH + cellH / 2; // Adjusted particle center
+                      var groveBonus = GOGStage2.grid[row][col].groveBonus;
                       particles.burst(cx, cy, {
-                        glyphs: ["🌱", "🍃"],
-                        count: 8,
+                        glyphs: groveBonus ? ["🌱", "✨", "🍃"] : ["🌱", "🍃"],
+                        count: groveBonus ? 12 : 8,
                         lift: 30,
                       });
                       GOGUi.floatLabel(
                         canvasFrame,
                         ptX,
                         ptY,
-                        "Planted!",
+                        groveBonus ? "Grove Bonus! 🌿 +25% growth" : "Planted!",
                         "var(--gog-lime)",
                       );
                     } else if (
@@ -3078,6 +3210,7 @@
 
           updateClouds(dt);
           updateInputs();
+          updateRaviCharacter(dt);
 
           // Advance logic model (growth, smog, timer) and read connection snaps
           if (GOGStage2.gameState === "WAVE_ACTIVE") {
@@ -3258,6 +3391,107 @@
           }
         }
 
+        // NEW: "suggested spot" easy-mode helper — picks one empty, plantable
+        // cell to glow: prefers cells next to existing growth (builds a
+        // connected canopy), then the cell nearest the smog front (most urgent).
+        // Shown only in calm mode or once auto-easing has kicked in, so it
+        // stays a helping hand for struggling/young kids without removing the
+        // planning challenge for everyone else.
+        function findSuggestedPlantCell() {
+          if (GOGStage2.gameState !== "WAVE_ACTIVE") return null;
+          if (GOGStage2.saplings <= 0) return null;
+          var smogCol = Math.floor(GOGStage2.smogPosition);
+          var best = null;
+          var bestScore = -Infinity;
+          for (var r = 0; r < GOGStage2.rows; r++) {
+            for (var c = 0; c < GOGStage2.cols; c++) {
+              var cell = GOGStage2.grid[r][c];
+              if (cell.state !== "empty" || c >= smogCol) continue;
+              var adjacentGrowth = 0;
+              var neighbors = [[r - 1, c], [r + 1, c], [r, c - 1], [r, c + 1]];
+              for (var n = 0; n < neighbors.length; n++) {
+                var nr = neighbors[n][0], nc = neighbors[n][1];
+                if (nr >= 0 && nr < GOGStage2.rows && nc >= 0 && nc < GOGStage2.cols) {
+                  var ns = GOGStage2.grid[nr][nc].state;
+                  if (ns === "tree" || ns === "sapling") adjacentGrowth++;
+                }
+              }
+              var score = adjacentGrowth * 100 - (smogCol - c);
+              if (score > bestScore) {
+                bestScore = score;
+                best = { r: r, c: c };
+              }
+            }
+          }
+          return best;
+        }
+
+        // NEW: Ravi's character arc — mood/pace tracks canopy health, with
+        // a one-time dialogue line and pounce bounce at each threshold.
+        function updateRaviCharacter(dt) {
+          var pct = state.canopyPercent || 0;
+          var stage = pct >= 80 ? 2 : pct >= 30 ? 1 : 0;
+
+          // Walk-cycle speed reflects mood: slow/nervous when scared, brisk
+          // and bouncy once the canopy is thriving.
+          var animSpeed = stage === 0 ? 3.5 : stage === 1 ? 6 : 9;
+          raviAnimTimer += dt * animSpeed;
+          raviFrame = Math.floor(raviAnimTimer) % 6;
+
+          if (raviPounce > 0) raviPounce = Math.max(0, raviPounce - dt * 1.6);
+
+          if (stage > raviArcStage && GOGStage2.gameState === "WAVE_ACTIVE") {
+            raviArcStage = stage;
+            if (stage === 0) {
+              GOGUi.say("They cut down my home… I'm scared, but I see you planting! 🐯");
+            } else if (stage === 1) {
+              GOGUi.say("The canopy's coming back — I feel braver already! 🌳");
+            } else if (stage === 2) {
+              raviPounce = 1;
+              GOGUi.say("My forest is alive again! Thank you! 🐯🎉");
+            }
+          }
+        }
+
+        function drawRaviCharacter() {
+          if (!tigerImg || !tigerImg.complete || !tigerImg.width) return;
+          var stage = state.canopyPercent >= 80 ? 2 : state.canopyPercent >= 30 ? 1 : 0;
+
+          var frameW = tigerImg.width / 2;
+          var frameH = tigerImg.height / 3;
+          var col = raviFrame % 2;
+          var row = Math.floor(raviFrame / 2);
+
+          // Anchored in the sky band, left of the grid, watching his grove.
+          var baseX = 58;
+          var baseY = GRID_Y_OFFSET - 46;
+          var drawSize = 72;
+
+          var bob = Math.sin(state.elapsed * (stage === 0 ? 2 : stage === 1 ? 3 : 4.5)) * (stage === 0 ? 2 : 4);
+          var pounceScale = 1 + raviPounce * 0.35;
+          var pounceLift = raviPounce * 18;
+
+          ctx.save();
+          ctx.translate(baseX + drawSize / 2, baseY + drawSize / 2 + bob - pounceLift);
+          ctx.scale(pounceScale, pounceScale);
+          // Nervous trembling jitter while scared
+          if (stage === 0) {
+            ctx.translate((Math.random() - 0.5) * 1.5, 0);
+          }
+          ctx.drawImage(
+            tigerImg,
+            col * frameW,
+            row * frameH,
+            frameW,
+            frameH,
+            -drawSize / 2,
+            -drawSize / 2,
+            drawSize,
+            drawSize,
+          );
+          ctx.restore();
+        }
+
         function draw() {
           var shakeX = 0,
             shakeY = 0;
@@ -3275,13 +3509,20 @@
           }
 
           drawForestBackground(state.elapsed);
+          drawDappledSunbeams(state.elapsed); // NEW: light through the leaves, fades in with canopy growth
           drawFog(state.elapsed);
+          drawRaviCharacter(); // NEW: Ravi watches from the sky band, mood tracking canopy health
 
           // Grid dimension recalculations
           var cellW = W / GOGStage2.cols;
           var gridH = GRID_H; // Height of the actionable zone
           var cellH = gridH / GOGStage2.rows; // Scale rows within the grid height
           var gridYOffset = GRID_Y_OFFSET; // Shift everything downwards past the sky
+
+          // NEW: suggested-spot glow — only for calm mode or once auto-easing
+          // has kicked in (assist > 0), so it's a helping hand, not a spoiler.
+          var showSuggestedSpot = calmMode || diff.getAssist() > 0;
+          var suggestedSpot = showSuggestedSpot ? findSuggestedPlantCell() : null;
 
           // 1. Draw Grid Cells
           for (var r = 0; r < GOGStage2.rows; r++) {
@@ -3340,6 +3581,21 @@
                 ctx.globalAlpha = 0.45 + Math.sin(state.elapsed * 2.8 + (r + c)) * 0.15;
                 ctx.fillText("🌱", cx, cy - 2);
                 ctx.restore();
+
+                // NEW: suggested-spot glow — a brighter pulsing lime ring
+                // singles out one good next move for struggling/young kids.
+                if (suggestedSpot && suggestedSpot.r === r && suggestedSpot.c === c) {
+                  ctx.save();
+                  var suggestPulse = 0.55 + Math.sin(state.elapsed * 5) * 0.35;
+                  ctx.strokeStyle = "rgba(201, 242, 61, " + suggestPulse + ")";
+                  ctx.lineWidth = 4;
+                  ctx.shadowColor = "rgba(201, 242, 61, 0.8)";
+                  ctx.shadowBlur = 12;
+                  ctx.beginPath();
+                  ctx.arc(cx, cy, radius * 1.35, 0, Math.PI * 2);
+                  ctx.stroke();
+                  ctx.restore();
+                }
               }
 
               // Rock background tint
@@ -4078,7 +4334,7 @@
         initBackground().finally(function () {
           audio.playBgm();
           loop.start();
-          showIntro();
+          showRaviIntroBeat();
         });
       })();
     </script>

@@ -80,6 +80,58 @@
     setTimeout(function () { el.remove(); }, 180);
   }
 
+  // A full-screen "meet the guardian" / "thank you" story beat, shared by every
+  // stage's pre-game intro and post-game outro. Pauses on the guardian's spoken
+  // line (with an animated bobbing avatar) until the player taps through or the
+  // auto-dismiss timer fires — so non-readers still get the full beat, and
+  // impatient older kids can skip ahead.
+  function showGuardianBeat(opts) {
+    opts = opts || {};
+    var wrap = document.createElement("div");
+    wrap.className = "gog-overlay gog-guardian-beat";
+
+    var card = document.createElement("div");
+    card.className = "brutal-box gog-overlay-card";
+    if (opts.accent) card.style.background = opts.accent;
+
+    var html = "";
+    html += '<div class="guideAvatar" style="font-size:4.2rem;line-height:1;margin-bottom:8px;">' +
+      (opts.emoji || "🦋") + "</div>";
+    html += '<h2 style="font-size:1.4rem;margin-bottom:2px;">' + (opts.name || "") + "</h2>";
+    if (opts.role) {
+      html += '<div style="font-size:0.85rem;opacity:0.7;margin-bottom:14px;">' + opts.role + "</div>";
+    }
+    html += '<p style="font-family:var(--gog-font-hand);font-size:1.35rem;line-height:1.35;margin:0 0 20px;">“' +
+      (opts.line || "") + '”</p>';
+    html += '<div style="display:flex;gap:10px;justify-content:center;flex-wrap:wrap;">';
+    html += '<button class="brutal-btn" data-role="continue">' + (opts.buttonLabel || "Continue") + "</button>";
+    html += "</div>";
+
+    card.innerHTML = html;
+    wrap.appendChild(card);
+    document.body.appendChild(wrap);
+
+    if (opts.audio && opts.audioPath && typeof opts.audio.playSfxFile === "function") {
+      opts.audio.playSfxFile(opts.audioPath);
+    }
+
+    var dismissed = false;
+    function dismiss() {
+      if (dismissed) return;
+      dismissed = true;
+      closeOverlay(wrap);
+      if (opts.onDone) opts.onDone();
+    }
+
+    var btn = card.querySelector('[data-role="continue"]');
+    if (btn) btn.addEventListener("click", dismiss);
+    if (opts.autoDismissMs) {
+      setTimeout(dismiss, opts.autoDismissMs);
+    }
+
+    return wrap;
+  }
+
   var lastFloatLabelAt = 0;
   // A small floating "+1" / "+seed" style label that drifts up and fades.
   function floatLabel(parentEl, x, y, text, color) {
@@ -324,6 +376,7 @@
     showToast: showToast,
     showOverlay: showOverlay,
     closeOverlay: closeOverlay,
+    showGuardianBeat: showGuardianBeat,
     floatLabel: floatLabel,
     say: say,
     confettiAt: confettiAt,

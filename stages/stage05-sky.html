@@ -612,7 +612,7 @@
         </div>
       </div>
       <div class="hud-mid">
-        <div class="meter" title="City Power" style="min-width: 230px;">
+        <div class="meter" id="cityPowerMeter" title="City Power" style="min-width: 230px;">
           <span class="label">⚡ Clean Energy</span>
           <div class="meter-track">
             <div class="meter-fill" id="progressFill"></div>
@@ -628,6 +628,7 @@
         </div>
         
         <span class="chip timer-chip" id="timerChip">60s</span>
+        <span class="chip" id="flockBadge" style="display:none;">🐦 Flying Together!</span>
 
         <button
           class="icon-btn"
@@ -722,6 +723,7 @@
   // SETUP
   // ---------------------------------------------------------------
   const STAGE_ID = 'stage05';
+  const stageMeta = GOGContent.byId(STAGE_ID);
   let save = GOGSave.load();
   const diff = GOGProgress.difficulty(STAGE_ID);
   let calmMode = !!save.settings.calmMode;
@@ -742,6 +744,19 @@
   const clarityFill = document.getElementById('clarityFill');
   const clarityText = document.getElementById('clarityText');
   const canvasFrame = document.getElementById('canvasFrame');
+  const cityPowerMeter = document.getElementById('cityPowerMeter');
+
+  // NEW: calm mode foregrounds Clear Skies (the meter that actually needs
+  // watching moment-to-moment) and de-emphasizes City Power — it still
+  // tracks real orb progress toward the win goal, just visually quieter,
+  // so a young kid has one thing to watch instead of two. We don't fake
+  // or auto-fill City Power itself: that's the real win condition, and
+  // silently completing it for the player would remove the game entirely.
+  if (calmMode && cityPowerMeter) {
+    cityPowerMeter.style.opacity = '0.55';
+    cityPowerMeter.style.transform = 'scale(0.85)';
+    cityPowerMeter.style.minWidth = '170px';
+  }
 
   const COLORS = {
     ink:'#12120F', cream:'#FDFBF7', lime:'#C6FF3D', limeDark:'#8FCB1A',
@@ -903,12 +918,25 @@
     angle: 0,
     trailTimer: 0,
     animFrame: 0,
-    animTimer: 0
+    animTimer: 0,
+    diving: false // T056: steep-dive state
   };
 
   let score = 0;
   let clarity = 35;
   let smokeOverlapThisFrame = false;
+
+  // T059: smoothed reactive sky tint — dips toward smog-gray on contact,
+  // pulses toward radiant-blue on a clean touch (updraft/orb), decays to 0
+  // otherwise. Separate from the existing progress-based drawSky() split.
+  let skyReactTint = 0;
+
+  // T058: migratory bird V-formations — a rarer, separate system from the
+  // purely decorative ambient `birds` array above (left untouched).
+  let birdFlocks = [];
+  let flockSpawnTimer = rand(1500, 2400);
+  let playerNearFlock = false;
+  const flockBadge = document.getElementById('flockBadge');
 
   let updrafts = [], smokes = [], orbs = [], particles = [];
   let birds = [], ambientClouds = [], floatTexts = [];
@@ -1030,6 +1058,10 @@
     foregroundClouds = [];
     spawnTimers = { updraft: 40, smoke: 90, orb: 20, bird: 30, cloud: 5, fgCloud: 120 };
     msgCooldown = 0;
+    skyReactTint = 0; // T059
+    birdFlocks = []; flockSpawnTimer = rand(1500, 2400); playerNearFlock = false; // T058
+    if (flockBadge) flockBadge.style.display = 'none';
+    player.diving = false; // T056
     scrollX = 0;
     seedAmbientClouds();
     buildBuildings();
@@ -1291,6 +1323,15 @@
     const dy = player.y - player.prevY;
     player.angle = clamp(dy*0.05, -0.5, 0.5);
 
+    // T056: leaning into a steep dive triggers full-screen speed lines +
+    // a one-shot whoosh. `dy` is per-frame vertical movement (~60fps units),
+    // so a sustained fast downward glide crosses this threshold.
+    const wasDiving = player.diving;
+    player.diving = dy > 3.2 && gameState === 'playing';
+    if (player.diving && !wasDiving) {
+      audio.tone(220, 0.35, 'sawtooth', 0.05, 90);
+    }
+
     // --- speed factor decay / boost handling ---
     if(player.boostTimer > 0){
       player.boostTimer -= dt;
@@ -1305,13 +1346,11 @@
     player.animTimer += dt/60*fps;
     player.animFrame = Math.floor(player.animTimer) % frameCount;
 
-    // --- trail particles while boosted ---
-    if(player.boostTimer > 0){
-      player.trailTimer -= dt;
-      if(player.trailTimer <= 0){
-        spawnTrailParticle();
-        player.trailTimer = 2;
-      }
+    // --- trail particles: subtle always-on wind trail, denser while boosted ---
+    player.trailTimer -= dt;
+    if(player.trailTimer <= 0){
+      spawnTrailParticle();
+      player.trailTimer = player.boostTimer > 0 ? 2 : 6;
     }
 
     // --- spawn timers ---
@@ -1327,6 +1366,10 @@
     if(spawnTimers.cloud <= 0){ spawnAmbientCloud(); spawnTimers.cloud = rand(140,220); }
     if(spawnTimers.fgCloud <= 0){ spawnForegroundCloud(); spawnTimers.fgCloud = rand(180,300); }
 
+    // T058: rarer migratory bird V-formations
+    flockSpawnTimer -= dt;
+    if(flockSpawnTimer <= 0){ spawnBirdFlock(); flockSpawnTimer = rand(1500, 2400); }
+
     // --- update updrafts ---
     smokeOverlapThisFrame = false;
     for(let i=updrafts.length-1;i>=0;i--){
@@ -1341,6 +1384,7 @@
         player.boostTimer = 55;
         player.speedFactor = Math.max(player.speedFactor, 1.6);
         clarity = clamp(clarity + 6, 0, 100);
+        skyReactTint = 1; // T059: instantly clears to radiant blue on a clean touch
         spawnBurst(player.x, player.y, COLORS.lime, 12);
         sfxBoost();
         updrafts.splice(i,1);
@@ -1404,9 +1448,11 @@
     }
     if(smokeOverlapThisFrame){
       if(Math.random() < 0.04*dt) sfxSmoke();
+      skyReactTint = lerp(skyReactTint, -1, clamp(0.12*dt, 0, 1)); // T059: sky turns gray on contact
     } else {
       // passive gentle regen when clear
       clarity = clamp(clarity + 0.10*dt, 0, 100);
+      skyReactTint = lerp(skyReactTint, 0, clamp(0.05*dt, 0, 1)); // T059: fades back to neutral
     }
 
     // --- update orbs ---
@@ -1426,6 +1472,9 @@
           orbs.splice(i,1);
           score++;
           clarity = clamp(clarity + 12, 0, 100); // Clean energy heals the sky!
+          skyReactTint = 1; // T059: clears to radiant blue
+          player.boostTimer = Math.max(player.boostTimer, 30); // T059: orbs now also give a speed surge
+          player.speedFactor = Math.max(player.speedFactor, 1.35);
           lightNextBuilding();
           spawnBurst(player.x, player.y, 'rainbow', 18);
           sfxOrb();
@@ -1514,6 +1563,7 @@
     updateWindParticles(dt);
     updateAmbientFlyers(dt, effScroll);
     detectWindOrbBonus();
+    updateBirdFlocks(dt, effScroll); // T058
 
     updateHUD();
   }
@@ -1917,6 +1967,65 @@
     });
   }
 
+  // T058: migratory bird V-formations — a rarer special event, separate
+  // from the purely ambient `birds` array. Flying alongside the leader
+  // grants a speed bonus and a "Flying Together" HUD badge.
+  function spawnBirdFlock(){
+    const baseY = rand(PLAY_TOP + 60, PLAY_BOTTOM - 120);
+    const speed = rand(1.4, 1.8);
+    const count = 5;
+    const offsets = [];
+    for(let i=0;i<count;i++){
+      const side = i % 2 === 0 ? 1 : -1;
+      const rank = Math.ceil(i/2);
+      offsets.push({ dx: -rank*26, dy: side*rank*16 });
+    }
+    birdFlocks.push({
+      x: W + 100, y: baseY, speed, offsets,
+      flapTimer: rand(0,1), flapRate: rand(7,10)
+    });
+  }
+
+  function updateBirdFlocks(dt, effScroll){
+    for(let i=birdFlocks.length-1;i>=0;i--){
+      const f = birdFlocks[i];
+      f.x -= f.speed * effScroll * dt;
+      f.flapTimer += dt/60 * f.flapRate;
+      if(f.x < -160){ birdFlocks.splice(i,1); }
+    }
+
+    let alongside = false;
+    for(const f of birdFlocks){
+      if(Math.hypot(f.x - player.x, f.y - player.y) < 90){ alongside = true; break; }
+    }
+    if(alongside && !playerNearFlock){
+      updateGuide("Flying together! ✨🐦", true);
+    }
+    playerNearFlock = alongside;
+    if(alongside){
+      player.speedFactor = Math.max(player.speedFactor, 1.5);
+    }
+    if(flockBadge) flockBadge.style.display = alongside ? '' : 'none';
+  }
+
+  function drawBirdFlocks(){
+    birdFlocks.forEach(f=>{
+      const frame = Math.floor(f.flapTimer) % 2;
+      f.offsets.forEach(o=>{
+        const bx = f.x + o.dx, by = f.y + o.dy;
+        if(!drawSpriteFrame(sprites.birds, frame, bx, by, 24, true)){
+          ctx.save();
+          ctx.translate(bx, by);
+          ctx.fillStyle = COLORS.cobalt;
+          ctx.beginPath();
+          ctx.moveTo(-10,0); ctx.quadraticCurveTo(0,-8,10,0); ctx.quadraticCurveTo(0,4,-10,0);
+          ctx.fill();
+          ctx.restore();
+        }
+      });
+    });
+  }
+
   function drawCustomSmoke(s) {
     const chimneyY = GROUND_Y - 56;
     
@@ -2162,6 +2271,22 @@
     }
     ctx.restore();
 
+    // NEW: clear "rising / falling" cue — a small colored chevron beside
+    // Breezy, shown only once vertical motion is clearly noticeable so it
+    // doesn't jitter while gliding roughly level.
+    if (Math.abs(dy) > 0.15) {
+      ctx.save();
+      ctx.translate(player.x + player.radius + 14, player.y);
+      const climbing = dy < 0;
+      ctx.globalAlpha = clamp(Math.abs(dy) * 0.08, 0.35, 1);
+      ctx.font = '900 22px Arial';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillStyle = climbing ? COLORS.lime : COLORS.cobalt;
+      ctx.fillText(climbing ? '▲' : '▼', 0, 0);
+      ctx.restore();
+    }
+
     // Coughing speech bubble above Breezy when she hits smoke
     if (smokeOverlapThisFrame) {
       ctx.save();
@@ -2210,6 +2335,45 @@
     }
   }
 
+  // T059: explicit reactive contrast — smoothly gray-tints the whole scene
+  // toward smog contact, or washes it radiant-blue right after a clean
+  // touch (updraft/orb). Layered on top of drawSky()'s existing
+  // progress-based clean/dirty split, not a replacement for it.
+  function drawSkyReactTint(){
+    if(Math.abs(skyReactTint) < 0.02) return;
+    ctx.save();
+    if(skyReactTint < 0){
+      ctx.globalAlpha = -skyReactTint * 0.4;
+      ctx.fillStyle = '#6b6f76';
+    } else {
+      ctx.globalAlpha = skyReactTint * 0.22;
+      ctx.fillStyle = '#bfe4ff';
+    }
+    ctx.fillRect(0,0,W,H);
+    ctx.restore();
+  }
+
+  // T056: full-screen speed lines while leaning into a steep dive.
+  function drawSpeedLines(){
+    if(!player.diving) return;
+    ctx.save();
+    ctx.strokeStyle = 'rgba(255,255,255,0.6)';
+    ctx.lineWidth = 3;
+    ctx.lineCap = 'round';
+    const count = 10;
+    const phase = scrollX * 3;
+    for(let i=0;i<count;i++){
+      const lx = ((i * 97 + phase) % (W + 200)) - 100;
+      const ly = (i * 173) % H;
+      const len = 40 + (i % 3) * 20;
+      ctx.beginPath();
+      ctx.moveTo(lx, ly);
+      ctx.lineTo(lx - len * 0.25, ly - len);
+      ctx.stroke();
+    }
+    ctx.restore();
+  }
+
   function render(time){
     ctx.clearRect(0,0,W,H);
     
@@ -2224,6 +2388,7 @@
     
     // Layer 2: Birds
     drawBirds();
+    drawBirdFlocks(); // T058
     
     // Victory Rainbow (drawn behind buildings and player)
     if (gameState === 'winning' && winTimer >= 160) {
@@ -2263,6 +2428,8 @@
     drawForegroundClouds();
     
     // HUD overlays
+    drawSkyReactTint(); // T059
+    drawSpeedLines();   // T056
     drawSmokeVignette();
     drawWinWipe();
   }
@@ -2632,7 +2799,8 @@
         const dBot = Math.abs(py - (s.y + s.splitOff));
         centerY = dTop < dBot ? s.y - s.splitOff : s.y + s.splitOff;
       }
-      const halfSpan = s.thick*0.70 + 40;
+      // NEW: calm mode gets a bigger, more forgiving updraft catch zone.
+      const halfSpan = (s.thick*0.70 + 40) * (calmMode ? 1.6 : 1.0);
       const dist = Math.abs(py - centerY);
       let infl = clamp(1 - dist/halfSpan, 0, 1);
       infl = infl*infl*(3-2*infl); // smoothstep for a soft, non-linear falloff

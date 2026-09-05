@@ -657,6 +657,25 @@
   var butterflySpriteImg = EmojiSprite.get("🦋", 22);
   var ladybugSpriteImg = EmojiSprite.get("🐞", 16);
 
+  // T042: persistent offscreen "paint" layer — every pollinated flower stamps
+  // a soft green bloom blotch here. Never cleared mid-round, so the meadow
+  // visibly fills in with color as you play; wiped only on resetGame().
+  var meadowPaintCanvas = document.createElement("canvas");
+  meadowPaintCanvas.width = W;
+  meadowPaintCanvas.height = H;
+  var paintCtx = meadowPaintCanvas.getContext("2d");
+  function paintBloomTrail(x, y) {
+    paintCtx.save();
+    var grad = paintCtx.createRadialGradient(x, y, 0, x, y, 65);
+    grad.addColorStop(0, "rgba(139,195,74,0.4)");
+    grad.addColorStop(1, "rgba(139,195,74,0)");
+    paintCtx.fillStyle = grad;
+    paintCtx.beginPath();
+    paintCtx.arc(x, y, 65, 0, Math.PI * 2);
+    paintCtx.fill();
+    paintCtx.restore();
+  }
+
   /* ---------------- DOM refs ---------------- */
   var scoreChip = document.getElementById("scoreChip");
   var comboChip = document.getElementById("comboChip");
@@ -681,11 +700,29 @@
   var comboBreaks = 0;
   var maxCombo = 0;
   var muted = save.settings ? !save.settings.sound : false;
+  var calmMode = !!(save.settings && save.settings.calmMode); // NEW
   audio.setMuted(muted);
   audio.initBgm("assets/audio/stage03/stage_3.mp3");
   muteBtn.textContent = muted ? "🔇" : "🔊";
 
   var activeOverlay = null;
+
+  // NEW: "meet the guardian" beat — Buzz in the wilting meadow, before the rules overlay.
+  function showBuzzIntroBeat() {
+    GOGUi.showGuardianBeat({
+      emoji: "🐝",
+      name: "Buzz",
+      role: "Guardian of the Meadow",
+      line: "The meadow's flowers are wilting… Can you help me pollinate them?",
+      audio: audio,
+      audioPath: "assets/audio/stage03/buzz_intro_lines.mp3",
+      buttonLabel: "Let's fly!",
+      autoDismissMs: 10000,
+      onDone: function () {
+        showIntro();
+      },
+    });
+  }
 
   function showIntro() {
     activeOverlay = GOGUi.showOverlay({
@@ -766,9 +803,9 @@
 
 
   var CRITTER_DEFS = {
-    boar: { img: boarImg, frames: 5, emoji: "🐗", defaultFacing: -1 },
-    deer: { img: deerImg, frames: 6, emoji: "🦌", defaultFacing: 1 },
-    hare: { img: hareImg, frames: 6, emoji: "🐇", defaultFacing: -1 }
+    boar: { img: boarImg, frames: 5, emoji: "🐗", defaultFacing: -1, scale: 1.8 },
+    deer: { img: deerImg, frames: 6, emoji: "🦌", defaultFacing: 1, scale: 1.8 },
+    hare: { img: hareImg, frames: 6, emoji: "🐇", defaultFacing: -1, scale: 1.8 }
   };
 
   /* ---------------- Mutable game state ---------------- */
@@ -787,6 +824,8 @@
   var bgCritters = [];
 
   var score = 0, combo = 0, pollinatedCount = 0, consecutiveMisses = 0;
+  var comboShieldAvailable = true; // NEW: one combo-forgiving miss per round
+  var hotStreakAnnounced = false; // T044: fanfare fires once per hot streak (combo >= 10)
   var beatTimer = 0, nextBeatMs = BEAT_MS;
   var sessionTimeLeft = SESSION_MS;
   var smogActive = false, smogTimer = 0, smogAlpha = 0;
@@ -1053,7 +1092,10 @@
       // Check if Buzz touches active flowers in flight
       for (var i = 0; i < flowers.length; i++) {
         var f = flowers[i];
-        if (f.state === "active" && Collision.distance(buzz.x, buzz.y, f.x, f.y) < (f.r + 22) * diff.forgivenessMul()) {
+        // NEW: calm mode gets an extra generous hit tolerance on top of the
+        // usual auto-easing forgiveness, per the "widen hit tolerance" ask.
+        var flowerHitR = (f.r + 22) * diff.forgivenessMul() * (calmMode ? 1.5 : 1.0);
+        if (f.state === "active" && Collision.distance(buzz.x, buzz.y, f.x, f.y) < flowerHitR) {
           if (!f.collectedPollen) {
             f.collectedPollen = true;
             buzz.pollenCount = (buzz.pollenCount || 0) + 1;
@@ -1107,6 +1149,11 @@
       if (Math.random() < 0.22) {
         particles.burst(buzz.x, buzz.y, { glyphs: ["✨"], count: 1, life: 350, minSpeed: 8, maxSpeed: 20 });
       }
+    }
+
+    // T044: sparkly golden trail follows Buzz for as long as the streak stays hot (combo >= 10)
+    if (combo >= 10 && Math.random() < 0.4) {
+      particles.burst(buzz.x, buzz.y, { glyphs: ["🌟", "✨", "💫"], count: 2, life: 420, minSpeed: 15, maxSpeed: 45, gravity: -8 });
     }
 
     // Takeoff stretch layers on top of whichever branch just ran.
@@ -1272,10 +1319,20 @@ flowers.push({
     if (!flower || flower.state !== "active") return;
     flower.state = "pollinated";
     flower.showUntil = performance.now() + 650;
+    paintBloomTrail(flower.x, flower.y); // T042: leaves a painted green trail behind
     pollinatedCount++;
     combo++;
     if (combo > maxCombo) maxCombo = combo;
     consecutiveMisses = 0;
+
+    // T044: golden-bee fanfare the moment the streak reaches "hot" (10x) —
+    // audio.bloom() is the shared engine's synthesized arpeggio chime, not
+    // a new narration asset, so it's safe alongside the audio-skip rule.
+    if (combo >= 10 && !hotStreakAnnounced) {
+      hotStreakAnnounced = true;
+      audio.bloom();
+      spawnFloatLabel(flower.x, flower.y - 80, "Hot Streak! 🔥✨", "#ff5e94");
+    }
     var gain = 50 + combo * 5;
     
     // Super Pollen carrying combo reward!
@@ -1321,12 +1378,24 @@ flowers.push({
     if (consecutiveMisses === FAIL_MISS_THRESHOLD - 1 && (SESSION_MS - sessionTimeLeft) < 15000 && !diff.softClutched) {
       diff.softClutch();
     }
-    combo = 0;
-    comboBreaks++;
-    audio.oops();
-    particles.burst(flower.x, flower.y, { glyphs: ["💨"], count: 6, life: 500, minSpeed: 20, maxSpeed: 60, gravity: 30 });
-    reactGuide("oops");
-    spawnFloatLabel(flower.x, flower.y - 20, "Oops!", "#e82e5d");
+    // NEW: combo miss-forgiveness shield — the first miss with an active
+    // streak is forgiven once per round, so a single slip doesn't undo the
+    // whole combo. Charge is per-round, not per-stage-attempt.
+    if (comboShieldAvailable && combo > 0) {
+      comboShieldAvailable = false;
+      audio.blip(520, 140, "sine");
+      particles.burst(flower.x, flower.y, { glyphs: ["🛡️", "✨"], count: 8, life: 550, minSpeed: 20, maxSpeed: 60, gravity: 20 });
+      reactGuide("oops");
+      spawnFloatLabel(flower.x, flower.y - 20, "Shield saved your streak! 🛡️", "#2fbf71");
+    } else {
+      combo = 0;
+      hotStreakAnnounced = false; // T044: streak broke, next hot streak can fanfare again
+      comboBreaks++;
+      audio.oops();
+      particles.burst(flower.x, flower.y, { glyphs: ["💨"], count: 6, life: 500, minSpeed: 20, maxSpeed: 60, gravity: 30 });
+      reactGuide("oops");
+      spawnFloatLabel(flower.x, flower.y - 20, "Oops!", "#e82e5d");
+    }
     if (consecutiveMisses === 2) {
       GOGUi.say("😮 A flower wilted — catch the next one, Buzz!");
     }
@@ -1378,6 +1447,7 @@ flowers.push({
   function resetGame() {
     flowers = []; fruits = []; critters = [];
     score = 0; combo = 0; comboBreaks = 0; maxCombo = 0; pollinatedCount = 0; consecutiveMisses = 0;
+    comboShieldAvailable = true; // NEW: one combo-forgiving miss per round
     beatTimer = 0; nextBeatMs = BEAT_MS;
     sessionTimeLeft = SESSION_MS;
     smogActive = false; smogTimer = 0; smogAlpha = 0; smogClouds = []; flightPaths = [];
@@ -1402,6 +1472,8 @@ flowers.push({
     gameState = "playing";
     audio.playBgm();
     fruitIdSeq = 1;
+    hotStreakAnnounced = false; // T044
+    paintCtx.clearRect(0, 0, W, H); // T042: fresh meadow each round
     if (activeOverlay) {
       GOGUi.closeOverlay(activeOverlay);
       activeOverlay = null;
@@ -1640,7 +1712,8 @@ flowers.push({
                 break;
               }
             }
-            spawnFloatLabel(c.x, c.y - 46, "Yum! 🍎", "#ffb020");
+            score += 20; // T043: bonus score when the feeding chain completes
+            spawnFloatLabel(c.x, c.y - 46, "Yum! +20 🍎", "#ffb020");
             if (!saidCritterFed) {
               saidCritterFed = true;
               GOGUi.say("🦌 Look! The fruit fed a hungry friend!");
@@ -1648,8 +1721,7 @@ flowers.push({
           }
         } else if (c.phase === "eat") {
           if (c.life >= c.eatUntil) {
-            c.phase = "celebrate";
-            c.celebrateUntil = c.life + 1.2;
+            c.phase = "leave";
           }
         } else if (c.phase === "celebrate") {
           // Turn around, face player, bounce and spawn hearts!
@@ -1769,23 +1841,36 @@ flowers.push({
           gameState = "win";
           
           triggerSeedReturnCutscene(function () {
-            var stageMeta = window.GOGContent ? window.GOGContent.byId(STAGE_ID) : null;
-            activeOverlay = GOGUi.showOverlay({
-              accent: "var(--gog-tangerine)",
-              title: "🌼 The Meadow Blooms!",
-              body: "Buzz did it — every last flower is blooming again.",
-              stars: pendingStars,
-              factText: stageMeta ? stageMeta.fact : "About 1 in 3 bites of the food we eat depends on pollinators like bees!",
-              primaryLabel: "Play Again ▶",
-              onPrimary: function () {
-                GOGUi.closeOverlay(activeOverlay);
-                activeOverlay = null;
-                resetGame();
+            // NEW: "thank you" beat — Buzz grateful, the meadow blooming behind her.
+            GOGUi.showGuardianBeat({
+              emoji: "🐝",
+              name: "Buzz",
+              role: "Guardian of the Meadow",
+              line: "You brought my meadow back to life! The flowers are blooming again! 🌸",
+              audio: audio,
+              audioPath: "assets/audio/stage03/buzz_outro_lines.mp3",
+              buttonLabel: "Yay!",
+              autoDismissMs: 4200,
+              onDone: function () {
+                var stageMeta = window.GOGContent ? window.GOGContent.byId(STAGE_ID) : null;
+                activeOverlay = GOGUi.showOverlay({
+                  accent: "var(--gog-tangerine)",
+                  title: "🌼 The Meadow Blooms!",
+                  body: "Buzz did it — every last flower is blooming again.",
+                  stars: pendingStars,
+                  factText: stageMeta ? stageMeta.fact : "About 1 in 3 bites of the food we eat depends on pollinators like bees!",
+                  primaryLabel: "Play Again ▶",
+                  onPrimary: function () {
+                    GOGUi.closeOverlay(activeOverlay);
+                    activeOverlay = null;
+                    resetGame();
+                  },
+                  secondaryLabel: "Back to Map",
+                  onSecondary: function () {
+                    window.location.href = "../index.html";
+                  }
+                });
               },
-              secondaryLabel: "Back to Map",
-              onSecondary: function () {
-                window.location.href = "../index.html";
-              }
             });
           });
         }
@@ -1983,6 +2068,13 @@ flowers.push({
     // ground
     ctx.fillStyle = "#7CB342";
     ctx.fillRect(0, GROUND_Y, W, H - GROUND_Y);
+
+    // T042: painted bloom trail — soft green blotches left by every
+    // pollinated flower, building up over the round.
+    ctx.save();
+    ctx.globalAlpha = Math.max(0.35, ambientVividness);
+    ctx.drawImage(meadowPaintCanvas, 0, 0);
+    ctx.restore();
 
     drawCloudShadows();
     drawDepthFog();
@@ -2459,7 +2551,13 @@ flowers.push({
       if (useSprite) {
         ctx.save();
         ctx.globalAlpha = alpha * Math.max(0.5, ambientVividness);
-        
+        // T042: unpollinated flowers read as gray/closed until touched —
+        // pollination flips state to "pollinated" which skips this filter,
+        // so the flower visibly snaps into full color on the bloom.
+        if (f.state === "active") {
+          ctx.filter = "grayscale(0.6) saturate(0.5) brightness(1.05)";
+        }
+
         // Root the flower at (f.x, f.y + 44) so rotation/sway originates from ground base
         ctx.translate(f.x, f.y + 44);
         ctx.rotate(rot + bendAmt * 0.5);
@@ -2569,6 +2667,9 @@ flowers.push({
 
       var sprite = EmojiSprite.get(glyph, f.r * 1.6 * scale);
       ctx.save();
+      if (f.state === "active") {
+        ctx.filter = "grayscale(0.6) saturate(0.5)"; // T042: gray/closed until pollinated
+      }
       ctx.translate(topX, topY);
       ctx.rotate(rot + bendAmt * 0.5);
       ctx.drawImage(sprite, -sprite.width / 2, -sprite.height / 2);
@@ -2618,6 +2719,37 @@ flowers.push({
     ctx.restore();
   }
 
+  // NEW: calm-mode "path glow" — a soft dashed guide line from Buzz to the
+  // nearest active flower, so kids can see where to go next instead of
+  // hunting the meadow for the right target.
+  function drawNextFlowerGuide() {
+    if (!calmMode || dragging) return;
+    var nearest = null, nearestDist = Infinity;
+    for (var i = 0; i < flowers.length; i++) {
+      var f = flowers[i];
+      if (f.state !== "active") continue;
+      var d = Collision.distance(buzz.x, buzz.y, f.x, f.y);
+      if (d < nearestDist) {
+        nearestDist = d;
+        nearest = f;
+      }
+    }
+    if (!nearest) return;
+
+    ctx.save();
+    var pulse = 0.35 + Math.sin(performance.now() * 0.005) * 0.15;
+    ctx.globalAlpha = pulse;
+    ctx.strokeStyle = "#FFD23F";
+    ctx.lineWidth = 4;
+    ctx.lineCap = "round";
+    ctx.setLineDash([2, 14]);
+    ctx.beginPath();
+    ctx.moveTo(buzz.x, buzz.y);
+    ctx.lineTo(nearest.x, nearest.y);
+    ctx.stroke();
+    ctx.restore();
+  }
+
   // Buzz himself: motion-blur trail dots and the animated sprite sheet
   // — all transformed with a single translate/rotate/scale so banking +
   // squash/stretch apply consistently to every part.
@@ -2633,6 +2765,27 @@ flowers.push({
       ctx.beginPath();
       ctx.arc(pt.x, pt.y, 5 * a, 0, Math.PI * 2);
       ctx.fill();
+      ctx.restore();
+    }
+
+    // T045: glowing pollen dust visibly clinging to Buzz from the moment she
+    // touches flower A until she drops it off on flower B (drag = in flight).
+    if (dragging) {
+      ctx.save();
+      var pdN = 4;
+      for (var pd = 0; pd < pdN; pd++) {
+        var pAngle = buzz.wingPhase * 0.5 + (pd / pdN) * Math.PI * 2;
+        var pRad = 18 + Math.sin(buzz.wingPhase * 0.4 + pd) * 4;
+        var px = buzz.x + Math.cos(pAngle) * pRad;
+        var py = buzz.y + Math.sin(pAngle) * pRad * 0.6 - 4;
+        ctx.globalAlpha = 0.8;
+        ctx.fillStyle = "#FFE066";
+        ctx.shadowColor = "#FFD23F";
+        ctx.shadowBlur = 8;
+        ctx.beginPath();
+        ctx.arc(px, py, 3, 0, Math.PI * 2);
+        ctx.fill();
+      }
       ctx.restore();
     }
 
@@ -2805,13 +2958,13 @@ flowers.push({
           frameIndex = 0;
         }
 
-        var sw = 32;
-        var sh = 32;
+        var sw = img.width / totalFrames;
+        var sh = img.height;
         var sx = frameIndex * sw;
         var sy = 0;
 
-        var dw = 64;
-        var dh = 64;
+        var dw = sw * def.scale;
+        var dh = sh * def.scale;
 
         ctx.translate(c.x, c.y - hopOffset);
         ctx.scale(c.facing * def.defaultFacing, 1);
@@ -2902,6 +3055,7 @@ flowers.push({
     drawCritters();
     drawFlightPaths();   // completed pollination arcs (bezier + traveling dots)
     drawFlowers();
+    drawNextFlowerGuide(); // calm-mode glow toward the nearest active flower
     drawFlightRibbon();  // live drag ribbon while actively pollinating
     drawBuzz();          // Buzz himself, always drawn on top
     particles.draw(ctx);
@@ -2992,7 +3146,7 @@ flowers.push({
   /* ---------------- Boot ---------------- */
   var loop = new window.GOGEngine.GameLoop({ update: update, draw: draw, stepMs: 1000 / 60 });
   loop.start();
-  showIntro();
+  showBuzzIntroBeat();
 })();
 </script>
 </body>

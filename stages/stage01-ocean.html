@@ -922,7 +922,7 @@
           <button
             class="icon-btn visually-hidden"
             id="boostBtn"
-            title="Echo Boost — dash & break through trash"
+            title="Echo Boost — dash & sonar-reveal nearby trash"
             aria-label="Echo Boost"
           >
             💨
@@ -1307,13 +1307,17 @@
         // identically for mouse, touch, and keyboard players.
         var BOOST_DURATION = 1.1;
         var BOOST_COOLDOWN = 5;
+        var SONAR_REVEAL_DURATION = 3; // NEW: how long trash glows cyan after an Echo Boost ping
         var boostBtn = document.getElementById("boostBtn");
         boostBtn.addEventListener("click", function () {
           if (!state.running || state.elapsed < state.boostReadyAt) return;
           state.boostUntil = state.elapsed + BOOST_DURATION;
           state.boostReadyAt = state.elapsed + BOOST_COOLDOWN;
           state.invulnUntil = Math.max(state.invulnUntil, state.boostUntil);
+          state.sonarUntil = state.elapsed + SONAR_REVEAL_DURATION; // NEW: echolocation reveal
+          spawnSonarRipple();
           audio.collect();
+          audio.tone(1200, 0.5, "sine", 0.06, 300); // NEW: descending sonar "ping"
           pageFx("collect");
           particles.burst(dolphin.x, dolphin.y, {
             glyphs: ["💨", "✨"],
@@ -1322,7 +1326,7 @@
           });
           triggerZoomPunch();
           boostBtn.classList.add("boost-cooldown");
-          GOGUi.say("Zooooom! Dash through the water! 💨");
+          GOGUi.say("Echo Boost! My sonar found the hidden trash! 🔊🐬");
         });
 
         /* ---------------- parallax background layers ---------------- */
@@ -1352,6 +1356,7 @@
         var turtleImg = null;
         var seaWedImg = null;
         var seaWed2Img = null;
+        var purpleFishImg = null;
         var fishTangledImg = null;
 
         // Pre-load background image assets asynchronously
@@ -1370,6 +1375,7 @@
               loadImage("assets/sprites/stage01/turtle.png"),
               loadImage("assets/sprites/stage01/sea_wed.png"),
               loadImage("assets/sprites/stage01/sea_wed_2.png"),
+              loadImage("assets/sprites/stage01/purple_fish.png"),
               loadImage("assets/sprites/stage01/fish_tangled.png?v=3"),
             ]);
             layers.forEach(function (layer, i) {
@@ -1383,12 +1389,30 @@
             turtleImg = loaded[9];
             seaWedImg = loaded[10];
             seaWed2Img = loaded[11];
-            fishTangledImg = loaded[12];
+            purpleFishImg = loaded[12];
+            fishTangledImg = loaded[13];
 
             initSeaweed();
             initLivesWidget();
 
-            playBackgroundMusic();
+            // NEW: "meet the guardian" beat — Splash in trouble, before play begins.
+            // Gameplay stays paused (state.running is false from init) until this
+            // is dismissed, so non-readers get the full ~10s beat via auto-dismiss
+            // while older/impatient kids can tap through immediately.
+            GOGUi.showGuardianBeat({
+              emoji: "🐬",
+              name: "Splash",
+              role: "Guardian of the Ocean",
+              line: "My reef went grey and quiet… Can you help me bring it back?",
+              audio: audio,
+              audioPath: "assets/audio/stage01/splash_intro_lines.mp3",
+              buttonLabel: "Let's clean the reef!",
+              autoDismissMs: 10000,
+              onDone: function () {
+                state.running = true;
+                playBackgroundMusic();
+              },
+            });
           } catch (e) {
             console.error("Background load failed:", e);
           }
@@ -1397,7 +1421,7 @@
         /* ---------------- game state ---------------- */
         var TOTAL_TIME = GOGConstants.STAGE1.gameTime; // 60 seconds from constants
         var state = {
-          running: true,
+          running: false, // NEW: paused until the "meet the guardian" beat is dismissed
           won: false,
           reef: 0, // 0..100
           sproutsEarned: 0,
@@ -1412,6 +1436,7 @@
           combo: 0, // NEW: consecutive pickups without getting hit
           boostUntil: 0, // NEW: Echo Boost dash end time
           boostReadyAt: 0, // NEW: when the boost cools down and becomes available again
+          sonarUntil: 0, // NEW: Echo Boost sonar-reveal highlight end time (trash glows cyan)
           slowMoUntil: 0, // NEW: brief bullet-time window on a perfect dodge
           lives: 3 + diff.bonusLives(),
         };
@@ -1435,6 +1460,7 @@
 
         var items = []; // {type, x,y,vx,vy,r,glyph,dead}
         var shockwaves = []; // {x, y, radius, maxRadius, alpha, color}
+        var sonarRipples = []; // NEW: Echo Boost's screen-wide sonar wave rings {x, y, radius, maxRadius, alpha}
 
         // NEW: ambient + celebratory FX systems
         var bubbles = []; // rising background bubbles for underwater atmosphere
@@ -2080,6 +2106,20 @@
           });
           ctx.globalAlpha = 1;
           ctx.restore();
+        }
+
+        /* ---------------- NEW: Echo Boost sonar ripple — reveals trash with a glowing highlight ---------------- */
+        function spawnSonarRipple() {
+          // Screen-wide expanding ring from the dolphin, big enough to always
+          // outgrow the canvas regardless of viewport size.
+          var maxRadius = Math.sqrt(W * W + H * H) * 0.65;
+          sonarRipples.push({
+            x: dolphin.x,
+            y: dolphin.y,
+            radius: 10,
+            maxRadius: maxRadius,
+            alpha: 1,
+          });
         }
 
         /* ---------------- NEW: camera "punch" for big positive moments ---------------- */
@@ -2938,6 +2978,16 @@
             }
           }
 
+          // --- update Echo Boost sonar ripples ---
+          for (var sr = sonarRipples.length - 1; sr >= 0; sr--) {
+            var ripple = sonarRipples[sr];
+            ripple.radius += ripple.maxRadius * 1.4 * dt;
+            ripple.alpha = 1 - ripple.radius / ripple.maxRadius;
+            if (ripple.alpha <= 0) {
+              sonarRipples.splice(sr, 1);
+            }
+          }
+
           if (state.reef >= 100 && !state.won) {
             endWin();
           }
@@ -3035,6 +3085,13 @@
           var currentShear = Math.sin(state.elapsed * 0.4) * 0.012;
           ctx.save();
           ctx.transform(1, 0, currentShear, 1, 0, 0);
+          // NEW: the reef itself visibly heals — background scenery is
+          // washed-out/desaturated at low Reef Health and blooms to full
+          // vibrant color as it rises. Gameplay items/dolphin/HUD signals
+          // are drawn outside this filter so hazard/reward cues stay crisp.
+          var reefSat = 45 + Collision.clamp(state.reef, 0, 100) * 0.55; // 45% -> 100%
+          var reefBright = 82 + Collision.clamp(state.reef, 0, 100) * 0.18; // 82% -> 100%
+          ctx.filter = "saturate(" + reefSat.toFixed(0) + "%) brightness(" + reefBright.toFixed(0) + "%)";
           layers.forEach(function (layer) {
             if (!layer.img) return;
             var img = layer.img;
@@ -3045,6 +3102,7 @@
               ctx.drawImage(img, dx, layer.y, tileW, H);
             }
           });
+          ctx.filter = "none";
           ctx.restore();
 
           // seabed coral strip — grows greener/brighter as reef heals
@@ -3202,18 +3260,42 @@
               ctx.restore();
             }
 
+            // NEW: Echo Boost sonar reveal — trash glows with a pulsing cyan
+            // outline for a few seconds so it's easy to spot in the clutter.
+            if (it.type === "trash" && state.elapsed < state.sonarUntil) {
+              var sonarPulse = Math.sin(state.elapsed * 10) * 0.2 + 0.8;
+              ctx.save();
+              ctx.shadowColor = "rgba(34, 211, 238, 0.9)";
+              ctx.shadowBlur = 14 * sonarPulse;
+              ctx.globalAlpha = sonarPulse;
+              ctx.lineWidth = 3;
+              ctx.strokeStyle = "#22d3ee";
+              ctx.beginPath();
+              ctx.arc(0, 0, it.r + 6, 0, Math.PI * 2);
+              ctx.stroke();
+              ctx.restore();
+            }
+
             ctx.rotate(wiggle);
             ctx.scale(growScale, growScale);
-            if (
-              (it.type === "pufferfish" || it.type === "tangled_fish") &&
-              it.vx < 0
-            ) {
+            var flipFish =
+              (it.type === "pufferfish" && it.vx > 0) ||
+              (it.type === "tangled_fish" && it.vx < 0);
+            if (flipFish) {
               ctx.scale(-1, 1);
             }
 
             var img = null;
             var drawW = 54;
             var drawH = 54;
+
+            if (it.type === "pufferfish") {
+              drawW = 76;
+              drawH = 76;
+            } else if (it.type === "tangled_fish") {
+              drawW = 70;
+              drawH = 46;
+            }
 
             if (it.type === "trash") {
               if (it.glyph === "🛍️" && plasticBagImg) {
@@ -3231,14 +3313,7 @@
               }
               drawW = 70; // kid-friendly larger size
               drawH = 70;
-            } else if (it.type === "pufferfish") {
-              if (fishTangledImg) {
-                img = fishTangledImg;
-              }
-              drawW = 56;
-              drawH = 38;
             }
-
             if (img) {
               if (it.type === "turtle") {
                 // Spritesheet animation: 4 columns, 2 rows (8 frames)
@@ -3262,19 +3337,54 @@
               } else {
                 ctx.drawImage(img, -drawW / 2, -drawH / 2, drawW, drawH);
               }
+            } else if (it.type === "pufferfish" && purpleFishImg) {
+              // purple_fish.png is an 8-frame, 4-column by 2-row animation sheet.
+              var pufferFrame = Math.floor(it.age * 10) % 8;
+              var pufferFrameW = purpleFishImg.width / 4;
+              var pufferFrameH = purpleFishImg.height / 2;
+              var pufferCol = pufferFrame % 4;
+              var pufferRow = Math.floor(pufferFrame / 4);
+              ctx.drawImage(
+                purpleFishImg,
+                pufferCol * pufferFrameW,
+                pufferRow * pufferFrameH,
+                pufferFrameW,
+                pufferFrameH,
+                -drawW / 2,
+                -drawH / 2,
+                drawW,
+                drawH,
+              );
+            } else if (it.type === "tangled_fish" && fishTangledImg) {
+              // fish_tangled.png is a 6-frame horizontal rescue animation strip.
+              var tangledFrame = Math.floor(it.age * 9) % 6;
+              var tangledFrameW = fishTangledImg.width / 6;
+              var tangledFrameH = fishTangledImg.height;
+              ctx.drawImage(
+                fishTangledImg,
+                tangledFrame * tangledFrameW,
+                0,
+                tangledFrameW,
+                tangledFrameH,
+                -drawW / 2,
+                -drawH / 2,
+                drawW,
+                drawH,
+              );
+              var rescuePulse = Math.sin(state.elapsed * 8) * 0.25 + 0.75;
+              ctx.save();
+              ctx.strokeStyle =
+                "rgba(245, 158, 11, " + rescuePulse * 0.9 + ")";
+              ctx.lineWidth = 2.5;
+              ctx.setLineDash([4, 4]);
+              ctx.beginPath();
+              ctx.arc(0, 0, 34, 0, Math.PI * 2);
+              ctx.stroke();
+              ctx.restore();
             } else if (it.type === "tangled_fish") {
-              // Dedicated PNG sprite image asset (fish_tangled.png) drawn at small size (56x38)
-              var drawW = 56;
-              var drawH = 38;
-              if (fishTangledImg) {
-                ctx.drawImage(fishTangledImg, -drawW / 2, -drawH / 2, drawW, drawH);
-              } else {
-                var size = 44;
-                var sprite = EmojiSprite.get("🐠", size);
-                ctx.drawImage(sprite, -sprite.width / 2, -sprite.height / 2);
-              }
-
-              // Pulsing amber/gold rescue ring
+              var size = 44;
+              var sprite = EmojiSprite.get("🐠", size);
+              ctx.drawImage(sprite, -sprite.width / 2, -sprite.height / 2);
               var pulse = Math.sin(state.elapsed * 8) * 0.25 + 0.75;
               ctx.save();
               ctx.strokeStyle = "rgba(245, 158, 11, " + (pulse * 0.9) + ")";
@@ -3284,33 +3394,12 @@
               ctx.arc(0, 0, 28, 0, Math.PI * 2);
               ctx.stroke();
               ctx.restore();
-
-              // High-visibility floating rescue badge above fish on canvas
-              ctx.save();
-              ctx.font = "900 12px system-ui, -apple-system, sans-serif";
-              ctx.textAlign = "center";
-              var badgeText = "RESCUE ME! 🆘";
-              var tw = ctx.measureText(badgeText).width;
-              ctx.fillStyle = "rgba(15, 23, 42, 0.85)";
-              ctx.strokeStyle = "#ffbe0b";
-              ctx.lineWidth = 1.5;
-              ctx.beginPath();
-              if (typeof ctx.roundRect === "function") {
-                ctx.roundRect(-tw / 2 - 6, -38, tw + 12, 18, 5);
-              } else {
-                ctx.rect(-tw / 2 - 6, -38, tw + 12, 18);
-              }
-              ctx.fill();
-              ctx.stroke();
-
-              ctx.fillStyle = "#ffbe0b";
-              ctx.fillText(badgeText, 0, -25);
-              ctx.restore();
             } else {
               var size = it.type === "trash" ? 54 : 40;
               var sprite = EmojiSprite.get(it.glyph, size);
               ctx.drawImage(sprite, -sprite.width / 2, -sprite.height / 2);
             }
+
             ctx.restore();
           });
         }
@@ -3350,6 +3439,22 @@
               ctx.arc(sw.x, sw.y, Math.max(0, sw.radius - 12), 0, Math.PI * 2);
               ctx.stroke();
             }
+          });
+          ctx.restore();
+
+          // --- Draw Echo Boost sonar ripples ---
+          ctx.save();
+          sonarRipples.forEach(function (ripple) {
+            ctx.lineWidth = 3;
+            ctx.strokeStyle = "rgba(34, 211, 238, " + ripple.alpha * 0.8 + ")";
+            ctx.beginPath();
+            ctx.arc(ripple.x, ripple.y, ripple.radius, 0, Math.PI * 2);
+            ctx.stroke();
+            ctx.lineWidth = 1.5;
+            ctx.strokeStyle = "rgba(224, 255, 255, " + ripple.alpha * 0.6 + ")";
+            ctx.beginPath();
+            ctx.arc(ripple.x, ripple.y, Math.max(0, ripple.radius - 18), 0, Math.PI * 2);
+            ctx.stroke();
           });
           ctx.restore();
 
@@ -3482,25 +3587,38 @@
             if (confettiBursts >= 3) clearInterval(confettiInterval);
           }, 220);
 
-          GOGUi.say("You did it! A seed is heading home to the Tree… 🌱");
-
+          // Let the flash + confetti play out on-screen for a beat before the
+          // full-screen "thank you" modal covers everything.
           setTimeout(function () {
-            triggerSeedReturnCutscene(function () {
-              GOGUi.showOverlay({
-                accent: "var(--gog-white)",
-                title: "🪸 The reef is blooming!",
-                body: "Splash wakes up and a Seed of Life flies back to the Guardian Tree.",
-                stars: rec.stars,
-                factText: stageMeta.fact,
-                primaryLabel: "Back to Map",
-                secondaryLabel: "Play Again",
-                onPrimary: function () {
-                  window.location.href = "../index.html";
-                },
-                onSecondary: function () {
-                  window.location.href = "stage01-ocean.html";
-                },
-              });
+            // NEW: "thank you" beat — Splash grateful, the reef blooming behind her.
+            GOGUi.showGuardianBeat({
+              emoji: "🐬",
+              name: "Splash",
+              role: "Guardian of the Ocean",
+              line: "You gave the reef its colours back! Thank you for saving my home. 🌈",
+              audio: audio,
+              audioPath: "assets/audio/stage01/splash_outro_lines.mp3",
+              buttonLabel: "Yay!",
+              autoDismissMs: 4200,
+              onDone: function () {
+                triggerSeedReturnCutscene(function () {
+                  GOGUi.showOverlay({
+                    accent: "var(--gog-white)",
+                    title: "🪸 The reef is blooming!",
+                    body: "Splash wakes up and a Seed of Life flies back to the Guardian Tree.",
+                    stars: rec.stars,
+                    factText: stageMeta.fact,
+                    primaryLabel: "Back to Map",
+                    secondaryLabel: "Play Again",
+                    onPrimary: function () {
+                      window.location.href = "../index.html";
+                    },
+                    onSecondary: function () {
+                      window.location.href = "stage01-ocean.html";
+                    },
+                  });
+                });
+              },
             });
           }, 750);
         }

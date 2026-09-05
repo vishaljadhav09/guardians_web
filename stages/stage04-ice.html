@@ -581,7 +581,13 @@
               ◀
             </button>
 
-            <div></div>
+            <button
+              class="ctrl-btn"
+              data-control="slide"
+              aria-label="Belly slide"
+            >
+              ▼
+            </button>
             <button
               class="ctrl-btn"
               data-control="right"
@@ -866,6 +872,7 @@
         const input = {
           left: false,
           right: false,
+          slide: false, // T049: belly-slide mode
           jump: false,
           jumpPressed: false,
           actionPressed: false,
@@ -1098,6 +1105,19 @@
               coolAmount: 0.28,
               activeFlash: 0,
               pulse: 0,
+            },
+            // T051: a friendly seal that periodically surfaces near the
+            // floes and becomes a solid, rideable platform — an optional
+            // bonus crossing, never required, so it can't soft-lock anyone.
+            waterLift: {
+              x: 1545,
+              w: 50,
+              h: 22,
+              y: 0,
+              cycle: 6.0,
+              surfaceFor: 3.2,
+              phase: 0,
+              surfaced: false,
             },
             meltPlatforms,
             chicks,
@@ -1425,7 +1445,12 @@
             onIce = true;
           }
 
-          const accel = p.speed * dt;
+          // T049: Penny's belly slide — held while grounded, gives +50% speed
+          // and slicker (reduced) friction; automatically ends the instant
+          // she leaves the ground or lets go of the slide control.
+          const isSliding = !!(input.slide && p.onGround);
+          const slideSpeedMul = isSliding ? 1.5 : 1;
+          const accel = p.speed * dt * slideSpeedMul;
           if (input.left) {
             p.vx -= accel;
             p.facing = -1;
@@ -1436,10 +1461,36 @@
           }
           if (!input.left && !input.right) {
             const currentDrag = onIce ? (0.94 - (0.94 - p.drag) * diff.gentleness()) : p.drag;
-            p.vx *= Math.pow(currentDrag, dt * 60);
+            // Reduced friction while sliding: drag pushed closer to 1 (slower decay).
+            const slideDrag = isSliding ? currentDrag + (1 - currentDrag) * 0.5 : currentDrag;
+            p.vx *= Math.pow(slideDrag, dt * 60);
             if (Math.abs(p.vx) < 3) p.vx = 0;
           }
-          p.vx = clamp(p.vx, -p.maxSpeed, p.maxSpeed);
+          p.vx = clamp(p.vx, -p.maxSpeed * slideSpeedMul, p.maxSpeed * slideSpeedMul);
+
+          if (isSliding && !p.wasSliding) {
+            audio.tone(520, 0.3, "sine", 0.06, 180); // slick whoosh SFX
+            spawnBurst(p.x + p.w / 2, p.y + p.h, 10, "#DCEFFF");
+          }
+          if (isSliding && Math.abs(p.vx) > 20) {
+            p.slideTrailTimer = (p.slideTrailTimer || 0) - dt;
+            if (p.slideTrailTimer <= 0) {
+              p.slideTrailTimer = 0.06;
+              state.particles.push({
+                x: p.x + p.w / 2 - p.facing * 10,
+                y: p.y + p.h - 2,
+                vx: -p.facing * 20,
+                vy: 0,
+                life: 0.4,
+                maxLife: 0.4,
+                kind: "snow",
+                color: "#EAF7FF",
+                size: 3,
+              });
+            }
+          }
+          p.wasSliding = isSliding;
+          p.isSliding = isSliding;
 
           if (input.jumpPressed && p.onGround) {
             p.vy = -p.jumpPower;
@@ -1452,6 +1503,7 @@
           p.vy += p.gravity * dt;
 
           updatePlatforms(dt);
+          updateWaterLift(dt);
           movePlayer(p, dt, false);
           updateChicks(dt);
           updateValve(dt);
@@ -1687,12 +1739,39 @@
             }
 
             if (pl.shrink > pl.baseW - 42) {
-              pl.meltingState = "sinking";
-              pl.sinkTimer = 1.0;
-              if (standing) {
-                p.onGround = false;
+              // NEW: never let the last safe platform disappear — if every
+              // other floe is already gone or mid-sink, hold this one right
+              // at the brink instead of letting it vanish too.
+              const otherSafeCount = state.meltPlatforms.filter(
+                (o) => o !== pl && !o.gone && o.meltingState !== "sinking",
+              ).length;
+              if (otherSafeCount === 0) {
+                pl.shrink = pl.baseW - 42;
+              } else {
+                pl.meltingState = "sinking";
+                pl.sinkTimer = 1.0;
+                if (standing) {
+                  p.onGround = false;
+                }
               }
             }
+          }
+        }
+
+        // T051: friendly seal lift — surfaces on a cycle and becomes a real,
+        // rideable solid while surfaced; submerges again afterward. Purely
+        // additive to the existing floe path, so it can only help, not block.
+        function updateWaterLift(dt) {
+          const wl = state.waterLift;
+          if (!wl) return;
+          const wasSurfaced = wl.surfaced;
+          wl.phase = (wl.phase + dt) % wl.cycle;
+          wl.surfaced = wl.phase < wl.surfaceFor;
+          const bob = wl.surfaced ? Math.sin(state.time * 3) * 3 : 0;
+          wl.y = state.seaLevel - 16 + bob;
+          if (wl.surfaced && !wasSurfaced) {
+            spawnBurst(wl.x + wl.w / 2, state.seaLevel, 12, "#BEEFFF");
+            audio.blip(360, 90);
           }
         }
 
@@ -1755,11 +1834,24 @@
               drift,
             });
           }
+          if (state.waterLift && state.waterLift.surfaced) {
+            solids.push({
+              x: state.waterLift.x,
+              y: state.waterLift.y,
+              w: state.waterLift.w,
+              h: state.waterLift.h,
+              drift: 0,
+            });
+          }
           return solids;
         }
 
         function getMaxCarryingCapacity() {
           if (!state || !state.chicks) return 1;
+          // NEW: calm mode lets Penny carry every rescued chick at once —
+          // a "follow in a line" duckling formation instead of ferrying them
+          // one trip at a time, so young kids aren't punished for exploring.
+          if (calmMode) return state.chicks.length;
           const deliveredCount = state.chicks.filter((c) => c.delivered).length;
           if (deliveredCount === 0) return 1;
           if (deliveredCount === 1) return 2;
@@ -1770,6 +1862,7 @@
           const p = state.player;
           for (const chick of state.chicks) {
             chick.bob += dt * 3;
+            if (chick.cheerTimer > 0) chick.cheerTimer -= dt; // T050
             if (chick.delivered) continue;
 
             const carryIndex = p.carrying.indexOf(chick);
@@ -1795,6 +1888,11 @@
                 chick.rescued = true;
                 p.carrying = p.carrying.filter((c) => c !== chick);
                 state.rescuedCount += 1;
+                // T050: join the animated huddle group on the safe iceberg —
+                // takes the next open slot, and every chick already in the
+                // huddle gets an extra celebratory hop as the new friend arrives.
+                chick.huddleSlot = state.chicks.filter((c) => c.delivered).length - 1;
+                cheerHuddle();
                 audio.heal();
                 spawnBurst(chick.x, chick.y, 14, "#FFD84D");
                 spawnFloatText(chick.x, chick.y - 12, "Safe! +1 💚", "#3aa655");
@@ -1827,7 +1925,9 @@
               if (p.carrying.length >= maxCarry) {
                 continue;
               }
-              if (input.actionPressed) {
+              // NEW: calm mode auto-grabs on contact — no button press needed —
+              // so a young kid who's still learning the controls isn't stuck.
+              if (input.actionPressed || calmMode) {
                 chick.rescued = true;
                 p.carrying.push(chick);
                 audio.collect();
@@ -1852,6 +1952,14 @@
                 return;
               }
             }
+          }
+        }
+
+        // T050: makes the whole existing huddle hop/cheer together whenever
+        // a new chick is delivered to the iceberg.
+        function cheerHuddle() {
+          for (const c of state.chicks) {
+            if (c.delivered) c.cheerTimer = 0.9;
           }
         }
 
@@ -2064,6 +2172,7 @@
           drawHomeBase();
           drawValvePlatform();
           drawPlatforms();
+          drawWaterLift();
           drawChicks();
           drawPlayer();
           drawParticles();
@@ -2187,6 +2296,41 @@
             }
             ctx.restore();
           });
+
+          // T052: background ice cliffs — crisp & solid when Warmth is low,
+          // dull/wet when it's high. The "re-solidify" pay-off plays out
+          // automatically as Warmth falls while chicks are rescued.
+          ctx.save();
+          const cliffCol = lerpColor("#EAF7FF", "#7C93A0", warmthVal);
+          ctx.fillStyle = cliffCol;
+          ctx.strokeStyle = "#111";
+          ctx.lineWidth = 2;
+          const cliffCount = 4;
+          for (let ci = 0; ci < cliffCount; ci++) {
+            const cx2 = (((ci * 480 + 150) - scrollVal * 0.35) % (W + 300) + (W + 300)) % (W + 300) - 150;
+            const ch = 70 + (ci % 2) * 30;
+            ctx.beginPath();
+            ctx.moveTo(cx2, H * 0.55);
+            ctx.lineTo(cx2 + 40, H * 0.55 - ch);
+            ctx.lineTo(cx2 + 90, H * 0.55 - ch * 0.6);
+            ctx.lineTo(cx2 + 140, H * 0.55);
+            ctx.closePath();
+            ctx.fill();
+            ctx.globalAlpha = 0.5;
+            ctx.stroke();
+            ctx.globalAlpha = 1;
+          }
+          // A crisp sparkle glint once the world has re-solidified (low Warmth).
+          if (warmthVal < 0.3) {
+            ctx.globalAlpha = (0.3 - warmthVal) * 2;
+            ctx.fillStyle = "#ffffff";
+            for (let s = 0; s < 3; s++) {
+              const sx2 = (((s * 480 + 190) - scrollVal * 0.35) % (W + 300) + (W + 300)) % (W + 300) - 150 + 40;
+              circle(sx2 + Math.sin(timeVal * 2 + s) * 6, H * 0.55 - 40, 2.5, true);
+            }
+            ctx.globalAlpha = 1;
+          }
+          ctx.restore();
         }
 
         function drawSmogFactory() {
@@ -2251,6 +2395,28 @@
               i % 2 === 0 ? "rgba(70, 65, 55, 1)" : "rgba(150, 140, 108, 1)";
             circle(sx, sy, 18 + i * 3, true);
             ctx.globalAlpha = 1;
+          }
+
+          // T052: rising heat-wave shimmer above the stacks — makes the
+          // *cause* of Warmth visibly hotter as it climbs, not just a meter.
+          if (state.warmth > 0.15) {
+            ctx.save();
+            ctx.globalAlpha = 0.12 + state.warmth * 0.28;
+            ctx.strokeStyle = "rgba(255, 210, 140, 0.8)";
+            ctx.lineWidth = 2;
+            const waveCount = 3;
+            for (let w = 0; w < waveCount; w++) {
+              const wx = x + 30 + w * 45;
+              const topY = y - 90 - state.warmth * 40;
+              ctx.beginPath();
+              for (let hy = y - 10; hy > topY; hy -= 6) {
+                const wobble = Math.sin(state.time * 6 + hy * 0.15 + w * 2) * (3 + state.warmth * 5);
+                if (hy === y - 10) ctx.moveTo(wx + wobble, hy);
+                else ctx.lineTo(wx + wobble, hy);
+              }
+              ctx.stroke();
+            }
+            ctx.restore();
           }
         }
 
@@ -2744,10 +2910,58 @@
           }
         }
 
+        // T050: delivered chicks live on in a small hopping/cheering huddle
+        // near the safe iceberg instead of just disappearing.
+        function drawHuddleChick(chick) {
+          const b = state.stableBase;
+          const slot = chick.huddleSlot || 0;
+          const cols = 3;
+          const col = slot % cols;
+          const row = Math.floor(slot / cols);
+          const baseX = b.x + b.w * 0.3 + col * 26;
+          const baseY = b.y - 6 - row * 24;
+          const cheering = chick.cheerTimer > 0;
+          const hop = Math.abs(Math.sin(chick.bob * 1.8)) * (cheering ? 11 : 4);
+          const drawX = baseX;
+          const drawY = baseY - hop;
+
+          if (chickSprite.loaded) {
+            const destW = 28;
+            const destH = (chickSprite.frameH / chickSprite.frameW) * destW;
+            const frame = cheering ? 0 : (Math.floor(chick.bob) % 2 === 0 ? 3 : 0);
+            const fCol = frame % chickSprite.cols;
+            const fRow = Math.floor(frame / chickSprite.cols);
+            const sx = fCol * chickSprite.frameW;
+            const sy = fRow * chickSprite.frameH;
+            ctx.save();
+            ctx.translate(drawX, drawY);
+            ctx.drawImage(
+              chickSprite.img,
+              sx, sy, chickSprite.frameW, chickSprite.frameH,
+              -destW / 2, -destH, destW, destH,
+            );
+            ctx.restore();
+          } else {
+            drawEmoji("🐥", drawX, drawY - 10, 20);
+          }
+
+          if (cheering && Math.random() < 0.12) {
+            state.particles.push({
+              x: drawX, y: drawY - 20,
+              vx: (Math.random() - 0.5) * 20, vy: -30 - Math.random() * 15,
+              life: 0.7, maxLife: 0.7, kind: "emoji", text: "🎉", size: 12,
+            });
+          }
+        }
+
         function drawChicks() {
           const p = state.player;
           for (const chick of state.chicks) {
-            if (chick.delivered || state.player.carrying.includes(chick)) continue;
+            if (state.player.carrying.includes(chick)) continue;
+            if (chick.delivered) {
+              drawHuddleChick(chick);
+              continue;
+            }
             const bob = Math.sin(chick.bob) * 3;
             let shiver = 0;
             let crying = false;
@@ -2912,6 +3126,29 @@
           }
         }
 
+        // T051: draws the seal lift — a gentle ripple ring while it's about
+        // to surface, the seal itself (rideable) once surfaced.
+        function drawWaterLift() {
+          const wl = state.waterLift;
+          if (!wl) return;
+          if (wl.surfaced) {
+            ctx.save();
+            ctx.globalAlpha = 0.9;
+            drawEmoji("🦭", wl.x + wl.w / 2, wl.y + wl.h / 2 - 4, 46);
+            ctx.restore();
+          } else {
+            const nextIn = wl.cycle - wl.phase;
+            if (nextIn < 1.2) {
+              ctx.save();
+              ctx.globalAlpha = 0.35 * (1 - nextIn / 1.2);
+              ctx.strokeStyle = "#BEEFFF";
+              ctx.lineWidth = 2;
+              circle(wl.x + wl.w / 2, state.seaLevel, 14 + (1.2 - nextIn) * 10, false);
+              ctx.restore();
+            }
+          }
+        }
+
         function drawPlayer() {
           const p = state.player;
           const x = p.x;
@@ -2976,6 +3213,7 @@
             ctx.save();
             ctx.translate(x + p.w / 2 + jitterX, y + p.h + waddleY);
             ctx.rotate(tilt + waddleTilt + platformRot);
+            if (p.isSliding) ctx.scale(1, 0.82); // T049: belly-slide squash
 
             // Penny sprite sheets face right naturally, so scale direction directly matches facing
             let faceDirection = p.facing;
@@ -2998,6 +3236,7 @@
             ctx.save();
             ctx.translate(x + p.w / 2 + jitterX, y + p.h + waddleY);
             ctx.rotate(tilt + waddleTilt + platformRot);
+            if (p.isSliding) ctx.scale(1, 0.82); // T049: belly-slide squash
 
             let faceDirection = p.facing;
 
@@ -3298,6 +3537,7 @@
         function setControl(name, isDown) {
           if (name === "left") input.left = isDown;
           if (name === "right") input.right = isDown;
+          if (name === "slide") input.slide = isDown; // T049
           if (name === "jump") {
             if (isDown && !input.jump) input.jumpPressed = true;
             input.jump = isDown;
@@ -3314,16 +3554,19 @@
                 "arrowleft",
                 "arrowright",
                 "arrowup",
+                "arrowdown",
                 " ",
                 "a",
                 "d",
                 "w",
+                "s",
                 "e",
               ].includes(k)
             )
               e.preventDefault();
             if (k === "arrowleft" || k === "a") input.left = true;
             if (k === "arrowright" || k === "d") input.right = true;
+            if (k === "arrowdown" || k === "s") input.slide = true; // T049
             if ((k === "arrowup" || k === "w" || k === " ") && !input.jump) {
               input.jump = true;
               input.jumpPressed = true;
@@ -3337,6 +3580,7 @@
           const k = e.key.toLowerCase();
           if (k === "arrowleft" || k === "a") input.left = false;
           if (k === "arrowright" || k === "d") input.right = false;
+          if (k === "arrowdown" || k === "s") input.slide = false; // T049
           if (k === "arrowup" || k === "w" || k === " ") input.jump = false;
         });
 
