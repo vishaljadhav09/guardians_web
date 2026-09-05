@@ -3590,35 +3590,27 @@
           // Let the flash + confetti play out on-screen for a beat before the
           // full-screen "thank you" modal covers everything.
           setTimeout(function () {
-            // NEW: "thank you" beat — Splash grateful, the reef blooming behind her.
-            GOGUi.showGuardianBeat({
-              emoji: "🐬",
-              name: "Splash",
-              role: "Guardian of the Ocean",
-              line: "You gave the reef its colours back! Thank you for saving my home. 🌈",
-              audio: audio,
-              audioPath: "assets/audio/stage01/splash_outro_lines.mp3",
-              buttonLabel: "Yay!",
-              autoDismissMs: 4200,
-              onDone: function () {
-                triggerSeedReturnCutscene(function () {
-                  GOGUi.showOverlay({
-                    accent: "var(--gog-white)",
-                    title: "🪸 The reef is blooming!",
-                    body: "Splash wakes up and a Seed of Life flies back to the Guardian Tree.",
-                    stars: rec.stars,
-                    factText: stageMeta.fact,
-                    primaryLabel: "Back to Map",
-                    secondaryLabel: "Play Again",
-                    onPrimary: function () {
-                      window.location.href = "../index.html";
-                    },
-                    onSecondary: function () {
-                      window.location.href = "stage01-ocean.html";
-                    },
-                  });
-                });
-              },
+            // STREAMLINED: one popup on win, not two — Splash's grateful line
+            // now lives inside the same fact/stars card instead of a separate
+            // guardian-beat dialog first. The narration clip still plays
+            // (unchanged), just without its own dedicated popup.
+            audio.playSfxFile("assets/audio/stage01/splash_outro_lines.mp3");
+            triggerSeedReturnCutscene(function () {
+              GOGUi.showOverlay({
+                accent: "var(--gog-white)",
+                title: "🪸 The reef is blooming!",
+                body: "“You gave the reef its colours back! Thank you for saving my home. 🌈”<br><br>Splash wakes up and a Seed of Life flies back to the Guardian Tree.",
+                stars: rec.stars,
+                factText: stageMeta.fact,
+                primaryLabel: "Back to Map",
+                secondaryLabel: "Play Again",
+                onPrimary: function () {
+                  window.location.href = "../index.html";
+                },
+                onSecondary: function () {
+                  window.location.href = "stage01-ocean.html";
+                },
+              });
             });
           }, 750);
         }

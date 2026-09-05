@@ -1131,18 +1131,23 @@
         let activeOverlay = null;
         let cutsceneTimer = null;
 
-        function showIntro() {
-          GOGUi.say(
-            "Help Penny rescue the chicks and bring them home to the safe iceberg! 🐧",
-          );
-          activeOverlay = GOGUi.showOverlay({
-            accent: "var(--gog-lime)",
-            title: "🐧 Penny on Thin Ice",
-            body: "Penny wakes in a warming polar dream. The floating ice shrinks faster when she stands still, so keep hopping, cool the valve, rescue chicks, and bring them home to the safe iceberg.<br><br><strong>Move:</strong> Arrow keys / WASD or touch buttons.<br><strong>Jump:</strong> Up / W / Space.<br><strong>Cool Valve:</strong> Stand near the valve, press E (or tap ☸️).<br><strong>Rescue Chick:</strong> Stand near a chick, press E (or tap ☸️) to pick them up.",
-            primaryLabel: "Start Dream",
-            onPrimary: function () {
-              GOGUi.closeOverlay(activeOverlay);
-              activeOverlay = null;
+        // STREAMLINED: one popup before play, matching stage01's pattern —
+        // a single guardian-beat card (no audio file exists yet for Penny)
+        // that starts play directly. The detailed rules that used to live
+        // in a second overlay are dropped since the always-visible
+        // "How to Play" side card already covers goal/controls.
+        function showPennyIntroBeat() {
+          GOGUi.showGuardianBeat({
+            emoji: "🐧",
+            name: "Penny",
+            role: "Guardian of the Ice",
+            line: "The ice keeps melting under my feet, and my chicks are lost out there… Will you help me bring them home?",
+            buttonLabel: "Let's save the chicks!",
+            autoDismissMs: 10000,
+            onDone: function () {
+              GOGUi.say(
+                "Help Penny rescue the chicks and bring them home to the safe iceberg! 🐧",
+              );
               startGame();
             },
           });
@@ -1283,7 +1288,7 @@
               activeOverlay = GOGUi.showOverlay({
                 accent: "var(--gog-white)",
                 title: "❄️ Polar Ice Restored!",
-                body: "Penny wakes completely as the sea calms and the ice reforms.",
+                body: "“My chicks are safe and the ice feels solid again! Thank you.” 💙<br><br>Penny wakes completely as the sea calms and the ice reforms.",
                 stars: pendingStars,
                 factText: stageMeta.fact,
                 primaryLabel: "Back to Map",
@@ -2280,7 +2285,6 @@
           }
           ctx.restore();
 
-          // 3. Preloaded Background images
           // 3. Preloaded Background images
           bgLayers.forEach(layer => {
             const img = layer.img;
@@ -3626,7 +3630,7 @@
         updateUI();
         render();
         requestAnimationFrame(frame);
-        showIntro();
+        showPennyIntroBeat();
       })();
     </script>
   </body>

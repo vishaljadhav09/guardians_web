@@ -707,7 +707,11 @@
 
   var activeOverlay = null;
 
-  // NEW: "meet the guardian" beat — Buzz in the wilting meadow, before the rules overlay.
+  // STREAMLINED: one popup before play, not two — the guardian beat is now
+  // the only pre-game dialog (matches stage01's pattern) and starts play
+  // directly; the rules list that used to live in a second overlay is
+  // dropped since the always-visible "How to Play" side card already
+  // covers goal/controls.
   function showBuzzIntroBeat() {
     GOGUi.showGuardianBeat({
       emoji: "🐝",
@@ -719,29 +723,8 @@
       buttonLabel: "Let's fly!",
       autoDismissMs: 10000,
       onDone: function () {
-        showIntro();
-      },
-    });
-  }
-
-  function showIntro() {
-    activeOverlay = GOGUi.showOverlay({
-      accent: "var(--gog-tangerine)",
-      title: "🐝 Buzz & the Last Blooms",
-      body: '<p>Trace flight paths between blooming flowers before they wilt. Keep Buzz busy, and watch the whole meadow come alive.</p>' +
-            '<ul style="text-align:left;font-size:0.9rem;margin:10px 0;padding-left:20px;">' +
-            '<li>🌱 A new flower appears on every beat — it wilts in 3 seconds!</li>' +
-            '<li>🖱️ Drag from one glowing flower to another to fly Buzz between them.</li>' +
-            '<li>🌸 Both flowers bloom, drop fruit, and feed a hungry critter.</li>' +
-            '<li>💨 Miss 3 in a row and the meadow gets smoggy — no bees, no food.</li>' +
-            '<li>🎯 Pollinate 15 flowers to make the whole meadow bloom!</li>' +
-            '</ul>',
-      primaryLabel: "Start Buzzing ▶",
-      onPrimary: function () {
-        GOGUi.closeOverlay(activeOverlay);
-        activeOverlay = null;
         resetGame();
-      }
+      },
     });
   }
 
@@ -1841,36 +1824,28 @@ flowers.push({
           gameState = "win";
           
           triggerSeedReturnCutscene(function () {
-            // NEW: "thank you" beat — Buzz grateful, the meadow blooming behind her.
-            GOGUi.showGuardianBeat({
-              emoji: "🐝",
-              name: "Buzz",
-              role: "Guardian of the Meadow",
-              line: "You brought my meadow back to life! The flowers are blooming again! 🌸",
-              audio: audio,
-              audioPath: "assets/audio/stage03/buzz_outro_lines.mp3",
-              buttonLabel: "Yay!",
-              autoDismissMs: 4200,
-              onDone: function () {
-                var stageMeta = window.GOGContent ? window.GOGContent.byId(STAGE_ID) : null;
-                activeOverlay = GOGUi.showOverlay({
-                  accent: "var(--gog-tangerine)",
-                  title: "🌼 The Meadow Blooms!",
-                  body: "Buzz did it — every last flower is blooming again.",
-                  stars: pendingStars,
-                  factText: stageMeta ? stageMeta.fact : "About 1 in 3 bites of the food we eat depends on pollinators like bees!",
-                  primaryLabel: "Play Again ▶",
-                  onPrimary: function () {
-                    GOGUi.closeOverlay(activeOverlay);
-                    activeOverlay = null;
-                    resetGame();
-                  },
-                  secondaryLabel: "Back to Map",
-                  onSecondary: function () {
-                    window.location.href = "../index.html";
-                  }
-                });
+            // STREAMLINED: one popup on win, not two — Buzz's grateful line
+            // now lives inside the same fact/stars card instead of its own
+            // dialog first. The narration clip still plays, just without a
+            // dedicated popup of its own.
+            audio.playSfxFile("assets/audio/stage03/buzz_outro_lines.mp3");
+            var stageMeta = window.GOGContent ? window.GOGContent.byId(STAGE_ID) : null;
+            activeOverlay = GOGUi.showOverlay({
+              accent: "var(--gog-tangerine)",
+              title: "🌼 The Meadow Blooms!",
+              body: "“You brought my meadow back to life! The flowers are blooming again! 🌸”<br><br>Buzz did it — every last flower is blooming again.",
+              stars: pendingStars,
+              factText: stageMeta ? stageMeta.fact : "About 1 in 3 bites of the food we eat depends on pollinators like bees!",
+              primaryLabel: "Play Again ▶",
+              onPrimary: function () {
+                GOGUi.closeOverlay(activeOverlay);
+                activeOverlay = null;
+                resetGame();
               },
+              secondaryLabel: "Back to Map",
+              onSecondary: function () {
+                window.location.href = "../index.html";
+              }
             });
           });
         }

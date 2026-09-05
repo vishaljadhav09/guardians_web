@@ -320,7 +320,7 @@ img, svg { display: block; max-width: 100%; }
   100% { clip-path: circle(140% at 50% 30%); opacity: 0; }
 }
 
-//* Guardian & How-to-Play Card Styles & Stage Layout */
+/* Guardian & How-to-Play Card Styles & Stage Layout */
 .gog-stage-layout {
   display: flex;
   flex-direction: column;
@@ -679,7 +679,6 @@ body .stage-wrap {
     width: 100%;
     max-width: 280px;
   }
-}
 }
 
 

@@ -362,230 +362,16 @@
     .page-bubble { animation: none; opacity: 0; }
   }
 
-  /* ---------- Overlays (start / win / fail) ---------- */
-  .overlay {
-    position: absolute; inset: 0;
-    background: rgba(253, 251, 247, 0.97);
-    display: flex; align-items: center; justify-content: center;
-    z-index: 20;
-    padding: 20px;
-    backdrop-filter: blur(6px);
-  }
-  .hidden { display: none !important; }
-
-  .panel {
-    background: var(--gog-white, var(--cream));
-    border: 6px solid var(--gog-ink, var(--ink));
-    border-radius: 28px;
-    box-shadow: 10px 10px 0 var(--gog-ink, var(--ink)), 0 0 20px rgba(0,0,0,0.12);
-    max-width: 480px;
-    width: 100%;
-    padding: 32px 30px;
-    text-align: center;
-    font-family: 'Quicksand', sans-serif;
-    animation: panelSlideIn 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
-  }
-
-  @keyframes panelSlideIn {
-    from { opacity: 0; transform: scale(0.92) translateY(20px); }
-    to { opacity: 1; transform: scale(1) translateY(0); }
-  }
-
-  .panel h1 {
-    font-family: 'Baloo 2', sans-serif;
-    font-size: clamp(24px, 5vw, 32px);
-    font-weight: 800;
-    margin: 0 0 8px 0;
-    color: var(--ink);
-    letter-spacing: 0.5px;
-  }
-  .panel h2 {
-    font-family: 'Baloo 2', sans-serif;
-    font-size: clamp(16px, 3.5vw, 20px);
-    font-weight: 700;
-    margin: 0 0 16px 0;
-    color: var(--cobalt-dark);
-  }
-  .panel p {
-    font-size: clamp(14px, 2.8vw, 16px);
-    font-weight: 600;
-    line-height: 1.5;
-    color: #3d3d3d;
-    margin: 8px 0 20px 0;
-  }
-
-  /* Sprite sheet animation wrapper for overlays */
-  .panel-sprite-container {
-    width: 130px;
-    height: 130px;
-    margin: 0 auto 16px;
-    overflow: hidden;
-    position: relative;
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    border-radius: 50%;
-    background: radial-gradient(circle at 30% 30%, rgba(255,255,255,0.8), rgba(230,239,255,0.6) 100%);
-    border: 4px solid var(--ink);
-    box-shadow: 4px 4px 0 var(--ink), inset 0 -4px 8px rgba(0,0,0,0.08), 0 0 16px rgba(0,114,255,0.15);
-  }
-
-  .breezy-avatar-anim {
-    width: 609px;
-    height: 861px;
-    background-image: url('assets/sprites/stage05/happy-breezy.png');
-    background-repeat: no-repeat;
-    transform: scale(0.14);
-    transform-origin: center;
-    flex-shrink: 0;
-    margin: 0;
-    animation: playBreezyHappy 0.9s steps(3) infinite, bobSprite 3s ease-in-out infinite;
-  }
-
-  @keyframes playBreezyHappy {
-    from { background-position: 0px 0px; }
-    to { background-position: -1827px 0px; }
-  }
-
-  .building-lit-anim {
-    width: 150px;
-    height: 140px;
-    background-image: url('assets/sprites/stage05/lit-buildings.png');
-    background-repeat: no-repeat;
-    transform: scale(0.75);
-    transform-origin: center;
-    animation: playLitBuildings 1.6s infinite step-end, bobSprite 3s ease-in-out infinite;
-  }
-
-  @keyframes playLitBuildings {
-    0% { background-position: 0px 0px; }
-    50% { background-position: -150px 0px; }
-  }
-
-  .sad-clouds-anim {
-    width: 964px;
-    height: 816px;
-    background-image: url('assets/sprites/stage05/sad-clouds.png');
-    background-repeat: no-repeat;
-    transform: scale(0.13);
-    transform-origin: center;
-    flex-shrink: 0;
-    margin: 0;
-    animation: playSadClouds 1.2s steps(2) infinite, bobSprite 2s ease-in-out infinite;
-  }
-
-  @keyframes playSadClouds {
-    from { background-position: 0px 0px; }
-    to { background-position: -1928px 0px; }
-  }
-
-  @keyframes bobSprite {
-    0%, 100% { transform: scale(var(--scale-base, 1)) translateY(0); }
-    50% { transform: scale(var(--scale-base, 1)) translateY(-6px); }
-  }
-  
-  .breezy-avatar-anim { --scale-base: 0.14; }
-  .building-lit-anim { --scale-base: 0.75; }
-  .sad-clouds-anim { --scale-base: 0.13; }
-
-  .btn {
-    font-family: 'Baloo 2', sans-serif;
-    font-weight: 800;
-    font-size: 1.15rem;
-    letter-spacing: 0.5px;
-    background: var(--lime);
-    color: var(--ink);
-    border: 4px solid var(--ink);
-    border-radius: 16px;
-    box-shadow: 5px 5px 0 var(--ink), 0 0 12px rgba(198, 255, 61, 0.3);
-    padding: 12px 28px;
-    cursor: pointer;
-    transition: transform 0.1s ease, box-shadow 0.1s ease, background-color 0.1s;
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    gap: 8px;
-  }
-  .btn:hover {
-    background: var(--lime-dark);
-    transform: translateY(-2px);
-    box-shadow: 7px 7px 0 var(--ink), 0 0 16px rgba(143, 203, 26, 0.4);
-  }
-  .btn:active {
-    transform: translate(4px, 4px);
-    box-shadow: 1px 1px 0 var(--ink);
-  }
-  .btn.blue {
-    background: #0072FF;
-    color: var(--cream);
-    box-shadow: 5px 5px 0 var(--ink), 0 0 12px rgba(0, 114, 255, 0.3);
-  }
-  .btn.blue:hover {
-    background: #0056C6;
-    box-shadow: 7px 7px 0 var(--ink), 0 0 16px rgba(0, 114, 255, 0.4);
-  }
-
-  .legend {
-    display: flex;
-    justify-content: center;
-    gap: 16px;
-    margin: 10px 0 24px 0;
-    font-size: 14px;
-    font-weight: 700;
-    flex-wrap: wrap;
-  }
-  .legend span { display: flex; align-items: center; gap: 8px; }
-  .legend .swatch {
-    width: 32px;
-    height: 32px;
-    border-radius: 8px;
-    border: 3px solid var(--ink);
-    display: inline-block;
-    background-repeat: no-repeat;
-    background-position: center;
-    background-color: var(--cream);
-    box-shadow: 2px 2px 0 var(--ink);
-  }
-  .legend .swatch.updraft {
-    background-image: url('assets/sprites/stage05/wind-orbit.png');
-    background-size: contain;
-    background-color: #e0f7fa;
-  }
-  .legend .swatch.smoke {
-    background-image: url('assets/sprites/stage05/sad-clouds.png');
-    background-size: 200% 100%;
-    background-position: 0px center;
-    background-color: #eceff1;
-  }
-  .legend .swatch.orb {
-    background-image: url('assets/sprites/stage05/sun-orbit.png');
-    background-size: contain;
-    background-color: #fff9c4;
-  }
-
-  .seedcard {
-    border: 4px dashed var(--ink);
-    border-radius: 20px;
-    padding: 14px 18px;
-    background: #F3FFDE;
-    margin: 18px 0 24px 0;
-    box-shadow: inset 0 -4px 0 rgba(0,0,0,0.05);
-  }
-  .seedcard .stitle {
-    font-family: 'Baloo 2', sans-serif;
-    font-size: 0.95rem;
-    font-weight: 900;
-    color: var(--lime-dark);
-    text-transform: uppercase;
-    letter-spacing: 1px;
-  }
-  .seedcard .sfact {
-    font-family: 'Quicksand', sans-serif;
-    font-size: 1.1rem;
-    font-weight: 700;
-    color: var(--ink);
-    margin-top: 6px;
-    line-height: 1.4;
+  /* STREAMLINED: the old start/win/fail overlay markup (custom sprite
+     panels, legend, seed card) has been removed — all three moments now
+     use the single shared GOGUi popup (showGuardianBeat for the intro,
+     showOverlay for win/fail), matching stages 1-4. Only the meter
+     pop-juice animation remains local to this stage. */
+  .chip-pop { animation: chipPop .4s cubic-bezier(.34,1.56,.64,1); }
+  @keyframes chipPop {
+    0% { transform: scale(1); }
+    45% { transform: scale(1.22); }
+    100% { transform: scale(1); }
   }
 
 </style>
@@ -619,7 +405,7 @@
           </div>
           <span class="label" id="progressText">0/8</span>
         </div>
-        <div class="meter" title="Clear Skies" style="min-width: 230px;">
+        <div class="meter" id="skyHealthMeter" title="Clear Skies" style="min-width: 230px;">
           <span class="label">🌤️ Sky Health</span>
           <div class="meter-track">
             <div class="meter-fill" id="clarityFill"></div>
@@ -655,55 +441,6 @@
 
     <div class="brutal-box canvas-frame" id="canvasFrame">
       <canvas id="game" width="800" height="600"></canvas>
-
-      <!-- START OVERLAY -->
-      <div class="overlay" id="startOverlay">
-        <div class="panel">
-          <div class="panel-sprite-container">
-            <div class="breezy-avatar-anim"></div>
-          </div>
-          <h1>Stage 5</h1>
-          <h2>Breezy & the Two Skies</h2>
-          <p>Guide Breezy through the sky and gather glowing energy orbs ✨ to light up the sleepy city below.</p>
-          <div class="legend">
-            <span><span class="swatch updraft"></span>Updrafts boost you</span>
-            <span><span class="swatch smoke"></span>Smoke slows you</span>
-            <span><span class="swatch orb"></span>Orbs power the city</span>
-          </div>
-          <button class="btn" id="startBtn">Let's Glide!</button>
-        </div>
-      </div>
-
-      <!-- WIN OVERLAY -->
-      <div class="overlay hidden" id="winOverlay">
-        <div class="panel">
-          <div class="panel-sprite-container">
-            <div class="building-lit-anim"></div>
-          </div>
-          <h1>The City is Powered!</h1>
-          <h2>Breezy did it — clean skies ahead</h2>
-          <div class="seedcard">
-            <div class="stitle">Seed of Life #5 Unlocked</div>
-            <div class="sfact">"Wind and sun make electricity without polluting the air."</div>
-          </div>
-          <button class="btn" id="playAgainBtn">Glide Again</button>
-          <a class="btn blue" href="../index.html">Back to Map</a>
-        </div>
-      </div>
-
-      <!-- FAIL OVERLAY (soft, no negative language) -->
-      <div class="overlay hidden" id="failOverlay">
-        <div class="panel">
-          <div class="panel-sprite-container">
-            <div class="sad-clouds-anim"></div>
-          </div>
-          <h1>Let's Catch Some Air!</h1>
-          <h2>Breezy just needs a little breather</h2>
-          <p id="failReason">The skies got a bit foggy — take a breath and try gliding through those clean updrafts again.</p>
-          <button class="btn blue" id="retryBtn">Try Again</button>
-          <a class="btn" href="../index.html" style="background:#5a5a5a; color:var(--cream);">Back to Map</a>
-        </div>
-      </div>
     </div>
 
   </div>
@@ -732,19 +469,13 @@
   const ctx = canvas.getContext('2d');
   const W = canvas.width, H = canvas.height;
 
-  const startOverlay = document.getElementById('startOverlay');
-  const winOverlay = document.getElementById('winOverlay');
-  const failOverlay = document.getElementById('failOverlay');
-  const startBtn = document.getElementById('startBtn');
-  const playAgainBtn = document.getElementById('playAgainBtn');
-  const retryBtn = document.getElementById('retryBtn');
-
   const progressFill = document.getElementById('progressFill');
   const progressText = document.getElementById('progressText');
   const clarityFill = document.getElementById('clarityFill');
   const clarityText = document.getElementById('clarityText');
   const canvasFrame = document.getElementById('canvasFrame');
   const cityPowerMeter = document.getElementById('cityPowerMeter');
+  const skyHealthMeter = document.getElementById('skyHealthMeter');
 
   // NEW: calm mode foregrounds Clear Skies (the meter that actually needs
   // watching moment-to-moment) and de-emphasizes City Power — it still
@@ -867,6 +598,24 @@
     calmBadge.textContent = calmMode ? "🧘 Calm Mode" : "⚡ Standard Mode";
   }
 
+  // STREAMLINED: one popup before play, matching stage01's pattern — the
+  // guardian beat is the only pre-game dialog and starts play directly
+  // (no separate start panel/legend afterward). No narration file exists
+  // yet for Breezy, so this is text + avatar only.
+  GOGUi.showGuardianBeat({
+    emoji: "🌬️",
+    name: "Breezy",
+    role: "Guardian of the Sky",
+    line: "The sky turned so grey and heavy with smoke… Will you help me clear it again?",
+    buttonLabel: "Let's clear the sky!",
+    autoDismissMs: 10000,
+    onDone: function () {
+      audio._ensureCtx();
+      initGame();
+      gameState = 'playing';
+    }
+  });
+
   function sfxOrb(){ audio.collect(); }
   function sfxBoost(){ audio.heal(); }
   function sfxSmoke(){ audio.hazard(); }
@@ -904,9 +653,11 @@
     { img: new Image(), speed: 0.65 },
     { img: new Image(), speed: 1.0 }
   ];
-  bgLayers[0].img.src = 'assets/background/stage02/1.png';
-  // bgLayers[1].img.src = 'assets/background/stage02/2.png';
-  // bgLayers[2].img.src = 'assets/background/stage02/3.png';
+  // NEW: layer 0 previously pointed at stage02's rainforest art (leftover
+  // copy-paste), which bled a jungle silhouette into the sky stage at low
+  // opacity. Stage 5 only has one real background asset, so reuse it here
+  // at a slower scroll speed for a cheap two-plane parallax instead.
+  bgLayers[0].img.src = 'assets/background/stage05/4.png';
   bgLayers[3].img.src = 'assets/background/stage05/4.png';
 
   const player = {
@@ -924,6 +675,8 @@
 
   let score = 0;
   let clarity = 35;
+  let lastScoreForPop = 0; // NEW: drives the City Power chip's pop-juice
+  let lastClarityBracket = Math.floor(35 / 25); // NEW: drives the Sky Health chip's pop-juice
   let smokeOverlapThisFrame = false;
 
   // T059: smoothed reactive sky tint — dips toward smog-gray on contact,
@@ -1049,6 +802,8 @@
   function initGame(){
     score = 0;
     clarity = 35;
+    lastScoreForPop = 0;
+    lastClarityBracket = Math.floor(35 / 25);
     timeLeft = STAGE_DURATION;
     player.y = 300; player.targetY = 300; player.prevY = 300;
     player.speedFactor = 1; player.boostTimer = 0; player.angle = 0;
@@ -1072,12 +827,28 @@
   }
 
   function updateHUD(){
+    // NEW: a quick chunky "pop" on the City Power meter whenever a new
+    // orb lands — cheap DOM-only juice, doesn't touch the canvas/physics.
+    if (score > lastScoreForPop) {
+      lastScoreForPop = score;
+      if (cityPowerMeter) GOGUi.restartAnimation(cityPowerMeter, 'chip-pop');
+    }
     const pct = clamp(score/ENERGY_TARGET,0,1)*100;
     progressFill.style.width = pct + '%';
     progressText.textContent = score + '/' + ENERGY_TARGET;
     const clarityPct = clamp(clarity,0,100);
     clarityFill.style.width = clarityPct + '%';
     if(clarityText) clarityText.textContent = Math.round(clarityPct) + '%';
+    // NEW: pop the Sky Health chip only when it climbs into a new 25%
+    // bracket (not every frame — clarity drifts continuously, so a
+    // per-frame pop would just be noise instead of a felt milestone).
+    const clarityBracket = Math.floor(clarityPct / 25);
+    if (clarityBracket > lastClarityBracket) {
+      lastClarityBracket = clarityBracket;
+      if (skyHealthMeter) GOGUi.restartAnimation(skyHealthMeter, 'chip-pop');
+    } else if (clarityBracket < lastClarityBracket) {
+      lastClarityBracket = clarityBracket;
+    }
     if(clarity < 30){
       clarityFill.style.background = 'linear-gradient(90deg, #888, #bbb)';
     } else {
@@ -1569,7 +1340,6 @@
   }
 
   let pendingStars = 1;
-  let activeOverlay = null;
 
   function triggerWin(){
     audio.stopBgm();
@@ -1599,10 +1369,14 @@
   }
   function finishWin(){
     gameState = 'win';
-    activeOverlay = GOGUi.showOverlay({
+    // STREAMLINED: one popup on win, matching stages 1-4 — Breezy's
+    // grateful line, the star rating, and the fact card all live in a
+    // single shared GOGUi.showOverlay card instead of a separate
+    // guardian-beat dialog first.
+    GOGUi.showOverlay({
       accent: "var(--gog-white)",
       title: "⚡ The City is Powered!",
-      body: "Breezy wakes completely as the clean winds sweep away the smog.",
+      body: "“The city is glowing and the sky is clear and blue again! Thank you for the clean wind. 🌈”<br><br>Breezy wakes completely as the clean winds sweep away the smog.",
       stars: pendingStars,
       factText: stageMeta ? stageMeta.fact : "Wind and sun make electricity without polluting the air.",
       primaryLabel: "Back to Map",
@@ -1621,7 +1395,8 @@
     sfxFail();
     GOGProgress.failStage(STAGE_ID, { diff: diff });
 
-    activeOverlay = GOGUi.showOverlay({
+    // STREAMLINED: one popup on fail, matching stages 1-4's plain retry card.
+    GOGUi.showOverlay({
       title: "Let's Catch Some Air!",
       body: "The skies got a bit foggy — take a breath and try gliding through those clean updrafts again.",
       primaryLabel: "Try Again",
@@ -3470,25 +3245,11 @@
     requestAnimationFrame(loop);
   }
 
-  // ---------------------------------------------------------------
-  // UI HOOKS
-  // ---------------------------------------------------------------
-  startBtn.addEventListener('click', ()=>{
-    audio._ensureCtx();
-    initGame();
-    gameState = 'playing';
-    startOverlay.classList.add('hidden');
-  });
-  playAgainBtn.addEventListener('click', ()=>{
-    initGame();
-    gameState = 'playing';
-    winOverlay.classList.add('hidden');
-  });
-  retryBtn.addEventListener('click', ()=>{
-    initGame();
-    gameState = 'playing';
-    failOverlay.classList.add('hidden');
-  });
+  // STREAMLINED: start/replay/retry are now driven entirely by the single
+  // GOGUi popup at each moment (the guardian beat's onDone for the first
+  // start, and the win/fail overlay's buttons — a page reload, matching
+  // stages 1-4 — for "Play Again"/"Try Again"), so the old dedicated
+  // button listeners for the removed overlay markup are gone too.
 
   buildBuildings();
   seedAmbientClouds();

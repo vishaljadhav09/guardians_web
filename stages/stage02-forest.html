@@ -2776,7 +2776,11 @@
           cutsceneTimer = setTimeout(closeCutscene, 2200);
         }
 
-        // NEW: "meet the guardian" beat — Ravi in trouble, before the rules overlay.
+        // STREAMLINED: one popup before play, not two — the guardian beat
+        // is now the only pre-game dialog (matches stage01's pattern) and
+        // starts Wave 1 directly; the rules text that used to live in a
+        // second overlay is dropped since the always-visible "How to Play"
+        // side card already covers goal/controls.
         function showRaviIntroBeat() {
           GOGUi.showGuardianBeat({
             emoji: "🐯",
@@ -2788,22 +2792,9 @@
             buttonLabel: "Let's plant trees!",
             autoDismissMs: 10000,
             onDone: function () {
-              showIntro();
-            },
-          });
-        }
-
-        function showIntro() {
-          GOGUi.say(
-            "Welcome! Plant trees to shield the rainforest from the Smog! 🌳",
-          );
-          var intro = GOGUi.showOverlay({
-            accent: "var(--gog-lime)",
-            title: "🐯 Ravi & the Canopy Call",
-            body: "The Smog is creeping in! Spend saplings to plant trees on the grid. Fully grown trees link together to create a canopy barrier that blocks the smog. Tap passing rain clouds to gather more saplings!",
-            primaryLabel: "Start Wave 1",
-            onPrimary: function () {
-              GOGUi.closeOverlay(intro);
+              GOGUi.say(
+                "Welcome! Plant trees to shield the rainforest from the Smog! 🌳",
+              );
               startWave(1);
             },
           });
@@ -2923,36 +2914,28 @@
             smogDrop: 10,
           });
 
-          // NEW: "thank you" beat — Ravi grateful, braver now that the canopy grows.
+          // STREAMLINED: one popup on win, not two — Ravi's grateful line now
+          // lives inside the same fact/stars card instead of its own dialog
+          // first. The narration clip still plays (unchanged), just without
+          // a dedicated popup of its own.
           setTimeout(function () {
-            GOGUi.showGuardianBeat({
-              emoji: "🐯",
-              name: "Ravi",
-              role: "Guardian of the Rainforest",
-              line: "You grew my forest back! Now my friends have a home again! 🌳",
-              audio: audio,
-              audioPath: "assets/audio/stage02/ravi_outro_lines.mp3",
-              buttonLabel: "Yay!",
-              autoDismissMs: 4200,
-              onDone: function () {
-                triggerSeedReturnCutscene(function () {
-                  GOGUi.showOverlay({
-                    accent: "var(--gog-white)",
-                    title: "🌳 Canopy Restored!",
-                    body: "Ravi wakes up and a Seed of Life flies back to the Guardian Tree.<br><br><b>Did you know?</b><br>🦜 \"Rainforests are home to more than half of the world's plant and animal species!\"",
-                    stars: rec.stars,
-                    factText: stageMeta.fact,
-                    primaryLabel: "Back to Map",
-                    secondaryLabel: "Play Again",
-                    onPrimary: function () {
-                      window.location.href = "../index.html";
-                    },
-                    onSecondary: function () {
-                      window.location.reload();
-                    },
-                  });
-                });
-              },
+            audio.playSfxFile("assets/audio/stage02/ravi_outro_lines.mp3");
+            triggerSeedReturnCutscene(function () {
+              GOGUi.showOverlay({
+                accent: "var(--gog-white)",
+                title: "🌳 Canopy Restored!",
+                body: "“You grew my forest back! Now my friends have a home again! 🌳”<br><br>Ravi wakes up and a Seed of Life flies back to the Guardian Tree.",
+                stars: rec.stars,
+                factText: stageMeta.fact,
+                primaryLabel: "Back to Map",
+                secondaryLabel: "Play Again",
+                onPrimary: function () {
+                  window.location.href = "../index.html";
+                },
+                onSecondary: function () {
+                  window.location.reload();
+                },
+              });
             });
           }, 600);
         }
