@@ -767,7 +767,7 @@
   deerImg.src = "assets/sprites/stage03/Deer_Run_with_shadow.png";
 
   var hareImg = new Image();
-  hareImg.src = "assets/sprites/stage03/Hare_Run_with_shadow.png";
+  hareImg.src = "assets/sprites/stage03/rabbit_run.png";
 
   var flowerGrowingImg = new Image();
   flowerGrowingImg.src = "assets/sprites/stage03/flower_1.png";
@@ -785,10 +785,21 @@
   seaWed2Img.src = "assets/sprites/stage01/sea_wed_2.png";
 
 
+  // Frame geometry below is measured directly from each PNG (sheet pixel
+  // size / visual frame count), not guessed â the sheets are NOT uniform
+  // 256Ã256 grids and each has a different aspect ratio, so frameWidth/
+  // frameHeight/displayWidth/displayHeight are all per-animal.
+  // Boar_Run_with_shadow.png: 924Ã180 Â· 4 frames Â· 231Ã180 each
+  // Deer_Run_with_shadow.png: 1795Ã202 Â· 8 frames Â· ~224Ã202 each
+  // rabbit_run.png:           1763Ã212 Â· 8 frames Â· ~220Ã212 each
+  // displayWidth/Height keep each sheet's native aspect ratio (source art
+  // is wider than tall, not square) so animals no longer look squashed.
+  // groundOffset is tuned so the lowest-foot frame of each run cycle
+  // plants on GROUND_Y instead of floating above / sinking below it.
   var CRITTER_DEFS = {
-    boar: { img: boarImg, frames: 5, emoji: "🐗", defaultFacing: -1, scale: 1.8 },
-    deer: { img: deerImg, frames: 6, emoji: "🦌", defaultFacing: 1, scale: 1.8 },
-    hare: { img: hareImg, frames: 6, emoji: "🐇", defaultFacing: -1, scale: 1.8 }
+    boar: { img: boarImg, frames: 4, frameWidth: 231, frameHeight: 180, displayWidth: 150, displayHeight: 117, groundOffset: 5, emoji: "🐗", defaultFacing: -1 },
+    deer: { img: deerImg, frames: 8, frameWidth: 224, frameHeight: 202, displayWidth: 125, displayHeight: 113, groundOffset: -3, emoji: "🦌", defaultFacing: 1 },
+    hare: { img: hareImg, frames: 8, frameWidth: 220, frameHeight: 212, displayWidth: 100, displayHeight: 96, groundOffset: 3, emoji: "🐇", defaultFacing: -1 }
   };
 
   /* ---------------- Mutable game state ---------------- */
@@ -2933,21 +2944,21 @@ flowers.push({
           frameIndex = 0;
         }
 
-        var sw = img.width / totalFrames;
-        var sh = img.height;
+        var sw = def.frameWidth || Math.round(img.width / totalFrames);
+        var sh = def.frameHeight || img.height;
         var sx = frameIndex * sw;
         var sy = 0;
 
-        var dw = sw * def.scale;
-        var dh = sh * def.scale;
+        var dw = def.displayWidth || sw;
+        var dh = def.displayHeight || sh;
 
-        ctx.translate(c.x, c.y - hopOffset);
+        ctx.translate(c.x, c.y - hopOffset + (def.groundOffset || 0));
         ctx.scale(c.facing * def.defaultFacing, 1);
 
         ctx.drawImage(img, sx, sy, sw, sh, -dw / 2, -dh + 8, dw, dh);
       } else {
         var sprite = EmojiSprite.get(def.emoji, 40);
-        ctx.translate(c.x, c.y - hopOffset);
+        ctx.translate(c.x, c.y - hopOffset + (def.groundOffset || 0));
         if (c.facing === -1) ctx.scale(-1, 1);
         ctx.drawImage(sprite, -sprite.width / 2, -sprite.height);
       }

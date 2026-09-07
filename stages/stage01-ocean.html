@@ -1687,7 +1687,7 @@
             y: rand(80, H - 80),
             vx: vx,
             vy: rand(-8, 8),
-            r: 28,
+            r: 38, // bumped alongside the larger draw size below so the hitbox still matches the sprite
             glyph: "🐠",
             bob: Math.random() * Math.PI * 2,
             age: 0,
@@ -3293,8 +3293,11 @@
               drawW = 76;
               drawH = 76;
             } else if (it.type === "tangled_fish") {
-              drawW = 70;
-              drawH = 46;
+              // Was 70x46 â too small/flat to read clearly against the busy
+              // ocean background; scaled up (~1.4x) while keeping the
+              // sprite's real aspect ratio (measured content is ~1.5:1).
+              drawW = 96;
+              drawH = 64;
             }
 
             if (it.type === "trash") {
@@ -3378,11 +3381,11 @@
               ctx.lineWidth = 2.5;
               ctx.setLineDash([4, 4]);
               ctx.beginPath();
-              ctx.arc(0, 0, 34, 0, Math.PI * 2);
+              ctx.arc(0, 0, 46, 0, Math.PI * 2);
               ctx.stroke();
               ctx.restore();
             } else if (it.type === "tangled_fish") {
-              var size = 44;
+              var size = 60;
               var sprite = EmojiSprite.get("🐠", size);
               ctx.drawImage(sprite, -sprite.width / 2, -sprite.height / 2);
               var pulse = Math.sin(state.elapsed * 8) * 0.25 + 0.75;
@@ -3391,7 +3394,7 @@
               ctx.lineWidth = 2.5;
               ctx.setLineDash([4, 4]);
               ctx.beginPath();
-              ctx.arc(0, 0, 28, 0, Math.PI * 2);
+              ctx.arc(0, 0, 38, 0, Math.PI * 2);
               ctx.stroke();
               ctx.restore();
             } else {
