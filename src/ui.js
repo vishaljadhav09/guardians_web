@@ -280,8 +280,8 @@
         quote: "Harnessing the clean wind keeps our skies clear, fresh, and beautiful for everyone!",
         play: {
           emoji: "⚡",
-          goal: "Gather glowing energy orbs in the sky to power the city cleanly!",
-          controls: "<strong>Fly Up:</strong> Press and hold Spacebar / Up Arrow / W (or hold tap).<br><strong>Glide:</strong> Release key or touch to glide down.<br><strong>Boost/Avoid:</strong> Ride updrafts, avoid factory smoke."
+          goal: "Light up every building in the city with clean sun power!",
+          controls: "<strong>1. Fly:</strong> Drag your finger up and down (or press ⬆️ ⬇️). Breezy follows you.<br><strong>2. Ride the green wind:</strong> Fly inside a glowing green wind river 🌬️ — it makes Breezy sparkle.<br><strong>3. Grab a sun:</strong> While you are <em>inside</em> the wind, touch a ☀️ sun. One building lights up!<br><strong>Careful:</strong> Grey smoke ☁️ dirties the sky — fly through the white gap.<br><strong>Win:</strong> Light every building and the sky turns blue again 🌈"
         }
       }
     };

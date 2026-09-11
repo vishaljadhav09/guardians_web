@@ -2301,39 +2301,9 @@
             ctx.restore();
           });
 
-          // T052: background ice cliffs — crisp & solid when Warmth is low,
-          // dull/wet when it's high. The "re-solidify" pay-off plays out
-          // automatically as Warmth falls while chicks are rescued.
+          // Mountain / cliff silhouettes removed from this stage to keep the
+          // background open and airy while preserving the ice-world aesthetic.
           ctx.save();
-          const cliffCol = lerpColor("#EAF7FF", "#7C93A0", warmthVal);
-          ctx.fillStyle = cliffCol;
-          ctx.strokeStyle = "#111";
-          ctx.lineWidth = 2;
-          const cliffCount = 4;
-          for (let ci = 0; ci < cliffCount; ci++) {
-            const cx2 = (((ci * 480 + 150) - scrollVal * 0.35) % (W + 300) + (W + 300)) % (W + 300) - 150;
-            const ch = 70 + (ci % 2) * 30;
-            ctx.beginPath();
-            ctx.moveTo(cx2, H * 0.55);
-            ctx.lineTo(cx2 + 40, H * 0.55 - ch);
-            ctx.lineTo(cx2 + 90, H * 0.55 - ch * 0.6);
-            ctx.lineTo(cx2 + 140, H * 0.55);
-            ctx.closePath();
-            ctx.fill();
-            ctx.globalAlpha = 0.5;
-            ctx.stroke();
-            ctx.globalAlpha = 1;
-          }
-          // A crisp sparkle glint once the world has re-solidified (low Warmth).
-          if (warmthVal < 0.3) {
-            ctx.globalAlpha = (0.3 - warmthVal) * 2;
-            ctx.fillStyle = "#ffffff";
-            for (let s = 0; s < 3; s++) {
-              const sx2 = (((s * 480 + 190) - scrollVal * 0.35) % (W + 300) + (W + 300)) % (W + 300) - 150 + 40;
-              circle(sx2 + Math.sin(timeVal * 2 + s) * 6, H * 0.55 - 40, 2.5, true);
-            }
-            ctx.globalAlpha = 1;
-          }
           ctx.restore();
         }
 
@@ -2590,8 +2560,8 @@
           // 6. Draw Delivered chicks dancing
           const delivered = state.chicks.filter((c) => c.delivered);
           delivered.forEach((c, i) => {
-            const dance = Math.sin(state.time * 6.5 + i * 1.5) * 8; // Higher jump!
-            const destW = 32;
+            const dance = Math.sin(state.time * 6.5 + i * 1.5) * 16;
+            const destW = 72;
             const destH = chickSprite.loaded
               ? (chickSprite.frameH / chickSprite.frameW) * destW
               : 34;
@@ -2607,8 +2577,11 @@
               const sx = col * chickSprite.frameW;
               const sy = row * chickSprite.frameH;
 
+              const xPos = b.x + 76 + i * 54;
+              const yPos = b.y - 40 + dance;
+
               ctx.save();
-              ctx.translate(b.x + 48 + i * 26, b.y - (i % 2) * 4 + dance);
+              ctx.translate(xPos, yPos);
               ctx.drawImage(
                 chickSprite.img,
                 sx,
@@ -2622,7 +2595,9 @@
               );
               ctx.restore();
             } else {
-              drawEmoji("🐥", b.x + 48 + i * 26, b.y - 6 - (i % 2) * 4 + dance, 22);
+              const xPos = b.x + 76 + i * 54;
+              const yPos = b.y - 32 + dance;
+              drawEmoji("🐥", xPos, yPos, 40);
             }
 
             // Celebratory particles
@@ -2922,15 +2897,15 @@
           const cols = 3;
           const col = slot % cols;
           const row = Math.floor(slot / cols);
-          const baseX = b.x + b.w * 0.3 + col * 26;
-          const baseY = b.y - 6 - row * 24;
+          const baseX = b.x + b.w * 0.28 + col * 30;
+          const baseY = b.y - 8 - row * 24;
           const cheering = chick.cheerTimer > 0;
-          const hop = Math.abs(Math.sin(chick.bob * 1.8)) * (cheering ? 11 : 4);
+          const hop = Math.abs(Math.sin(chick.bob * 1.8)) * (cheering ? 12 : 5);
           const drawX = baseX;
           const drawY = baseY - hop;
 
           if (chickSprite.loaded) {
-            const destW = 28;
+            const destW = 42;
             const destH = (chickSprite.frameH / chickSprite.frameW) * destW;
             const frame = cheering ? 0 : (Math.floor(chick.bob) % 2 === 0 ? 3 : 0);
             const fCol = frame % chickSprite.cols;
@@ -2946,7 +2921,7 @@
             );
             ctx.restore();
           } else {
-            drawEmoji("🐥", drawX, drawY - 10, 20);
+            drawEmoji("🐥", drawX, drawY - 10, 26);
           }
 
           if (cheering && Math.random() < 0.12) {
