@@ -76,6 +76,7 @@ const GOGConstants = {
       return this.gameTime * 1000;
     },
     chicks: 5, // total chicks to rescue
+    chickReach: 44, // px - side of the square around a chick where Grab works (forgiving for young players)
     seaLevelRise: 0.15, // units per second when player stands still
   },
 
@@ -85,6 +86,18 @@ const GOGConstants = {
     gameTime: 60, // seconds - if/when timer is implemented
     get gameTimeMs() {
       return this.gameTime * 1000;
+    },
+    // Smog columns: the clean opening Breezy flies through, and how far apart
+    // the columns are. Widened for the 4-6 end of the audience (was 100-140px
+    // gaps, a new column every ~2.7-4s).
+    smogGap: {
+      min: 190, // px, vertical height of the clean opening
+      max: 240,
+      calmMul: 1.2, // calm mode widens the opening a further 20%
+    },
+    smogSpawnFrames: {
+      min: 250, // frames (~60fps) between columns
+      max: 340,
     },
   },
 

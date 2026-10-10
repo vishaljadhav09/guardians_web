@@ -304,7 +304,7 @@
         play: {
           emoji: "🐝",
           goal: "Fly Buzz along paths to pollinate flowers and make them bloom!",
-          controls: "<strong>Fly:</strong> Drag Buzz 🐝 from one glowing flower to another.<br><strong>Pollinate:</strong> Reach flowers before they wilt to make them bloom 🌸.<br><strong>Feed:</strong> Bloomed flowers create fruit 🍎 for hungry animals.<br><strong>Keep Going:</strong> Don't miss 3 flowers in a row or Smog appears 🌫️.<br><strong>Win:</strong> Pollinate 15 flowers before time runs out! 🎯"
+          controls: "<strong>1. Press</strong> a glowing flower and hold it.<br><strong>2. Drag</strong> Buzz 🐝 across to a second flower and let go — both bloom 🌸.<br><strong>Hurry:</strong> the ring around a flower is its timer. When it runs out the flower wilts.<br><strong>Feed:</strong> blooms drop fruit 🍎 for hungry animals.<br><strong>Careful:</strong> miss 3 flowers in a row and Smog appears 🌫️.<br><strong>Win:</strong> Pollinate 15 flowers before time runs out! 🎯<br><em>Stuck? Tap ❓ at the top to replay the guide.</em>"
         }
       },
       "stage04": {
@@ -316,7 +316,7 @@
         play: {
           emoji: "❄️",
           goal: "Rescue lost penguin chicks and bring them safely back to the safe iceberg!",
-          controls: "<strong>Move:</strong> Guide Penny 🐧 across the melting ice.<br><strong>Jump:</strong> Hop between floating ice floes before they disappear.<br><strong>Rescue:</strong> Stand near a chick and press E (or tap ☸️) to pick it up.<br><strong>Cool:</strong> Reach the valve and spin it to slow the warming ice ❄️.<br><strong>Return:</strong> Carry the chicks safely back to the stable iceberg.<br><strong>Win:</strong> Rescue all 5 chicks before the ice melts or time runs out! 🎯"
+          controls: "<strong>Walk:</strong> Hold ◀ ▶ (or A / D) to walk Penny 🐧.<br><strong>Jump:</strong> Tap ▲ Jump (or W / Space) to hop between ice floes before they melt.<br><strong>Slide:</strong> Hold ▼ (or S) for a quick belly slide.<br><strong>Grab:</strong> Stand next to a chick and tap 🐥 GRAB (or press E).<br><strong>Cool:</strong> At the valve, tap ☸️ SPIN (or press E) to cool the ice ❄️.<br><strong>Return:</strong> Carry each chick to the SAFE ICEBERG 💚.<br><strong>Win:</strong> Rescue all 5 chicks before the ice melts or time runs out! 🎯<br><em>Stuck? Tap ❓ at the top to replay the guide.</em>"
         }
       },
       "stage05": {
@@ -328,7 +328,7 @@
         play: {
           emoji: "⚡",
           goal: "Light up every building in the city with clean sun power!",
-          controls: "<strong>1. Fly:</strong> Drag your finger up and down (or press ⬆️ ⬇️). Breezy follows you.<br><strong>2. Ride the green wind:</strong> Fly inside a glowing green wind river 🌬️ — it makes Breezy sparkle.<br><strong>3. Grab a sun:</strong> While you are <em>inside</em> the wind, touch a ☀️ sun. One building lights up!<br><strong>Careful:</strong> Grey smoke ☁️ dirties the sky — fly through the white gap.<br><strong>Win:</strong> Light every building and the sky turns blue again 🌈"
+          controls: "<strong>1. Fly:</strong> Drag your finger (or mouse) up and down, or press ⬆️ ⬇️. Breezy follows you.<br><strong>2. Ride the wind:</strong> Fly inside a white wind ribbon 🌬️ — it makes Breezy sparkle.<br><strong>3. Grab a sun:</strong> While you are <em>inside</em> the wind, touch a ☀️ sun. One building lights up!<br><strong>Careful:</strong> Grey smoke ☁️ dirties the sky — fly through the green dotted gap.<br><strong>Win:</strong> Light every building and the sky turns blue again 🌈<br><em>Stuck? Tap ❓ at the top to replay the guide.</em>"
         }
       }
     };

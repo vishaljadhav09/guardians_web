@@ -14,6 +14,9 @@
     />
     <link rel="stylesheet" href="../src/styles.css" />
     <style>
+      :root {
+        --gog-frame-aspect: 1.3333; /* 800x600 canvas: keeps the frame 4:3 on short windows */
+      }
       .stage-wrap {
         width: min(1180px, calc(100vw - 28px));
         max-width: 1180px;
@@ -160,51 +163,115 @@
         display: block;
         touch-action: none;
       }
+      /* On-screen controls: walk pad bottom-left, Grab/Jump bottom-right.
+         Every button carries a word as well as an icon, so nothing is a
+         mystery symbol (the old ☸️ button had no label at all). */
       .controls {
         position: absolute;
-        inset: auto 12px 12px 12px;
+        inset: auto 10px 10px 10px;
         display: flex;
         justify-content: space-between;
-        align-items: end;
+        align-items: flex-end;
         pointer-events: none;
         z-index: 10;
       }
-      .dpad,
-      .jump-wrap {
-        display: grid;
-        grid-template-columns: repeat(3, 66px);
-        grid-template-rows: repeat(3, 66px);
-        gap: 5px;
+      .pad {
+        display: flex;
+        align-items: flex-end;
+        gap: 8px;
         pointer-events: auto;
-        align-items: center;
-        justify-items: center;
       }
       .ctrl-btn {
-        width: 76px;
-        height: 76px;
+        width: 62px;
+        height: 62px;
+        padding: 0;
         border: 3px solid var(--gog-ink);
         background: #fff;
-        box-shadow: 5px 5px 0 var(--gog-ink);
-        border-radius: 20px;
-        font-size: 28px;
-        font-weight: 900;
+        box-shadow: 4px 4px 0 var(--gog-ink);
+        border-radius: 18px;
         color: var(--gog-ink);
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        line-height: 1;
         user-select: none;
         touch-action: none;
         cursor: pointer;
+        opacity: 0.95;
         transition:
           transform 0.08s,
           box-shadow 0.08s;
       }
+      .ctrl-btn .ico {
+        font-size: 24px;
+        font-weight: 900;
+      }
+      .ctrl-btn .cap {
+        margin-top: 3px;
+        font-family: var(--gog-font-head);
+        font-size: 11px;
+        font-weight: 800;
+        letter-spacing: 0.03em;
+        text-transform: uppercase;
+      }
       .ctrl-btn:active {
-        transform: translate(4px, 4px);
+        transform: translate(3px, 3px);
         box-shadow: 1px 1px 0 var(--gog-ink);
+      }
+      .ctrl-btn.jump {
+        width: 74px;
+        height: 74px;
+        background: var(--gog-lavender);
+      }
+      .ctrl-btn.act {
+        width: 84px;
+        height: 84px;
+        border-radius: 50%;
+        background: var(--gog-lime);
+      }
+      .ctrl-btn.act .ico {
+        font-size: 32px;
+      }
+      /* "Something to grab / spin is in reach" and the guided-coach highlight */
+      .ctrl-btn.ready,
+      .ctrl-btn.coach-pulse {
+        animation: ctrlPulse 0.85s ease-in-out infinite;
+      }
+      @keyframes ctrlPulse {
+        0%,
+        100% {
+          transform: scale(1);
+          box-shadow:
+            4px 4px 0 var(--gog-ink),
+            0 0 0 0 var(--gog-lime);
+        }
+        50% {
+          transform: scale(1.1);
+          box-shadow:
+            4px 4px 0 var(--gog-ink),
+            0 0 0 7px var(--gog-lime);
+        }
       }
       @media (max-width: 700px) {
         .ctrl-btn {
-          width: 62px;
-          height: 62px;
-          font-size: 22px;
+          width: 52px;
+          height: 52px;
+          border-radius: 14px;
+        }
+        .ctrl-btn .ico {
+          font-size: 20px;
+        }
+        .ctrl-btn .cap {
+          font-size: 9px;
+        }
+        .ctrl-btn.jump {
+          width: 60px;
+          height: 60px;
+        }
+        .ctrl-btn.act {
+          width: 68px;
+          height: 68px;
         }
       }
 
@@ -540,6 +607,14 @@
           <span class="chip" id="seaChip">🌊 Sea 0%</span>
           <button
             class="icon-btn"
+            id="helpBtn"
+            title="How to play"
+            aria-label="How to play"
+          >
+            ❓
+          </button>
+          <button
+            class="icon-btn"
             id="muteBtn"
             title="Toggle sound"
             aria-label="Toggle sound"
@@ -557,7 +632,7 @@
       <div class="guideBar">
         <div class="guideAvatar" aria-hidden="true">🐧</div>
         <div class="guideBubble" id="guideText">
-          Stand near a chick and press E (or tap ☸️) to pick it up! Carry them to the safe iceberg! 🐧
+          Walk to a chick, tap 🐥 GRAB (or press E), then carry it to the safe iceberg! 🐧
         </div>
       </div>
 
@@ -570,43 +645,52 @@
         ></canvas>
 
         <div class="controls" aria-hidden="false">
-          <div class="dpad">
-            <div></div>
-            <button class="ctrl-btn" data-control="jump" aria-label="Jump">
-              ▲
+          <div class="pad">
+            <button
+              class="ctrl-btn"
+              data-control="left"
+              aria-label="Move left"
+              title="Move left (← or A)"
+            >
+              <span class="ico">◀</span><span class="cap">Left</span>
             </button>
-
-            <div></div>
-            <button class="ctrl-btn" data-control="left" aria-label="Move left">
-              ◀
-            </button>
-
             <button
               class="ctrl-btn"
               data-control="slide"
               aria-label="Belly slide"
+              title="Belly slide - hold for a speed boost (↓ or S)"
             >
-              ▼
+              <span class="ico">▼</span><span class="cap">Slide</span>
             </button>
             <button
               class="ctrl-btn"
               data-control="right"
               aria-label="Move right"
+              title="Move right (→ or D)"
             >
-              ▶
+              <span class="ico">▶</span><span class="cap">Right</span>
             </button>
-            <div></div>
-
-            <button
-              class="ctrl-btn"
-              data-control="action"
-              aria-label="Spin the cooling valve"
-            >
-              ☸️
-            </button>
-            <div></div>
           </div>
-          <div class="jump-wrap"></div>
+          <div class="pad">
+            <button
+              class="ctrl-btn act"
+              id="actionBtn"
+              data-control="action"
+              aria-label="Grab a chick or spin the cooling valve"
+              title="Grab a chick / spin the valve (E)"
+            >
+              <span class="ico" id="actionIco">🐥</span
+              ><span class="cap" id="actionCap">Grab</span>
+            </button>
+            <button
+              class="ctrl-btn jump"
+              data-control="jump"
+              aria-label="Jump"
+              title="Jump (↑, W or Space)"
+            >
+              <span class="ico">▲</span><span class="cap">Jump</span>
+            </button>
+          </div>
         </div>
       </div>
     </div>
@@ -625,11 +709,24 @@
     <script src="../src/save.js"></script>
     <script src="../src/engine.js"></script>
     <script src="../src/ui.js"></script>
+    <script src="../src/coach.js"></script>
     <script src="../src/progression.js"></script>
     <script>
       (() => {
         const canvas = document.getElementById("game");
         const ctx = canvas.getContext("2d");
+
+        // Logical play-field size. The canvas bitmap is sized to the pixels
+        // actually on screen (see GOGEngine.fitCanvas) so art stays crisp, but
+        // all game code keeps drawing in these 800x600 coordinates.
+        const VIEW_W = 800;
+        const VIEW_H = 600;
+        let backdropDirty = true; // rebuild the pre-rendered backdrop after a resize
+        const hiDpi = GOGEngine.fitCanvas(canvas, ctx, VIEW_W, VIEW_H, {
+          onResize: function () {
+            backdropDirty = true;
+          },
+        });
 
         const STAGE_ID = "stage04";
         const stageMeta = GOGContent.byId(STAGE_ID);
@@ -652,6 +749,10 @@
           calmBadge: document.getElementById("calmBadge"),
           guideText: document.getElementById("guideText"),
           canvasFrame: document.getElementById("canvasFrame"),
+          helpBtn: document.getElementById("helpBtn"),
+          actionBtn: document.getElementById("actionBtn"),
+          actionIco: document.getElementById("actionIco"),
+          actionCap: document.getElementById("actionCap"),
         };
 
         function syncMuteBtn() {
@@ -711,11 +812,14 @@
           };
         });
 
+        // Baby-chick sheet (3x2): 0 open eyes, 1 flat/worried eyes, 2 eyes shut,
+        // 3 open eyes (arms down), 4-5 hop/step. Distinct from Penny's own
+        // sheet so a chick never reads as a miniature Penny.
         const chickSprite = {
           img: new Image(),
-          src: "assets/sprites/stage04/penny_idle.png",
+          src: "assets/sprites/stage04/penny_chicks_idel.png",
           cols: 3,
-          rows: 1,
+          rows: 2,
           loaded: false,
           frameW: 0,
           frameH: 0,
@@ -726,17 +830,6 @@
           chickSprite.frameH = chickSprite.img.naturalHeight / chickSprite.rows;
           chickSprite.loaded = true;
         };
-
-        const bgLayers = [
-          { img: new Image(), speed: 0.15 },
-          { img: new Image(), speed: 1 },
-          { img: new Image(), speed: 2 },
-          { img: new Image(), speed: 3 }
-        ];
-        bgLayers[0].img.src = 'assets/background/stage04/1.png';
-        bgLayers[1].img.src = 'assets/background/stage04/2.png';
-        bgLayers[2].img.src = 'assets/background/stage04/3.png';
-        bgLayers[3].img.src = 'assets/background/stage04/4.png';
 
         const penguinAnim = {
           frameIndex: 0,
@@ -809,6 +902,19 @@
         const WORLD_H = 600;
         const CAMERA_LERP = 0.12;
         const TARGET_RESCUES = 5;
+        const STAGE_DURATION = GOGConstants.STAGE4.gameTime;
+        // The polluted shore that closes the level on the right: a solid rocky
+        // island the factory stands on, so the world ends in a place instead
+        // of an empty edge of sea.
+        const SHORE = { x: 1815, y: 430, w: 260, h: 190 };
+        // Slab look: the walkable top sits at platform.y; a thin snow lip is
+        // drawn there and feet are planted FOOT_SINK px into it so characters
+        // read as standing ON the slab (not behind it). The sprites carry a few
+        // px of empty padding under the feet, hence the larger number.
+        const SLAB_LIP = 9;
+        const SLAB_DEPTH = 14;
+        const FOOT_SINK = 9;
+        const CHICK_W = 48; // on-screen width of a baby chick (Penny herself is 72)
 
         const clouds = [
           // Far/Back clouds (slow, semi-transparent)
@@ -850,8 +956,8 @@
         const snowfallParticles = [];
         for (let i = 0; i < 60; i++) {
           snowfallParticles.push({
-            x: Math.random() * canvas.width,
-            y: Math.random() * canvas.height,
+            x: Math.random() * VIEW_W,
+            y: Math.random() * VIEW_H,
             size: 1.5 + Math.random() * 2.5,
             speedY: 25 + Math.random() * 25,
             speedX: -15 - Math.random() * 20,
@@ -884,7 +990,7 @@
         let gameRunning = false;
 
         let winWipeRadius = 0;
-        let winWipeMax = Math.hypot(canvas.width, canvas.height) * 0.6;
+        let winWipeMax = Math.hypot(VIEW_W, VIEW_H) * 0.6;
         let winWiping = false;
         let winWipeDone = false;
 
@@ -900,6 +1006,14 @@
 
         function clamp(v, min, max) {
           return Math.max(min, Math.min(max, v));
+        }
+
+        // The square around a chick where Grab works. Deliberately generous
+        // (GOGConstants.STAGE4.chickReach) so a young player doesn't have to
+        // line Penny up pixel-perfectly with a tiny chick.
+        function chickReachRect(chick) {
+          const s = GOGConstants.STAGE4.chickReach;
+          return { x: chick.x + 9 - s / 2, y: chick.y + 18 - s, w: s, h: s + 8 };
         }
 
         function createState() {
@@ -1072,7 +1186,7 @@
 
           return {
             time: 0,
-            timeLeft: 60,
+            timeLeft: STAGE_DURATION,
             seaLevel: 560,
             warmth: 0,
             coolingTimer: 0,
@@ -1151,6 +1265,7 @@
                 "Help Penny rescue the chicks and bring them home to the safe iceberg! 🐧",
               );
               startGame();
+              if (GOGCoach.shouldAutoStart(STAGE_ID)) coach.start();
             },
           });
         }
@@ -1187,6 +1302,8 @@
         function resetGame() {
           state = createState();
           cameraX = 0;
+          coachJumped = false;
+          valveTipShown = false;
           gameRunning = true;
           audio.playBgm();
           if (activeOverlay) {
@@ -1308,6 +1425,147 @@
           }, 750);
         }
 
+        // ---- Guided coach --------------------------------------------------
+        // Four short steps the first time the stage opens in a session (the ❓
+        // button replays them). Each one pulses the matching on-screen button
+        // and points at the thing to do; the clock, warming and melting wait
+        // until the first chick is home, so nobody can lose the lesson.
+        const COACH_STEPS = [
+          {
+            icon: "➡️",
+            title: "Walk",
+            text: "Hold <b>◀ ▶</b> to walk Penny.",
+            keys: "Keys: <kbd>A</kbd> <kbd>D</kbd> or <kbd>←</kbd> <kbd>→</kbd>",
+            pulse: ["left", "right"],
+          },
+          {
+            icon: "⬆️",
+            title: "Jump",
+            text: "Tap <b>▲ Jump</b> to hop onto the ice.",
+            keys: "Keys: <kbd>W</kbd> or <kbd>Space</kbd>",
+            pulse: ["jump"],
+          },
+          {
+            icon: "🐥",
+            title: "Grab a chick",
+            text: "Stand next to the little chick, then tap <b>Grab</b>.",
+            keys: "Key: <kbd>E</kbd>",
+            pulse: ["action"],
+          },
+          {
+            icon: "🏠",
+            title: "Take it home",
+            text: "Carry the chick back to the <b>SAFE ICEBERG</b> 💚",
+            pulse: [],
+          },
+        ];
+        let coachJumped = false;
+        let valveTipShown = false; // one-time "go spin the valve" nudge per run
+
+        function highlightControls(names) {
+          document.querySelectorAll("[data-control]").forEach(function (btn) {
+            btn.classList.toggle(
+              "coach-pulse",
+              names.indexOf(btn.getAttribute("data-control")) !== -1,
+            );
+          });
+        }
+
+        const coach = GOGCoach.create({
+          stageId: STAGE_ID,
+          frame: ui.canvasFrame,
+          steps: COACH_STEPS,
+          onStep: function (i, step) {
+            highlightControls(step.pulse || []);
+          },
+          onFinish: function (reason) {
+            highlightControls([]);
+            GOGUi.say(
+              reason === "done"
+                ? "Great job! Now rescue all 5 chicks before the ice melts! 🐧"
+                : "You can do it! Rescue all 5 chicks! 🐧",
+            );
+          },
+        });
+
+        function updateCoach() {
+          if (!coach.active) return;
+          const p = state.player;
+          if (state.rescuedCount >= 1) {
+            coach.finish("done");
+            return;
+          }
+          if (p.carrying.length > 0) {
+            coach.goTo(3);
+            return;
+          }
+          if (coach.index === 0 && Math.abs(p.x - p.spawnX) > 70) coach.advance();
+          else if (coach.index === 1 && coachJumped) coach.advance();
+        }
+
+        function drawCoachHints() {
+          if (!coach.active || state.state !== "playing") return;
+          const t = coach.t;
+          const p = state.player;
+          const toScreen = (wx) => wx - cameraX;
+          ctx.save();
+          if (coach.index === 0) {
+            const tx = toScreen(p.x + p.w) + 170;
+            GOGCoach.arrow(ctx, tx, p.y + 6, t, "right");
+            GOGCoach.tag(ctx, tx - 14, p.y - 52, "Walk this way");
+          } else if (coach.index === 1) {
+            GOGCoach.tag(ctx, toScreen(p.x + p.w / 2), p.y - 78, "Tap Jump ▲");
+          } else if (coach.index === 2) {
+            let target = null;
+            for (const c of state.chicks) {
+              if (c.rescued || c.delivered) continue;
+              if (!target || Math.abs(c.x - p.x) < Math.abs(target.x - p.x)) target = c;
+            }
+            if (target) {
+              const sx = toScreen(target.x + 9);
+              if (sx > VIEW_W - 30) {
+                GOGCoach.tag(ctx, VIEW_W - 70, target.y - 40, "Chick this way ▶");
+              } else {
+                GOGCoach.arrow(ctx, sx, target.y - 40, t, "down");
+                GOGCoach.tag(ctx, sx, target.y - 108, "Grab me!");
+              }
+            }
+          } else if (coach.index === 3) {
+            const b = state.stableBase;
+            const sx = toScreen(b.x + b.w / 2);
+            if (sx < 40) {
+              GOGCoach.tag(ctx, 90, b.y - 60, "◀ Safe iceberg");
+            } else {
+              GOGCoach.arrow(ctx, sx, b.y - 128, t, "down");
+              GOGCoach.tag(ctx, sx, b.y - 196, "Bring it here!");
+            }
+          }
+          ctx.restore();
+        }
+
+        // Splashing during the lesson is only a gentle do-over: Penny hops
+        // back to the safe iceberg and any chick she was carrying goes back
+        // to its floe.
+        function respawnPenny() {
+          const p = state.player;
+          p.carrying.forEach(function (c) {
+            const pl = state.meltPlatforms[c.platformIndex];
+            c.rescued = false;
+            c.vy = 0;
+            c.x = c.baseX;
+            c.y = (pl ? pl.baseY : 380) - 18;
+          });
+          p.carrying = [];
+          p.x = p.spawnX;
+          p.y = p.spawnY;
+          p.vx = 0;
+          p.vy = 0;
+          p.onGround = false;
+          cameraX = 0;
+          spawnFloatText(p.x + 20, p.y - 40, "Whoops! Try again 💙", "#2e5ee8");
+          audio.blip(300, 80);
+        }
+
         function update(dt) {
           if (!state || state.state === "failed") return;
 
@@ -1315,18 +1573,21 @@
           updatePenguinAnim(dt);
           const p = state.player;
           const wasOnGround = p.onGround;
+          // Guided intro: while the coach is teaching, the clock, warming, sea
+          // rise and melting all wait, so nobody can lose the lesson.
+          const learning = coach.active;
 
           // Update snowfall particles (screen-relative)
           for (const s of snowfallParticles) {
             s.y += s.speedY * dt;
             s.x += s.speedX * dt;
-            if (s.y > canvas.height) {
+            if (s.y > VIEW_H) {
               s.y = -10;
-              s.x = Math.random() * canvas.width;
+              s.x = Math.random() * VIEW_W;
             }
             if (s.x < -10) {
-              s.x = canvas.width + 10;
-              s.y = Math.random() * canvas.height;
+              s.x = VIEW_W + 10;
+              s.y = Math.random() * VIEW_H;
             }
           }
 
@@ -1341,7 +1602,7 @@
               
               if (Math.random() < 0.15) {
                 state.particles.push({
-                  x: canvas.width + Math.random() * 200,
+                  x: VIEW_W + Math.random() * 200,
                   y: 100 + Math.random() * 400,
                   vx: -350 - Math.random() * 200,
                   vy: (Math.random() - 0.5) * 10,
@@ -1409,18 +1670,22 @@
           }
 
           // Game loop countdown
-          state.timeLeft = Math.max(0, state.timeLeft - dt);
+          if (!learning) state.timeLeft = Math.max(0, state.timeLeft - dt);
           if (state.timeLeft <= 0) {
             failGame("Time is up! Try to rescue the chicks faster next time.");
             return;
           }
 
-          const warmingRate = (calmMode
+          const warmingRate = (calmMode || learning
             ? 0
             : state.coolingTimer > 0
               ? 0.005
               : 0.012) * diff.enemySpeedMul();
           state.warmth = clamp(state.warmth + warmingRate * dt, 0, 1);
+          if (!valveTipShown && !learning && state.warmth >= 0.35) {
+            valveTipShown = true;
+            GOGUi.say("Warmth is rising! Run to the valve and tap ☸️ SPIN to cool the ice ❄️");
+          }
           if (state.warmth > 0.8 && (STAGE_DURATION - state.timeLeft) < 15 && !diff.softClutched) {
             diff.softClutch();
           }
@@ -1433,7 +1698,7 @@
           }
           state.valve.pulse += dt;
 
-          const seaRise = calmMode ? 0 : 1.5 + state.warmth * 5;
+          const seaRise = calmMode || learning ? 0 : 1.5 + state.warmth * 5;
           state.seaLevel = clamp(state.seaLevel - seaRise * dt, 368, 560);
 
           // Update fish jump timer
@@ -1504,6 +1769,7 @@
           if (input.jumpPressed && p.onGround) {
             p.vy = -p.jumpPower;
             p.onGround = false;
+            coachJumped = true;
             audio.blip(320, 60);
             spawnBurst(p.x + p.w / 2, p.y + p.h, 8, "#8FD3FF");
           }
@@ -1515,6 +1781,7 @@
           updateWaterLift(dt);
           movePlayer(p, dt, false);
           updateChicks(dt);
+          updateCoach();
           updateValve(dt);
           updateParticles(dt);
           updateFloatingTexts(dt);
@@ -1591,6 +1858,11 @@
           const onSolid = p.onGround;
           const deeplySubmerged = inWater && state.seaLevel < p.y + p.h - 16;
           if (p.y > WORLD_H + 120 || (inWater && !onSolid) || deeplySubmerged) {
+            if (learning) {
+              // Splashing during the lesson is just a gentle do-over.
+              respawnPenny();
+              return;
+            }
             failGame(
               "Penny splashed into the rising water. Try a faster route and cool the valve sooner.",
             );
@@ -1672,13 +1944,15 @@
               p.x + p.w > topBand.x + 8 &&
               p.x < topBand.x + topBand.w - 8 &&
               Math.abs(p.y + p.h - topBand.y) < 8;
-            const meltRate = (calmMode
-              ? standing
-                ? 1
-                : 0
-              : 0.1 +
-                state.warmth * 0.4 +
-                (standing ? 3 + state.warmth * 5 : 0)) * diff.enemySpeedMul();
+            const meltRate = coach.active
+              ? 0
+              : (calmMode
+                  ? standing
+                    ? 1
+                    : 0
+                  : 0.1 +
+                    state.warmth * 0.4 +
+                    (standing ? 3 + state.warmth * 5 : 0)) * diff.enemySpeedMul();
             pl.shrink += meltRate * dt;
             pl.w = Math.max(48, pl.baseW - pl.shrink);
 
@@ -1831,6 +2105,7 @@
               h: state.valvePlatform.h,
               stable: true,
             },
+            { x: SHORE.x, y: SHORE.y, w: SHORE.w, h: SHORE.h, stable: true },
           ];
           for (const pl of state.meltPlatforms) {
             if (pl.gone) continue;
@@ -1927,8 +2202,7 @@
               }
             }
 
-            const chickRect = { x: chick.x, y: chick.y, w: 18, h: 18 };
-            const nearChick = rectsOverlap(p, chickRect);
+            const nearChick = rectsOverlap(p, chickReachRect(chick));
             if (!chick.rescued && nearChick) {
               const maxCarry = getMaxCarryingCapacity();
               if (p.carrying.length >= maxCarry) {
@@ -1989,7 +2263,7 @@
             // Spawn wind streaks sweeping across the screen
             for (let k = 0; k < 12; k++) {
               state.particles.push({
-                x: canvas.width + Math.random() * 200,
+                x: VIEW_W + Math.random() * 200,
                 y: 50 + Math.random() * 450,
                 vx: -300 - Math.random() * 250,
                 vy: (Math.random() - 0.5) * 15,
@@ -2040,7 +2314,7 @@
         }
 
         function updateCamera(dt) {
-          const target = clamp(state.player.x - 240, 0, WORLD_W - canvas.width);
+          const target = clamp(state.player.x - 240, 0, WORLD_W - VIEW_W);
           cameraX += (target - cameraX) * Math.min(1, CAMERA_LERP * dt * 60);
         }
 
@@ -2092,6 +2366,33 @@
           const seaPct = Math.round(((560 - state.seaLevel) / 140) * 100);
           if (ui.seaText)
             ui.seaText.textContent = "🌊 Sea " + Math.max(0, seaPct) + "%";
+          refreshActionButton();
+        }
+
+        // The round action button is "Grab" next to a chick and "Spin" at the
+        // valve, and pulses whenever there is something in reach — so there is
+        // never a mystery button.
+        let actionStateKey = "";
+        function refreshActionButton() {
+          if (!ui.actionBtn) return;
+          const p = state.player;
+          const nearValve =
+            Math.hypot(
+              p.x + p.w / 2 - state.valve.x,
+              p.y + p.h / 2 - state.valve.y,
+            ) < 78;
+          let nearChick = false;
+          if (p.carrying.length < getMaxCarryingCapacity()) {
+            nearChick = state.chicks.some(
+              (c) => !c.rescued && !c.delivered && rectsOverlap(p, chickReachRect(c)),
+            );
+          }
+          const key = nearValve ? "spin" : nearChick ? "grab" : "idle";
+          if (key === actionStateKey) return;
+          actionStateKey = key;
+          ui.actionIco.textContent = key === "spin" ? "☸️" : "🐥";
+          ui.actionCap.textContent = key === "spin" ? "Spin" : "Grab";
+          ui.actionBtn.classList.toggle("ready", key !== "idle");
         }
 
         function spawnBurst(x, y, count, color) {
@@ -2173,7 +2474,7 @@
             return;
           }
 
-          ctx.clearRect(0, 0, canvas.width, canvas.height);
+          ctx.clearRect(0, 0, VIEW_W, VIEW_H);
           drawBackground();
           ctx.save();
           ctx.translate(-cameraX, 0);
@@ -2184,20 +2485,22 @@
           drawWaterLift();
           drawChicks();
           drawPlayer();
+          drawChickPrompts();
           drawParticles();
           drawFloatingTexts();
           ctx.restore();
           drawSnowfall();
           drawWater();
           drawWorldHud();
+          drawCoachHints();
           drawWinWipe();
         }
 
         function drawWinWipe() {
           if (!winWiping && !winWipeDone) return;
           const r = winWipeDone ? winWipeMax : winWipeRadius;
-          const cx = canvas.width / 2;
-          const cy = canvas.height / 2;
+          const cx = VIEW_W / 2;
+          const cy = VIEW_H / 2;
           ctx.save();
           ctx.beginPath();
           ctx.arc(cx, cy, r, 0, Math.PI * 2);
@@ -2208,7 +2511,7 @@
           grad.addColorStop(1, "#2C4BFF");
           ctx.globalAlpha = 0.85;
           ctx.fillStyle = grad;
-          ctx.fillRect(0, 0, canvas.width, canvas.height);
+          ctx.fillRect(0, 0, VIEW_W, VIEW_H);
           ctx.restore();
 
           if (winWiping) {
@@ -2223,7 +2526,7 @@
         }
 
         function drawIdleScene() {
-          ctx.clearRect(0, 0, canvas.width, canvas.height);
+          ctx.clearRect(0, 0, VIEW_W, VIEW_H);
           drawBackground();
           ctx.save();
           drawWater();
@@ -2254,66 +2557,313 @@
           return `rgb(${r}, ${g}, ${b})`;
         }
 
-        function drawBackground() {
-          const W = canvas.width;
-          const H = canvas.height;
-          const warmthVal = state ? state.warmth : 0.0;
-          const timeVal = state ? state.time : Date.now() * 0.001;
-          const scrollVal = gameRunning ? cameraX : (state ? cameraX + state.time * 25 : Date.now() * 0.025);
+        // ---- Backdrop -------------------------------------------------------
+        // Vector scenery (sky, glaciers, icebergs, far sea) is pre-rendered
+        // into tileable offscreen canvases at the on-screen resolution and then
+        // just scrolled each frame. That keeps it razor sharp at any window
+        // size / pixel density and cheap to draw. (The old pixel-art PNG layers
+        // were small bitmaps stretched ~2x, which is why they looked soft.)
+        const BACKDROP_TILE = 1280; // logical px before a parallax layer repeats
+        const HORIZON_Y = 452; // where the far sea meets the sky
+        const backdrop = { far: null, mid: null, sea: null, clouds: [] };
 
-          // 1. Sky Gradient
-          const skyGrad = ctx.createLinearGradient(0, 0, 0, H);
-          const skyColor1 = lerpColor("#0A1C40", "#4B286C", warmthVal);
-          const skyColor2 = lerpColor("#1C3A73", "#D27D2D", warmthVal);
-          skyGrad.addColorStop(0, skyColor1);
-          skyGrad.addColorStop(1, skyColor2);
-          ctx.fillStyle = skyGrad;
+        function makeLayer(scale) {
+          const c = document.createElement("canvas");
+          c.width = Math.round(BACKDROP_TILE * scale);
+          c.height = Math.round(VIEW_H * scale);
+          const g = c.getContext("2d");
+          g.setTransform(scale, 0, 0, scale, 0, 0);
+          return g;
+        }
+
+        // A rounded ice mountain: smooth dome, pale top, shaded right flank.
+        function paintGlacier(g, cx, base, w, h) {
+          const left = cx - w / 2;
+          const right = cx + w / 2;
+          g.beginPath();
+          g.moveTo(left, base);
+          g.bezierCurveTo(left + w * 0.1, base - h * 0.8, cx - w * 0.22, base - h * 1.05, cx - w * 0.05, base - h);
+          g.bezierCurveTo(cx + w * 0.14, base - h * 0.97, right - w * 0.14, base - h * 0.6, right, base);
+          g.closePath();
+          const grad = g.createLinearGradient(0, base - h, 0, base);
+          grad.addColorStop(0, "#F6FBFF");
+          grad.addColorStop(0.5, "#D2E5FB");
+          grad.addColorStop(1, "#A3C1EC");
+          g.fillStyle = grad;
+          g.fill();
+          g.save();
+          g.clip();
+          g.fillStyle = "rgba(120, 160, 222, 0.38)";
+          g.beginPath();
+          g.moveTo(cx - w * 0.05, base - h);
+          g.quadraticCurveTo(cx + w * 0.2, base - h * 0.55, cx + w * 0.08, base);
+          g.lineTo(right + 12, base);
+          g.lineTo(right + 12, base - h - 12);
+          g.closePath();
+          g.fill();
+          g.restore();
+        }
+
+        // A chunky drifting iceberg: flat-ish snowy top, tinted underwater half.
+        function paintBerg(g, cx, base, w, h) {
+          const left = cx - w / 2;
+          const right = cx + w / 2;
+          const top = base - h;
+          const r = Math.min(h * 0.55, w * 0.3);
+          g.fillStyle = "rgba(70, 130, 200, 0.4)";
+          g.beginPath();
+          g.moveTo(left + w * 0.05, base);
+          g.lineTo(right - w * 0.05, base);
+          g.quadraticCurveTo(cx, base + h * 0.7, left + w * 0.05, base);
+          g.closePath();
+          g.fill();
+          g.beginPath();
+          g.moveTo(left, base);
+          g.lineTo(left, top + r);
+          g.quadraticCurveTo(left, top, left + r, top);
+          g.lineTo(right - r, top);
+          g.quadraticCurveTo(right, top, right, top + r);
+          g.lineTo(right, base);
+          g.closePath();
+          const grad = g.createLinearGradient(0, top, 0, base);
+          grad.addColorStop(0, "#FFFFFF");
+          grad.addColorStop(1, "#BBD8F6");
+          g.fillStyle = grad;
+          g.fill();
+          g.save();
+          g.clip();
+          g.fillStyle = "rgba(120, 165, 226, 0.4)";
+          g.fillRect(cx + w * 0.12, top, w, h);
+          g.restore();
+        }
+
+        function buildFarLayer(g) {
+          const rand = seededRandom(4242);
+          const count = 7;
+          for (let i = 0; i < count; i++) {
+            const w = 250 + rand() * 170;
+            const h = 90 + rand() * 90;
+            const cx = (i + 0.15 + rand() * 0.7) * (BACKDROP_TILE / count);
+            for (const off of [-BACKDROP_TILE, 0, BACKDROP_TILE]) {
+              paintGlacier(g, cx + off, HORIZON_Y + 8, w, h);
+            }
+          }
+        }
+
+        function buildMidLayer(g) {
+          const rand = seededRandom(9001);
+          const count = 6;
+          for (let i = 0; i < count; i++) {
+            const w = 110 + rand() * 110;
+            const h = 34 + rand() * 40;
+            const cx = (i + 0.2 + rand() * 0.6) * (BACKDROP_TILE / count);
+            for (const off of [-BACKDROP_TILE, 0, BACKDROP_TILE]) {
+              paintBerg(g, cx + off, HORIZON_Y + 16 + rand() * 6, w, h);
+            }
+          }
+        }
+
+        function buildSeaLayer(g) {
+          const grad = g.createLinearGradient(0, HORIZON_Y, 0, VIEW_H);
+          grad.addColorStop(0, "#C4E7FB");
+          grad.addColorStop(0.3, "#86BEF0");
+          grad.addColorStop(1, "#437FDC");
+          g.fillStyle = grad;
+          g.fillRect(0, HORIZON_Y, BACKDROP_TILE, VIEW_H - HORIZON_Y);
+          g.fillStyle = "rgba(255, 255, 255, 0.6)";
+          g.fillRect(0, HORIZON_Y - 1, BACKDROP_TILE, 3);
+          const rand = seededRandom(77);
+          g.lineCap = "round";
+          for (let i = 0; i < 80; i++) {
+            const y = HORIZON_Y + 10 + rand() * (VIEW_H - HORIZON_Y - 20);
+            const depth = (y - HORIZON_Y) / (VIEW_H - HORIZON_Y);
+            const len = 10 + depth * 38 * (0.5 + rand());
+            const x = rand() * BACKDROP_TILE;
+            g.strokeStyle = "rgba(255, 255, 255, " + (0.14 + 0.3 * rand()).toFixed(2) + ")";
+            g.lineWidth = 1.5 + depth * 2;
+            for (const off of [-BACKDROP_TILE, 0, BACKDROP_TILE]) {
+              g.beginPath();
+              g.moveTo(x + off, y);
+              g.lineTo(x + off + len, y);
+              g.stroke();
+            }
+          }
+        }
+
+        // Puffy cartoon cloud: white top, peach underside, flat base.
+        function makeCloudSprite(scale, w, h, seed) {
+          const c = document.createElement("canvas");
+          c.width = Math.round(w * scale);
+          c.height = Math.round(h * scale);
+          const g = c.getContext("2d");
+          g.setTransform(scale, 0, 0, scale, 0, 0);
+          const rand = seededRandom(seed);
+          const n = 5;
+          g.fillStyle = "#FFFFFF";
+          g.beginPath();
+          for (let i = 0; i < n; i++) {
+            const t = (i + 0.5) / n;
+            const lift = Math.sin(t * Math.PI);
+            const px = w * (0.12 + t * 0.76);
+            const py = h * 0.62 - lift * h * 0.24 * (0.7 + rand() * 0.5);
+            const pr = h * (0.2 + lift * 0.18 * (0.6 + rand() * 0.6));
+            g.moveTo(px + pr, py);
+            g.arc(px, py, pr, 0, Math.PI * 2);
+          }
+          g.fill();
+          // peach shading on the underside, only where the cloud is
+          g.globalCompositeOperation = "source-atop";
+          const shade = g.createLinearGradient(0, h * 0.42, 0, h * 0.78);
+          shade.addColorStop(0, "rgba(249, 207, 221, 0)");
+          shade.addColorStop(1, "rgba(249, 207, 221, 1)");
+          g.fillStyle = shade;
+          g.fillRect(0, 0, w, h);
+          // flatten the base
+          g.globalCompositeOperation = "destination-out";
+          g.fillRect(0, h * 0.78, w, h);
+          return c;
+        }
+
+        function buildBackdrop(scale) {
+          backdrop.far = makeLayer(scale);
+          buildFarLayer(backdrop.far);
+          backdrop.mid = makeLayer(scale);
+          buildMidLayer(backdrop.mid);
+          backdrop.sea = makeLayer(scale);
+          buildSeaLayer(backdrop.sea);
+          backdrop.clouds = [
+            makeCloudSprite(scale, 190, 84, 11),
+            makeCloudSprite(scale, 150, 70, 23),
+            makeCloudSprite(scale, 220, 92, 37),
+          ];
+          backdropDirty = false;
+        }
+
+        function drawTiledLayer(g, scroll) {
+          const cv = g.canvas;
+          let x = -(scroll % BACKDROP_TILE);
+          if (x > 0) x -= BACKDROP_TILE;
+          for (let dx = x; dx < VIEW_W; dx += BACKDROP_TILE) {
+            ctx.drawImage(cv, dx, 0, BACKDROP_TILE, VIEW_H);
+          }
+        }
+
+        function drawBackground() {
+          if (backdropDirty) buildBackdrop(hiDpi.scale);
+          const W = VIEW_W;
+          const H = VIEW_H;
+          const warmthVal = state ? state.warmth : 0.0;
+          const timeVal = state ? state.time : performance.now() * 0.001;
+          const scrollVal = gameRunning ? cameraX : cameraX + performance.now() * 0.02;
+
+          // 1. Sky: cobalt -> lilac -> peach horizon (dusky purple/orange as warmth climbs)
+          const sky = ctx.createLinearGradient(0, 0, 0, HORIZON_Y);
+          sky.addColorStop(0, lerpColor("#3F6FD8", "#4B2A7B", warmthVal));
+          sky.addColorStop(0.55, lerpColor("#8FB8F5", "#C45F8E", warmthVal));
+          sky.addColorStop(1, lerpColor("#FFE6C7", "#FF9A4D", warmthVal));
+          ctx.fillStyle = sky;
           ctx.fillRect(0, 0, W, H);
 
-          // 2. Aurora Borealis (Layer 1)
+          // 2. Aurora ribbons
           ctx.save();
-          ctx.globalAlpha = 0.15 + (1 - warmthVal) * 0.25;
-          const aurColor = (state && state.state === "won") ? "rgba(0, 255, 127, 0.4)" : "rgba(80, 240, 210, 0.25)";
-          ctx.fillStyle = aurColor;
+          const won = state && state.state === "won";
+          const aurora = ctx.createLinearGradient(0, 0, 0, 190);
+          aurora.addColorStop(0, won ? "rgba(90, 255, 160, 0.55)" : "rgba(120, 255, 214, 0.38)");
+          aurora.addColorStop(1, "rgba(255, 140, 220, 0)");
+          ctx.globalAlpha = 0.35 + (1 - warmthVal) * 0.45;
+          ctx.fillStyle = aurora;
           for (let j = 0; j < 2; j++) {
             ctx.beginPath();
-            ctx.moveTo(0, 60 + j * 30);
+            ctx.moveTo(0, 0);
             for (let x = 0; x <= W + 20; x += 20) {
-              const y = 60 + j * 30 + Math.sin(timeVal * 1.0 + x * 0.004 + j * 1.5) * 22 * Math.cos(timeVal * 0.35 + x * 0.002);
+              const y = 70 + j * 34 + Math.sin(timeVal * 0.9 + x * 0.004 + j * 1.5) * 24 * Math.cos(timeVal * 0.35 + x * 0.002);
               ctx.lineTo(x, y);
             }
             ctx.lineTo(W, 0);
-            ctx.lineTo(0, 0);
             ctx.closePath();
             ctx.fill();
           }
           ctx.restore();
 
-          // 3. Preloaded Background images
-          bgLayers.forEach(layer => {
-            const img = layer.img;
-            if (!img.complete || img.naturalWidth === 0) return;
-            const scale = H / img.naturalHeight;
-            const tileW = img.naturalWidth * scale;
-            let x = -(scrollVal * layer.speed) % tileW;
-            if (x > 0) x -= tileW;
-            ctx.save();
-            ctx.globalAlpha = 0.85; // Increased opacity for rich background display
-            for (let dx = x; dx < W; dx += tileW) {
-              ctx.drawImage(img, dx, 0, tileW, H);
-            }
-            ctx.restore();
-          });
-
-          // Mountain / cliff silhouettes removed from this stage to keep the
-          // background open and airy while preserving the ice-world aesthetic.
+          // 3. Low sun behind the glaciers
+          const sunX = 590;
+          const sunY = 318 + Math.sin(timeVal * 0.4) * 3;
+          const glow = ctx.createRadialGradient(sunX, sunY, 10, sunX, sunY, 190);
+          glow.addColorStop(0, lerpColor("#FFF6C8", "#FFC27A", warmthVal));
+          glow.addColorStop(1, "rgba(255, 246, 200, 0)");
           ctx.save();
+          ctx.globalAlpha = 0.65;
+          ctx.fillStyle = glow;
+          ctx.fillRect(sunX - 200, sunY - 200, 400, 400);
+          ctx.restore();
+          ctx.fillStyle = lerpColor("#FFF3B8", "#FF9E5E", warmthVal);
+          circle(sunX, sunY, 34, true);
+
+          // 4. Drifting clouds
+          for (let i = 0; i < clouds.length; i++) {
+            const c = clouds[i];
+            const sprite = backdrop.clouds[i % backdrop.clouds.length];
+            const cw = sprite.width / hiDpi.scale;
+            const ch = sprite.height / hiDpi.scale;
+            ctx.save();
+            ctx.globalAlpha = c.layer === "back" ? 0.75 : 0.95;
+            ctx.drawImage(sprite, c.x - (cw * c.scale) / 2, c.y, cw * c.scale, ch * c.scale);
+            ctx.restore();
+          }
+
+          // 5. Parallax scenery: glaciers, far sea, drifting bergs
+          drawTiledLayer(backdrop.far, scrollVal * 0.08);
+          drawTiledLayer(backdrop.sea, scrollVal * 0.3);
+          drawTiledLayer(backdrop.mid, scrollVal * 0.22);
+
+          // 6. Heat haze as warmth rises
+          if (warmthVal > 0.05) {
+            ctx.fillStyle = "rgba(255, 120, 60, " + (warmthVal * 0.2).toFixed(3) + ")";
+            ctx.fillRect(0, 0, W, H);
+          }
+        }
+
+        // The polluted shore that ends the level: a solid rocky island with
+        // dirty snow, a drain pipe and a few drips. It gives the factory
+        // somewhere to stand and the world a visible, finished right-hand edge.
+        function drawShore() {
+          const s = SHORE;
+          ctx.save();
+          const rock = ctx.createLinearGradient(0, s.y, 0, s.y + s.h);
+          rock.addColorStop(0, "#9A8878");
+          rock.addColorStop(1, "#4E4038");
+          ctx.fillStyle = rock;
+          roundedRect(s.x, s.y, s.w, s.h, 26, true, false);
+          ctx.fillStyle = "#DAD6D0"; // dirty snow cap
+          roundedRect(s.x, s.y, s.w, 16, 8, true, false);
+          ctx.strokeStyle = "rgba(30, 22, 18, 0.35)";
+          ctx.lineWidth = 3;
+          ctx.lineCap = "round";
+          for (let i = 0; i < 4; i++) {
+            ctx.beginPath();
+            ctx.moveTo(s.x + 40 + i * 48, s.y + 30);
+            ctx.lineTo(s.x + 32 + i * 48 + (i % 2 ? 14 : -8), s.y + 90 + (i % 3) * 18);
+            ctx.stroke();
+          }
+          ctx.strokeStyle = "#111";
+          ctx.lineWidth = 4;
+          roundedRect(s.x, s.y, s.w, s.h, 26, false, true);
+
+          // drain pipe spilling dirty water into the sea
+          ctx.fillStyle = "#6C7077";
+          roundedRect(s.x - 26, s.y + 40, 52, 24, 8, true, false);
+          roundedRect(s.x - 26, s.y + 40, 52, 24, 8, false, true);
+          const drip = (state.time * 1.4) % 1;
+          ctx.fillStyle = "rgba(96, 88, 70, 0.85)";
+          ellipse(s.x - 20, s.y + 70 + drip * 90, 4, 6 + drip * 3, true, false);
+          ellipse(s.x - 12, s.y + 70 + ((drip + 0.5) % 1) * 90, 3.5, 5.5, true, false);
           ctx.restore();
         }
 
         function drawSmogFactory() {
-          const x = 1720;
-          const y = 150;
+          drawShore();
+          const x = 1835;
+          const y = 180;
 
           // Body — a grimy rust-brown instead of candy pink, so the
           // building itself reads as "dirty machine", not a playhouse.
@@ -2461,11 +3011,33 @@
           ctx.stroke();
           ctx.restore();
 
+          // Welcome sign on a little post, held high enough to clear the huddle.
+          const signW = 156;
+          const signH = 34;
+          const signX = b.x + b.w / 2 - signW / 2;
+          const signY = b.y - 118;
+          ctx.strokeStyle = "#111";
+          ctx.lineWidth = 5;
+          ctx.lineCap = "round";
+          ctx.beginPath();
+          ctx.moveTo(b.x + b.w / 2, signY + signH);
+          ctx.lineTo(b.x + b.w / 2, b.y + 2);
+          ctx.stroke();
+          ctx.fillStyle = "#fff";
+          roundedRect(signX, signY, signW, signH, 9, true, false);
+          ctx.lineWidth = 4;
+          roundedRect(signX, signY, signW, signH, 9, false, true);
+          ctx.fillStyle = "#111";
+          ctx.font = "900 14px Arial";
+          ctx.textAlign = "center";
+          ctx.textBaseline = "middle";
+          ctx.fillText("💚 SAFE ICEBERG", b.x + b.w / 2, signY + signH / 2 + 1);
+
           // 3. Draw Parent Penguins
           // Dad: waddles slightly
           const dadWaddle = Math.sin(state.time * 2.5) * 3;
           const dadX = b.x + b.w * 0.72;
-          const dadY = b.y;
+          const dadY = b.y + FOOT_SINK;
           ctx.save();
           ctx.translate(dadX, dadY + Math.abs(dadWaddle));
           ctx.rotate(dadWaddle * 0.05);
@@ -2495,7 +3067,7 @@
           // Mom: waves happily
           const momWave = Math.sin(state.time * 4.5) * 4;
           const momX = b.x + b.w * 0.85;
-          const momY = b.y;
+          const momY = b.y + FOOT_SINK;
           ctx.save();
           ctx.translate(momX, momY + Math.abs(momWave));
           ctx.scale(-1, 1);
@@ -2550,16 +3122,6 @@
             });
           }
 
-          ctx.fillStyle = "#fff";
-          roundedRect(b.x + 22, b.y - 38, 150, 36, 8, true, false);
-          ctx.strokeStyle = "#111";
-          ctx.lineWidth = 4;
-          roundedRect(b.x + 22, b.y - 38, 150, 36, 8, false, true);
-          ctx.fillStyle = "#111";
-          ctx.font = "900 14px Arial";
-          ctx.textAlign = "left";
-          ctx.textBaseline = "middle";
-          ctx.fillText("💚 SAFE ICEBERG", b.x + 30, b.y - 20);
         }
 
         function drawValvePlatform() {
@@ -2680,7 +3242,7 @@
         // Draws one organic ice floe: jagged silhouette, snow cap, interior
         // shading, and stage-appropriate cracks/puddles/fragment gaps.
         function drawIceFloe(pl, x, w, meltRatio) {
-          const h = pl.h;
+          const h = pl.h + SLAB_DEPTH; // whole visible slab; only the top pl.h is walkable
           const stage =
             meltRatio < 0.15
               ? 1
@@ -2692,87 +3254,75 @@
                     ? 4
                     : 5;
 
+          // Fresh white-blue ice greys and thins out as it melts.
+          const palette = [
+            null,
+            { lip: "#FFFFFF", top: "#E9F8FF", bot: "#80C6EE" },
+            { lip: "#F2FAFF", top: "#D4EFFB", bot: "#6DB5E1" },
+            { lip: "#DDEBF5", top: "#BADAEC", bot: "#5B9DC9" },
+            { lip: "#C6D9E8", top: "#9FC5DE", bot: "#4B83AF" },
+            { lip: "#B2C6DA", top: "#87AFCC", bot: "#3B6B94" },
+          ][stage];
+
           ctx.save();
-          ctx.translate(x + w / 2, pl.y + h / 2);
+          ctx.translate(x + w / 2, pl.y + pl.h / 2);
           ctx.rotate(pl.rot || 0);
-          ctx.translate(-w / 2, -h / 2);
+          ctx.translate(-w / 2, -pl.h / 2);
 
-          // Apply blue healing glow if active
-          if (pl.glowTimer > 0) {
-            ctx.shadowColor = "#87E1FF";
-            ctx.shadowBlur = 15 * (pl.glowTimer / 1.5);
-          }
+          // 1. Hard offset shadow (flat, no blur)
+          ctx.fillStyle = "rgba(10, 28, 60, 0.38)";
+          roundedRect(4, 5, w, h, 14, true, false);
 
-          // Shading colors
-          let topColor = "#ffffff";
-          let sideColor1 = "#A8DAF0";
-          let sideColor2 = "#2C5E7A";
-          
-          if (stage === 1) {
-            topColor = "#ffffff";
-            sideColor1 = "#BCE3F7";
-            sideColor2 = "#3E7E9E";
-          } else if (stage === 2) {
-            topColor = "#E4F7FF";
-            sideColor1 = "#A8DCEF";
-            sideColor2 = "#2C5E7A";
-          } else if (stage === 3) {
-            topColor = "#C2DCEE";
-            sideColor1 = "#8CBED9";
-            sideColor2 = "#1E475E";
-          } else if (stage === 4) {
-            topColor = "#A5C6DC";
-            sideColor1 = "#739FBD";
-            sideColor2 = "#123042";
-          } else {
-            topColor = "#92AFCE";
-            sideColor1 = "#5E82A1";
-            sideColor2 = "#081E2E";
-          }
+          // 2. One solid slab with a vertical ice gradient
+          const body = ctx.createLinearGradient(0, 0, 0, h);
+          body.addColorStop(0, palette.top);
+          body.addColorStop(1, palette.bot);
+          ctx.fillStyle = body;
+          roundedRect(0, 0, w, h, 14, true, false);
 
-          const thickness = 16;
-
-          // 1. Draw 3D side/front face (extruded downward)
+          // 3. Details, clipped to the slab
           ctx.save();
-          ctx.fillStyle = sideColor2;
-          roundedRect(0, thickness, w, h, 12, true, false);
-          ctx.strokeStyle = "#111";
-          ctx.lineWidth = 4;
-          roundedRect(0, thickness, w, h, 12, false, true);
-          ctx.restore();
+          roundedRect(0, 0, w, h, 14, false, false);
+          ctx.clip();
 
-          // 2. Draw Top surface
-          ctx.save();
-          ctx.fillStyle = topColor;
-          roundedRect(0, 0, w, h, 12, true, false);
-          ctx.strokeStyle = "#111";
-          ctx.lineWidth = 4;
-          roundedRect(0, 0, w, h, 12, false, true);
-          ctx.restore();
-          
-          // Reset shadow blur
-          ctx.shadowBlur = 0;
-
-          // 3. Draw clean ice cube emojis lined up on top
-          for (let i = 0; i < Math.max(2, Math.floor(w / 38)); i++) {
-            drawEmoji(
-              "🧊",
-              22 + i * 32,
-              h / 2 + Math.sin(i + state.time * 2) * 1.5,
-              18,
-            );
+          // snow lip along the top with a scalloped lower edge
+          ctx.fillStyle = palette.lip;
+          ctx.beginPath();
+          ctx.moveTo(0, 0);
+          ctx.lineTo(w, 0);
+          ctx.lineTo(w, SLAB_LIP);
+          const bumps = Math.max(4, Math.round(w / 26));
+          const bw = w / bumps;
+          for (let i = bumps - 1; i >= 0; i--) {
+            ctx.quadraticCurveTo(i * bw + bw / 2, SLAB_LIP + 5 + (i % 2) * 2, i * bw, SLAB_LIP);
           }
+          ctx.closePath();
+          ctx.fill();
 
-          // 4. Cracks / puddles
+          // glossy streaks on the ice face
+          ctx.globalAlpha = 0.42;
+          ctx.strokeStyle = "#FFFFFF";
+          ctx.lineWidth = 3;
+          ctx.lineCap = "round";
+          const streaks = Math.max(2, Math.floor(w / 60));
+          for (let i = 0; i < streaks; i++) {
+            const sx = w * (0.14 + ((i + 0.3) / streaks) * 0.7);
+            ctx.beginPath();
+            ctx.moveTo(sx, SLAB_LIP + 8);
+            ctx.lineTo(sx + 9, SLAB_LIP + 20);
+            ctx.stroke();
+          }
+          ctx.globalAlpha = 1;
+
+          // cracks appear as the slab melts
           if (stage >= 2) {
-            const cracks = getCrackLines(pl, stage);
             ctx.strokeStyle = stage >= 4 ? "#1D4F73" : "#3B7FB8";
             ctx.lineWidth = stage >= 4 ? 2.4 : 1.6;
-            for (const c of cracks) {
+            for (const c of getCrackLines(pl, stage)) {
               const cx = c.cx * w;
-              const cy = c.cy * h;
+              const cy = SLAB_LIP + 4 + c.cy * (h - SLAB_LIP - 8);
               const dx = Math.cos(c.ang) * c.len * w;
-              const dy = Math.sin(c.ang) * c.len * h;
+              const dy = Math.sin(c.ang) * c.len * (h - SLAB_LIP);
               ctx.beginPath();
               ctx.moveTo(cx - dx / 2, cy - dy / 2);
               ctx.lineTo(cx + dx / 2, cy + dy / 2);
@@ -2782,6 +3332,19 @@
               ctx.stroke();
             }
           }
+          ctx.restore();
+
+          // healing flash: a flat cyan ring just outside the outline
+          if (pl.glowTimer > 0) {
+            ctx.strokeStyle = "rgba(135, 225, 255, " + Math.min(1, pl.glowTimer / 1.5).toFixed(2) + ")";
+            ctx.lineWidth = 10;
+            roundedRect(0, 0, w, h, 14, false, true);
+          }
+
+          // 4. Outline
+          ctx.strokeStyle = "#111";
+          ctx.lineWidth = 4;
+          roundedRect(0, 0, w, h, 14, false, true);
           ctx.restore();
         }
 
@@ -2802,7 +3365,7 @@
               ctx.lineWidth = 4;
               ctx.setLineDash([8, 6]);
               ctx.lineDashOffset = -state.time * 40;
-              roundedRect(x - 3, pl.y - 3, pl.w + 6, pl.h + 6, 14, false, true);
+              roundedRect(x - 3, pl.y - 3, pl.w + 6, pl.h + SLAB_DEPTH + 6, 16, false, true);
               ctx.setLineDash([]);
               ctx.restore();
             }
@@ -2812,7 +3375,7 @@
               const barW = pl.w * 0.65;
               const barH = 7;
               const bx = x + (pl.w - barW) / 2;
-              const by = pl.y + pl.h + 9 + (Math.sin(state.time * 2.0 + pl.phase) * 2);
+              const by = pl.y + pl.h + SLAB_DEPTH + 10 + (Math.sin(state.time * 2.0 + pl.phase) * 2);
               
               ctx.save();
               // Neo-brutalist health bar container
@@ -2843,16 +3406,21 @@
           const col = slot % cols;
           const row = Math.floor(slot / cols);
           const baseX = b.x + b.w * 0.28 + col * 30;
-          const baseY = b.y - 8 - row * 24;
+          const baseY = b.y + FOOT_SINK - row * 14;
           const cheering = chick.cheerTimer > 0;
           const hop = Math.abs(Math.sin(chick.bob * 1.8)) * (cheering ? 12 : 5);
           const drawX = baseX;
           const drawY = baseY - hop;
 
+          drawContactShadow(drawX, baseY - 5, 16);
+
           if (chickSprite.loaded) {
-            const destW = 42;
-            const destH = 52;
-            const frame = cheering ? 0 : (Math.floor(chick.bob) % 2 === 0 ? 1 : 0);
+            const destW = CHICK_W;
+            const destH = (chickSprite.frameH / chickSprite.frameW) * destW;
+            // hop frames (4/5) while cheering, a slow sleepy blink (2) otherwise
+            const frame = cheering
+              ? (Math.floor(chick.bob * 4) % 2 === 0 ? 4 : 5)
+              : (Math.floor(chick.bob) % 6 === 5 ? 2 : 0);
             const fCol = frame % chickSprite.cols;
             const fRow = Math.floor(frame / chickSprite.cols);
             const sx = fCol * chickSprite.frameW;
@@ -2878,8 +3446,17 @@
           }
         }
 
+        // Grab prompts are queued while chicks draw and painted after Penny so
+        // she can never cover the hint.
+        const chickPrompts = [];
+        function drawChickPrompts() {
+          for (const pr of chickPrompts) GOGCoach.tag(ctx, pr.x, pr.y, "Tap GRAB / press E");
+          chickPrompts.length = 0;
+        }
+
         function drawChicks() {
           const p = state.player;
+          chickPrompts.length = 0;
           for (const chick of state.chicks) {
             if (state.player.carrying.includes(chick)) continue;
             if (chick.delivered) {
@@ -2910,7 +3487,7 @@
               }
             }
 
-            const destW = 42; // match the safe-iceberg chick size
+            const destW = CHICK_W; // match the safe-iceberg chick size
             let destH = 34;
             if (chickSprite.loaded) {
               destH = (chickSprite.frameH / chickSprite.frameW) * destW;
@@ -2918,7 +3495,7 @@
 
             // Calculate exact rotated positioning to stay glued to bobbing/tilting platforms
             let drawX = chick.x + 9 + shiver;
-            let drawY = chick.y + 18 + bob;
+            let drawY = chick.y + 18 + bob + FOOT_SINK;
             let drawRot = 0;
             
             if (!chick.rescued && chick.platformIndex !== undefined) {
@@ -2939,7 +3516,7 @@
                 const rotY = relX * sin + relY * cos;
                 
                 drawX = plX + plCenterW + rotX + shiver;
-                drawY = pl.y + plCenterH + rotY + bob;
+                drawY = pl.y + plCenterH + rotY + bob + FOOT_SINK;
                 drawRot = rot;
               }
             }
@@ -2980,6 +3557,8 @@
               ctx.save();
               ctx.translate(drawX, drawY);
               ctx.rotate(drawRot);
+              // soft contact shadow stays on the slab while the chick bobs
+              drawContactShadow(0, -bob - (FOOT_SINK - 4), 17);
               ctx.drawImage(
                 chickSprite.img,
                 sx,
@@ -3029,19 +3608,10 @@
               ctx.restore();
             }
 
-            // Draw "Press E / ☸️" prompt when overlapping (upright, at drawX/drawY)
+            // "Tap GRAB" prompt while Penny is in reach (drawn after Penny, see drawChickPrompts)
             const maxCarry = getMaxCarryingCapacity();
-            if (!chick.rescued && rectsOverlap(p, { x: chick.x, y: chick.y, w: 18, h: 18 }) && p.carrying.length < maxCarry) {
-              ctx.save();
-              ctx.fillStyle = "#ffffff";
-              ctx.strokeStyle = "#111111";
-              ctx.lineWidth = 3;
-              ctx.font = 'bold 12px "Quicksand", sans-serif';
-              ctx.textAlign = "center";
-              const promptText = "Press E / ☸️";
-              ctx.strokeText(promptText, drawX, drawY - destH - 12);
-              ctx.fillText(promptText, drawX, drawY - destH - 12);
-              ctx.restore();
+            if (!calmMode && !chick.rescued && rectsOverlap(p, chickReachRect(chick)) && p.carrying.length < maxCarry) {
+              chickPrompts.push({ x: drawX, y: drawY - destH - 16 });
             }
 
             if (crying) {
@@ -3114,6 +3684,10 @@
           const destW = 72;
           let destH = 108; // Fallback size
 
+          if (p.onGround && state.state !== "failed") {
+            drawContactShadow(x + p.w / 2 + jitterX, y + p.h + FOOT_SINK - 5, 28);
+          }
+
           if (sheet.loaded) {
             destH = (sheet.frameH / sheet.frameW) * destW;
             let frame = penguinAnim.frameIndex;
@@ -3135,7 +3709,7 @@
             const sy = row * sheet.frameH;
 
             ctx.save();
-            ctx.translate(x + p.w / 2 + jitterX, y + p.h + waddleY);
+            ctx.translate(x + p.w / 2 + jitterX, y + p.h + waddleY + FOOT_SINK);
             ctx.rotate(tilt + waddleTilt + platformRot);
             if (p.isSliding) ctx.scale(1, 0.82); // T049: belly-slide squash
 
@@ -3158,7 +3732,7 @@
           } else {
             // Fallback render
             ctx.save();
-            ctx.translate(x + p.w / 2 + jitterX, y + p.h + waddleY);
+            ctx.translate(x + p.w / 2 + jitterX, y + p.h + waddleY + FOOT_SINK);
             ctx.rotate(tilt + waddleTilt + platformRot);
             if (p.isSliding) ctx.scale(1, 0.82); // T049: belly-slide squash
 
@@ -3185,7 +3759,7 @@
             drawEmoji("🤗", x + p.w / 2 - p.facing * 18, y + p.h - destH - 12 + Math.sin(state.time * 6) * 3, 18);
 
             p.carrying.forEach((chick, index) => {
-              const cW = 28; // slightly smaller than ground chicks (42)
+              const cW = 34; // a little smaller than a chick on the ice (CHICK_W)
               const cH = chickSprite.loaded
                 ? (chickSprite.frameH / chickSprite.frameW) * cW
                 : 30;
@@ -3197,7 +3771,7 @@
               if (chickSprite.loaded) {
                 // Alternately blink between the two idle frames
                 const flapCycle = Math.floor(state.time * 8 + index) % 2;
-                let frame = flapCycle === 0 ? 0 : 1; // Alternate open-eyes frame 0 and blink frame 1
+                let frame = flapCycle === 0 ? 4 : 5; // wriggling feet while being carried
 
                 const col = frame % chickSprite.cols;
                 const row = Math.floor(frame / chickSprite.cols);
@@ -3205,7 +3779,7 @@
                 const sy = row * chickSprite.frameH;
 
                 ctx.save();
-                ctx.translate(x + p.w / 2, y + p.h + waddleY);
+                ctx.translate(x + p.w / 2, y + p.h + waddleY + FOOT_SINK);
                 ctx.scale(p.facing, 1); // Face same direction as Mother!
                 ctx.translate(offsetX, offsetY);
                 ctx.drawImage(
@@ -3271,13 +3845,15 @@
           const warmthVal = state ? state.warmth : 0;
           const roughness = 1 + warmthVal * 2.2;
           
-          ctx.save();
-          ctx.fillStyle = lerpColor("#2F6FD0", "#0D1B3E", warmthVal);
-          ctx.beginPath();
-
-          const W = canvas.width;
-          const H = canvas.height;
+          const W = VIEW_W;
+          const H = VIEW_H;
           const scrollVal = cameraX;
+          ctx.save();
+          const waterGrad = ctx.createLinearGradient(0, top - 24, 0, H);
+          waterGrad.addColorStop(0, lerpColor("#4C93F2", "#1F3068", warmthVal));
+          waterGrad.addColorStop(1, lerpColor("#2456B8", "#0D1B3E", warmthVal));
+          ctx.fillStyle = waterGrad;
+          ctx.beginPath();
 
           ctx.moveTo(0, H);
           for (let x = 0; x <= W + 20; x += 15) {
@@ -3290,8 +3866,8 @@
           ctx.closePath();
           ctx.fill();
 
-          ctx.strokeStyle = lerpColor("#76C4FF", "#2E5088", warmthVal);
-          ctx.lineWidth = 2.5;
+          ctx.strokeStyle = lerpColor("#EAF8FF", "#8FA9D2", warmthVal); // foam crest
+          ctx.lineWidth = 3.5;
           ctx.beginPath();
           for (let x = 0; x <= W + 20; x += 15) {
             const worldX = x + scrollVal;
@@ -3382,7 +3958,7 @@
             ctx.textAlign = "center";
             ctx.textBaseline = "middle";
             ctx.font = "900 12px Arial";
-            ctx.fillText("Press E / tap ☸️", sx, sy - 1);
+            ctx.fillText("Tap SPIN / press E", sx, sy - 1);
           }
         }
         function drawCloud(x, y, scale, layer) {
@@ -3444,6 +4020,17 @@
           ctx.ellipse(x, y, rx, ry, 0, 0, Math.PI * 2);
           if (fill) ctx.fill();
           if (stroke) ctx.stroke();
+        }
+
+        // Flat soft ellipse under a character's feet so it reads as standing ON
+        // the ice rather than floating in front of it.
+        function drawContactShadow(x, y, halfW) {
+          ctx.save();
+          ctx.fillStyle = "rgba(18, 40, 78, 0.3)";
+          ctx.beginPath();
+          ctx.ellipse(x, y, halfW, halfW * 0.26, 0, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.restore();
         }
 
         function drawEmoji(emoji, x, y, size) {
@@ -3544,6 +4131,15 @@
           }
           render();
           requestAnimationFrame(frame);
+        }
+
+        if (ui.helpBtn) {
+          // Replay the guided intro: a fresh run with the coach on.
+          ui.helpBtn.addEventListener("click", function () {
+            if (activeOverlay || !state || state.state !== "playing") return;
+            resetGame();
+            coach.start();
+          });
         }
 
         state = createState();

@@ -22,6 +22,7 @@
     --grey-dark: #4a4a4a;
     --grey-light: #d9d9d3;
     --gold: var(--gog-tangerine, #FFC93C);
+    --gog-frame-aspect: 1.3333; /* 800x600 canvas: keeps the frame 4:3 on short windows */
   }
 
   * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
@@ -418,6 +419,14 @@
 
         <button
           class="icon-btn"
+          id="helpBtn"
+          title="How to play"
+          aria-label="How to play"
+        >
+          ❓
+        </button>
+        <button
+          class="icon-btn"
           id="muteBtn"
           title="Toggle sound"
           aria-label="Toggle sound"
@@ -450,6 +459,7 @@
   <script src="../src/save.js"></script>
   <script src="../src/engine.js"></script>
   <script src="../src/ui.js"></script>
+  <script src="../src/coach.js"></script>
   <script src="../src/progression.js"></script>
 
 <script>
@@ -468,6 +478,9 @@
   const canvas = document.getElementById('game');
   const ctx = canvas.getContext('2d');
   const W = canvas.width, H = canvas.height;
+  // Render at the on-screen resolution (not a stretched 800x600 bitmap) so the
+  // sprites and backdrop stay sharp; drawing code still uses 800x600 coords.
+  GOGEngine.fitCanvas(canvas, ctx, W, H);
 
   const progressFill = document.getElementById('progressFill');
   const progressText = document.getElementById('progressText');
@@ -613,6 +626,7 @@
       audio._ensureCtx();
       initGame();
       gameState = 'playing';
+      if (GOGCoach.shouldAutoStart(STAGE_ID)) coach.start();
     }
   });
 
@@ -916,22 +930,30 @@
       spin: 0
     });
   }
-  function spawnSmoke(){
-    if(smokes.length >= MAX_SMOG_CURRENTS) return;
-    if(score >= 5) return; // Environmental progression: stop spawning dirty factories!
+  function spawnSmoke(x, force){
+    if(!force){
+      if(smokes.length >= MAX_SMOG_CURRENTS) return null;
+      if(score >= 5) return null; // Environmental progression: stop spawning dirty factories!
+    }
     const smogTier = pickSmogCurrentTier();
     const tCfg = SMOG_CURRENT_TIERS[smogTier];
-    smokes.push({
-      x: W + 120,
+    // Wide clean opening (GOGConstants.STAGE5.smogGap) so the 4-6 end of the
+    // audience can thread it; calm mode widens it a further 20%.
+    const gapCfg = GOGConstants.STAGE5.smogGap;
+    const gapWidth = rand(gapCfg.min, gapCfg.max) * (calmMode ? gapCfg.calmMul : 1);
+    const smoke = {
+      x: x === undefined ? W + 120 : x,
       y: GROUND_Y,
       radius: rand(tCfg.thickMin, tCfg.thickMax) * 0.9,
       wobble: rand(0, Math.PI*2),
       speed: 1.0, // scroll at matching speed with ground
       smogTier: smogTier,
-      gapY: rand(160, 360),
-      gapWidth: rand(100, 140),
+      gapY: rand(180, 340),
+      gapWidth: gapWidth,
       glintOffset: rand(0, 1)
-    });
+    };
+    smokes.push(smoke);
+    return smoke;
   }
   function spawnOrb(){
     const y = rand(PLAY_TOP+20, PLAY_BOTTOM-40);
@@ -1037,11 +1059,17 @@
   // UPDATE
   // ---------------------------------------------------------------
   function update(dt){
+    // Guided intro (see GUIDED COACH below): "learning" pauses the countdown and
+    // keeps smoke from draining Sky Health to zero; "coachHold" also freezes the
+    // scrolling world until the player has tried steering once.
+    const learning = coach.active;
+    const coachHold = learning && coach.index === 0;
+
     if (msgCooldown > 0) {
       msgCooldown -= dt;
     }
     
-    if (gameState === 'playing') {
+    if (gameState === 'playing' && !learning) {
       timeLeft = Math.max(0, timeLeft - dt / 60);
     }
     
@@ -1049,7 +1077,7 @@
     buildings.forEach(b => {
       if (b.solarGlowTimer > 0) b.solarGlowTimer -= dt;
     });
-    if (gameState === 'playing') {
+    if (gameState === 'playing' && !learning) {
       solarSpawnTimer -= dt;
       if (solarSpawnTimer <= 0) {
         const activeSolar = buildings.filter(b => b.hasSolar && b.x > 50 && b.x < W - 50);
@@ -1075,7 +1103,7 @@
     }
 
     // --- background scroll ---
-    const effScroll = scrollBase * player.speedFactor;
+    const effScroll = coachHold ? 0 : scrollBase * player.speedFactor;
     bgOffset1 = (bgOffset1 + effScroll*0.3*dt) % W;
     bgOffset2 = (bgOffset2 + effScroll*0.6*dt) % W;
     groundOffset = (groundOffset + effScroll*1.0*dt) % 40;
@@ -1125,12 +1153,18 @@
     }
 
     // --- spawn timers ---
-    spawnTimers.smoke -= dt;
-    spawnTimers.orb -= dt;
+    if(!coachHold){
+      spawnTimers.smoke -= dt;
+      spawnTimers.orb -= dt;
+    }
     spawnTimers.bird -= dt;
     spawnTimers.cloud -= dt;
     spawnTimers.fgCloud -= dt;
-    if(spawnTimers.smoke <= 0){ spawnSmoke(); spawnTimers.smoke = rand(160,240) * diff.spawnIntervalMul(); }
+    if(spawnTimers.smoke <= 0){
+      const spawnGap = GOGConstants.STAGE5.smogSpawnFrames;
+      spawnSmoke();
+      spawnTimers.smoke = rand(spawnGap.min, spawnGap.max) * diff.spawnIntervalMul();
+    }
     if(spawnTimers.orb <= 0){ spawnOrb(); spawnTimers.orb = rand(55,90); }
     // Birds spawn more frequently as clean energy progress increases!
     if(spawnTimers.bird <= 0){ spawnBird(); spawnTimers.bird = rand(90,160) / (1.0 + score * 0.35); }
@@ -1212,7 +1246,7 @@
         player.boostTimer = 0;
         player.speedFactor = Math.max(0.4, player.speedFactor - 0.04*dt);
         const clarityDrop = (calmMode ? 0.15 * dt : 0.45 * dt) * diff.enemySpeedMul();
-        const minClarity = calmMode ? 25 : 0;
+        const minClarity = (calmMode || learning) ? 25 : 0;
         clarity = clamp(clarity - clarityDrop, minClarity, 100);
         updateGuide("Uh-oh! Watch out for the dirty smoke! Catch a green breeze to go fast! 🌤️🌫️");
       }
@@ -1336,6 +1370,7 @@
     detectWindOrbBonus();
     updateBirdFlocks(dt, effScroll); // T058
 
+    updateCoach(dt);
     updateHUD();
   }
 
@@ -1409,6 +1444,114 @@
       },
     });
     updateGuide("It's okay! Let's take a deep breath and try gliding together again! 💖", true);
+  }
+
+  // ---------------------------------------------------------------
+  // GUIDED COACH — three short, doable steps the first time the stage is
+  // opened in a session (the ❓ button replays it). The countdown is paused and
+  // smoke can't empty Sky Health while it runs, so nobody can fail the lesson.
+  // ---------------------------------------------------------------
+  const COACH_STEPS = [
+    { icon: '👆', title: 'Steer Breezy', text: 'Slide your finger (or mouse) <b>up and down</b>.', keys: 'Keys: <kbd>↑</kbd> <kbd>↓</kbd>' },
+    { icon: '☁️', title: 'Dodge the smoke', text: 'Fly through the <b>green gap</b> in the grey smoke.' },
+    { icon: '☀️', title: 'Ride the wind, grab a sun', text: 'Fly into the <b>white wind ribbon</b>, then touch a <b>sun</b> to light a building.' }
+  ];
+  let coachSmoke = null;   // the smoke column step 2 points at
+  let coachSunTimer = 0;   // frames until another demo sun may be placed
+
+  const coach = GOGCoach.create({
+    stageId: STAGE_ID,
+    frame: canvasFrame,
+    steps: COACH_STEPS,
+    onStep: function (i) {
+      if (i === 1) {
+        coachSmoke = smokes.find(s => s.x > player.x + 60) || spawnSmoke(W - 20, true);
+      } else if (i === 2) {
+        coachSunTimer = 0;
+        spawnCoachSun();
+      }
+    },
+    onFinish: function (reason) {
+      coachSmoke = null;
+      updateGuide(reason === 'done'
+        ? "Great flying! Now light every building before time runs out! ⚡"
+        : "Let's go! Light every building with clean sun power! ⚡", true);
+    }
+  });
+
+  // A wind ribbon with a sun parked inside it, so the whole "ride the wind,
+  // grab the sun" idea is visible at once instead of waiting on random spawns.
+  function spawnCoachSun(){
+    const cur = spawnWindCurrent('easy');
+    if(!cur) return;
+    cur.x = W - 60;
+    updateWindCurrentSamples(cur);
+    const ox = cur.x + cur.length * 0.3;
+    const sp = sampleWindCurrentAt(cur, ox);
+    orbs.push({ x: ox, y: sp.y, baseY: sp.y, radius: 18, wobble: 0, collected: false });
+  }
+
+  function updateCoach(dt){
+    if(!coach.active) return;
+    const i = coach.index;
+    if(i === 0){
+      if(Math.abs(player.targetY - 300) > 45) coach.advance();
+    } else if(i === 1){
+      if(!coachSmoke || !smokes.includes(coachSmoke) || coachSmoke.x < player.x - 40) coach.advance();
+    } else if(i === 2){
+      if(score >= 1){ coach.advance(); return; }
+      coachSunTimer -= dt;
+      if(coachSunTimer <= 0 && !orbs.some(o => o.x > player.x - 10)){
+        spawnCoachSun();
+        coachSunTimer = 120;
+      }
+    }
+  }
+
+  function drawCoachHints(){
+    if(!coach.active || gameState !== 'playing') return;
+    const t = coach.t, i = coach.index;
+    ctx.save();
+    if(i === 0){
+      const x = player.x + 110;
+      GOGCoach.dragDemo(ctx, { x, y: 400 }, { x, y: 200 }, t, { arc: 0, radius: 30, period: 2.6 });
+      GOGCoach.tag(ctx, x, 150, 'Slide up & down');
+    } else if(i === 1 && coachSmoke){
+      const s = coachSmoke;
+      const tx = clamp(s.x, 100, W - 100);
+      if(s.x < W - 10) GOGCoach.ring(ctx, s.x, s.gapY, Math.min(60, s.gapWidth * 0.3), t);
+      GOGCoach.tag(ctx, tx, Math.max(110, s.gapY - s.gapWidth / 2 - 22), s.x > W - 30 ? 'Smoke coming →' : 'Fly through the gap!');
+    } else if(i === 2){
+      if((player.windInfluence || 0) > 0.15){
+        let o = null;
+        for(const c of orbs){ if(c.x > player.x - 30 && (!o || c.x < o.x)) o = c; }
+        if(o){
+          GOGCoach.ring(ctx, o.x, o.y, 32, t);
+          GOGCoach.tag(ctx, clamp(o.x, 90, W - 90), Math.max(110, o.y - 52), 'Touch the sun! ☀️');
+        }
+      } else {
+        const cur = windCurrents.find(c => c.x + c.length > player.x + 40);
+        if(cur){
+          const px = clamp(Math.max(cur.x + 60, player.x + 120), 60, W - 60);
+          if(px >= cur.x && px <= cur.x + cur.length){
+            const sample = sampleWindCurrentAt(cur, px);
+            const edgeY = sample.y - sample.thick * 0.5; // top edge of the ribbon
+            GOGCoach.arrow(ctx, px, edgeY - 4, t, 'down');
+            GOGCoach.tag(ctx, px, Math.max(110, edgeY - 98), 'Fly into the wind 🌬️');
+          }
+        }
+      }
+    }
+    ctx.restore();
+  }
+
+  const helpBtn = document.getElementById('helpBtn');
+  if(helpBtn){
+    helpBtn.addEventListener('click', ()=>{
+      if(gameState !== 'playing') return;
+      initGame();
+      coach.start();
+    });
   }
 
   // ---------------------------------------------------------------
@@ -2206,6 +2349,7 @@
     drawSkyReactTint(); // T059
     drawSpeedLines();   // T056
     drawSmokeVignette();
+    drawCoachHints();
     drawWinWipe();
   }
 
@@ -2478,8 +2622,8 @@
     return 'hard';
   }
 
-  function configureWindCurrent(cur){
-    const tier = pickWindTier();
+  function configureWindCurrent(cur, forceTier){
+    const tier = forceTier || pickWindTier();
     const cfg = WIND_TIER_CONFIG[tier];
     cur.tier = tier;
     cur.x = W + rand(40,120);
@@ -2505,12 +2649,13 @@
     cur.bladeAngle = rand(0, Math.PI*2);
   }
 
-  function spawnWindCurrent(){
-    if(windCurrents.length >= WIND_MAX_CURRENTS) return;
+  function spawnWindCurrent(forceTier){
+    if(windCurrents.length >= WIND_MAX_CURRENTS) return null;
     let cur = windCurrentPool.pop();
     if(!cur) cur = new WindCurrent();
-    configureWindCurrent(cur);
+    configureWindCurrent(cur, forceTier);
     windCurrents.push(cur);
+    return cur;
   }
 
   function updateWindCurrentSamples(cur){

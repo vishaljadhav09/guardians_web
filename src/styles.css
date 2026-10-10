@@ -643,7 +643,12 @@ body .stage-wrap {
     order: 2;
     flex-grow: 1;
     flex-shrink: 1;
-    max-width: none !important;
+    min-width: 0;
+    /* Cap the WIDTH from the available height (not just the height) so the
+       frame always keeps the canvas aspect ratio. A height-only cap squashed a
+       4:3 canvas into a wider box on short windows, stretching the whole scene
+       sideways. Stages with a non-16:10 canvas set --gog-frame-aspect. */
+    max-width: calc((100vh - 160px) * var(--gog-frame-aspect, 1.6)) !important;
     max-height: calc(100vh - 160px) !important;
     margin: 0 !important;
   }
@@ -665,7 +670,7 @@ body .stage-wrap {
   body .gog-stage-layout #canvasFrame {
     order: 1;
     width: 100%;
-    max-width: none !important;
+    max-width: calc((100vh - 240px) * var(--gog-frame-aspect, 1.6)) !important;
     max-height: calc(100vh - 240px) !important;
     margin: 0 auto !important;
   }
@@ -682,3 +687,100 @@ body .stage-wrap {
 }
 
 
+
+/* ====================================================================
+   GUIDED COACH BANNER (src/coach.js)
+   Pinned to the top of the canvas frame while a "how to play" step shows.
+   ==================================================================== */
+:root { --gog-frame-aspect: 1.6; }
+
+.gog-coach {
+  position: absolute;
+  left: 50%;
+  top: 10px;
+  transform: translateX(-50%);
+  z-index: 30;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: max-content;
+  max-width: calc(100% - 20px);
+  background: var(--gog-white);
+  border: 3px solid var(--gog-ink);
+  border-radius: 18px;
+  box-shadow: var(--gog-shadow-sm);
+  padding: 8px 10px 8px 12px;
+}
+.gog-coach.gog-coach-pop { animation: gogCoachPop 0.32s cubic-bezier(.2,1.4,.4,1); }
+@keyframes gogCoachPop {
+  from { transform: translateX(-50%) scale(0.85); opacity: 0.4; }
+  to   { transform: translateX(-50%) scale(1); opacity: 1; }
+}
+.gog-coach-icon {
+  flex: 0 0 auto;
+  font-size: 2.1rem;
+  line-height: 1;
+  animation: guideBob 1.6s ease-in-out infinite;
+}
+.gog-coach-body { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.gog-coach-title {
+  font-family: var(--gog-font-head);
+  font-weight: 800;
+  font-size: 1.1rem;
+  line-height: 1.1;
+}
+.gog-coach-text {
+  font-weight: 700;
+  font-size: 0.9rem;
+  line-height: 1.25;
+}
+.gog-coach-keys {
+  font-weight: 700;
+  font-size: 0.85rem;
+  line-height: 1.3;
+}
+.gog-coach-keys:empty { display: none; }
+@media (hover: none) {
+  .gog-coach-keys { display: none; }
+}
+.gog-coach kbd {
+  display: inline-block;
+  border: 2px solid var(--gog-ink);
+  border-radius: 6px;
+  background: var(--gog-cream, #FFF8E7);
+  padding: 0 5px;
+  font: inherit;
+  font-weight: 800;
+  line-height: 1.2;
+}
+.gog-coach-dots { display: flex; gap: 5px; margin-top: 3px; }
+.gog-coach-dots i {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  border: 2px solid var(--gog-ink);
+  background: var(--gog-white);
+}
+.gog-coach-dots i.on { background: var(--gog-lime); }
+.gog-coach-dots i.done { background: var(--gog-ink); }
+.gog-coach-skip {
+  flex: 0 0 auto;
+  align-self: flex-start;
+  border: 2px solid var(--gog-ink);
+  background: var(--gog-white);
+  border-radius: 10px;
+  padding: 3px 8px;
+  font-family: var(--gog-font-head);
+  font-weight: 700;
+  font-size: 0.75rem;
+  box-shadow: 2px 2px 0 var(--gog-ink);
+}
+.gog-coach-skip:active { transform: translate(2px, 2px); box-shadow: none; }
+
+@media (max-width: 700px) {
+  .gog-coach-keys, .gog-coach-dots { display: none; }
+  .gog-coach { top: 6px; gap: 8px; padding: 6px 8px; border-width: 2px; }
+  .gog-coach-icon { font-size: 1.6rem; }
+  .gog-coach-title { font-size: 0.9rem; }
+  .gog-coach-text { font-size: 0.78rem; }
+}

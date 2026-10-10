@@ -527,11 +527,56 @@
     this.playSfxFile("assets/audio/failed.mp3");
   };
 
+  /* ---------------- Sharp (hi-DPI) canvas ---------------- */
+  // Keeps the stage's fixed logical coordinate space (e.g. 800x600) but sizes
+  // the canvas backing store to the pixels actually shown on screen
+  // (css size x devicePixelRatio). Without this the browser bilinear-stretches
+  // a small bitmap to fill the frame, which is what makes sprites and
+  // backgrounds look soft. Stages keep drawing in logical coordinates because
+  // the context transform is scaled for them; call onResize(scale) to rebuild
+  // any cached offscreen art at the new resolution.
+  function fitCanvas(canvas, ctx, logicalW, logicalH, opts) {
+    opts = opts || {};
+    var maxScale = opts.maxScale || 2;
+    var api = { scale: 1 };
+
+    function apply() {
+      var rect = canvas.getBoundingClientRect();
+      if (!rect.width) return;
+      var dpr = global.devicePixelRatio || 1;
+      var scale = Math.max(1, Math.min(maxScale, (rect.width * dpr) / logicalW));
+      scale = Math.round(scale * 4) / 4; // snap so tiny layout shifts don't realloc the bitmap
+      var pw = Math.round(logicalW * scale);
+      var ph = Math.round(logicalH * scale);
+      if (canvas.width !== pw || canvas.height !== ph) {
+        canvas.width = pw;
+        canvas.height = ph;
+      }
+      ctx.setTransform(scale, 0, 0, scale, 0, 0);
+      ctx.imageSmoothingEnabled = true;
+      if ("imageSmoothingQuality" in ctx) ctx.imageSmoothingQuality = "high";
+      if (scale !== api.scale || !api.ready) {
+        api.scale = scale;
+        api.ready = true;
+        if (opts.onResize) opts.onResize(scale);
+      }
+    }
+
+    apply();
+    if (typeof ResizeObserver === "function") {
+      new ResizeObserver(apply).observe(canvas);
+    }
+    global.addEventListener("resize", apply);
+    api.refit = apply;
+    return api;
+  }
+
   global.GOGEngine = {
     GameLoop: GameLoop,
     Input: Input,
     Collision: Collision,
     ParticleSystem: ParticleSystem,
-    Audio: Audio
+    Audio: Audio,
+    fitCanvas: fitCanvas
   };
 })(window);

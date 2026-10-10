@@ -11,6 +11,10 @@
   />
   <link rel="stylesheet" href="../src/styles.css" />
   <style>
+    :root {
+      --gog-frame-aspect: 1.3333; /* 800x600 canvas: keeps the frame 4:3 on short windows */
+    }
+
     .stage-wrap {
       width: min(1180px, calc(100vw - 28px));
       max-width: 1180px;
@@ -368,7 +372,7 @@
 
       .hud-mid {
         display: grid;
-        grid-template-columns: minmax(128px, 1fr) repeat(4, auto);
+        grid-template-columns: minmax(128px, 1fr) repeat(3, auto);
         gap: 5px;
         align-items: center;
         width: 100%;
@@ -401,6 +405,15 @@
 
       .timer-chip {
         min-width: 44px;
+      }
+
+      /* keep the round buttons (help, sound) together on the second HUD row */
+      .hud-mid > .icon-btn {
+        order: 2;
+      }
+
+      .hud-mid > .stage-controls {
+        order: 3;
       }
 
       .icon-btn {
@@ -574,6 +587,14 @@
         <span class="chip combo-chip" id="comboChip">🔥 x0</span>
         <button
           class="icon-btn"
+          id="helpBtn"
+          title="How to play"
+          aria-label="How to play"
+        >
+          ❓
+        </button>
+        <button
+          class="icon-btn"
           id="muteBtn"
           title="Toggle sound"
           aria-label="Toggle sound"
@@ -591,7 +612,7 @@
     <div class="guideBar">
       <div class="guideAvatar" aria-hidden="true">🐝</div>
       <div class="guideBubble" id="guideText">
-        Help Buzz pollinate flowers and feed the forest critters! 🌸
+        Press a glowing flower, then drag Buzz to a second flower! 🐝➡️🌼
       </div>
     </div>
 
@@ -613,6 +634,7 @@
   <script src="../src/save.js"></script>
   <script src="../src/engine.js"></script>
   <script src="../src/ui.js"></script>
+  <script src="../src/coach.js"></script>
   <script src="../src/progression.js"></script>
 <script>
 /* ============================================================
@@ -625,6 +647,9 @@
   var canvas = document.getElementById("gameCanvas");
   var ctx = canvas.getContext("2d");
   var W = canvas.width, H = canvas.height;
+  // Render at the on-screen resolution (not a stretched 800x600 bitmap) so the
+  // meadow and sprites stay sharp; drawing code still uses 800x600 coords.
+  var hiDpi = GOGEngine.fitCanvas(canvas, ctx, W, H, { onResize: function () { bgDirty = true; } });
 
   var Collision = window.GOGEngine.Collision;
   var particles = new window.GOGEngine.ParticleSystem(160);
@@ -707,6 +732,28 @@
 
   var activeOverlay = null;
 
+  /* ---------------- Guided coach ----------------
+     Three short steps the first time the stage opens in a session (the ❓
+     button replays them): press a flower, drag to the other, enjoy the bloom.
+     While steps 1-2 are showing the clock, the new-flower beat and wilting all
+     wait, so nobody can lose the lesson. After the lesson, a faint looping
+     demo reappears whenever the player has been idle for a few seconds. */
+  var COACH_STEPS = [
+    { icon: "👆", title: "Press a flower", text: "Touch a glowing flower and <b>hold</b> it." },
+    { icon: "🐝", title: "Drag to the other flower", text: "Slide Buzz across to the second flower, then <b>let go</b>." },
+    { icon: "🌸", title: "Bloom!", text: "Match pairs <b>before the ring runs out</b>. Every pair makes fruit for the animals!" }
+  ];
+  var coachDoneAt = 0;
+  var lastActionAt = 0;
+  var coach = GOGCoach.create({
+    stageId: STAGE_ID,
+    frame: document.getElementById("canvasFrame"),
+    steps: COACH_STEPS,
+    onFinish: function (reason) {
+      GOGUi.say(reason === "done" ? "Great! Keep matching flowers before they wilt! 🐝" : "Drag Buzz from one glowing flower to another! 🐝");
+    }
+  });
+
   // STREAMLINED: one popup before play, not two — the guardian beat is now
   // the only pre-game dialog (matches stage01's pattern) and starts play
   // directly; the rules list that used to live in a second overlay is
@@ -724,6 +771,7 @@
       autoDismissMs: 10000,
       onDone: function () {
         resetGame();
+        if (GOGCoach.shouldAutoStart(STAGE_ID)) coach.start();
       },
     });
   }
@@ -1464,6 +1512,7 @@ flowers.push({
     buzz.trail = []; buzz.emitTimer = 0;
     winWipeRadius = 0;
     gameState = "playing";
+    lastActionAt = performance.now();
     audio.playBgm();
     fruitIdSeq = 1;
     hotStreakAnnounced = false; // T044
@@ -1595,15 +1644,20 @@ flowers.push({
     }
 
     if (gameState === "playing") {
+      // Guided intro: the clock, new flowers and wilting wait while the coach
+      // teaches the first pair.
+      var learning = coach.active && coach.index < 2;
+      if (coach.active && coach.index === 2 && now > coachDoneAt) coach.finish("done");
+
       // session timer
-      sessionTimeLeft -= dtMs;
+      if (!learning) sessionTimeLeft -= dtMs;
       if (sessionTimeLeft <= 0) {
         sessionTimeLeft = 0;
         if (pollinatedCount < WIN_TARGET) triggerFail();
       }
 
       // beat / spawn
-      beatTimer += dtMs;
+      if (!learning) beatTimer += dtMs;
       if (beatTimer >= nextBeatMs) {
         beatTimer = 0;
         nextBeatMs = BEAT_MS + rand(-BEAT_JITTER, BEAT_JITTER);
@@ -1614,7 +1668,7 @@ flowers.push({
       for (var i = flowers.length - 1; i >= 0; i--) {
         var f = flowers[i];
         if (f.state === "active") {
-          f.timeLeft -= dtMs;
+          if (!learning) f.timeLeft -= dtMs;
           if (f.timeLeft <= 0) wiltFlower(f);
         } else if (f.state === "wilted" || f.state === "pollinated") {
           if (now >= f.showUntil) flowers.splice(i, 1);
@@ -1891,6 +1945,108 @@ flowers.push({
     timerChip.classList.toggle("timer-danger", secs <= 15 && gameState === "playing");
   }
 
+  /* ---------------- Meadow backdrop ----------------
+     Rolling hills, trees and the ground are painted ONCE into an offscreen
+     canvas at the on-screen resolution (so they stay sharp on any screen) and
+     blitted each frame; only the sky, clouds, grass and paint trail animate. */
+  var bgStatic = null;
+  var bgDirty = true;
+
+  function seededRng(seed) {
+    var s = seed % 2147483647;
+    if (s <= 0) s += 2147483646;
+    return function () {
+      s = (s * 16807) % 2147483647;
+      return (s - 1) / 2147483646;
+    };
+  }
+
+  function paintHills(g, baseY, amp, topCol, botCol, seed) {
+    var rng = seededRng(seed);
+    var p1 = rng() * 6, p2 = rng() * 6, f1 = 0.006 + rng() * 0.004, f2 = 0.017 + rng() * 0.006;
+    var grad = g.createLinearGradient(0, baseY - amp, 0, GROUND_Y);
+    grad.addColorStop(0, topCol);
+    grad.addColorStop(1, botCol);
+    g.fillStyle = grad;
+    g.beginPath();
+    g.moveTo(0, GROUND_Y + 4);
+    for (var x = 0; x <= W; x += 6) {
+      var y = baseY - amp * (0.55 + 0.3 * Math.sin(x * f1 + p1) + 0.15 * Math.sin(x * f2 + p2));
+      g.lineTo(x, y);
+    }
+    g.lineTo(W, GROUND_Y + 4);
+    g.closePath();
+    g.fill();
+    return function crestY(x) {
+      return baseY - amp * (0.55 + 0.3 * Math.sin(x * f1 + p1) + 0.15 * Math.sin(x * f2 + p2));
+    };
+  }
+
+  function paintTree(g, x, baseY, s, blossom) {
+    var main = blossom ? "#F4A9C6" : "#5FAE4E";
+    var lite = blossom ? "#FBCADD" : "#80CE69";
+    var dark = blossom ? "#E48DB0" : "#4A9440";
+    g.fillStyle = "#8B6B4A";
+    g.fillRect(x - 2.5 * s, baseY - 9 * s, 5 * s, 11 * s);
+    var puffs = [[0, -24, 14], [-11, -15, 11], [11, -15, 11]];
+    g.fillStyle = dark; // shaded underside
+    for (var i = 0; i < puffs.length; i++) {
+      g.beginPath();
+      g.arc(x + puffs[i][0] * s, baseY + (puffs[i][1] + 3) * s, puffs[i][2] * s, 0, Math.PI * 2);
+      g.fill();
+    }
+    g.fillStyle = main;
+    for (var j = 0; j < puffs.length; j++) {
+      g.beginPath();
+      g.arc(x + puffs[j][0] * s, baseY + puffs[j][1] * s, puffs[j][2] * s, 0, Math.PI * 2);
+      g.fill();
+    }
+    g.fillStyle = lite;
+    g.beginPath();
+    g.arc(x - 4 * s, baseY - 28 * s, 7 * s, 0, Math.PI * 2);
+    g.fill();
+  }
+
+  function buildMeadowBackdrop(scale) {
+    var c = document.createElement("canvas");
+    c.width = Math.round(W * scale);
+    c.height = Math.round(H * scale);
+    var g = c.getContext("2d");
+    g.setTransform(scale, 0, 0, scale, 0, 0);
+
+    // far, hazy hills then nearer, greener ones with trees on the crest
+    paintHills(g, 392, 90, "#BFE3B8", "#A6D69E", 11);
+    var crest = paintHills(g, 440, 70, "#9AD48A", "#82C46E", 29);
+    var rng = seededRng(77);
+    for (var i = 0; i < 9; i++) {
+      var tx = 30 + i * 90 + rng() * 50;
+      paintTree(g, tx, crest(tx) + 6, 0.8 + rng() * 0.7, i % 3 === 1);
+    }
+
+    // ground: bright lawn fading to richer soil-green
+    var ground = g.createLinearGradient(0, GROUND_Y, 0, H);
+    ground.addColorStop(0, "#8ED04F");
+    ground.addColorStop(1, "#5A9A2E");
+    g.fillStyle = ground;
+    g.fillRect(0, GROUND_Y, W, H - GROUND_Y);
+    g.fillStyle = "rgba(255, 255, 255, 0.18)";
+    g.fillRect(0, GROUND_Y, W, 9);
+    g.strokeStyle = "rgba(40, 90, 20, 0.22)";
+    g.lineWidth = 3;
+    g.lineCap = "round";
+    for (var k = 0; k < 18; k++) {
+      var gx = 20 + rng() * (W - 40);
+      var gy = GROUND_Y + 26 + rng() * (H - GROUND_Y - 36);
+      g.beginPath();
+      g.moveTo(gx, gy);
+      g.lineTo(gx + 18 + rng() * 22, gy);
+      g.stroke();
+    }
+
+    bgStatic = c;
+    bgDirty = false;
+  }
+
   /* ---------------- Draw ---------------- */
   // Static gradients are built ONCE and reused — only the sun glow below is
   // rebuilt per frame, because its center actually drifts. This is the same
@@ -1900,8 +2056,9 @@ flowers.push({
   function getSkyGradient() {
     if (!skyGradientCache) {
       skyGradientCache = ctx.createLinearGradient(0, 0, 0, GROUND_Y);
-      skyGradientCache.addColorStop(0, "rgba(207,235,255,0.55)");
-      skyGradientCache.addColorStop(1, "rgba(207,235,255,0.05)");
+      skyGradientCache.addColorStop(0, "#6EC1F7");
+      skyGradientCache.addColorStop(0.55, "#B9E3FB");
+      skyGradientCache.addColorStop(1, "#FFF1CF");
     }
     return skyGradientCache;
   }
@@ -1928,6 +2085,14 @@ flowers.push({
     ctx.globalAlpha = ambientVividness;
     ctx.fillStyle = glow;
     ctx.fillRect(0, 0, W, GROUND_Y);
+    ctx.restore();
+
+    ctx.save();
+    ctx.globalAlpha = 0.55 + 0.45 * ambientVividness;
+    ctx.fillStyle = "#FFF1A8";
+    ctx.beginPath();
+    ctx.arc(sx, sy, 30, 0, Math.PI * 2);
+    ctx.fill();
     ctx.restore();
 
     ctx.save();
@@ -2043,6 +2208,7 @@ flowers.push({
   }
 
   function drawBackground() {
+    if (bgDirty) buildMeadowBackdrop(hiDpi.scale);
     ctx.fillStyle = "#FDFBF7";
     ctx.fillRect(0, 0, W, H);
 
@@ -2052,9 +2218,8 @@ flowers.push({
     drawSunlight();
     drawClouds();
 
-    // ground
-    ctx.fillStyle = "#7CB342";
-    ctx.fillRect(0, GROUND_Y, W, H - GROUND_Y);
+    // hills, trees and ground (pre-rendered at screen resolution)
+    ctx.drawImage(bgStatic, 0, 0, W, H);
 
     // T042: painted bloom trail — soft green blotches left by every
     // pollinated flower, building up over the round.
@@ -2538,12 +2703,8 @@ flowers.push({
       if (useSprite) {
         ctx.save();
         ctx.globalAlpha = alpha * Math.max(0.5, ambientVividness);
-        // T042: unpollinated flowers read as gray/closed until touched —
-        // pollination flips state to "pollinated" which skips this filter,
-        // so the flower visibly snaps into full color on the bloom.
-        if (f.state === "active") {
-          ctx.filter = "grayscale(0.6) saturate(0.5) brightness(1.05)";
-        }
+        // Waiting flowers stay full-colour (a grey flower read as "dead" to young
+        // players); the bloom pop + sparkle frame is what marks a pollinated one.
 
         // Root the flower at (f.x, f.y + 44) so rotation/sway originates from ground base
         ctx.translate(f.x, f.y + 44);
@@ -2654,9 +2815,6 @@ flowers.push({
 
       var sprite = EmojiSprite.get(glyph, f.r * 1.6 * scale);
       ctx.save();
-      if (f.state === "active") {
-        ctx.filter = "grayscale(0.6) saturate(0.5)"; // T042: gray/closed until pollinated
-      }
       ctx.translate(topX, topY);
       ctx.rotate(rot + bendAmt * 0.5);
       ctx.drawImage(sprite, -sprite.width / 2, -sprite.height / 2);
@@ -2735,6 +2893,40 @@ flowers.push({
     ctx.lineTo(nearest.x, nearest.y);
     ctx.stroke();
     ctx.restore();
+  }
+
+  // The guided lesson (pulsing ring + hand, then a looping drag demo) and,
+  // after it, a fainter version of the same demo when the player has been
+  // idle for a few seconds with two flowers waiting.
+  function drawCoachHints() {
+    if (gameState !== "playing") return;
+    var act = activeFlowers();
+    if (coach.active && coach.index < 2) {
+      if (act.length < 2) return;
+      var A = act[0], B = act[1];
+      if (dragSourceId === B.id) { var swap = A; A = B; B = swap; }
+      var t = coach.t;
+      if (coach.index === 0) {
+        GOGCoach.ring(ctx, A.x, A.y, A.r + 24, t);
+        GOGCoach.hand(ctx, A.x, A.y, t, false);
+        GOGCoach.tag(ctx, A.x, A.y - A.r - 40, "Start here");
+      } else {
+        if (dragging) GOGCoach.ring(ctx, B.x, B.y, B.r + 24, t);
+        else GOGCoach.dragDemo(ctx, A, B, t, { radius: A.r + 24 });
+        GOGCoach.tag(ctx, B.x, B.y - B.r - 40, "Let go here");
+      }
+      return;
+    }
+    if (coach.active || dragging || act.length < 2) return;
+    var idleMs = performance.now() - lastActionAt;
+    if (idleMs < 6500 && consecutiveMisses < 2) return; // idle a while, or already missing flowers
+    act.sort(function (a, b) { return a.timeLeft - b.timeLeft; });
+    var from = act[0], to = null, best = Infinity;
+    for (var i = 1; i < act.length; i++) {
+      var d = Collision.distance(from.x, from.y, act[i].x, act[i].y);
+      if (d < best) { best = d; to = act[i]; }
+    }
+    if (to) GOGCoach.dragDemo(ctx, from, to, performance.now() / 1000, { radius: from.r + 24, alpha: 0.8 });
   }
 
   // Buzz himself: motion-blur trail dots and the animated sprite sheet
@@ -3043,6 +3235,7 @@ flowers.push({
     drawFlightPaths();   // completed pollination arcs (bezier + traveling dots)
     drawFlowers();
     drawNextFlowerGuide(); // calm-mode glow toward the nearest active flower
+    drawCoachHints();      // guided steps + idle "try this" demo
     drawFlightRibbon();  // live drag ribbon while actively pollinating
     drawBuzz();          // Buzz himself, always drawn on top
     particles.draw(ctx);
@@ -3058,7 +3251,9 @@ flowers.push({
     if (gameState !== "playing") return;
     var p = canvasPointFromEvent(e);
     var f = findFlowerAt(p.x, p.y, null);
+    lastActionAt = performance.now();
     if (f) {
+      if (coach.active && coach.index === 0) coach.advance();
       dragging = true;
       dragSourceId = f.id;
       dragTrail = [{ x: f.x, y: f.y }];
@@ -3099,6 +3294,10 @@ flowers.push({
       particles.burst(cx, cy, { glyphs: ["🍃"], count: 2, life: 700, minSpeed: 10, maxSpeed: 40, gravity: 20 });
       pollinate(source);
       pollinate(target);
+      if (coach.active && coach.index < 2) {
+        coach.goTo(2);
+        coachDoneAt = performance.now() + 4500;
+      }
     } else {
       // missed connection — small fizzle so the drag doesn't feel like it silently failed
       particles.burst(p.x, p.y, { glyphs: ["💫"], count: 4, life: 350, minSpeed: 30, maxSpeed: 70, gravity: 60 });
@@ -3129,6 +3328,16 @@ flowers.push({
       GOGSave.patch({ settings: { sound: !muted } });
     }
   });
+
+  var helpBtn = document.getElementById("helpBtn");
+  if (helpBtn) {
+    // Replay the guided intro: a fresh round with the coach on.
+    helpBtn.addEventListener("click", function () {
+      if (gameState !== "playing") return;
+      resetGame();
+      coach.start();
+    });
+  }
 
   /* ---------------- Boot ---------------- */
   var loop = new window.GOGEngine.GameLoop({ update: update, draw: draw, stepMs: 1000 / 60 });
