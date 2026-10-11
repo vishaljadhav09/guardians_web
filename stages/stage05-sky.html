@@ -622,14 +622,18 @@
 
   // STREAMLINED: one popup before play, matching stage01's pattern — the
   // guardian beat is the only pre-game dialog and starts play directly
-  // (no separate start panel/legend afterward). No narration file exists
-  // yet for Breezy, so this is text + avatar only.
+  // (no separate start panel/legend afterward). The intro line auto-plays like
+  // every other stage's; see audioPath/fallbackSpeech below.
   GOGUi.showGuardianBeat({
     emoji: "🌬️",
     name: "Breezy",
     role: "Guardian of the Sky",
     line: "The sky turned so grey and heavy with smoke… Will you help me clear it again?",
     audio: audio,
+    // Breezy's recorded line isn't delivered yet (see the stage 5 asset brief).
+    // Until breezy_intro_lines.mp3 lands, the 404 falls back to the browser voice.
+    audioPath: "assets/audio/stage05/breezy_intro_lines.mp3",
+    fallbackSpeech: true,
     buttonLabel: "Let's clear the sky!",
     autoDismissMs: 10000,
     onDone: function () {

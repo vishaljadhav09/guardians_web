@@ -238,6 +238,33 @@
     });
   }
 
+  // Runs fn once, on the next input the browser accepts as a user gesture for
+  // media playback (autoplay policy). Returns a cancel function. These are the
+  // "activation-triggering" events only: a touch's pointerdown does not unlock
+  // audio, its touchend/pointerup does. "click" is left out on purpose: real
+  // taps always fire one of these first, and a bare click (assistive tech) is
+  // handled by whichever button received it.
+  var GESTURE_EVENTS = ["mousedown", "pointerup", "touchend", "keydown"];
+  function onNextGesture(fn) {
+    if (!global.document) return function () {};
+    var armed = true;
+    function disarm() {
+      armed = false;
+      GESTURE_EVENTS.forEach(function (e) {
+        global.document.removeEventListener(e, fire, true);
+      });
+    }
+    function fire() {
+      if (!armed) return;
+      disarm();
+      fn();
+    }
+    GESTURE_EVENTS.forEach(function (e) {
+      global.document.addEventListener(e, fire, true);
+    });
+    return disarm;
+  }
+
   function Audio(muted) {
     this.muted = !!muted;
     this._ctx = null;
@@ -246,6 +273,7 @@
     this._bgMusic = null;
     this._ambientMusic = null;
     this._introBgm = null;
+    this._introBgmCancel = null;
   }
 
   Audio.prototype._ensureCtx = function () {
@@ -384,9 +412,18 @@
       var clip = new global.Audio(path);
       clip.loop = true;
       clip.volume = volume != null ? volume : 0.08;
+      var self = this;
       var playPromise = clip.play();
       if (playPromise && typeof playPromise.catch === "function") {
-        playPromise.catch(function () {});
+        playPromise.catch(function (err) {
+          // Autoplay blocked (direct page load, iOS/Safari): start on the first tap.
+          if (err && err.name === "NotAllowedError" && self._introBgm === clip) {
+            self._introBgmCancel = onNextGesture(function () {
+              self._introBgmCancel = null;
+              if (self._introBgm === clip && !self.muted) clip.play().catch(function () {});
+            });
+          }
+        });
       }
       this._introBgm = clip;
       return clip;
@@ -396,6 +433,10 @@
   };
 
   Audio.prototype.stopIntroBgm = function () {
+    if (this._introBgmCancel) {
+      this._introBgmCancel();
+      this._introBgmCancel = null;
+    }
     if (this._introBgm) {
       try {
         this._introBgm.pause();
@@ -479,41 +520,88 @@
   // to proceed. Per project requirement, intro/outro narration gates progression:
   // callers must not let the player continue until onEnded fires. If sound is
   // muted there is nothing to wait on, so onEnded fires immediately; a load/
-  // playback error or an autoplay block also resolves immediately rather than
-  // soft-locking the stage, and a safety timeout covers a clip whose "ended"
-  // event never fires for any other reason.
+  // playback error also resolves immediately rather than soft-locking the stage,
+  // and a safety timeout covers a clip whose "ended" event never fires for any
+  // other reason. onEnded(reason) says why: "ended" | "muted" | "error" |
+  // "blocked" | "timeout".
+  //
+  // Intro lines are meant to start on their own, but browsers refuse sound
+  // before the first tap (direct page load, iOS/Safari). A caller that passes
+  // opts.onBlocked(resume) opts in to waiting for that tap instead of skipping
+  // the line: the clip starts on the first tap anywhere (or when the caller
+  // invokes resume() from its own button), and opts.onResume() fires just
+  // before it does, so the UI can flip back to its "listening" state. A caller
+  // without onBlocked keeps the old behavior (resolve immediately as "blocked").
   Audio.prototype.playNarration = function (path, opts) {
     opts = opts || {};
     var onEnded = opts.onEnded || function () {};
     if (this.muted) {
-      onEnded();
+      onEnded("muted");
       return null;
     }
     var clip;
     try {
       clip = new global.Audio(path);
     } catch (e) {
-      onEnded();
+      onEnded("error");
       return null;
     }
     var done = false;
-    var safety = setTimeout(finish, opts.maxWaitMs || 20000);
-    function finish() {
+    var waiting = false;
+    var retries = 0;
+    var safety = null;
+    var cancelGesture = null;
+
+    function finish(reason) {
       if (done) return;
       done = true;
       clearTimeout(safety);
-      onEnded();
+      if (cancelGesture) cancelGesture();
+      onEnded(typeof reason === "string" ? reason : "ended");
     }
-    clip.addEventListener("ended", finish);
-    clip.addEventListener("error", finish);
-    try {
-      var playPromise = clip.play();
-      if (playPromise && typeof playPromise.catch === "function") {
-        playPromise.catch(finish);
+
+    function resume() {
+      if (done || !waiting) return;
+      waiting = false;
+      if (cancelGesture) {
+        cancelGesture();
+        cancelGesture = null;
       }
-    } catch (e) {
-      finish();
+      if (opts.onResume) opts.onResume();
+      begin();
     }
+
+    function begin() {
+      if (done) return;
+      clearTimeout(safety);
+      safety = setTimeout(function () { finish("timeout"); }, opts.maxWaitMs || 20000);
+      var playPromise;
+      try {
+        playPromise = clip.play();
+      } catch (e) {
+        finish("error");
+        return;
+      }
+      if (playPromise && typeof playPromise.catch === "function") {
+        playPromise.catch(function (err) {
+          if (done) return;
+          var blocked = !!(err && err.name === "NotAllowedError");
+          if (blocked && opts.onBlocked && retries < 3) {
+            retries++;
+            waiting = true;
+            clearTimeout(safety); // waiting on the child, not on the clip
+            cancelGesture = onNextGesture(resume);
+            opts.onBlocked(resume);
+          } else {
+            finish(blocked ? "blocked" : "error");
+          }
+        });
+      }
+    }
+
+    clip.addEventListener("ended", function () { finish("ended"); });
+    clip.addEventListener("error", function () { finish("error"); });
+    begin();
     return clip;
   };
 
@@ -577,6 +665,7 @@
     Collision: Collision,
     ParticleSystem: ParticleSystem,
     Audio: Audio,
+    onNextGesture: onNextGesture,
     fitCanvas: fitCanvas
   };
 })(window);

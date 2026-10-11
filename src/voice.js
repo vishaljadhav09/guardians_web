@@ -69,7 +69,8 @@
     activeBtn = null;
   }
 
-  function speak(text, btn) {
+  // onEnd (optional) fires when the line finishes, errors, or is cut off.
+  function speak(text, btn, onEnd) {
     if (!supported) return false;
     var line = clean(text);
     if (!line) return false;
@@ -82,9 +83,13 @@
     u.volume = 1;
     activeBtn = btn || null;
     setSpeaking(btn, true);
+    var finished = false;
     var done = function () {
+      if (finished) return;
+      finished = true;
       if (activeBtn === btn) activeBtn = null;
       setSpeaking(btn, false);
+      if (typeof onEnd === "function") onEnd();
     };
     u.onend = done;
     u.onerror = done;

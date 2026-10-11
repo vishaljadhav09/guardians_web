@@ -119,6 +119,14 @@
   // the Continue button (and the auto-dismiss timer) stays disabled until the
   // clip finishes, or fires immediately if sound is muted / the clip fails to
   // play, so a missing or broken file can never soft-lock the stage.
+  //
+  // The guardian's line is meant to play on its own as soon as the card opens.
+  // Browsers refuse sound before the first tap (direct page load, iOS/Safari),
+  // so in that case the button turns into "🔊 Tap to hear <name>" and the line
+  // (and the music bed) start on the first tap anywhere. opts.fallbackSpeech
+  // lets a guardian with no recorded clip yet (the file 404s) be read aloud in
+  // the browser's own voice instead of staying silent; it never replaces a clip
+  // that exists.
   function showGuardianBeat(opts) {
     opts = opts || {};
     var wrap = document.createElement("div");
@@ -157,6 +165,7 @@
       if (opts.audio && typeof opts.audio.stopIntroBgm === "function") {
         opts.audio.stopIntroBgm();
       }
+      if (global.GOGVoice) global.GOGVoice.stop();
       closeOverlay(wrap);
       if (opts.onDone) opts.onDone();
     }
@@ -166,7 +175,30 @@
     }
 
     var btn = card.querySelector('[data-role="continue"]');
+
+    // While the browser is holding the line back until a tap, this starts it;
+    // the button's click then means "play", not "continue".
+    var startLine = null;
+    function listeningState() {
+      startLine = null;
+      if (btn) {
+        btn.disabled = true;
+        btn.textContent = "Listening…";
+      }
+    }
+    function tapToHearState(start) {
+      startLine = start;
+      if (btn) {
+        btn.disabled = false;
+        btn.textContent = "🔊 Tap to hear" + (opts.name ? " " + opts.name : "");
+      }
+    }
+
     if (btn) btn.addEventListener("click", function () {
+      if (startLine) {
+        startLine();
+        return;
+      }
       if (global.GOGVoice) global.GOGVoice.stop();
       dismiss();
     });
@@ -179,7 +211,11 @@
       );
     }
 
+    var proceeded = false;
     function readyToProceed() {
+      if (proceeded) return;
+      proceeded = true;
+      startLine = null;
       if (btn) {
         btn.disabled = false;
         btn.textContent = continueLabel;
@@ -189,8 +225,48 @@
       }
     }
 
+    // Stand-in for a clip that hasn't been recorded yet: read the line in the
+    // browser's voice. The browser drops speech before the first tap, so in
+    // that case wait for the tap first, same as a blocked clip.
+    function speakInstead() {
+      var voice = global.GOGVoice;
+      if (!voice || !voice.supported) {
+        readyToProceed();
+        return;
+      }
+      function go() {
+        listeningState();
+        var safety = setTimeout(readyToProceed, 20000);
+        var spoke = voice.speak(opts.line, null, function () {
+          clearTimeout(safety);
+          readyToProceed();
+        });
+        if (!spoke) {
+          clearTimeout(safety);
+          readyToProceed();
+        }
+      }
+      var act = global.navigator && global.navigator.userActivation;
+      if (act && !act.hasBeenActive && global.GOGEngine && global.GOGEngine.onNextGesture) {
+        var cancel = global.GOGEngine.onNextGesture(go);
+        tapToHearState(function () {
+          cancel();
+          go();
+        });
+        return;
+      }
+      go();
+    }
+
     if (hasNarration) {
-      opts.audio.playNarration(opts.audioPath, { onEnded: readyToProceed });
+      opts.audio.playNarration(opts.audioPath, {
+        onEnded: function (reason) {
+          if (reason === "error" && opts.fallbackSpeech) speakInstead();
+          else readyToProceed();
+        },
+        onBlocked: tapToHearState,
+        onResume: listeningState
+      });
     } else {
       if (opts.audio && opts.audioPath && typeof opts.audio.playSfxFile === "function") {
         opts.audio.playSfxFile(opts.audioPath);
