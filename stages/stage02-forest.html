@@ -499,6 +499,14 @@
           <span class="chip">🌱 <span id="sproutsChip">0</span></span>
           <button
             class="icon-btn"
+            id="helpBtn"
+            title="How to play"
+            aria-label="How to play"
+          >
+            ❓
+          </button>
+          <button
+            class="icon-btn"
             id="muteBtn"
             title="Toggle sound"
             aria-label="Toggle sound"
@@ -536,6 +544,8 @@
     <script src="../src/constants.js"></script>
     <script src="../src/save.js"></script>
     <script src="../src/engine.js"></script>
+    <script src="../src/voice.js"></script>
+    <script src="../src/coach.js"></script>
     <script src="../src/ui.js"></script>
     <script src="../src/progression.js"></script>
     <script>
@@ -1220,6 +1230,19 @@
         var GRID_H = H * 0.55; // Grid height (was H / 2)
         var canvasFrame = document.getElementById("canvasFrame");
 
+        // Float labels are positioned in CSS pixels inside the frame, so convert
+        // from logical canvas coordinates (the frame is rarely exactly 960 wide).
+        var _floatLabel = GOGUi.floatLabel;
+        GOGUi.floatLabel = function (parent, x, y, text, color) {
+          if (parent === canvasFrame) {
+            var cr = canvas.getBoundingClientRect();
+            var fr = canvasFrame.getBoundingClientRect();
+            x = (x / W) * cr.width + (cr.left - fr.left - canvasFrame.clientLeft);
+            y = (y / H) * cr.height + (cr.top - fr.top - canvasFrame.clientTop);
+          }
+          _floatLabel(parent, x, y, text, color);
+        };
+
         var winWipeRadius = 0;
         var winWipeMax = Math.hypot(W, H) * 0.6;
         var winWiping = false;
@@ -1768,6 +1791,7 @@
         }
 
         // --- DIVERSE procedurally drawn trees & connections ---
+
         function drawTreeConnection(ctx, x1, y1, x2, y2) {
           ctx.save();
           ctx.strokeStyle = "#5c4033";
@@ -2158,6 +2182,7 @@
             console.warn("[sprites] Seaweed sprites failed to load:", e);
           }
         }
+
 
         function drawForestBackground(elapsed) {
           // Dynamic greyscale/barren background filter depending on wave progress
@@ -2797,6 +2822,7 @@
                 "Welcome! Plant trees to shield the rainforest from the Smog! 🌳",
               );
               startWave(1);
+              if (GOGCoach.shouldAutoStart(STAGE_ID)) coach.start();
             },
           });
         }
@@ -2921,7 +2947,7 @@
           // gates its buttons until it completes.
           setTimeout(function () {
             triggerSeedReturnCutscene(function () {
-              GOGUi.showOverlay({
+              var winOverlay = GOGUi.showOverlay({
                 accent: "var(--gog-white)",
                 title: "🌳 Canopy Restored!",
                 body: "“You grew my forest back! Now my friends have a home again! 🌳”<br><br>Ravi wakes up and a Seed of Life flies back to the Guardian Tree.",
@@ -2935,11 +2961,32 @@
                   window.location.href = "../index.html";
                 },
                 onSecondary: function () {
-                  window.location.reload();
+                  restartInPage(winOverlay);
                 },
               });
             });
           }, 600);
+        }
+
+        // Retry without reloading the page, so the "meet Ravi" intro and its
+        // narration don't replay every time (a reload also restarted the lesson).
+        function resetStage() {
+          raviArcStage = -1;
+          raviPounce = 0;
+          winWipeRadius = 0;
+          winWiping = false;
+          winWipeDone = false;
+          state.elapsed = 0;
+          state.canopyPercent = 0;
+          state.screenShake = 0;
+          state.desaturateTime = 0;
+          canvasFrame.classList.remove("flash-lose");
+          startWave(1);
+        }
+        function restartInPage(overlayEl) {
+          GOGUi.closeOverlay(overlayEl);
+          resetStage();
+          audio.playBgm();
         }
 
         function endLose() {
@@ -2961,13 +3008,13 @@
             loseGuide = "Ravi still needs a stronger canopy - next time, connect more grown trees before the Smog arrives.";
           }
           GOGUi.say(loseGuide);
-          GOGUi.showOverlay({
+          var loseOverlay = GOGUi.showOverlay({
             title: "🌫️ The forest is cloudy",
             body: loseGuide,
             primaryLabel: "Try Again",
             secondaryLabel: "Back to Map",
             onPrimary: function () {
-              window.location.reload();
+              restartInPage(loseOverlay);
             },
             onSecondary: function () {
               window.location.href = "../index.html";
@@ -3196,13 +3243,16 @@
           updateClouds(dt);
           updateInputs();
           updateRaviCharacter(dt);
+          updateCoach();
 
           // Advance logic model (growth, smog, timer) and read connection snaps
           if (GOGStage2.gameState === "WAVE_ACTIVE") {
             var grown = [];
-            if (calmMode) {
+            // Calm mode and the guided lesson both run growth only: no Smog and
+            // no countdown, so nobody can lose while they are still learning.
+            if (calmMode || coach.active) {
               grown = GOGStage2.advanceGrowth(dt);
-              if (GOGStage2.getCanopyPercent() >= GOGStage2.getCanopyTarget()) {
+              if (calmMode && GOGStage2.getCanopyPercent() >= GOGStage2.getCanopyTarget()) {
                 GOGStage2.winWave();
               }
             } else {
@@ -3248,11 +3298,11 @@
 
             // Connection snaps: Leaf / sparkle burst when tree grows
             var cellW = W / GOGStage2.cols;
-            var gridH = H / 2;
+            var gridH = GRID_H;
             var cellH = gridH / GOGStage2.rows;
             grown.forEach(function (coord) {
               var cx = coord.c * cellW + cellW / 2;
-              var cy = H / 2 + coord.r * cellH + cellH / 2;
+              var cy = GRID_Y_OFFSET + coord.r * cellH + cellH / 2;
               particles.burst(cx, cy, {
                 glyphs: ["🍃", "✨", "🟢"],
                 count: 18,
@@ -3388,6 +3438,15 @@
           var smogCol = Math.floor(GOGStage2.smogPosition);
           var best = null;
           var bestScore = -Infinity;
+          // Before anything is planted, the best first move is next to Ravi's
+          // root (column 0), so the first tree is connected from the start.
+          var anyGrowth = false;
+          for (var gr = 0; gr < GOGStage2.rows && !anyGrowth; gr++) {
+            for (var gc = 0; gc < GOGStage2.cols; gc++) {
+              var gs = GOGStage2.grid[gr][gc].state;
+              if (gs === "tree" || gs === "sapling") { anyGrowth = true; break; }
+            }
+          }
           for (var r = 0; r < GOGStage2.rows; r++) {
             for (var c = 0; c < GOGStage2.cols; c++) {
               var cell = GOGStage2.grid[r][c];
@@ -3402,6 +3461,7 @@
                 }
               }
               var score = adjacentGrowth * 100 - (smogCol - c);
+              if (!anyGrowth) score = (c === 0 ? 1000 : 0) - Math.abs(r - 1);
               if (score > bestScore) {
                 bestScore = score;
                 best = { r: r, c: c };
@@ -3506,7 +3566,9 @@
 
           // NEW: suggested-spot glow — only for calm mode or once auto-easing
           // has kicked in (assist > 0), so it's a helping hand, not a spoiler.
-          var showSuggestedSpot = calmMode || diff.getAssist() > 0;
+          // Also shown for the first ~10 seconds (and during the lesson) for
+          // everyone, so a first-time player always sees where to tap.
+          var showSuggestedSpot = calmMode || diff.getAssist() > 0 || state.elapsed < 10 || coach.active;
           var suggestedSpot = showSuggestedSpot ? findSuggestedPlantCell() : null;
 
           // 1. Draw Grid Cells
@@ -4307,9 +4369,125 @@
 
           drawForegroundGrass(state.elapsed);
           particles.draw(ctx);
+          drawCoachHints();
           drawWinWipe();
           ctx.restore();
         }
+        /* ---------------- guided lesson ----------------
+           Three short steps the first time the stage opens in a session (the
+           ❓ button replays them): tap a cloud, plant a tree, keep it
+           connected to Ravi's vine. Smog and the countdown are paused while
+           it runs (see update()), so nobody can lose during the lesson. */
+        var COACH_STEPS = [
+          { icon: "☁️", title: "Tap a cloud", text: "Tap a <b>cloud</b> to catch <b>saplings</b>.", say: "Tap a cloud to catch saplings." },
+          { icon: "🌱", title: "Plant a tree", text: "Tap the <b>green ring</b> to plant.", say: "Tap the green ring to plant a tree." },
+          { icon: "🌳", title: "Stay connected", text: "Link trees back to the <b>left edge</b>, where Ravi stands.", say: "Link your trees back to the left edge, where Ravi stands, so they stay green and strong." },
+        ];
+        var coachStartSaplings = 0;
+        var coachStep2At = 0;
+
+        var coach = GOGCoach.create({
+          stageId: STAGE_ID,
+          frame: canvasFrame,
+          steps: COACH_STEPS,
+          onStep: function (i) {
+            if (i === 0) {
+              coachStartSaplings = GOGStage2.saplings;
+              ensureCoachCloud();
+            } else if (i === 2) {
+              coachStep2At = state.elapsed;
+            }
+          },
+          onFinish: function (reason) {
+            GOGUi.say(
+              reason === "done"
+                ? "Great! Keep growing the canopy before the Smog arrives! 🌳"
+                : "Let's grow the canopy before the Smog arrives! 🌳",
+            );
+          },
+        });
+
+        function coachCloud() {
+          for (var i = 0; i < state.clouds.length; i++) {
+            var c = state.clouds[i];
+            // below the lesson banner, so it can actually be tapped
+            if (c.active && !c.raining && c.x > 70 && c.x < W - 70 && c.y > 125) return c;
+          }
+          return null;
+        }
+        function ensureCoachCloud() {
+          if (coachCloud()) return;
+          state.clouds.push({
+            x: W * 0.62, y: 168, vx: -14, vy: 0, size: 50, active: true,
+            raining: false, rainTimer: 0, dropSpawnTimer: 0, drops: [],
+          });
+        }
+        function countPlanted() {
+          var n = 0;
+          for (var r = 0; r < GOGStage2.rows; r++) {
+            for (var c = 0; c < GOGStage2.cols; c++) {
+              var s = GOGStage2.grid[r][c].state;
+              if (s === "sapling" || s === "tree") n++;
+            }
+          }
+          return n;
+        }
+
+        function updateCoach() {
+          if (!coach.active) return;
+          var i = coach.index;
+          if (i === 0) {
+            var tapped = GOGStage2.saplings > coachStartSaplings || state.clouds.some(function (c) { return c.raining; });
+            if (tapped || countPlanted() > 0) coach.advance();
+            else ensureCoachCloud();
+          } else if (i === 1) {
+            if (countPlanted() > 0) coach.advance();
+          } else if (i === 2) {
+            if (state.elapsed - coachStep2At > 7) coach.advance();
+          }
+        }
+
+        function drawCoachHints() {
+          if (!coach.active || !state.running) return;
+          var t = coach.t, i = coach.index;
+          var cellW = W / GOGStage2.cols;
+          var cellH = GRID_H / GOGStage2.rows;
+          ctx.save();
+          if (i === 0) {
+            var cl = coachCloud();
+            if (cl) {
+              GOGCoach.ring(ctx, cl.x, cl.y, 54, t);
+              GOGCoach.hand(ctx, cl.x, cl.y + 4, t, false);
+              GOGCoach.tag(ctx, cl.x, cl.y - 62, "Tap the cloud!");
+            }
+          } else if (i === 1) {
+            var spot = findSuggestedPlantCell();
+            if (spot) {
+              var sx = spot.c * cellW + cellW / 2;
+              var sy = GRID_Y_OFFSET + spot.r * cellH + cellH / 2;
+              GOGCoach.arrow(ctx, sx, sy - 34, t, "down");
+              GOGCoach.tag(ctx, sx, Math.max(110, sy - 92), "Tap the ring!");
+            } else if (GOGStage2.saplings <= 0) {
+              var cl2 = coachCloud();
+              if (cl2) GOGCoach.tag(ctx, cl2.x, cl2.y - 62, "Tap a cloud for saplings");
+            }
+          } else if (i === 2) {
+            var vy = GRID_Y_OFFSET + GRID_H * 0.45;
+            GOGCoach.arrow(ctx, 26, vy, t, "left");
+            GOGCoach.tag(ctx, 160, vy, "Link to this edge");
+          }
+          ctx.restore();
+        }
+
+        var helpBtn = document.getElementById("helpBtn");
+        if (helpBtn) {
+          helpBtn.addEventListener("click", function () {
+            if (!state.running) return;
+            resetStage();
+            coach.start();
+          });
+        }
+
         /* ---------------- start ---------------- */
         var loop = new GOGEngine.GameLoop({
           update: update,

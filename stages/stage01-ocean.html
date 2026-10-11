@@ -929,6 +929,14 @@
           </button>
           <button
             class="icon-btn"
+            id="helpBtn"
+            title="How to play"
+            aria-label="How to play"
+          >
+            ❓
+          </button>
+          <button
+            class="icon-btn"
             id="muteBtn"
             title="Toggle sound"
             aria-label="Toggle sound"
@@ -1172,6 +1180,8 @@
     <script src="../src/constants.js"></script>
     <script src="../src/save.js"></script>
     <script src="../src/engine.js"></script>
+    <script src="../src/voice.js"></script>
+    <script src="../src/coach.js"></script>
     <script src="../src/ui.js"></script>
     <script src="../src/progression.js"></script>
     <script>
@@ -1411,6 +1421,7 @@
               onDone: function () {
                 state.running = true;
                 playBackgroundMusic();
+                if (GOGCoach.shouldAutoStart(STAGE_ID)) coach.start();
               },
             });
           } catch (e) {
@@ -1894,6 +1905,7 @@
         }
 
         /* ---------------- NEW: swaying kelp (pure procedural, no art needed) ---------------- */
+        /* ---------------- swaying kelp: flat, ink-outlined, greener as the reef heals ---------------- */
         function drawKelp(t) {
           ctx.save();
           ctx.lineCap = "round";
@@ -2206,7 +2218,10 @@
         }
 
         function getDifficultyLevel() {
-          // Level 1 to 5 based on elapsed time (every 15 seconds steps up, max 5)
+          // Level 1 to 5 based on elapsed time (every 15 seconds steps up, max 5).
+          // Calm mode and the guided lesson stay on level 1: no ramp for the
+          // youngest players.
+          if (calmMode || coach.active) return 1;
           return Math.min(5, 1 + Math.floor(state.elapsed / 15));
         }
 
@@ -2234,11 +2249,11 @@
               color: "var(--gog-ink)",
             },
             {
-              text: "💀 Lvl 4",
+              text: "🔥 Lvl 4",
               bg: "var(--gog-pink)",
               color: "var(--gog-white)",
             },
-            { text: "☣️ MAX", bg: "#ef4444", color: "var(--gog-white)" },
+            { text: "⚡ MAX", bg: "#ef4444", color: "var(--gog-white)" },
           ];
 
           var config = colors[level - 1];
@@ -2256,7 +2271,7 @@
             canvasFrame,
             cx,
             cy,
-            "⚠️ Danger: " + config.text + "!",
+            "Faster tide! " + config.text,
             level >= 4 ? "#ef4444" : "var(--gog-cobalt)",
           );
 
@@ -2510,7 +2525,7 @@
             boostBtn.classList.remove("boost-cooldown");
           }
 
-          if (!calmMode) {
+          if (!calmMode && !coach.active) {
             state.timeLeft = Math.max(0, state.timeLeft - dt);
             var timerChipEl = document.getElementById("timerChip");
             timerChipEl.textContent = Math.ceil(state.timeLeft) + "s";
@@ -2534,7 +2549,8 @@
           scrollX += 60 * physicsDt;
 
           // --- spawn timers ---
-          updateSpawns(physicsDt);
+          if (!coach.active) updateSpawns(physicsDt);
+          updateCoach();
 
           // --- dolphin follows pointer, with keyboard fallback ---
           var boosting = state.elapsed < state.boostUntil; // NEW: Echo Boost in progress
@@ -2682,12 +2698,15 @@
             var offscreen = it.x < -80 || it.x > W + 80;
             if (offscreen) {
               if (it.type === "trash") {
-                damageLife();
-                if (state.lives <= 0) {
+                var forgiving = calmMode || coach.active;
+                if (!forgiving) damageLife();
+                if (!forgiving && state.lives <= 0) {
                   GOGUi.say("Too much trash escaped! 🗑️ Try again.");
                   endLose();
                   return;
-                } else {
+                } else if (forgiving) {
+                  GOGUi.say("That one swam away. Catch the next one! 🗑️");
+                  } else {
                   GOGUi.say("A piece of trash escaped! 🗑️ Hearts: " + state.lives);
                   GOGUi.floatLabel(
                     canvasFrame,
@@ -2779,8 +2798,8 @@
               }
             } else if (it.type === "turtle") {
               items.splice(i, 1);
-              if (dolphin.state === "attack") {
-                // Mistakenly attacked the turtle!
+              if (false) {
+                // (Removed: a hidden rule - touching a turtle just after scooping trash - confused kids. Turtles are always a reward now.)
                 if (!calmMode) {
                   state.turtleAttackCount++;
                   setReef(-10, it.x, it.y);
@@ -2837,8 +2856,8 @@
             } else if (it.type === "pearl") {
               // NEW: rare Golden Pearl — biggest single reward in the stage
               items.splice(i, 1);
-              if (dolphin.state === "attack") {
-                // Mistakenly crushed the pearl!
+              if (false) {
+                // (Removed: pearls are always a reward now.)
                 setReef(-12, it.x, it.y);
                 resetCombo();
                 particles.burst(it.x, it.y, {
@@ -2907,7 +2926,7 @@
               GOGUi.say("🎉 Hooray! You freed the tangled fish from plastic! 🐠");
               GOGUi.showToast("🎉 RESCUED! Tangled fish freed! +10 Reef", 3000);
             } else if (it.type === "pufferfish") {
-              if (state.elapsed < state.invulnUntil) continue;
+              if (state.elapsed < state.invulnUntil || coach.active) continue;
               items.splice(i, 1);
 
               var damage = 12;
@@ -2931,7 +2950,8 @@
 
               setReef(-damage, dolphin.x, dolphin.y);
               state.hits++;
-              if (state.hits > 3) {
+              if (!calmMode) shakeFrame();
+              if (state.hits > 3 && !calmMode) {
                 GOGUi.say("Too many smoggy fish hits! Try again.");
                 endLose();
                 return;
@@ -3233,6 +3253,8 @@
           ctx.restore();
         }
 
+        // vector Golden Pearl: an open clam shell with a pearl (replaces the 🦪 emoji)
+
         function drawItems() {
           items.forEach(function (it) {
             // NEW: items pop in with a little overshoot when they spawn, and wiggle gently
@@ -3463,6 +3485,7 @@
 
           drawHitFlash(); // NEW: brief red vignette when hit by a pufferfish
           drawHealFlash(); // NEW: brief green vignette when a heal/save occurs
+          drawCoachHints();
           drawWinWipe();
           rectUpdatedThisFrame = false;
         }
@@ -3598,7 +3621,7 @@
             // guardian-beat dialog first. The narration clip plays via the
             // overlay itself, which gates its buttons until it completes.
             triggerSeedReturnCutscene(function () {
-              GOGUi.showOverlay({
+              var winOverlay = GOGUi.showOverlay({
                 accent: "var(--gog-white)",
                 title: "🪸 The reef is blooming!",
                 body: "“You gave the reef its colours back! Thank you for saving my home. 🌈”<br><br>Splash wakes up and a Seed of Life flies back to the Guardian Tree.",
@@ -3612,7 +3635,7 @@
                   window.location.href = "../index.html";
                 },
                 onSecondary: function () {
-                  window.location.href = "stage01-ocean.html";
+                  restartInPage(winOverlay);
                 },
               });
             });
@@ -3630,19 +3653,175 @@
           // NEW: a gentle desaturating fade signals "not quite yet" without feeling harsh
           document.getElementById("canvasFrame").classList.add("flash-lose");
           GOGUi.say("Don't worry, Splash is ready to try again! 💙");
-          GOGUi.showOverlay({
+          var loseOverlay = GOGUi.showOverlay({
             title: "🌫️ The tide's still cloudy",
             body: "The reef needs a little more love. Want to dive back in? Nothing is lost.",
             primaryLabel: "Try Again",
             secondaryLabel: "Back to Map",
             onPrimary: function () {
-              window.location.href = "stage01-ocean.html";
+              restartInPage(loseOverlay);
             },
             onSecondary: function () {
               window.location.href = "../index.html";
             },
           });
         }
+
+                /* ---------------- guided lesson ----------------
+           Three short steps the first time the stage opens in a session (the
+           ❓ button replays them): swim, scoop trash, dodge purple fish. The
+           countdown, random spawns and all damage are paused while it runs, so
+           nobody can lose during the lesson. */
+        var COACH_STEPS = [
+          { icon: "🐬", title: "Swim!", text: "Move your finger to swim <b>Splash</b>.", keys: "Keys: <kbd>←</kbd> <kbd>→</kbd> <kbd>↑</kbd> <kbd>↓</kbd>", say: "Move your finger to swim Splash around." },
+          { icon: "🧴", title: "Scoop the trash", text: "Touch the <b>trash</b> to clean the reef.", say: "Touch the trash to clean the reef." },
+          { icon: "🐡", title: "Dodge purple fish", text: "Stay away from <b>purple fish</b>!", say: "Stay away from the purple fish." },
+        ];
+        var coachStart = { x: 0, y: 0 };
+        var coachReef0 = 0;
+        var coachStep2At = 0;
+
+        var coach = GOGCoach.create({
+          stageId: STAGE_ID,
+          frame: canvasFrame,
+          steps: COACH_STEPS,
+          onStep: function (i) {
+            if (i === 0) {
+              coachStart.x = dolphin.x;
+              coachStart.y = dolphin.y;
+            } else if (i === 1) {
+              coachReef0 = state.reef;
+              spawnCoachTrash();
+            } else if (i === 2) {
+              coachStep2At = state.elapsed;
+              spawnCoachPuffer();
+            }
+          },
+          onFinish: function (reason) {
+            // drop the lesson's leftovers so the real round starts clean
+            items = items.filter(function (it) { return !it.coach; });
+            GOGUi.say(reason === "done" ? "Great swimming! Now clean the whole reef! 🌊" : "Let's clean the reef! 🌊");
+          },
+        });
+
+        function coachItem(type) {
+          for (var i = 0; i < items.length; i++) {
+            if (items[i].coach && items[i].type === type) return items[i];
+          }
+          return null;
+        }
+        function spawnCoachTrash() {
+          if (coachItem("trash")) return;
+          items.push({
+            type: "trash", coach: true,
+            x: Collision.clamp(dolphin.x + 240, 180, W - 130), y: Collision.clamp(dolphin.y, 110, H - 120),
+            vx: -8, vy: 0, r: 29, glyph: "🧴", bob: 0, age: 0,
+          });
+        }
+        function spawnCoachPuffer() {
+          if (coachItem("pufferfish")) return;
+          items.push({
+            type: "pufferfish", coach: true,
+            x: W - 70, y: H * 0.3, vx: -34, vy: 16, r: 24, glyph: "🐡",
+            bob: 0, age: 0, armed: false, nearMissFired: false,
+          });
+        }
+
+        function updateCoach() {
+          if (!coach.active) return;
+          var i = coach.index;
+          if (i === 0) {
+            if (Math.hypot(dolphin.x - coachStart.x, dolphin.y - coachStart.y) > 170) coach.advance();
+          } else if (i === 1) {
+            if (state.reef > coachReef0 + 0.5) coach.advance();
+            else if (!coachItem("trash")) spawnCoachTrash();
+          } else if (i === 2) {
+            if (state.elapsed - coachStep2At > 6) coach.advance();
+            else if (!coachItem("pufferfish")) spawnCoachPuffer();
+          }
+        }
+
+        function drawCoachHints() {
+          if (!coach.active || !state.running) return;
+          var t = coach.t, i = coach.index;
+          ctx.save();
+          if (i === 0) {
+            var fx = Math.min(W - 110, coachStart.x + 260);
+            GOGCoach.dragDemo(ctx, { x: coachStart.x + 40, y: coachStart.y }, { x: fx, y: coachStart.y }, t, { arc: 40, radius: 34 });
+            GOGCoach.tag(ctx, (coachStart.x + fx) / 2, coachStart.y - 84, "Swim around!");
+          } else if (i === 1) {
+            var tr = coachItem("trash");
+            if (tr) {
+              GOGCoach.ring(ctx, tr.x, tr.y, 48, t);
+              GOGCoach.hand(ctx, tr.x, tr.y + 8, t, false);
+              GOGCoach.tag(ctx, tr.x, tr.y - 66, "Touch the trash!");
+            }
+          } else if (i === 2) {
+            var pf = coachItem("pufferfish");
+            if (pf) {
+              GOGCoach.ring(ctx, pf.x, pf.y, 52, t, "#FF5A5A");
+              GOGCoach.tag(ctx, Collision.clamp(pf.x, 90, W - 90), Math.max(110, pf.y - 70), "Don't touch!");
+            }
+          }
+          ctx.restore();
+        }
+
+        var helpBtn = document.getElementById("helpBtn");
+        if (helpBtn) {
+          helpBtn.addEventListener("click", function () {
+            if (!state.running) return;
+            resetRound();
+            coach.start();
+          });
+        }
+
+        // Retry without reloading the page, so the "meet Splash" intro and its
+        // narration don't replay every time (a reload also restarted the lesson).
+        function resetRound() {
+          state.won = false;
+          state.reef = 0;
+          state.sproutsEarned = 0;
+          state.hits = 0;
+          state.turtleAttackCount = 0;
+          state.timeLeft = TOTAL_TIME;
+          state.invulnUntil = 0;
+          state.elapsed = 0;
+          state.hitFlashUntil = 0;
+          state.healFlashUntil = 0;
+          state.introPlayed = false;
+          state.boostUntil = 0;
+          state.boostReadyAt = 0;
+          state.sonarUntil = 0;
+          state.slowMoUntil = 0;
+          state.lives = 3 + diff.bonusLives();
+          items = [];
+          shockwaves.length = 0;
+          sonarRipples.length = 0;
+          confetti.length = 0;
+          trail.length = 0;
+          milestonesHit = { 25: false, 50: false, 75: false };
+          trashTimer = 0; turtleTimer = 3; pufferTimer = 4; pearlTimer = 20; tangledFishTimer = 6;
+          currentDifficulty = 1;
+          winWipeRadius = 0;
+          winWiping = false;
+          winWipeDone = false;
+          dolphin.x = W * 0.5;
+          dolphin.y = H * 0.5;
+          dolphin.state = "swim";
+          resetCombo();
+          canvasFrame.classList.remove("flash-lose", "flash-win");
+          initLivesWidget();
+          lastReefValue = null;
+          lastSproutsValue = null;
+          flushUIUpdates();
+          state.running = true;
+        }
+        function restartInPage(overlayEl) {
+          GOGUi.closeOverlay(overlayEl);
+          resetRound();
+          playBackgroundMusic();
+        }
+
 
         /* ---------------- loop ---------------- */
         var loop = new GOGEngine.GameLoop({

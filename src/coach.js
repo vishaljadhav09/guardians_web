@@ -66,16 +66,28 @@
         '<div class="gog-coach-keys"></div>' +
         '<div class="gog-coach-dots" aria-hidden="true"></div>' +
         "</div>" +
+        '<button type="button" class="gog-voice-btn gog-coach-voice" aria-label="Read aloud">🔊</button>' +
         '<button type="button" class="gog-coach-skip">Skip ⏭</button>';
       frame.appendChild(el);
       el.querySelector(".gog-coach-skip").addEventListener("click", function () {
         finish("skipped");
       });
+      // Tap-to-hear: reads the step aloud on demand (never automatically).
+      var voiceBtn = el.querySelector(".gog-coach-voice");
+      if (global.GOGVoice) {
+        global.GOGVoice.attach(voiceBtn, function () {
+          var s = steps[index];
+          return s ? (s.title || "") + ". " + (s.say || s.text || "") : "";
+        });
+      } else {
+        voiceBtn.style.display = "none";
+      }
     }
 
     function render() {
       var s = steps[index];
       if (!el || !s) return;
+      if (global.GOGVoice) global.GOGVoice.stop();
       el.querySelector(".gog-coach-icon").textContent = s.icon || "👉";
       el.querySelector(".gog-coach-title").textContent = s.title || "";
       el.querySelector(".gog-coach-text").innerHTML = s.text || "";
@@ -123,6 +135,7 @@
       if (!running) return;
       running = false;
       index = -1;
+      if (global.GOGVoice) global.GOGVoice.stop();
       if (el) el.style.display = "none";
       if (stageId) markDone(stageId);
       if (opts.onFinish) opts.onFinish(reason || "done");

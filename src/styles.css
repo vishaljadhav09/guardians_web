@@ -784,3 +784,165 @@ body .stage-wrap {
   .gog-coach-title { font-size: 0.9rem; }
   .gog-coach-text { font-size: 0.78rem; }
 }
+
+
+/* ====================================================================
+   TAP-TO-HEAR VOICE BUTTON (src/voice.js)
+   ==================================================================== */
+.gog-voice-btn {
+  flex: 0 0 auto;
+  width: 48px;
+  height: 48px;
+  min-width: 48px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  font-size: 1.35rem;
+  line-height: 1;
+  background: var(--gog-white);
+  border: 3px solid var(--gog-ink);
+  border-radius: 50%;
+  box-shadow: 3px 3px 0 var(--gog-ink);
+  cursor: pointer;
+}
+.gog-voice-btn:active { transform: translate(3px, 3px); box-shadow: none; }
+.gog-voice-btn.speaking {
+  background: var(--gog-lime);
+  animation: gogVoicePulse 0.9s ease-in-out infinite;
+}
+@keyframes gogVoicePulse {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.1); }
+}
+.gog-coach-voice { align-self: center; }
+/* card header voice buttons sit in the corner of the guardian / how-to-play cards */
+.gog-guardian-card .card-inner, .gog-play-card .card-inner { position: relative; }
+.gog-card-voice { position: absolute; top: 6px; right: 6px; width: 44px; height: 44px; min-width: 44px; font-size: 1.15rem; z-index: 2; }
+.gog-overlay-voice { margin: 0 auto 10px; }
+@media (prefers-reduced-motion: reduce) {
+  .gog-voice-btn.speaking { animation: none; }
+}
+
+/* ====================================================================
+   TAP TARGETS — every HUD button is at least 48px (44px in the compact
+   phone-landscape row), including small and iPad-landscape widths where
+   the per-stage styles used to shrink them to 32px.
+   ==================================================================== */
+body .stage-hud .icon-btn {
+  width: 48px !important;
+  height: 48px !important;
+  min-width: 48px !important;
+  min-height: 48px !important;
+  font-size: 1.25rem !important;
+}
+body .stage-hud .stage-controls .brutal-btn,
+body .stage-hud .brutal-btn.ghost {
+  min-height: 48px !important;
+}
+.gog-coach-skip { min-height: 44px; padding: 6px 12px; font-size: 0.85rem; }
+
+/* ====================================================================
+   PHONE LANDSCAPE — the play area is the hero.
+   On a phone held sideways (short height) the title bar + guide bar used to
+   eat more than half the screen and the canvas shrank to a thumbnail.
+   Here the HUD collapses to one compact row, the text guide bar (which
+   non-readers can't use anyway) is hidden, and the canvas takes the height.
+   The Guardian / How-to-Play cards stay below the canvas (scroll down).
+   ==================================================================== */
+@media (orientation: landscape) and (max-height: 520px) {
+  body .stage-wrap { padding: 4px 8px !important; }
+  body .stage-hud {
+    display: flex !important;
+    flex-wrap: wrap !important;
+    align-items: center !important;
+    gap: 6px !important;
+    margin: 0 0 4px !important;
+    padding: 0 !important;
+  }
+  body .stage-hud .stage-title { display: none !important; }
+  body .stage-hud .hud-mid {
+    display: flex !important;
+    flex: 1 1 auto !important;
+    flex-wrap: wrap !important;
+    align-items: center !important;
+    justify-content: center !important;
+    gap: 6px !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    width: auto !important;
+  }
+  body .stage-hud .chip,
+  body .stage-hud .meter {
+    min-height: 40px !important;
+    padding-top: 2px !important;
+    padding-bottom: 2px !important;
+    font-size: 0.8rem !important;
+  }
+  body .stage-hud .icon-btn {
+    width: 44px !important;
+    height: 44px !important;
+    min-width: 44px !important;
+    min-height: 44px !important;
+    font-size: 1.1rem !important;
+  }
+  body .stage-hud .stage-controls { margin: 0 !important; gap: 6px !important; flex-wrap: nowrap !important; }
+  body .stage-hud .stage-controls .brutal-btn {
+    min-height: 44px !important;
+    padding: 4px 12px !important;
+    font-size: 0.8rem !important;
+  }
+  body .guideBar { display: none !important; }
+  body .gog-stage-layout {
+    flex-direction: column !important;
+    align-items: center !important;
+    gap: 10px !important;
+    width: 100% !important;
+  }
+  body .gog-stage-layout #canvasFrame {
+    order: 1 !important;
+    flex-grow: 0 !important;
+    width: 100% !important;
+    max-width: calc((100vh - 70px) * var(--gog-frame-aspect, 1.6)) !important;
+    max-height: calc(100vh - 70px) !important;
+    margin: 0 auto !important;
+  }
+  body .gog-guardian-card { order: 2 !important; width: 100% !important; max-width: 420px !important; }
+  body .gog-play-card { order: 3 !important; width: 100% !important; max-width: 420px !important; }
+}
+@supports (height: 100dvh) {
+  @media (orientation: landscape) and (max-height: 520px) {
+    body .gog-stage-layout #canvasFrame {
+      max-width: calc((100dvh - 70px) * var(--gog-frame-aspect, 1.6)) !important;
+      max-height: calc(100dvh - 70px) !important;
+    }
+  }
+}
+
+/* compact phone-landscape extras: icon-only home button + slim coach banner */
+@media (orientation: landscape) and (max-height: 520px) {
+  body .stage-hud .stage-controls .brutal-btn {
+    font-size: 0 !important;
+    width: 44px !important;
+    min-width: 44px !important;
+    padding: 0 !important;
+    border-radius: 50% !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+  }
+  body .stage-hud .stage-controls .brutal-btn::before { content: "\1F3E0"; font-size: 1.15rem; }
+  body .stage-hud .calm-badge { display: none !important; }
+  .gog-coach-keys, .gog-coach-dots { display: none !important; }
+  .gog-coach { top: 6px; gap: 8px; padding: 5px 8px; border-width: 2px; }
+  .gog-coach-icon { font-size: 1.5rem; }
+  .gog-coach-title { font-size: 0.9rem; }
+  .gog-coach-text { font-size: 0.78rem; }
+  .gog-coach .gog-voice-btn { width: 40px; height: 40px; min-width: 40px; font-size: 1.1rem; }
+  .gog-coach-skip { min-height: 40px; padding: 4px 10px; }
+}
+
+/* phone landscape: least important HUD chips fold away (marked .hud-extra) */
+@media (orientation: landscape) and (max-height: 520px) {
+  body .stage-hud .hud-extra { display: none !important; }
+}

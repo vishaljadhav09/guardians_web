@@ -79,6 +79,17 @@
     if (primaryBtn && opts.onPrimary) primaryBtn.addEventListener("click", opts.onPrimary);
     if (secondaryBtn && opts.onSecondary) secondaryBtn.addEventListener("click", opts.onSecondary);
 
+    // Tap-to-hear for the result / fact text (never plays on its own).
+    if (global.GOGVoice && global.GOGVoice.supported && (opts.title || opts.body || opts.factText)) {
+      var rowEl = card.lastElementChild;
+      if (rowEl) {
+        var vb = global.GOGVoice.createButton(function () {
+          return [opts.title, opts.body, opts.factText].filter(Boolean).join(". ");
+        });
+        rowEl.insertBefore(vb, rowEl.firstChild);
+      }
+    }
+
     if (hasNarration) {
       opts.narrationAudio.playNarration(opts.narrationPath, {
         onEnded: function () {
@@ -155,7 +166,18 @@
     }
 
     var btn = card.querySelector('[data-role="continue"]');
-    if (btn) btn.addEventListener("click", dismiss);
+    if (btn) btn.addEventListener("click", function () {
+      if (global.GOGVoice) global.GOGVoice.stop();
+      dismiss();
+    });
+
+    // Tap-to-hear: the Guardian's line read aloud on demand, for non-readers.
+    if (global.GOGVoice && global.GOGVoice.supported && btn && btn.parentNode) {
+      btn.parentNode.insertBefore(
+        global.GOGVoice.createButton(function () { return (opts.name ? opts.name + " says. " : "") + (opts.line || ""); }),
+        btn
+      );
+    }
 
     function readyToProceed() {
       if (btn) {
@@ -280,7 +302,7 @@
         play: {
           emoji: "🎮",
           goal: "Collect plastic trash from the reef before the timer runs out or health drops!",
-          controls: "<strong>Move:</strong> Move your mouse or drag your finger to swim.<br><strong>Collect:</strong> Pick up plastic to clean the reef.<br><strong>Help:</strong> Save 🐢 turtles for bonus points.<br><strong>Avoid:</strong> Stay away from 🐡 pufferfish—they hurt!<br><strong>Boost:</strong> Click 💨 or press <strong>Spacebar</strong> to dash through trash"
+          controls: "<strong>Move:</strong> Move your mouse or drag your finger to swim.<br><strong>Collect:</strong> Touch the plastic to clean the reef.<br><strong>Help:</strong> Touch 🐢 turtles and golden pearls for bonus points.<br><strong>Avoid:</strong> Stay away from purple 🐡 fish—they bump you!<br><em>Stuck? Tap ❓ at the top to replay the guide.</em>"
         }
       },
       "stage02": {
@@ -292,7 +314,7 @@
         play: {
           emoji: "🌱",
           goal: "Plant trees to grow a protective canopy and stop the logging machines!",
-          controls: "<strong>Plant:</strong> Tap an empty spot to plant a tree.<br><strong>Grow:</strong> Connect grown trees to build a canopy.<br><strong>Collect:</strong> Tap ☁️ clouds to get more 🌱 saplings.<br><strong>Block:</strong> Build a strong canopy to stop the 🌫️ Smog.<br><strong>Win:</strong> Reach the canopy goal before time runs out!"
+          controls: "<strong>Plant:</strong> Tap an empty spot (the glowing green ring shows a good one) to plant a tree.<br><strong>Connect:</strong> Trees linked back to the left edge, where Ravi stands, stay green. Cut-off trees turn grey.<br><strong>Collect:</strong> Tap ☁️ clouds to get more 🌱 saplings.<br><strong>Block:</strong> Build a strong canopy to stop the 🌫️ Smog.<br><strong>Win:</strong> Reach the canopy goal before time runs out!<br><em>Stuck? Tap ❓ at the top to replay the guide.</em>"
         }
       },
       "stage03": {
@@ -328,7 +350,7 @@
         play: {
           emoji: "⚡",
           goal: "Light up every building in the city with clean sun power!",
-          controls: "<strong>1. Fly:</strong> Drag your finger (or mouse) up and down, or press ⬆️ ⬇️. Breezy follows you.<br><strong>2. Ride the wind:</strong> Fly inside a white wind ribbon 🌬️ — it makes Breezy sparkle.<br><strong>3. Grab a sun:</strong> While you are <em>inside</em> the wind, touch a ☀️ sun. One building lights up!<br><strong>Careful:</strong> Grey smoke ☁️ dirties the sky — fly through the green dotted gap.<br><strong>Win:</strong> Light every building and the sky turns blue again 🌈<br><em>Stuck? Tap ❓ at the top to replay the guide.</em>"
+          controls: "<strong>1. Fly:</strong> Drag your finger (or mouse) up and down, or press ⬆️ ⬇️. Breezy follows you.<br><strong>2. Ride the wind:</strong> Fly inside a blue wind ribbon 🌬️ — it makes Breezy sparkle.<br><strong>3. Grab a sun:</strong> While you are <em>inside</em> the wind, touch a ☀️ sun (suns with a wind badge need the wind first). One building lights up!<br><strong>Careful:</strong> Grey smoke ☁️ dirties the sky — fly through the green gap.<br><strong>Win:</strong> Light every building and the sky turns blue again 🌈<br><em>Stuck? Tap ❓ at the top to replay the guide.</em>"
         }
       }
     };
@@ -405,6 +427,22 @@
       playHtml += '</div>';
 
       playCard.innerHTML = playHtml;
+
+      // Tap-to-hear buttons so kids who can't read yet can listen instead.
+      if (global.GOGVoice && global.GOGVoice.supported) {
+        var factInner = card.querySelector(".card-inner");
+        if (factInner) {
+          factInner.appendChild(global.GOGVoice.createButton(function () {
+            return "Did you know? " + data.fact + " " + data.name + " says. " + data.quote;
+          }, "gog-card-voice"));
+        }
+        var playInner = playCard.querySelector(".card-inner");
+        if (playInner) {
+          playInner.appendChild(global.GOGVoice.createButton(function () {
+            return "Your goal. " + data.play.goal + " " + data.play.controls;
+          }, "gog-card-voice"));
+        }
+      }
 
       // Add cards to the wrapper
       wrapper.insertBefore(card, canvasFrame);
