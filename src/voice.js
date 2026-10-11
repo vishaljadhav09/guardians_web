@@ -51,7 +51,7 @@
       .replace(/<br\s*\/?>/gi, ". ")
       .replace(/<[^>]+>/g, " ")
       .replace(/&nbsp;/g, " ")
-      .replace(/[\u{1F000}-\u{1FAFF}\u{2190}-\u{21FF}\u{2300}-\u{23FF}\u{2600}-\u{27BF}\u{2B00}-\u{2BFF}️‍]/gu, "")
+      .replace(/[\u{1F000}-\u{1FAFF}\u{2190}-\u{21FF}\u{2300}-\u{23FF}\u{25A0}-\u{25FF}\u{2600}-\u{27BF}\u{2B00}-\u{2BFF}️‍]/gu, "")
       .replace(/\s+/g, " ")
       .replace(/\.\s*\./g, ".")
       .trim();

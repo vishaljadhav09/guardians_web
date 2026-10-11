@@ -416,6 +416,70 @@ img, svg { display: block; max-width: 100%; }
   width: 100%;
 }
 
+/* "How to Play" card: one big picture + one short sentence per row, so a
+   child who can't read yet can follow the pictures (and 🔊 reads the words). */
+.gog-play-card .play-goal {
+  font-family: var(--gog-font-head);
+  font-size: 16px;
+  font-weight: 800;
+  line-height: 1.3;
+  text-align: center;
+}
+.gog-play-card .play-steps {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin: 8px 0 0;
+  padding: 10px 8px;
+  font-size: 15px;
+  font-weight: 700;
+  line-height: 1.3;
+  box-sizing: border-box;
+}
+.gog-play-card .play-step {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.gog-play-card .play-step-icon {
+  flex: 0 0 auto;
+  width: 40px;
+  height: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 24px;
+  line-height: 1;
+  /* sky-blue tile so white clouds / grey smog icons stay visible */
+  background: #BFE3FF;
+  border: 3px solid var(--gog-ink);
+  border-radius: 12px;
+  box-shadow: 2px 2px 0 var(--gog-ink);
+}
+.gog-play-card .play-step-text { min-width: 0; }
+.gog-play-card .play-step.win .play-step-icon { background: var(--gog-lime); }
+.gog-play-card .play-step.win .play-step-text {
+  font-family: var(--gog-font-head);
+  font-weight: 800;
+}
+.gog-play-card .play-keys {
+  display: block;
+  margin-top: 2px;
+  font-size: 12px;
+  font-weight: 700;
+  opacity: 0.8;
+}
+@media (hover: none) {
+  .gog-play-card .play-keys { display: none; }
+}
+.gog-play-card .play-help {
+  margin: 8px 0 0;
+  font-size: 13px;
+  font-weight: 700;
+  text-align: center;
+}
+
 /* Theme color definitions for cards */
 .gog-guardian-card.theme-stage01,
 .gog-play-card.theme-stage01 {

@@ -444,7 +444,7 @@
     <div class="guideBar">
       <div class="guideAvatar" aria-hidden="true">🌬️</div>
       <div class="guideBubble" id="guideText">
-        Guide Breezy through the sky and gather glowing energy orbs! ✨
+        Fly Breezy to the suns to light up the city! ☀️
       </div>
     </div>
 
@@ -839,7 +839,7 @@
     buildBuildings();
     resetWindSystem(); // WIND HOOK — clear/reset Clean Wind Currents on every new run
     updateHUD();
-    updateGuide("Hi, I'm Spika! 🦉 Let's help Breezy gather energy orbs to light up the city! Let's go! ⚡", true);
+    updateGuide("Let's light up the city! Fly into the blue wind, then touch a sun ☀️", true);
     audio.playBgm();
   }
 
@@ -1294,9 +1294,9 @@
           } else if (score === 5) {
             updateGuide("More than half way! Breezy is flying like a superstar! 🌤️🎈", true);
           } else if (score === 7) {
-            updateGuide("Just one more orb to power the whole city! You can do it! 🏆🚀", true);
+            updateGuide("Just one more sun to light the whole city! You can do it! 🏆🚀", true);
           } else if (score < ENERGY_TARGET) {
-            updateGuide("Yay! Another energy orb! Keep going! 🌟🎉", true);
+            updateGuide("Yay! Another building is lit! Keep going! 🌟🎉", true);
           }
           
           if(score >= ENERGY_TARGET){
@@ -1306,7 +1306,7 @@
           // Play a tiny warning effect so they know it can only be collected in the wind wave
           if (Math.random() < 0.12 * dt) {
             spawnFloatText(o.x, o.y - 12, "Need Wind! 💨", '#ff5555');
-            updateGuide("Breezy can only absorb energy inside the clean wind waves! 🌤️💨");
+            updateGuide("Fly into the blue wind first, then touch the sun! 🌬️☀️");
           }
         }
       }
@@ -1465,9 +1465,9 @@
   // smoke can't empty Sky Health while it runs, so nobody can fail the lesson.
   // ---------------------------------------------------------------
   const COACH_STEPS = [
-    { icon: '👆', title: 'Steer Breezy', text: 'Slide your finger <b>up and down</b>.', keys: 'Keys: <kbd>↑</kbd> <kbd>↓</kbd>', say: 'Slide your finger up and down to fly Breezy.' },
-    { icon: '☁️', title: 'Dodge the smoke', text: 'Fly through the <b>green gap</b>.', say: 'Fly through the green gap in the smoke.' },
-    { icon: '☀️', title: 'Ride the wind', text: 'Fly into the <b>blue wind</b>, then touch a <b>sun</b>.', say: 'Fly into the blue wind, then touch a sun to light up a building.' }
+    { icon: '👆', title: 'Fly Breezy', text: 'Slide your finger <b>up and down</b>.', keys: 'Keys: <kbd>↑</kbd> <kbd>↓</kbd>', say: 'Slide your finger up and down to fly Breezy.' },
+    { icon: '☁️', title: 'Dodge the smoke', text: 'Grey smoke hurts the sky. Fly through the <b>green gap</b>!', say: 'Grey smoke hurts the sky. Fly through the green gap.' },
+    { icon: '☀️', title: 'Ride the wind', text: 'Fly into the <b>blue wind</b>. Then touch the <b>sun</b>!', say: 'Fly into the blue wind. Then touch the sun to light up a building.' }
   ];
   let coachSmoke = null;   // the smoke column step 2 points at
   let coachSunTimer = 0;   // frames until another demo sun may be placed

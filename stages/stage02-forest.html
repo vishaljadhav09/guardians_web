@@ -523,7 +523,7 @@
       <div class="guideBar">
         <div class="guideAvatar" aria-hidden="true">🦋</div>
         <div class="guideBubble" id="guideText">
-          Help Ravi grow the canopy and protect the rainforest! 🌳
+          Tap clouds to get baby trees, then plant them! 🌳
         </div>
       </div>
 
@@ -4379,9 +4379,9 @@
            connected to Ravi's vine. Smog and the countdown are paused while
            it runs (see update()), so nobody can lose during the lesson. */
         var COACH_STEPS = [
-          { icon: "☁️", title: "Tap a cloud", text: "Tap a <b>cloud</b> to catch <b>saplings</b>.", say: "Tap a cloud to catch saplings." },
-          { icon: "🌱", title: "Plant a tree", text: "Tap the <b>green ring</b> to plant.", say: "Tap the green ring to plant a tree." },
-          { icon: "🌳", title: "Stay connected", text: "Link trees back to the <b>left edge</b>, where Ravi stands.", say: "Link your trees back to the left edge, where Ravi stands, so they stay green and strong." },
+          { icon: "☁️", title: "Tap a cloud", text: "Tap a <b>cloud</b> to get baby trees 🌱", say: "Tap a cloud to get baby trees." },
+          { icon: "🌱", title: "Plant a tree", text: "Tap the <b>green ring</b> to plant your baby tree.", say: "Tap the green ring to plant your baby tree." },
+          { icon: "🌳", title: "Make a chain", text: "Keep your trees in a chain, back to <b>Ravi</b> on the left.", say: "Keep your trees in a chain, back to Ravi on the left, so they stay green and strong." },
         ];
         var coachStartSaplings = 0;
         var coachStep2At = 0;
@@ -4401,8 +4401,8 @@
           onFinish: function (reason) {
             GOGUi.say(
               reason === "done"
-                ? "Great! Keep growing the canopy before the Smog arrives! 🌳"
-                : "Let's grow the canopy before the Smog arrives! 🌳",
+                ? "Great! Keep planting trees before the smog arrives! 🌳"
+                : "Let's plant trees before the smog arrives! 🌳",
             );
           },
         });
@@ -4474,7 +4474,7 @@
           } else if (i === 2) {
             var vy = GRID_Y_OFFSET + GRID_H * 0.45;
             GOGCoach.arrow(ctx, 26, vy, t, "left");
-            GOGCoach.tag(ctx, 160, vy, "Link to this edge");
+            GOGCoach.tag(ctx, 160, vy, "Chain back to Ravi");
           }
           ctx.restore();
         }

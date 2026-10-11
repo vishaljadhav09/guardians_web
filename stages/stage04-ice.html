@@ -632,7 +632,7 @@
       <div class="guideBar">
         <div class="guideAvatar" aria-hidden="true">🐧</div>
         <div class="guideBubble" id="guideText">
-          Walk to a chick, tap 🐥 GRAB (or press E), then carry it to the safe iceberg! 🐧
+          Walk to a chick, tap 🐥 GRAB, then carry it to the SAFE iceberg! 🐧
         </div>
       </div>
 
@@ -1436,27 +1436,31 @@
             icon: "➡️",
             title: "Walk",
             text: "Hold <b>◀ ▶</b> to walk Penny.",
+            say: "Hold the left and right buttons to walk Penny.",
             keys: "Keys: <kbd>A</kbd> <kbd>D</kbd> or <kbd>←</kbd> <kbd>→</kbd>",
             pulse: ["left", "right"],
           },
           {
             icon: "⬆️",
             title: "Jump",
-            text: "Tap <b>▲ Jump</b> to hop onto the ice.",
+            text: "Tap <b>▲ Jump</b> to hop onto the ice!",
+            say: "Tap the Jump button to hop onto the ice.",
             keys: "Keys: <kbd>W</kbd> or <kbd>Space</kbd>",
             pulse: ["jump"],
           },
           {
             icon: "🐥",
             title: "Grab a chick",
-            text: "Stand next to the little chick, then tap <b>Grab</b>.",
+            text: "Walk up to the chick, then tap <b>Grab</b>!",
+            say: "Walk up to the chick, then tap Grab.",
             keys: "Key: <kbd>E</kbd>",
             pulse: ["action"],
           },
           {
             icon: "🏠",
             title: "Take it home",
-            text: "Carry the chick back to the <b>SAFE ICEBERG</b> 💚",
+            text: "Carry the chick to the <b>SAFE iceberg</b> 💚",
+            say: "Carry the chick to the safe iceberg.",
             pulse: [],
           },
         ];
@@ -1684,7 +1688,7 @@
           state.warmth = clamp(state.warmth + warmingRate * dt, 0, 1);
           if (!valveTipShown && !learning && state.warmth >= 0.35) {
             valveTipShown = true;
-            GOGUi.say("Warmth is rising! Run to the valve and tap ☸️ SPIN to cool the ice ❄️");
+            GOGUi.say("The ice is getting warm! Run to the SPIN VALVE and tap SPIN ☸️ to cool it ❄️");
           }
           if (state.warmth > 0.8 && (STAGE_DURATION - state.timeLeft) < 15 && !diff.softClutched) {
             diff.softClutch();

@@ -612,7 +612,7 @@
     <div class="guideBar">
       <div class="guideAvatar" aria-hidden="true">🐝</div>
       <div class="guideBubble" id="guideText">
-        Press a glowing flower, then drag Buzz to a second flower! 🐝➡️🌼
+        Touch a glowing flower, then slide Buzz to another one! 🐝➡️🌼
       </div>
     </div>
 
@@ -740,9 +740,9 @@
      wait, so nobody can lose the lesson. After the lesson, a faint looping
      demo reappears whenever the player has been idle for a few seconds. */
   var COACH_STEPS = [
-    { icon: "👆", title: "Press a flower", text: "Touch a glowing flower and <b>hold</b> it." },
-    { icon: "🐝", title: "Drag to the other flower", text: "Slide Buzz across to the second flower, then <b>let go</b>." },
-    { icon: "🌸", title: "Bloom!", text: "Match pairs <b>before the ring runs out</b>. Every pair makes fruit for the animals!" }
+    { icon: "👆", title: "Touch a flower", text: "Touch a glowing <b>flower</b> and hold on.", say: "Touch a glowing flower and hold on." },
+    { icon: "🐝", title: "Slide to another", text: "Slide <b>Buzz</b> to another glowing flower. Then <b>let go</b>!", say: "Slide Buzz to another glowing flower. Then let go." },
+    { icon: "🌸", title: "Bloom!", text: "Both flowers bloom! <b>Be quick</b>, the ring is a timer.", say: "Both flowers bloom! Be quick. The ring is a timer." }
   ];
   var coachDoneAt = 0;
   var lastActionAt = 0;
@@ -751,7 +751,7 @@
     frame: document.getElementById("canvasFrame"),
     steps: COACH_STEPS,
     onFinish: function (reason) {
-      GOGUi.say(reason === "done" ? "Great! Keep matching flowers before they wilt! 🐝" : "Drag Buzz from one glowing flower to another! 🐝");
+      GOGUi.say(reason === "done" ? "Great! Keep making flowers bloom! 🐝" : "Slide Buzz from one glowing flower to another! 🐝");
     }
   });
 

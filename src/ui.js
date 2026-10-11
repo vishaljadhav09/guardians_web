@@ -377,8 +377,14 @@
         quote: "When we clear the plastic from our waters, we help the ocean breathe and thrive!",
         play: {
           emoji: "🎮",
-          goal: "Collect plastic trash from the reef before the timer runs out or health drops!",
-          controls: "<strong>Move:</strong> Move your mouse or drag your finger to swim.<br><strong>Collect:</strong> Touch the plastic to clean the reef.<br><strong>Help:</strong> Touch 🐢 turtles and golden pearls for bonus points.<br><strong>Avoid:</strong> Stay away from purple 🐡 fish—they bump you!<br><em>Stuck? Tap ❓ at the top to replay the guide.</em>"
+          goal: "Clean up the reef! Swim into the trash.",
+          steps: [
+            { icon: "👆", text: "Drag your finger. Splash swims after it.", keys: "Keys: ← → ↑ ↓" },
+            { icon: "🧴", text: "Swim into trash to clean it. Catch it before it floats away!" },
+            { icon: "🐢", text: "Touch turtles, pearls and stuck fish for a treat!" },
+            { icon: "🐡", text: "Don't touch the purple puffer fish!" },
+            { icon: "🏆", text: "Fill the REEF bar to win!", win: true },
+          ]
         }
       },
       "stage02": {
@@ -389,8 +395,14 @@
         quote: "Every tree we grow makes our canopy stronger and shelters my forest friends!",
         play: {
           emoji: "🌱",
-          goal: "Plant trees to grow a protective canopy and stop the logging machines!",
-          controls: "<strong>Plant:</strong> Tap an empty spot (the glowing green ring shows a good one) to plant a tree.<br><strong>Connect:</strong> Trees linked back to the left edge, where Ravi stands, stay green. Cut-off trees turn grey.<br><strong>Collect:</strong> Tap ☁️ clouds to get more 🌱 saplings.<br><strong>Block:</strong> Build a strong canopy to stop the 🌫️ Smog.<br><strong>Win:</strong> Reach the canopy goal before time runs out!<br><em>Stuck? Tap ❓ at the top to replay the guide.</em>"
+          goal: "Grow a big green forest to keep the smog out!",
+          steps: [
+            { icon: "☁️", text: "Tap a cloud to get saplings." },
+            { icon: "🌱", text: "Tap a glowing green ring to plant a tree." },
+            { icon: "🌳", text: "Plant trees in a chain from Ravi, on the left. Linked trees stay green!" },
+            { icon: "🌫️", text: "Grey smog creeps in from the right. A tall wall of trees stops it!" },
+            { icon: "🏆", text: "Fill the CANOPY bar to win!", win: true },
+          ]
         }
       },
       "stage03": {
@@ -401,8 +413,14 @@
         quote: "By planting wildflowers, we keep our meadows buzzing and food chains healthy!",
         play: {
           emoji: "🐝",
-          goal: "Fly Buzz along paths to pollinate flowers and make them bloom!",
-          controls: "<strong>1. Press</strong> a glowing flower and hold it.<br><strong>2. Drag</strong> Buzz 🐝 across to a second flower and let go — both bloom 🌸.<br><strong>Hurry:</strong> the ring around a flower is its timer. When it runs out the flower wilts.<br><strong>Feed:</strong> blooms drop fruit 🍎 for hungry animals.<br><strong>Careful:</strong> miss 3 flowers in a row and Smog appears 🌫️.<br><strong>Win:</strong> Pollinate 15 flowers before time runs out! 🎯<br><em>Stuck? Tap ❓ at the top to replay the guide.</em>"
+          goal: "Help Buzz make the flowers bloom!",
+          steps: [
+            { icon: "👆", text: "Touch a glowing flower and hold on." },
+            { icon: "🐝", text: "Slide Buzz to another glowing flower. Then let go!" },
+            { icon: "🌸", text: "Both flowers bloom and make yummy fruit for the animals!" },
+            { icon: "⏳", text: "Hurry! When the ring runs out, the flower droops." },
+            { icon: "🏆", text: "Fill the BLOOMED bar to win!", win: true },
+          ]
         }
       },
       "stage04": {
@@ -413,8 +431,15 @@
         quote: "When we protect the ice, we help the penguins stay happy and strong!",
         play: {
           emoji: "❄️",
-          goal: "Rescue lost penguin chicks and bring them safely back to the safe iceberg!",
-          controls: "<strong>Walk:</strong> Hold ◀ ▶ (or A / D) to walk Penny 🐧.<br><strong>Jump:</strong> Tap ▲ Jump (or W / Space) to hop between ice floes before they melt.<br><strong>Slide:</strong> Hold ▼ (or S) for a quick belly slide.<br><strong>Grab:</strong> Stand next to a chick and tap 🐥 GRAB (or press E).<br><strong>Cool:</strong> At the valve, tap ☸️ SPIN (or press E) to cool the ice ❄️.<br><strong>Return:</strong> Carry each chick to the SAFE ICEBERG 💚.<br><strong>Win:</strong> Rescue all 5 chicks before the ice melts or time runs out! 🎯<br><em>Stuck? Tap ❓ at the top to replay the guide.</em>"
+          goal: "Bring all 5 baby penguins to the safe iceberg!",
+          steps: [
+            { icon: "➡️", text: "Hold ◀ ▶ to walk. Hold ▼ to slide fast.", say: "Hold the left and right buttons to walk. Hold the down button to slide fast.", keys: "Keys: A D or ← →" },
+            { icon: "⬆️", text: "Tap ▲ Jump to hop onto the next ice.", say: "Tap the Jump button to hop onto the next ice.", keys: "Key: W or Space" },
+            { icon: "🐥", text: "Stand next to a chick. Tap GRAB!", keys: "Key: E" },
+            { icon: "💚", text: "Carry the chick to the SAFE iceberg." },
+            { icon: "☸️", text: "Ice getting warm? Run to the SPIN VALVE and tap SPIN.", keys: "Key: E" },
+            { icon: "🏆", text: "Save all 5 chicks to win!", win: true },
+          ]
         }
       },
       "stage05": {
@@ -425,8 +450,14 @@
         quote: "Harnessing the clean wind keeps our skies clear, fresh, and beautiful for everyone!",
         play: {
           emoji: "⚡",
-          goal: "Light up every building in the city with clean sun power!",
-          controls: "<strong>1. Fly:</strong> Drag your finger (or mouse) up and down, or press ⬆️ ⬇️. Breezy follows you.<br><strong>2. Ride the wind:</strong> Fly inside a blue wind ribbon 🌬️ — it makes Breezy sparkle.<br><strong>3. Grab a sun:</strong> While you are <em>inside</em> the wind, touch a ☀️ sun (suns with a wind badge need the wind first). One building lights up!<br><strong>Careful:</strong> Grey smoke ☁️ dirties the sky — fly through the green gap.<br><strong>Win:</strong> Light every building and the sky turns blue again 🌈<br><em>Stuck? Tap ❓ at the top to replay the guide.</em>"
+          goal: "Fly Breezy to the suns and light up the city!",
+          steps: [
+            { icon: "👆", text: "Slide your finger up and down. Breezy flies!", keys: "Keys: ↑ ↓" },
+            { icon: "🌬️", text: "Fly into the blue wind. Breezy sparkles!" },
+            { icon: "☀️", text: "Touch a sun while you sparkle. A building lights up!" },
+            { icon: "☁️", text: "Grey smoke hurts the sky. Fly through the green gap!" },
+            { icon: "🏆", text: "Light every building to win!", win: true },
+          ]
         }
       }
     };
@@ -493,12 +524,21 @@
       playHtml += '  </div>';
       playHtml += '  <div style="width:100%;">';
       playHtml += '    <h2>Your Goal</h2>';
-      playHtml += '    <div class="fact-box">';
+      playHtml += '    <div class="fact-box play-goal">';
       playHtml += '      <p style="margin:0;">' + data.play.goal + '</p>';
       playHtml += '    </div>';
-      playHtml += '    <div class="quote-box">';
-      playHtml += '      <p style="margin:0;">' + data.play.controls + '</p>';
-      playHtml += '    </div>';
+      // One tiny step per row: a big picture on the left, one short sentence on
+      // the right, so a child who can't read yet can still follow the pictures.
+      playHtml += '    <ol class="quote-box play-steps">';
+      data.play.steps.forEach(function (step) {
+        playHtml += '<li class="play-step' + (step.win ? ' win' : '') + '">';
+        playHtml += '<span class="play-step-icon" aria-hidden="true">' + step.icon + '</span>';
+        playHtml += '<span class="play-step-text">' + step.text;
+        if (step.keys) playHtml += '<small class="play-keys">' + step.keys + '</small>';
+        playHtml += '</span></li>';
+      });
+      playHtml += '    </ol>';
+      playHtml += '    <p class="play-help">❓ Tap the ❓ button at the top to see the lesson again!</p>';
       playHtml += '  </div>';
       playHtml += '</div>';
 
@@ -515,7 +555,7 @@
         var playInner = playCard.querySelector(".card-inner");
         if (playInner) {
           playInner.appendChild(global.GOGVoice.createButton(function () {
-            return "Your goal. " + data.play.goal + " " + data.play.controls;
+            return "Your goal. " + data.play.goal + " " + data.play.steps.map(function (s) { return s.say || s.text; }).join(" ");
           }, "gog-card-voice"));
         }
       }
