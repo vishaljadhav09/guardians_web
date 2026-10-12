@@ -1427,10 +1427,10 @@
         }
 
         // ---- Guided coach --------------------------------------------------
-        // Four short steps the first time the stage opens in a session (the ❓
+        // Five short steps the first time the stage opens in a session (the ❓
         // button replays them). Each one pulses the matching on-screen button
         // and points at the thing to do; the clock, warming and melting wait
-        // until the first chick is home, so nobody can lose the lesson.
+        // until the valve has been spun, so nobody can lose the lesson.
         const COACH_STEPS = [
           {
             icon: "➡️",
@@ -1463,6 +1463,14 @@
             say: "Carry the chick to the safe iceberg.",
             pulse: [],
           },
+          {
+            icon: "☸️",
+            title: "Cool the ice",
+            text: "Ice getting warm? Run to the <b>SPIN VALVE</b> and tap <b>Spin</b>!",
+            say: "Ice getting warm? Run to the spin valve and tap Spin.",
+            keys: "Key: <kbd>E</kbd>",
+            pulse: ["action"],
+          },
         ];
         let coachJumped = false;
         let valveTipShown = false; // one-time "go spin the valve" nudge per run
@@ -1482,6 +1490,7 @@
           steps: COACH_STEPS,
           onStep: function (i, step) {
             highlightControls(step.pulse || []);
+            if (i === 4) valveTipShown = true; // the lesson already says it
           },
           onFinish: function (reason) {
             highlightControls([]);
@@ -1496,8 +1505,15 @@
         function updateCoach() {
           if (!coach.active) return;
           const p = state.player;
+          // Last step: spin the valve once. Warming and the clock are still
+          // paused, so there's no rush; a second rescued chick also ends the
+          // lesson so it can never linger through the whole round.
+          if (coach.index === 4) {
+            if (state.coolingTimer > 0 || state.rescuedCount >= 2) coach.finish("done");
+            return;
+          }
           if (state.rescuedCount >= 1) {
-            coach.finish("done");
+            coach.goTo(4);
             return;
           }
           if (p.carrying.length > 0) {
@@ -1543,6 +1559,17 @@
             } else {
               GOGCoach.arrow(ctx, sx, b.y - 128, t, "down");
               GOGCoach.tag(ctx, sx, b.y - 196, "Bring it here!");
+            }
+          } else if (coach.index === 4) {
+            const v = state.valve;
+            const sx = toScreen(v.x);
+            if (sx > VIEW_W - 30) {
+              GOGCoach.tag(ctx, VIEW_W - 80, v.y - 40, "Valve this way ▶");
+            } else if (sx < 40) {
+              GOGCoach.tag(ctx, 80, v.y - 40, "◀ Valve");
+            } else {
+              GOGCoach.arrow(ctx, sx, v.y - 56, t, "down");
+              GOGCoach.tag(ctx, sx, v.y - 124, "Tap Spin here!");
             }
           }
           ctx.restore();
