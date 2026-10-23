@@ -786,9 +786,10 @@
       .heart-shake {
         animation: heartShake 0.4s ease-out;
       }
+
     </style>
   </head>
-  <body>
+  <body data-gog-info-popup data-gog-fullscreen>
     <!-- NEW: ambient ocean backdrop + page-wide collect/oops/heal glow, both outside the canvas -->
     <div class="page-bg" aria-hidden="true">
       <span
@@ -920,6 +921,14 @@
             💨
           </button>
           <button
+            class="icon-btn info-btn"
+            id="infoBtn"
+            title="How to play"
+            aria-label="How to play and fun facts"
+          >
+            📖
+          </button>
+          <button
             class="icon-btn"
             id="helpBtn"
             title="How to play"
@@ -936,7 +945,9 @@
             🔈
           </button>
           <div class="stage-controls">
-            <a class="brutal-btn ghost" href="../index.html">⬅ Back to Map</a>
+            <a class="brutal-btn ghost" href="../index.html" aria-label="Back to Map"
+              >⬅<span class="back-label"> Back to Map</span></a
+            >
             <span class="hand calm-badge" id="calmBadge"></span>
           </div>
         </div>
@@ -1203,6 +1214,10 @@
           }
           rectUpdatedThisFrame = true;
         }
+
+        // Phone portrait: canvas fills the screen (see GOGEngine.fitCanvasToScreen)
+        GOGEngine.fitCanvasToScreen(canvas, canvasFrame);
+
         var W = canvas.width,
           H = canvas.height;
 
@@ -2479,7 +2494,7 @@
             }
           }
 
-          if (!state.running) return;
+          if (!state.running || GOGUi.paused) return;
 
           if (state.lives === 1 && state.elapsed < 15 && !diff.softClutched) {
             diff.softClutch();

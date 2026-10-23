@@ -548,7 +548,7 @@
   </style>
 
 </head>
-<body>
+<body data-gog-info-popup data-gog-fullscreen>
     <div class="page-bg" aria-hidden="true">
       <span class="page-bubble" style="left: 6%; width: 14px; height: 14px; animation-duration: 14s; animation-delay: 0s; --drift: 18px;"></span>
       <span class="page-bubble" style="left: 18%; width: 9px; height: 9px; animation-duration: 11s; animation-delay: 2.4s; --drift: -14px;"></span>
@@ -580,6 +580,7 @@
         <span class="chip timer-chip" id="timerChip">60s</span>
         <span class="chip">🌼 <span id="scoreChip">0</span></span>
         <span class="chip combo-chip" id="comboChip">🔥 x0</span>
+        <button class="icon-btn info-btn" id="infoBtn" title="How to play" aria-label="How to play and fun facts">📖</button>
         <button
           class="icon-btn"
           id="helpBtn"
@@ -597,7 +598,7 @@
           🔊
         </button>
         <div class="stage-controls">
-          <a class="brutal-btn ghost" href="../index.html">⬅ Back to Map</a>
+          <a class="brutal-btn ghost" href="../index.html" aria-label="Back to Map">⬅<span class="back-label"> Back to Map</span></a>
           <span class="hand calm-badge" id="calmBadge"></span>
         </div>
       </div>
@@ -643,6 +644,8 @@
 
   var canvas = document.getElementById("gameCanvas");
   var ctx = canvas.getContext("2d");
+  // Phone portrait: canvas fills the screen (see GOGEngine.fitCanvasToScreen)
+  GOGEngine.fitCanvasToScreen(canvas, document.getElementById("canvasFrame"));
   var W = canvas.width, H = canvas.height;
   // Render at the on-screen resolution (not a stretched 800x600 bitmap) so the
   // meadow and sprites stay sharp; drawing code still uses 800x600 coords.
@@ -1610,6 +1613,7 @@ flowers.push({
 
   /* ---------------- Update ---------------- */
   function update(dt) {
+    if (GOGUi.paused) return; // "How to play" pop-up is open
     var dtMs = dt * 1000;
     var now = performance.now();
 

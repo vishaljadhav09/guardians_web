@@ -749,6 +749,229 @@ body .stage-wrap {
   }
 }
 
+
+/* ---- Stage info pop-up (opt-in via <body data-gog-info-popup>) ----
+   Wherever the side cards are already stacked/hidden (phones, small tablets),
+   the "How to play" / "Did you know?" cards live in a pop-up instead. */
+@media (max-width: 992px), (max-height: 600px) and (orientation: landscape) {
+  body .gog-info-popup-mode > .gog-guardian-card,
+  body .gog-info-popup-mode > .gog-play-card {
+    display: none !important;
+  }
+}
+
+.gog-info-modal {
+  z-index: 250;
+}
+.gog-info-box {
+  width: 100%;
+  max-width: 440px;
+  max-height: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 12px;
+  background: var(--gog-white);
+  animation: gogPop 0.25s cubic-bezier(.2,1.4,.4,1);
+}
+.gog-info-tabs {
+  display: flex;
+  gap: 8px;
+}
+.gog-info-tabs .brutal-btn {
+  flex: 1 1 0;
+  min-width: 0;
+  padding: 8px 6px;
+  min-height: 44px;
+  font-size: 0.9rem;
+  border-width: 3px;
+  box-shadow: 2px 2px 0 var(--gog-ink);
+  background: var(--gog-white);
+}
+.gog-info-tabs .brutal-btn.active {
+  background: var(--gog-lime);
+}
+.gog-info-body {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+}
+.gog-info-body > .gog-guardian-card,
+.gog-info-body > .gog-play-card {
+  max-width: none;
+  width: 100%;
+}
+.gog-info-body .fact-box,
+.gog-info-body .quote-box {
+  font-size: 15px;
+  line-height: 1.45;
+}
+.gog-info-box > [data-role="close"] {
+  min-height: 48px;
+}
+
+/* ====================================================================
+   PHONE PORTRAIT: the game fills the whole screen, edge to edge.
+   Opt-in per stage via <body data-gog-fullscreen>. HUD + guide bar stay as
+   slim fixed rows; the canvas frame takes everything else with no side space,
+   border or radius. GOGEngine.fitCanvasToScreen() sizes the canvas to match.
+   ==================================================================== */
+/* .icon-btn.info-btn: needs to out-rank each stage's own .icon-btn display rule */
+.icon-btn.info-btn { display: none; }
+@media (max-width: 992px), (max-height: 600px) and (orientation: landscape) {
+  .icon-btn.info-btn { display: inline-flex; }
+}
+
+@media (max-width: 768px) and (orientation: portrait) {
+  body[data-gog-fullscreen] {
+    display: flex;
+    flex-direction: column;
+    height: 100vh;
+    height: 100dvh;
+    overflow: hidden;
+  }
+  body[data-gog-fullscreen] .stage-wrap {
+    flex: 1 1 auto;
+    min-height: 0;
+    width: 100% !important;
+    max-width: none !important;
+    margin: 0 !important;
+    padding: 0 !important; /* beats the shared `body .stage-wrap` side padding */
+    display: flex;
+    flex-direction: column;
+  }
+  body[data-gog-fullscreen] .stage-title { display: none; }
+  body[data-gog-fullscreen] .stage-hud {
+    flex: 0 0 auto;
+    display: block;
+    margin: 0;
+    padding: 6px 6px 0;
+  }
+  body[data-gog-fullscreen] .hud-mid {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 5px;
+    width: 100%;
+  }
+  body[data-gog-fullscreen] .hud-mid > * { flex: 0 0 auto; }
+  body[data-gog-fullscreen] .hud-mid > .meter {
+    flex: 1 1 110px;
+    min-width: 0 !important;
+    gap: 5px;
+    padding: 4px 8px 4px 7px;
+    border-width: 2px;
+    box-shadow: 2px 2px 0 var(--gog-ink);
+  }
+  body[data-gog-fullscreen] .meter .label { font-size: 0.66rem; }
+  body[data-gog-fullscreen] .meter-track { height: 8px; border-width: 2px; }
+  body[data-gog-fullscreen] .hud-mid .chip {
+    padding: 0 7px;
+    min-height: 30px;
+    border-width: 2px;
+    box-shadow: 2px 2px 0 var(--gog-ink);
+    font-size: 0.72rem;
+    white-space: nowrap;
+  }
+  body[data-gog-fullscreen] #difficultyChip,
+  body[data-gog-fullscreen] .combo-chip:not(.combo-visible) { display: none; }
+  body[data-gog-fullscreen] .hud-mid .icon-btn {
+    width: 48px;
+    height: 48px;
+    min-width: 48px;
+    font-size: 0.92rem;
+    border-width: 2px;
+    box-shadow: 2px 2px 0 var(--gog-ink);
+  }
+  body[data-gog-fullscreen] .lives-widget {
+    min-width: 0;
+    height: 30px;
+    gap: 1px;
+  }
+  body[data-gog-fullscreen] .life-heart {
+    width: 20px;
+    height: 24px;
+    font-size: 1rem;
+  }
+  /* Back button + calm badge join the HUD row instead of making a new one */
+  body[data-gog-fullscreen] .stage-controls { display: contents; }
+  body[data-gog-fullscreen] .stage-controls .brutal-btn {
+    width: 48px;
+    height: 48px;
+    min-width: 48px;
+    min-height: 48px;
+    padding: 0;
+    border-width: 2px;
+    border-radius: 50%;
+    font-size: 0.95rem;
+    box-shadow: 2px 2px 0 var(--gog-ink);
+  }
+  body[data-gog-fullscreen] .back-label { display: none; }
+  /* The mode label would take a whole HUD row (and is filled in after the canvas
+     is sized, which skews its aspect), so the compact phone HUD leaves it out. */
+  body[data-gog-fullscreen] .calm-badge { display: none; }
+
+  /* One fixed-height line so the canvas never resizes when the guide talks */
+  body[data-gog-fullscreen] .guideBar {
+    flex: 0 0 auto;
+    height: 40px;
+    margin: 6px 6px 6px;
+    padding: 3px 4px;
+    gap: 6px;
+    align-items: center;
+    border-width: 2px;
+    border-radius: 8px;
+    box-shadow: 1px 1px 0 var(--gog-ink);
+  }
+  body[data-gog-fullscreen] .guideAvatar { font-size: 1.25rem; }
+  body[data-gog-fullscreen] .guideBubble {
+    flex: 1 1 auto;
+    min-width: 0;
+    padding: 4px 8px;
+    border-width: 2px;
+    border-radius: 10px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    font-size: 0.95rem;
+    line-height: 1.1;
+  }
+
+  /* The canvas: flush with the screen edges. ui.js wraps the frame in
+     .gog-stage-layout only after DOMContentLoaded, but stages size their canvas
+     earlier, so both shapes are styled identically. */
+  body[data-gog-fullscreen] .gog-stage-layout {
+    flex: 1 1 0;
+    min-height: 0;
+    gap: 0;
+    align-items: stretch;
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+  }
+  body[data-gog-fullscreen] .gog-stage-layout #canvasFrame,
+  body[data-gog-fullscreen] .stage-wrap > #canvasFrame {
+    flex: 1 1 auto;
+    width: 100%;
+    height: auto;
+    aspect-ratio: auto;
+    max-height: none !important;
+    min-height: 0;
+    margin: 0 !important;
+    border-width: 3px 0;
+    border-radius: 0;
+    box-shadow: none;
+  }
+  body[data-gog-fullscreen] .canvas-frame canvas {
+    position: absolute;
+    inset: 0;
+    width: 100% !important;
+    height: 100% !important;
+  }
+  /* Dev tuning sliders aren't reachable (no page scroll) and aren't for kids */
+  body[data-gog-fullscreen] .tuning-controls { display: none !important; }
+}
 @media (max-width: 992px) {
   body .gog-stage-layout {
     display: flex;

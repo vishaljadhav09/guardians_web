@@ -486,6 +486,14 @@
         opacity: 0;
       }
 
+      /* Phone portrait: the Warmth meter's snowflake label is long, so give it
+         its own HUD row instead of letting it collide with the chips */
+      @media (max-width: 768px) and (orientation: portrait) {
+        #warmthMeter {
+          flex: 1 1 100% !important;
+        }
+      }
+
       @media (prefers-reduced-motion: reduce) {
         .page-bubble {
           animation: none;
@@ -494,7 +502,7 @@
       }
     </style>
   </head>
-  <body>
+  <body data-gog-info-popup data-gog-fullscreen>
     <div class="page-bg" aria-hidden="true">
       <span
         class="page-bubble"
@@ -597,6 +605,7 @@
           <span class="chip timer-chip" id="timerChip">60s</span>
           <span class="chip hud-extra" id="iceChip">🧊 0 floes left</span>
           <span class="chip hud-extra" id="seaChip">🌊 Sea 0%</span>
+          <button class="icon-btn info-btn" id="infoBtn" title="How to play" aria-label="How to play and fun facts">📖</button>
           <button
             class="icon-btn"
             id="helpBtn"
@@ -614,7 +623,7 @@
             🔈
           </button>
           <div class="stage-controls">
-            <a class="brutal-btn ghost" href="../index.html">⬅ Back to Map</a>
+            <a class="brutal-btn ghost" href="../index.html" aria-label="Back to Map">⬅<span class="back-label"> Back to Map</span></a>
             <span class="hand calm-badge" id="calmBadge"></span>
           </div>
         </div>
@@ -708,12 +717,16 @@
     <script>
       (() => {
         const canvas = document.getElementById("game");
+        // Phone portrait: canvas fills the screen (see GOGEngine.fitCanvasToScreen)
+        GOGEngine.fitCanvasToScreen(canvas, document.getElementById("canvasFrame"));
         const ctx = canvas.getContext("2d");
 
         // Logical play-field size. The canvas bitmap is sized to the pixels
         // actually on screen (see GOGEngine.fitCanvas) so art stays crisp, but
-        // all game code keeps drawing in these 800x600 coordinates.
-        const VIEW_W = 800;
+        // all game code keeps drawing in these logical coordinates: 800x600, or on
+        // a phone held upright a narrower view of the same height (the canvas aspect
+        // follows the full-screen frame, so nothing is stretched).
+        const VIEW_W = canvas.width;
         const VIEW_H = 600;
         let backdropDirty = true; // rebuild the pre-rendered backdrop after a resize
         const hiDpi = GOGEngine.fitCanvas(canvas, ctx, VIEW_W, VIEW_H, {
@@ -2338,7 +2351,9 @@
         }
 
         function updateCamera(dt) {
-          const target = clamp(state.player.x - 240, 0, WORLD_W - VIEW_W);
+          // On a narrow (phone-portrait) view keep Penny well inside the screen
+          const lead = Math.min(240, VIEW_W * 0.38);
+          const target = clamp(state.player.x - lead, 0, WORLD_W - VIEW_W);
           cameraX += (target - cameraX) * Math.min(1, CAMERA_LERP * dt * 60);
         }
 
@@ -4148,7 +4163,9 @@
             }
           }
 
-          if (gameRunning) {
+          if (gameRunning && GOGUi.paused) {
+            // "How to play" pop-up is open: freeze the world
+          } else if (gameRunning) {
             update(dt);
           } else {
             updatePenguinAnim(dt);

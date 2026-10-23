@@ -360,6 +360,8 @@
     }
   }
 
+  var showStageInfoImpl = null; // set below once the stage's cards exist (browser only)
+
   if (typeof document !== 'undefined') {
     document.addEventListener('click', function (e) {
       var btn = e.target.closest('.btn, .brutal-btn, .marker, .iconBtn, .icon-btn');
@@ -368,6 +370,7 @@
       confettiAt(r.left + r.width / 2, r.top + r.height / 2, 8);
     }, true);
 
+    var infoCards = null;
     var GUARDIAN_DATA = {
       "stage01": {
         name: "Splash",
@@ -482,6 +485,11 @@
       // Create flex wrapper gog-stage-layout
       var wrapper = document.createElement("div");
       wrapper.className = "gog-stage-layout";
+      // Opt-in per stage (<body data-gog-info-popup>): on phones the cards are
+      // hidden and opened from a HUD button as a pop-up (see showStageInfo).
+      if (document.body.hasAttribute("data-gog-info-popup")) {
+        wrapper.classList.add("gog-info-popup-mode");
+      }
 
       // Insert wrapper before canvasFrame, then move canvasFrame inside it
       canvasFrame.parentNode.insertBefore(wrapper, canvasFrame);
@@ -563,7 +571,82 @@
       // Add cards to the wrapper
       wrapper.insertBefore(card, canvasFrame);
       wrapper.appendChild(playCard);
+
+      infoCards = { card: card, playCard: playCard };
+
+      var infoBtn = document.getElementById("infoBtn");
+      if (infoBtn) {
+        infoBtn.addEventListener("click", function () { showStageInfo(); });
+      }
     }
+
+    // Pop-up with the stage's "How to play" and "Did you know?" cards, as two
+    // tabs. Reuses clones of the cards built by initGuardianCard, so the content
+    // stays defined in one place (GUARDIAN_DATA). opts.onOpen / opts.onClose let
+    // the stage pause and resume its game around the pop-up.
+    function showStageInfo(opts) {
+      opts = opts || {};
+      if (!infoCards) return null;
+      if (document.querySelector(".gog-info-modal")) return null;
+
+      var wrap = document.createElement("div");
+      wrap.className = "gog-overlay gog-info-modal";
+
+      var box = document.createElement("div");
+      box.className = "brutal-box gog-info-box";
+      box.innerHTML =
+        '<div class="gog-info-tabs">' +
+        '<button class="brutal-btn" data-tab="play">🎮 How to play</button>' +
+        '<button class="brutal-btn" data-tab="fact">💡 Did you know?</button>' +
+        "</div>" +
+        '<div class="gog-info-body"></div>' +
+        '<button class="brutal-btn" data-role="close">Got it!</button>';
+
+      var body = box.querySelector(".gog-info-body");
+      var panes = {
+        play: infoCards.playCard.cloneNode(true),
+        fact: infoCards.card.cloneNode(true)
+      };
+      body.appendChild(panes.play);
+      body.appendChild(panes.fact);
+
+      function selectTab(name) {
+        Object.keys(panes).forEach(function (k) {
+          panes[k].style.display = k === name ? "" : "none";
+        });
+        box.querySelectorAll("[data-tab]").forEach(function (b) {
+          var on = b.getAttribute("data-tab") === name;
+          b.classList.toggle("active", on);
+          b.setAttribute("aria-pressed", on ? "true" : "false");
+        });
+        body.scrollTop = 0;
+      }
+      box.querySelectorAll("[data-tab]").forEach(function (b) {
+        b.addEventListener("click", function () { selectTab(b.getAttribute("data-tab")); });
+      });
+      selectTab(opts.tab === "fact" ? "fact" : "play");
+
+      var closed = false;
+      function close() {
+        if (closed) return;
+        closed = true;
+        document.removeEventListener("keydown", onKey);
+        closeOverlay(wrap);
+        GOGUi.paused = false;
+        if (opts.onClose) setTimeout(opts.onClose, 0);
+      }
+      function onKey(e) { if (e.key === "Escape") close(); }
+      document.addEventListener("keydown", onKey);
+      box.querySelector('[data-role="close"]').addEventListener("click", close);
+      wrap.addEventListener("click", function (e) { if (e.target === wrap) close(); });
+
+      wrap.appendChild(box);
+      document.body.appendChild(wrap);
+      GOGUi.paused = true; // stages skip their update while this is set
+      if (opts.onOpen) opts.onOpen();
+      return wrap;
+    }
+    showStageInfoImpl = showStageInfo;
 
     if (document.readyState === "loading") {
       document.addEventListener("DOMContentLoaded", initGuardianCard);
@@ -578,6 +661,8 @@
     showOverlay: showOverlay,
     closeOverlay: closeOverlay,
     showGuardianBeat: showGuardianBeat,
+    paused: false,
+    showStageInfo: function (opts) { return showStageInfoImpl ? showStageInfoImpl(opts) : null; },
     floatLabel: floatLabel,
     say: say,
     confettiAt: confettiAt,

@@ -196,7 +196,7 @@
         flex: 1;
         height: 12px;
         border-radius: 999px;
-        background: #334155;
+        background: #475569;
         overflow: hidden;
         position: relative;
       }
@@ -1344,12 +1344,14 @@
         cursor: pointer;
         transition: all 0.3s ease;
         font-size: 0.9rem;
+        box-shadow: none;
       }
 
       .brutal-btn:hover {
         background: rgba(255, 255, 255, 0.15);
         border-color: rgba(255, 255, 255, 0.4);
         transform: translateY(-2px);
+        box-shadow: none;
       }
 
       .footer-note {
@@ -1359,27 +1361,238 @@
         text-align: center;
       }
 
+      /* ---------- Responsive Layout Overrides ---------- */
       @media (max-width: 768px) {
-        .map-stage {
-          aspect-ratio: 1 / 1;
+        .wrap {
+          padding: 10px 12px 12px;
         }
+
+        /* HUD: 2 tidy rows — [title ........ gear] / [stars seeds smog] */
         .hud {
-          flex-direction: column;
-          align-items: stretch;
-          text-align: center;
-        }
-        .brand {
-          flex-direction: column;
+          display: grid;
+          grid-template-columns: auto auto minmax(0, 1fr) auto;
+          grid-template-areas:
+            "brand brand brand gear"
+            "stars seeds smog smog";
+          align-items: center;
+          gap: 10px 8px;
+          padding: 10px 12px;
+          margin-bottom: 10px;
+          border-radius: 20px;
         }
         .hud-right {
-          justify-content: center;
+          display: contents;
         }
+        .brand {
+          grid-area: brand;
+          min-width: 0;
+          gap: 10px;
+        }
+        .brand-text {
+          min-width: 0;
+        }
+        .brand h1 {
+          font-size: clamp(1.2rem, 5.6vw, 1.5rem);
+        }
+        .brand small {
+          font-size: 1.05rem;
+          line-height: 1.1;
+        }
+        .brand .owl {
+          font-size: 2rem;
+          flex-shrink: 0;
+        }
+        .icon-btn {
+          grid-area: gear;
+          width: 42px;
+          height: 42px;
+          font-size: 1.15rem;
+        }
+        .chip-stars {
+          grid-area: stars;
+        }
+        .chip-seeds {
+          grid-area: seeds;
+        }
+        .chip {
+          padding: 0 12px;
+          min-height: 36px;
+          font-size: 0.85rem;
+          white-space: nowrap;
+        }
+        .smog-meter {
+          grid-area: smog;
+          min-width: 0;
+          gap: 8px;
+          padding: 0 12px;
+          min-height: 36px;
+        }
+        .smog-meter .label {
+          font-size: 0.7rem;
+          letter-spacing: 0.5px;
+        }
+        #smogPct {
+          min-width: 3.4ch;
+          text-align: right;
+        }
+
+        /* Spika guide bar: fixed 2-line height so the map never jumps */
         .guideBar {
-          flex-direction: column;
           align-items: center;
+          padding: 8px 10px;
+          gap: 8px;
+          margin-bottom: 10px;
+          border-radius: 18px;
+          min-height: 0;
+          box-shadow: var(--gog-shadow);
+        }
+        .guideAvatar {
+          font-size: 1.7rem;
+          width: 38px;
+          height: 38px;
         }
         .guideBubble {
-          text-align: center;
+          font-size: 1.1rem;
+          line-height: 1.15;
+          padding: 6px 10px;
+          min-height: 58px;
+          min-width: 0;
+        }
+
+        /* Map: smaller, tap-friendly markers that don't crowd each other */
+        .map-stage {
+          border-radius: 24px;
+        }
+        .marker {
+          width: 48px;
+          height: 48px;
+          font-size: 1.45rem;
+        }
+        .marker.locked::after {
+          width: 16px;
+          height: 16px;
+          font-size: 0.6rem;
+        }
+        .marker.unlocked-ready::before {
+          inset: -4px;
+          animation-name: markerPulseRingSm;
+        }
+        .marker.unlocked-upcoming::after {
+          font-size: 0.65rem;
+          bottom: -7px;
+        }
+        .marker-stars {
+          top: -10px;
+          font-size: 0.6rem;
+          padding: 2px 5px;
+        }
+        .spika-flyer {
+          font-size: 1.8rem;
+        }
+
+        /* Bottom row: one compact line */
+        .bottom-row {
+          flex-wrap: nowrap;
+          margin-top: 10px;
+          gap: 8px;
+        }
+        .legend {
+          flex-wrap: nowrap;
+          gap: 8px;
+          min-width: 0;
+        }
+        .legend .chip {
+          min-height: 40px;
+        }
+        .brutal-btn {
+          padding: 0 14px;
+          min-height: 40px;
+          border-radius: 12px;
+          font-size: 0.85rem;
+          white-space: nowrap;
+          flex-shrink: 0;
+        }
+        .footer-note {
+          margin-top: 10px;
+          font-size: 0.75rem;
+          line-height: 1.3;
+        }
+      }
+
+      /* Narrow phones (≤380px): swap the SMOG word for an icon so the bar stays readable */
+      @media (max-width: 380px) {
+        .hud {
+          gap: 8px 6px;
+          padding: 10px;
+        }
+        .chip {
+          padding: 0 9px;
+          font-size: 0.8rem;
+          gap: 5px;
+        }
+        .smog-meter {
+          gap: 6px;
+          padding: 0 10px;
+        }
+        .smog-meter .label:first-child {
+          font-size: 0;
+        }
+        .smog-meter .label:first-child::before {
+          content: "☁️";
+          font-size: 0.9rem;
+        }
+      }
+
+      @keyframes markerPulseRingSm {
+        0% {
+          transform: scale(1);
+          opacity: 1;
+        }
+        100% {
+          transform: scale(1.5);
+          opacity: 0;
+        }
+      }
+
+      /* Touch screens have no hover: never show the sticky name tooltips */
+      @media (hover: none) {
+        .marker-label {
+          display: none;
+        }
+      }
+
+      /* Portrait Orientation (Height > Width on Phones & Tablets) */
+      @media (orientation: portrait) and (max-width: 768px) {
+        /* Whole hub is one screen: HUD + guide on top, map fills the rest */
+        body {
+          display: flex;
+          flex-direction: column;
+          min-height: 100vh;
+          min-height: 100dvh;
+        }
+        .wrap {
+          flex: 1 1 auto;
+          width: 100%;
+          display: flex;
+          flex-direction: column;
+        }
+        .map-stage {
+          flex: 1 1 auto;
+          aspect-ratio: auto;
+          max-height: none;
+          min-height: 290px;
+        }
+        /* Portrait map is tall & narrow: round (not stretched) blobs, and the
+           Guardian Tree drops below the finale marker instead of under it. */
+        .biome-blob,
+        .fog-blob {
+          height: auto !important;
+          aspect-ratio: 1;
+          width: 40% !important;
+        }
+        .tree-zone {
+          top: 60%;
+          width: 34%;
         }
       }
 
@@ -1422,10 +1635,13 @@
           </div>
         </div>
         <div class="hud-right">
-          <div class="chip" title="Total Stars Earned">
+          <div class="chip chip-stars" title="Total Stars Earned">
             ⭐ <span id="starsCount">0</span>/30
           </div>
-          <div class="chip" title="Seeds of Life returned to the Guardian Tree">
+          <div
+            class="chip chip-seeds"
+            title="Seeds of Life returned to the Guardian Tree"
+          >
             🌱 <span id="seedsCount">0</span>/10
           </div>
           <div class="smog-meter" title="The Smog level over the world">
@@ -1662,6 +1878,35 @@
         var biomeLayer = document.getElementById("biomeLayer");
         var markerLayer = document.getElementById("markerLayer");
         var fogLayer = document.getElementById("fogLayer");
+
+        // Portrait phones get a tall map, so markers use their own layout
+        // (content.js mapPos is the landscape layout). Keep the media query in
+        // sync with the portrait block in the <style> above.
+        var portraitMQ = window.matchMedia(
+          "(orientation: portrait) and (max-width: 768px)",
+        );
+        var PORTRAIT_POS = {
+          stage01: { x: 20, y: 76 },
+          stage02: { x: 14, y: 54 },
+          stage03: { x: 20, y: 26 },
+          stage04: { x: 50, y: 10 },
+          stage05: { x: 80, y: 26 },
+          stage06: { x: 86, y: 52 },
+          stage07: { x: 80, y: 76 },
+          stage08: { x: 58, y: 90 },
+          stage09: { x: 32, y: 90 },
+          stage10: { x: 50, y: 34 },
+        };
+        function pos(stage) {
+          return (portraitMQ.matches && PORTRAIT_POS[stage.id]) || stage.mapPos;
+        }
+        function treeCenter() {
+          return portraitMQ.matches ? { x: 50, y: 60 } : { x: 50, y: 50 };
+        }
+        function placeAt(el, p) {
+          el.style.left = p.x + "%";
+          el.style.top = p.y + "%";
+        }
 
         // === NEW: STORY DIRECTOR SYSTEM ===
         var StoryDirector = {
@@ -2169,8 +2414,7 @@
           var size = stage.finale ? 35 : 28;
           blob.style.width = size + "%";
           blob.style.height = size + "%";
-          blob.style.left = stage.mapPos.x + "%";
-          blob.style.top = stage.mapPos.y + "%";
+          placeAt(blob, pos(stage));
           blob.style.background = stage.color;
           biomeLayer.appendChild(blob);
         });
@@ -2183,8 +2427,7 @@
             var size = stage.finale ? 40 : 32;
             fog.style.width = size + "%";
             fog.style.height = size + "%";
-            fog.style.left = stage.mapPos.x + "%";
-            fog.style.top = stage.mapPos.y + "%";
+            placeAt(fog, pos(stage));
             fog.style.animationDelay = stage.order * 0.4 + "s";
             fogLayer.appendChild(fog);
           }
@@ -2207,10 +2450,12 @@
                 "http://www.w3.org/2000/svg",
                 "line",
               );
-              line.setAttribute("x1", current.mapPos.x + "%");
-              line.setAttribute("y1", current.mapPos.y + "%");
-              line.setAttribute("x2", next.mapPos.x + "%");
-              line.setAttribute("y2", next.mapPos.y + "%");
+              var p1 = pos(current);
+              var p2 = pos(next);
+              line.setAttribute("x1", p1.x + "%");
+              line.setAttribute("y1", p1.y + "%");
+              line.setAttribute("x2", p2.x + "%");
+              line.setAttribute("y2", p2.y + "%");
               line.setAttribute("class", "constellation-line");
               line.setAttribute(
                 "stroke",
@@ -2244,8 +2489,7 @@
             el.classList.add(dirClass);
             el.style.animationDelay = i * 0.12 + "s";
 
-            el.style.left = stage.mapPos.x + "%";
-            el.style.top = stage.mapPos.y + "%";
+            placeAt(el, pos(stage));
             el.setAttribute("aria-label", stage.guardian + " - " + stage.biome);
             if (cleared) {
               el.classList.add("cleared");
@@ -2321,8 +2565,7 @@
             priority: 8,
             duration: 2000,
           });
-          spikaFlyer.style.left = "50%";
-          spikaFlyer.style.top = "50%";
+          placeAt(spikaFlyer, treeCenter());
           spikaFlyer.offsetHeight;
           spikaFlyer.classList.add("active");
 
@@ -2334,10 +2577,10 @@
           }, 40);
 
           setTimeout(function () {
-            spikaFlyer.style.left = stage.mapPos.x + "%";
-            spikaFlyer.style.top = stage.mapPos.y + "%";
+            var dest = pos(stage);
+            placeAt(spikaFlyer, dest);
             spikaFlyer.style.transform =
-              stage.mapPos.x < 50
+              dest.x < 50
                 ? "translate(-50%, -50%) scale(1.2) scaleX(-1)"
                 : "translate(-50%, -50%) scale(1.2) scaleX(1)";
           }, 50);
@@ -2556,7 +2799,7 @@
               if (cleared && prevCleared.indexOf(stage.id) === -1) {
                 newlyClearedStage = stage;
                 setTimeout(function () {
-                  triggerSmogDispersion(stage.mapPos.x, stage.mapPos.y);
+                  triggerSmogDispersion(pos(stage).x, pos(stage).y);
                   if (fog) fog.style.opacity = "0";
                 }, 400);
               } else {
@@ -2760,6 +3003,26 @@
             var msg = messages[Math.floor(Math.random() * messages.length)];
             SpikaGuide.show(msg, { priority: 3, duration: 2500 });
           });
+
+        // Rotate / resize: move everything to the matching layout
+        function applyLayout() {
+          STAGES.forEach(function (stage) {
+            var p = pos(stage);
+            [
+              document.getElementById("blob-" + stage.id),
+              document.getElementById("fog-" + stage.id),
+              document.querySelector('[data-stage-id="' + stage.id + '"]'),
+            ].forEach(function (el) {
+              if (el) placeAt(el, p);
+            });
+          });
+          drawConstellationLines();
+        }
+        if (portraitMQ.addEventListener) {
+          portraitMQ.addEventListener("change", applyLayout);
+        } else if (portraitMQ.addListener) {
+          portraitMQ.addListener(applyLayout);
+        }
 
         window.addEventListener("focus", function () {
           save = GOGSave.load();

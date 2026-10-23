@@ -385,7 +385,7 @@
       }
     </style>
   </head>
-  <body>
+  <body data-gog-info-popup data-gog-fullscreen>
     <div class="page-bg" aria-hidden="true">
       <span
         class="page-bubble"
@@ -489,6 +489,7 @@
             >⚡ Lvl 1</span
           >
           <span class="chip">🌱 <span id="sproutsChip">0</span></span>
+          <button class="icon-btn info-btn" id="infoBtn" title="How to play" aria-label="How to play and fun facts">📖</button>
           <button
             class="icon-btn"
             id="helpBtn"
@@ -506,7 +507,7 @@
             🔈
           </button>
           <div class="stage-controls">
-            <a class="brutal-btn ghost" href="../index.html">⬅ Back to Map</a>
+            <a class="brutal-btn ghost" href="../index.html" aria-label="Back to Map">⬅<span class="back-label"> Back to Map</span></a>
             <span class="hand calm-badge" id="calmBadge"></span>
           </div>
         </div>
@@ -626,6 +627,12 @@
             }
 
             // Add rock obstacles for default layouts
+            if (this.cols === 6 && this.rows === 6) {
+              // Phone-portrait layout (see startWave): same ~12% rock density
+              [[1, 1], [2, 4], [3, 2], [4, 5], [5, 3]].forEach(function (coord) {
+                this.grid[coord[0]][coord[1]].state = "rock";
+              }, this);
+            }
             if (this.cols === 10) {
               var rockCoords = [];
               if (this.rows === 4) {
@@ -1217,11 +1224,19 @@
 
         var canvas = document.getElementById("gameCanvas");
         var ctx = canvas.getContext("2d");
+        var canvasFrame = document.getElementById("canvasFrame");
+        // Phone portrait: canvas fills the screen (see GOGEngine.fitCanvasToScreen).
+        // The 10x4 grid would make ~37px cells on a phone-width canvas, so phones
+        // get a 6x6 grid instead: bigger, roughly square tap targets that use the
+        // extra height. Smog speed (columns/sec) is scaled so it takes the same
+        // time to cross the field; canopy goals are percentages, so they carry over.
+        var PHONE_LAYOUT = GOGEngine.fitCanvasToScreen(canvas, canvasFrame);
+        var GRID_ROWS = PHONE_LAYOUT ? 6 : 4;
+        var GRID_COLS = PHONE_LAYOUT ? 6 : 10;
         var W = canvas.width;
         var H = canvas.height;
-        var GRID_Y_OFFSET = H * 0.42; // Grid start position (was H / 2)
-        var GRID_H = H * 0.55; // Grid height (was H / 2)
-        var canvasFrame = document.getElementById("canvasFrame");
+        var GRID_Y_OFFSET = H * (PHONE_LAYOUT ? 0.36 : 0.42); // Grid start position (was H / 2)
+        var GRID_H = H * (PHONE_LAYOUT ? 0.62 : 0.55); // Grid height (was H / 2)
 
         // Float labels are positioned in CSS pixels inside the frame, so convert
         // from logical canvas coordinates (the frame is rarely exactly 960 wide).
@@ -2822,7 +2837,12 @@
 
         function startWave(waveNum) {
           if (waveNum === 1) {
-            GOGStage2.init(4, 10);
+            GOGStage2.init(GRID_ROWS, GRID_COLS);
+            if (GRID_COLS !== 10) {
+              GOGStage2.smogSpeed = GOGStage2.smogSpeed.map(function (v) {
+                return (v * GRID_COLS) / 10;
+              });
+            }
             GOGStage2.saplings = 12;
           } else {
             GOGStage2.wave = waveNum;
@@ -3166,6 +3186,7 @@
 
         /* ---------------- update loop ---------------- */
         function update(dt) {
+          if (GOGUi.paused) return; // "How to play" pop-up is open
           particles.update(dt);
 
           // Update juice effects

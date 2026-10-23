@@ -659,7 +659,38 @@
     return api;
   }
 
+  /* ---------------- Phone-portrait full-screen canvas ---------------- */
+  // On phones held upright the stage's canvas frame fills the whole screen (see
+  // the body[data-gog-fullscreen] block in styles.css). A fixed landscape canvas
+  // (960x600 / 800x600) would be shrunk to ~40% there, so match the canvas'
+  // internal aspect to the frame instead: height stays at the stage's tuned value
+  // and only the world gets narrower. Call BEFORE reading canvas.width/height.
+  // Rotating across the phone-portrait breakpoint reloads, because the size is
+  // fixed at load. Returns true when the canvas was resized.
+  var PHONE_PORTRAIT_QUERY = "(max-width: 768px) and (orientation: portrait)";
+  function fitCanvasToScreen(canvas, frame, opts) {
+    opts = opts || {};
+    var mq = window.matchMedia(PHONE_PORTRAIT_QUERY);
+    var wasPhone = mq.matches;
+    function onChange() {
+      if (mq.matches !== wasPhone) window.location.reload();
+    }
+    if (mq.addEventListener) mq.addEventListener("change", onChange);
+    else if (mq.addListener) mq.addListener(onChange);
+
+    if (!wasPhone || !frame) return false;
+    var fw = frame.clientWidth, fh = frame.clientHeight;
+    if (fw < 100 || fh < 100) return false;
+    var baseH = opts.height || canvas.height;
+    var maxW = opts.maxWidth || canvas.width;
+    var minW = opts.minWidth || 300;
+    canvas.height = baseH;
+    canvas.width = Math.round(Math.max(minW, Math.min(maxW, (baseH * fw) / fh)));
+    return true;
+  }
+
   global.GOGEngine = {
+    fitCanvasToScreen: fitCanvasToScreen,
     GameLoop: GameLoop,
     Input: Input,
     Collision: Collision,
