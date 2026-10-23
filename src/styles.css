@@ -4,6 +4,27 @@
    shadows, cream paper-grain background, punchy accents.
    ============================================================ */
 
+/* Self-hosted fonts (latin, variable weight) so the game works offline
+   (Android app, airplane mode) with no Google Fonts request. */
+@font-face {
+  font-family: "Baloo 2";
+  src: url("./fonts/Baloo2.woff2") format("woff2");
+  font-weight: 400 800;
+  font-display: swap;
+}
+@font-face {
+  font-family: "Quicksand";
+  src: url("./fonts/Quicksand.woff2") format("woff2");
+  font-weight: 300 700;
+  font-display: swap;
+}
+@font-face {
+  font-family: "Caveat";
+  src: url("./fonts/Caveat.woff2") format("woff2");
+  font-weight: 400 700;
+  font-display: swap;
+}
+
 :root {
   /* ---- palette ---- */
   --gog-cream:     #F5EFE0;
@@ -47,6 +68,11 @@ body {
   background-image:
     radial-gradient(circle at 1px 1px, rgba(26,26,26,0.05) 1px, transparent 0);
   background-size: 14px 14px;
+  /* Notches / gesture bar (needs viewport-fit=cover; 0 on plain browsers) */
+  padding-top: env(safe-area-inset-top, 0px);
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+  padding-left: env(safe-area-inset-left, 0px);
+  padding-right: env(safe-area-inset-right, 0px);
 }
 
 h1, h2, h3, h4 {
