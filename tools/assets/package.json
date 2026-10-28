@@ -1,0 +1,14 @@
+{
+  "name": "gog-asset-tools",
+  "private": true,
+  "version": "1.0.0",
+  "description": "Dev-only asset optimisation scripts. Not shipped in the game or the Android app.",
+  "type": "module",
+  "scripts": {
+    "audio": "node optimize-audio.mjs",
+    "images": "node optimize-images.mjs"
+  },
+  "dependencies": {
+    "sharp": "^0.35.5"
+  }
+}

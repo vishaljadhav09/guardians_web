@@ -321,10 +321,12 @@ img, svg { display: block; max-width: 100%; }
   pointer-events: none; transition: background .4s ease; z-index: 200;
 }
 .cutscene-overlay.show { background: rgba(13,12,28,.78); pointer-events: auto; }
-.csTree { font-size: 5rem; opacity: 0; transform: scale(.6); filter: drop-shadow(3px 4px 0 rgba(0,0,0,0.35)); }
+.csTree { position: relative; font-size: 5rem; opacity: 0; transform: scale(.6); filter: drop-shadow(3px 4px 0 rgba(0,0,0,0.35)); }
+/* lime halo: a flat disc behind the tree whose opacity pulses (no animated filter / blur) */
+.csTree::before { content: ""; position: absolute; inset: 4% 8%; border-radius: 50%; background: var(--lime); opacity: 0; z-index: -1; pointer-events: none; }
 .cutscene-overlay.show .csTree { opacity: 1; transform: scale(1); transition: opacity .3s ease .15s, transform .4s cubic-bezier(.34,1.56,.64,1) .15s; }
-.cutscene-overlay.show .csTree.pulse { animation: treePulse .6s ease 1.45s; }
-@keyframes treePulse { 0%, 100% { filter: drop-shadow(0 0 0 var(--lime)); } 50% { filter: drop-shadow(0 0 28px var(--lime)); } }
+.cutscene-overlay.show .csTree.pulse::before { animation: treePulse .6s ease 1.45s; }
+@keyframes treePulse { 0%, 100% { opacity: 0; } 50% { opacity: .55; } }
 .csSeed { position: absolute; font-size: 1.7rem; left: 50%; top: 78%; opacity: 0; }
 .cutscene-overlay.show .csSeed { animation: seedFly 1.3s cubic-bezier(.5,0,.4,1) .25s forwards; }
 @keyframes seedFly { 0% { opacity: 1; transform: translate(-50%, -50%) scale(1); } 100% { opacity: 0; transform: translate(-50%, -340%) scale(.3); } }
@@ -362,7 +364,7 @@ img, svg { display: block; max-width: 100%; }
   padding: 14px;
   border-radius: 24px;
   font-family: var(--gog-font-body);
-  transition: all 0.3s ease;
+  transition: box-shadow 0.3s ease, transform 0.3s ease, opacity 0.3s ease;
   flex-shrink: 0;
   box-sizing: border-box;
 }
@@ -707,12 +709,236 @@ img, svg { display: block; max-width: 100%; }
   color: #512da8;
 }
 
+/* ====================================================================
+   STAGE PAGE SHELL — shared by stages 1-5 (Stage 1 is the reference).
+   Everything is scoped under .stage-wrap so the world-map hub (which has
+   its own .chip / .icon-btn) is untouched. Stage <style> blocks only keep
+   colours / art-specific bits; sizes, spacing and the HUD live here.
+   ==================================================================== */
+:root {
+  /* Vertical space the desktop layout reserves for everything that is NOT the
+     canvas frame: HUD + guide bar + page padding + the frame's hard shadow.
+     Real chrome is ~182px at >=1201px wide, so 190px keeps the whole page (and
+     the side cards) inside the viewport with no vertical scrollbar. */
+  --gog-chrome-h: 190px;
+}
+
 body .stage-wrap {
   width: 100% !important;
   max-width: 100% !important;
   padding: 10px 16px !important;
   margin: 0 auto !important;
   box-sizing: border-box !important;
+  animation: pageFadeIn 0.5s ease both;
+}
+@keyframes pageFadeIn {
+  from { opacity: 0; transform: translateY(10px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+@keyframes fadeInUp {
+  from { opacity: 0; transform: translateY(6px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+@keyframes emojiFloat {
+  0%, 100% { transform: translateY(0) rotate(-4deg); }
+  50%      { transform: translateY(-5px) rotate(5deg); }
+}
+.emoji-float {
+  display: inline-block;
+  animation: emojiFloat 2.6s ease-in-out infinite;
+}
+
+.stage-wrap .stage-hud {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin-bottom: 12px;
+}
+.stage-wrap .stage-title {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.stage-wrap .stage-title h1 { font-size: 1.25rem; }
+.stage-wrap .stage-title small {
+  display: block;
+  font-family: var(--gog-font-hand);
+  font-size: 1rem;
+  /* colour is set per stage */
+}
+.stage-wrap .hud-mid {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  flex-wrap: wrap;
+}
+.stage-wrap .meter {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: var(--gog-white);
+  border: 3px solid var(--gog-ink);
+  border-radius: 999px;
+  padding: 6px 14px 6px 10px;
+  box-shadow: var(--gog-shadow-sm);
+  min-width: 168px;
+  position: relative;
+}
+.stage-wrap .meter .label,
+.stage-wrap .meter .meter-track {
+  position: relative;
+  z-index: 2;
+}
+.stage-wrap .meter .label {
+  font-size: 0.78rem;
+  font-weight: 700;
+  white-space: nowrap;
+}
+.stage-wrap .meter-track {
+  flex: 1;
+  height: 10px;
+  border-radius: 999px;
+  border: 2px solid var(--gog-ink);
+  overflow: hidden;
+  /* track colour is set per stage */
+}
+.stage-wrap .timer-chip {
+  font-weight: 700;
+  min-width: 64px;
+  text-align: center;
+}
+.stage-wrap .stage-controls {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: 12px;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+.stage-wrap .calm-badge {
+  font-size: 0.78rem;
+  font-weight: 700;
+  animation: fadeInUp 0.6s ease both;
+}
+.stage-wrap .icon-btn {
+  width: 42px;
+  height: 42px;
+  min-width: 42px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--gog-white);
+  border: 3px solid var(--gog-ink);
+  border-radius: 50%;
+  box-shadow: 3px 3px 0 var(--gog-ink);
+  font-size: 1.15rem;
+  line-height: 1;
+  touch-action: manipulation;
+}
+/* One canvas-frame base for every stage. The aspect comes from
+   --gog-frame-aspect (1.6 = 960x600, 1.33333 = 800x600), set per stage. */
+.canvas-frame {
+  position: relative;
+  width: 100%;
+  aspect-ratio: var(--gog-frame-aspect, 1.6);
+  overflow: hidden;
+}
+.canvas-frame canvas {
+  width: 100%;
+  height: 100%;
+  display: block;
+  touch-action: none;
+  cursor: crosshair;
+}
+/* Hint: only the shake animation needs its own compositor layer */
+.canvas-frame.shake { will-change: transform; }
+
+/* Compact HUD (iPad landscape, small laptops, and the base for every phone
+   layout). Count-agnostic: the HUD row is a wrapping flex row where the
+   meter(s) soak up the free width, so a stage with 1, 2 or 3 meters/chips
+   still lands on one row. Phone-portrait / phone-landscape blocks further
+   down out-rank these on purpose. */
+@media (max-width: 1200px) {
+  :root { --gog-chrome-h: 172px; }
+  .stage-wrap .stage-hud {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    gap: 6px;
+    margin-bottom: 8px;
+  }
+  .stage-wrap .stage-title { gap: 6px; min-width: 0; }
+  .stage-wrap .stage-title .emoji-float { font-size: 1.35rem !important; }
+  .stage-wrap .stage-title h1 { font-size: 0.98rem; line-height: 1; }
+  .stage-wrap .stage-title small { display: none; }
+  .stage-wrap .hud-mid {
+    flex-wrap: wrap;
+    gap: 5px;
+    width: 100%;
+  }
+  .stage-wrap .hud-mid > * { flex: 0 0 auto; }
+  .stage-wrap .hud-mid > .meter {
+    flex: 1 1 128px;
+    min-width: 0;
+  }
+  .stage-wrap .meter {
+    min-width: 0;
+    gap: 5px;
+    padding: 4px 8px 4px 7px;
+    border-width: 2px;
+    box-shadow: 2px 2px 0 var(--gog-ink);
+  }
+  .stage-wrap .meter .label { font-size: 0.66rem; }
+  .stage-wrap .meter-track { height: 8px; border-width: 2px; }
+  .stage-wrap .chip {
+    padding: 4px 7px;
+    border-width: 2px;
+    box-shadow: 2px 2px 0 var(--gog-ink);
+    font-size: 0.72rem;
+    min-height: 30px;
+  }
+  .stage-wrap .timer-chip { min-width: 44px; }
+  .stage-wrap .icon-btn {
+    border-width: 2px;
+    box-shadow: 2px 2px 0 var(--gog-ink);
+    font-size: 0.92rem;
+  }
+  .stage-wrap .stage-controls { margin-top: 8px; gap: 6px; }
+  .stage-wrap .stage-controls .brutal-btn {
+    padding: 8px 12px;
+    border-width: 3px;
+    border-radius: 10px;
+    font-size: 0.86rem;
+    box-shadow: 3px 3px 0 var(--gog-ink);
+  }
+  .stage-wrap .calm-badge { font-size: 0.72rem; }
+  .stage-wrap .guideBar {
+    gap: 6px;
+    padding: 3px 4px;
+    margin-bottom: 8px;
+    border-width: 2px;
+    border-radius: 8px;
+    box-shadow: 1px 1px 0 var(--gog-ink);
+  }
+  .stage-wrap .guideAvatar { font-size: 1.25rem; }
+  .stage-wrap .guideBubble {
+    padding: 5px 8px;
+    border-width: 2px;
+    border-radius: 10px;
+    font-size: 1rem;
+    line-height: 1.1;
+  }
+  .stage-wrap .canvas-frame {
+    border-width: 3px;
+    border-radius: 12px;
+    box-shadow: 4px 4px 0 var(--gog-ink);
+  }
+}
+
+/* Low-priority HUD chips (.hud-extra) fold away before the row can wrap */
+@media (max-width: 1365px) {
+  .stage-wrap .hud-extra { display: none; }
 }
 
 @media (min-width: 993px) {
@@ -738,8 +964,8 @@ body .stage-wrap {
        frame always keeps the canvas aspect ratio. A height-only cap squashed a
        4:3 canvas into a wider box on short windows, stretching the whole scene
        sideways. Stages with a non-16:10 canvas set --gog-frame-aspect. */
-    max-width: calc((100vh - 160px) * var(--gog-frame-aspect, 1.6)) !important;
-    max-height: calc(100vh - 160px) !important;
+    max-width: calc((100vh - var(--gog-chrome-h)) * var(--gog-frame-aspect, 1.6)) !important;
+    max-height: calc(100vh - var(--gog-chrome-h)) !important;
     margin: 0 !important;
   }
   body .gog-play-card {
@@ -747,6 +973,77 @@ body .stage-wrap {
     width: 280px;
     flex-shrink: 0;
   }
+  /* The side cards may never be taller than the play region: on short windows
+     they scroll inside themselves instead of adding a page scrollbar. */
+  body .gog-guardian-card,
+  body .gog-play-card {
+    max-height: calc(100vh - var(--gog-chrome-h));
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    scrollbar-width: thin;
+  }
+}
+
+/* Short desktop windows (laptops: 1366x768, 1280x720): tighten the side cards
+   so their content fits the play region without scrolling inside the card. */
+@media (min-width: 993px) and (max-height: 860px) {
+  body .gog-guardian-card,
+  body .gog-play-card { padding: 10px; }
+  .gog-guardian-card .card-inner,
+  .gog-play-card .card-inner { gap: 6px; }
+  .gog-guardian-card .mascot-box,
+  .gog-play-card .mascot-box {
+    display: grid;
+    grid-template-columns: 40px 1fr;
+    column-gap: 10px;
+    align-items: center;
+    padding: 6px 52px 6px 8px; /* right gap = the 🔊 button */
+    text-align: left;
+  }
+  .gog-guardian-card .mascot-circle,
+  .gog-play-card .mascot-circle {
+    grid-row: 1 / span 2;
+    width: 40px;
+    height: 40px;
+    margin: 0;
+    font-size: 21px;
+  }
+  .gog-guardian-card .mascot-box h3,
+  .gog-play-card .mascot-box h3 { font-size: 16px; line-height: 1.1; }
+  .gog-guardian-card .role-text,
+  .gog-play-card .role-text { margin-top: 1px; font-size: 11px; }
+  .gog-guardian-card h2,
+  .gog-play-card h2 { margin: 0 0 4px; font-size: 16px; }
+  .gog-guardian-card .fact-box,
+  .gog-play-card .fact-box { padding: 7px 10px; font-size: 12.5px; line-height: 1.3; }
+  .gog-guardian-card .quote-box,
+  .gog-play-card .quote-box { margin-top: 6px; padding: 6px 8px; }
+  .gog-play-card .play-goal { font-size: 14px; }
+  .gog-play-card .play-steps { gap: 5px; margin-top: 6px; padding: 6px; font-size: 13.5px; }
+  .gog-play-card .play-step { gap: 8px; }
+  .gog-play-card .play-step-icon { width: 32px; height: 32px; font-size: 19px; border-width: 2px; border-radius: 10px; }
+  .gog-play-card .play-keys { font-size: 11px; }
+  .gog-play-card .play-help { margin-top: 5px; font-size: 12px; }
+}
+/* Stage 4's how-to-play card has the longest text; 864-940px-tall windows
+   (1536x864, 1440x900, 1600x900) need a lighter squeeze for it to fit. */
+@media (min-width: 993px) and (min-height: 861px) and (max-height: 940px) {
+  .gog-play-card.theme-stage04 .mascot-box {
+    display: grid;
+    grid-template-columns: 40px 1fr;
+    column-gap: 10px;
+    align-items: center;
+    padding: 6px 52px 6px 8px;
+    text-align: left;
+  }
+  .gog-play-card.theme-stage04 .mascot-circle {
+    grid-row: 1 / span 2;
+    width: 40px;
+    height: 40px;
+    margin: 0;
+    font-size: 21px;
+  }
+  .gog-play-card.theme-stage04 .play-steps { gap: 6px; padding: 8px 8px; }
 }
 
 
@@ -983,8 +1280,9 @@ body .stage-wrap {
   body .gog-stage-layout #canvasFrame {
     order: 1;
     width: 100%;
-    max-width: calc((100vh - 240px) * var(--gog-frame-aspect, 1.6)) !important;
-    max-height: calc(100vh - 240px) !important;
+    /* stacked layout: leave ~50px of the cards peeking below the frame */
+    max-width: calc((100vh - var(--gog-chrome-h) - 50px) * var(--gog-frame-aspect, 1.6)) !important;
+    max-height: calc(100vh - var(--gog-chrome-h) - 50px) !important;
     margin: 0 auto !important;
   }
   body .gog-guardian-card {
@@ -1131,7 +1429,7 @@ body .stage-wrap {
 .gog-coach-voice { align-self: center; }
 /* card header voice buttons sit in the corner of the guardian / how-to-play cards */
 .gog-guardian-card .card-inner, .gog-play-card .card-inner { position: relative; }
-.gog-card-voice { position: absolute; top: 6px; right: 6px; width: 44px; height: 44px; min-width: 44px; font-size: 1.15rem; z-index: 2; }
+.gog-card-voice { position: absolute; top: 6px; right: 6px; width: 48px; height: 48px; min-width: 48px; font-size: 1.15rem; z-index: 2; }
 .gog-overlay-voice { margin: 0 auto 10px; }
 @media (prefers-reduced-motion: reduce) {
   .gog-voice-btn.speaking { animation: none; }
@@ -1153,7 +1451,7 @@ body .stage-hud .stage-controls .brutal-btn,
 body .stage-hud .brutal-btn.ghost {
   min-height: 48px !important;
 }
-.gog-coach-skip { min-height: 44px; padding: 6px 12px; font-size: 0.85rem; }
+.gog-coach-skip { min-height: 48px; padding: 6px 14px; font-size: 0.85rem; }
 
 /* ====================================================================
    PHONE LANDSCAPE — the play area is the hero.
@@ -1164,6 +1462,7 @@ body .stage-hud .brutal-btn.ghost {
    The Guardian / How-to-Play cards stay below the canvas (scroll down).
    ==================================================================== */
 @media (orientation: landscape) and (max-height: 520px) {
+  :root { --gog-chrome-h: 70px; }
   body .stage-wrap { padding: 4px 8px !important; }
   body .stage-hud {
     display: flex !important;
@@ -1216,8 +1515,8 @@ body .stage-hud .brutal-btn.ghost {
     order: 1 !important;
     flex-grow: 0 !important;
     width: 100% !important;
-    max-width: calc((100vh - 70px) * var(--gog-frame-aspect, 1.6)) !important;
-    max-height: calc(100vh - 70px) !important;
+    max-width: calc((100vh - var(--gog-chrome-h)) * var(--gog-frame-aspect, 1.6)) !important;
+    max-height: calc(100vh - var(--gog-chrome-h)) !important;
     margin: 0 auto !important;
   }
   body .gog-guardian-card { order: 2 !important; width: 100% !important; max-width: 420px !important; }
@@ -1226,8 +1525,8 @@ body .stage-hud .brutal-btn.ghost {
 @supports (height: 100dvh) {
   @media (orientation: landscape) and (max-height: 520px) {
     body .gog-stage-layout #canvasFrame {
-      max-width: calc((100dvh - 70px) * var(--gog-frame-aspect, 1.6)) !important;
-      max-height: calc(100dvh - 70px) !important;
+      max-width: calc((100dvh - var(--gog-chrome-h)) * var(--gog-frame-aspect, 1.6)) !important;
+      max-height: calc(100dvh - var(--gog-chrome-h)) !important;
     }
   }
 }
@@ -1251,8 +1550,8 @@ body .stage-hud .brutal-btn.ghost {
   .gog-coach-icon { font-size: 1.5rem; }
   .gog-coach-title { font-size: 0.9rem; }
   .gog-coach-text { font-size: 0.78rem; }
-  .gog-coach .gog-voice-btn { width: 40px; height: 40px; min-width: 40px; font-size: 1.1rem; }
-  .gog-coach-skip { min-height: 40px; padding: 4px 10px; }
+  .gog-coach .gog-voice-btn { width: 44px; height: 44px; min-width: 44px; font-size: 1.1rem; }
+  .gog-coach-skip { min-height: 44px; padding: 4px 10px; }
 }
 
 /* phone landscape: least important HUD chips fold away (marked .hud-extra) */

@@ -2,10 +2,58 @@
    GUARDIANS OF GAIA — SHARED UI
    HUD bits, overlays, fact-cards and toasts that every stage and
    the world map reuse, so the "feel" is consistent everywhere.
+
+   PERFORMANCE HELPERS (use from per-frame / per-step code instead of
+   writing the DOM directly; each only touches the DOM when the value
+   actually changed, so an unchanged HUD costs no style/layout work):
+
+     GOGUi.setText(el, value)        el.textContent = String(value), only if
+                                     it differs from the last value set here.
+     GOGUi.setStyle(el, prop, value) el.style[prop] = value (camelCase, or a
+                                     "--custom-prop" / "css-name"), only on
+                                     change.
+     GOGUi.setClass(el, cls, on)     classList.toggle(cls, !!on), only on
+                                     change.
+
+   The "last value" is cached on the element, so write that property through
+   these helpers only (a direct write in between is not noticed).
+
+   GOGUi.paused is true while a modal such as the 📖 info pop-up is open.
+   A stage should return early from update() AND skip its draw work while it
+   is set (GameLoop still calls draw() on steps, so check it there too, or
+   call loop.forceDraw() once after it clears).
    ============================================================ */
 
 (function (global) {
   "use strict";
+
+  // DOM writes only on change (see header).
+  function setText(el, value) {
+    if (!el) return;
+    var s = String(value);
+    if (el._gogText === s) return;
+    el._gogText = s;
+    el.textContent = s;
+  }
+
+  function setStyle(el, prop, value) {
+    if (!el) return;
+    var cache = el._gogStyle || (el._gogStyle = {});
+    var v = String(value);
+    if (cache[prop] === v) return;
+    cache[prop] = v;
+    if (prop.charAt(0) === "-" || prop.indexOf("-") > 0) el.style.setProperty(prop, v);
+    else el.style[prop] = v;
+  }
+
+  function setClass(el, cls, on) {
+    if (!el) return;
+    var cache = el._gogCls || (el._gogCls = {});
+    var flag = !!on;
+    if (cache[cls] === flag) return;
+    cache[cls] = flag;
+    el.classList.toggle(cls, flag);
+  }
 
   function starsMarkup(count, max) {
     max = max || 3;
@@ -285,9 +333,10 @@
     if (now - lastFloatLabelAt < 80) {
       return;
     }
-    var activeLabels = parentEl.querySelectorAll(".gog-float-label");
-    if (activeLabels.length >= 10) {
-      activeLabels[0].remove();
+    // Track live labels per parent instead of querySelectorAll on every call.
+    var live = parentEl._gogFloats || (parentEl._gogFloats = []);
+    if (live.length >= 10) {
+      live.shift().remove();
     }
     lastFloatLabelAt = now;
 
@@ -306,11 +355,16 @@
     el.style.opacity = "1";
     el.style.zIndex = "50";
     parentEl.appendChild(el);
+    live.push(el);
     requestAnimationFrame(function () {
       el.style.transform = "translate(-50%, -38px)";
       el.style.opacity = "0";
     });
-    setTimeout(function () { el.remove(); }, 720);
+    setTimeout(function () {
+      el.remove();
+      var i = live.indexOf(el);
+      if (i >= 0) live.splice(i, 1);
+    }, 720);
   }
 
   function say(text) {
@@ -342,6 +396,7 @@
 
   function confettiAt(x, y, n) {
     var colors = ['#C6FF3D', '#FF3DA6', '#FF9142', '#2D4DE0', '#B79CFF'];
+    var frag = document.createDocumentFragment(); // one insert, not n
     for (var i = 0; i < (n || 10); i++) {
       var d = document.createElement('div');
       d.className = 'confetti-bit';
@@ -353,11 +408,12 @@
       d.style.setProperty('--dx', (Math.cos(ang) * dist) + 'px');
       d.style.setProperty('--dy', (Math.sin(ang) * dist) + 'px');
       d.style.setProperty('--rot', (Math.random() * 360) + 'deg');
-      document.body.appendChild(d);
+      frag.appendChild(d);
       (function (el) {
         setTimeout(function () { el.remove(); }, 650);
       })(d);
     }
+    document.body.appendChild(frag);
   }
 
   var showStageInfoImpl = null; // set below once the stage's cards exist (browser only)
@@ -366,7 +422,7 @@
     document.addEventListener('click', function (e) {
       var btn = e.target.closest('.btn, .brutal-btn, .marker, .iconBtn, .icon-btn');
       if (!btn) return;
-      var r = btn.getBoundingClientRect();
+      var r = btn.getBoundingClientRect(); // read first, then confettiAt only writes
       confettiAt(r.left + r.width / 2, r.top + r.height / 2, 8);
     }, true);
 
@@ -661,7 +717,10 @@
     showOverlay: showOverlay,
     closeOverlay: closeOverlay,
     showGuardianBeat: showGuardianBeat,
-    paused: false,
+    paused: false, // true while the info pop-up is open: skip update AND draw work
+    setText: setText,
+    setStyle: setStyle,
+    setClass: setClass,
     showStageInfo: function (opts) { return showStageInfoImpl ? showStageInfoImpl(opts) : null; },
     floatLabel: floatLabel,
     say: say,

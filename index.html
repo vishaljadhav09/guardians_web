@@ -4,6 +4,11 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no" />
     <title>Guardians of Gala</title>
+    <!-- Perf: start the self-hosted fonts and the hub backdrop before the CSS discovers them -->
+    <link rel="preload" as="font" type="font/woff2" crossorigin href="src/fonts/Baloo2.woff2" />
+    <link rel="preload" as="font" type="font/woff2" crossorigin href="src/fonts/Quicksand.woff2" />
+    <link rel="preload" as="font" type="font/woff2" crossorigin href="src/fonts/Caveat.woff2" />
+    <link rel="preload" as="image" type="image/webp" href="stages/assets/background/bio_bg.webp" />
     <link rel="stylesheet" href="src/styles.css" />
     <style>
       :root {
@@ -40,7 +45,7 @@
         inset: 0;
         z-index: -2;
         pointer-events: none;
-        background: url("./stages/assets/background/bio_bg.png") center / cover
+        background: url("./stages/assets/background/bio_bg.webp") center / cover
           no-repeat;
       }
 
@@ -58,9 +63,10 @@
         gap: 20px;
         flex-wrap: wrap;
         margin-bottom: 24px;
-        background: var(--gog-glass);
-        backdrop-filter: blur(16px);
-        -webkit-backdrop-filter: blur(16px);
+        /* Perf: was backdrop-filter: blur(16px) over --gog-glass (.45). A backdrop blur forces an
+           offscreen read-back of everything behind it every frame; a slightly more opaque flat fill
+           looks the same over this busy illustration and costs nothing. */
+        background: rgba(15, 23, 42, 0.66);
         padding: 16px 24px;
         border-radius: 24px;
         border: 1px solid rgba(255, 255, 255, 0.08);
@@ -95,10 +101,12 @@
           var(--gog-lime)
         );
         background-size: 300% 100%;
+        background-position: 50% center;
         -webkit-background-clip: text;
         background-clip: text;
         color: transparent;
-        animation: titleRainbow 8s linear infinite;
+        /* Perf: titleRainbow (8s infinite background-position on clipped text) repainted the title
+           every frame. It was a slow, subtle sweep, so the gradient is now static. */
       }
       .brand small {
         font-family: "Caveat", cursive;
@@ -176,13 +184,14 @@
           rgba(255, 255, 255, 0.3) 50%,
           transparent 70%
         );
-        background-size: 200% 100%;
+        /* Perf: the shimmer now slides the pseudo-element (transform, compositor-only) instead of
+           animating background-position (a repaint every frame). */
         animation: smogShimmer 2s linear infinite;
       }
 
       .icon-btn {
-        width: 44px;
-        height: 44px;
+        width: 48px;
+        height: 48px;
         border-radius: 50%;
         background: rgba(255, 255, 255, 0.08);
         border: 1px solid rgba(255, 255, 255, 0.15);
@@ -239,10 +248,10 @@
 
       @keyframes smogShimmer {
         0% {
-          background-position: 200% 0;
+          transform: translateX(-100%);
         }
         100% {
-          background-position: calc(200% - 200px) 0;
+          transform: translateX(100%);
         }
       }
 
@@ -286,13 +295,15 @@
         }
       }
 
+      /* Perf: was an animated filter (blur + drop-shadow) = re-rasterised every frame.
+         The blur/glow is pre-baked into the blob's radial gradient; only opacity pulses now. */
       @keyframes blobGlow {
         0%,
         100% {
-          filter: blur(18px) drop-shadow(0 0 20px rgba(163, 230, 53, 0.3));
+          opacity: 0.5;
         }
         50% {
-          filter: blur(18px) drop-shadow(0 0 35px rgba(163, 230, 53, 0.6));
+          opacity: 0.68;
         }
       }
 
@@ -380,8 +391,7 @@
         gap: 14px;
         margin-bottom: 20px;
         padding: 14px 16px;
-        background: rgba(15, 23, 42, 0.6);
-        backdrop-filter: blur(12px);
+        background: rgba(15, 23, 42, 0.68); /* was .6 + backdrop-filter: blur(12px) */
         border-radius: 16px;
         border: 1px solid rgba(163, 230, 53, 0.2);
         animation: popIn 0.6s cubic-bezier(0.2, 1.2, 0.4, 1) 0.3s both;
@@ -500,6 +510,7 @@
       }
 
       .intro-btn {
+        min-height: 48px;
         padding: 10px 20px;
         border: none;
         border-radius: 8px;
@@ -635,23 +646,36 @@
       }
       .constellation-line {
         stroke-dasharray: 8, 8;
-        animation: constellationPulse 35s linear infinite;
-        filter: drop-shadow(0 0 4px rgba(255, 255, 255, 0.2));
+        /* Perf: the 35s dash-offset crawl moved the dashes ~0.5px/s (imperceptible) but repainted the
+           whole SVG every frame, and the drop-shadow filter re-rasterised it. Both removed. */
       }
 
+      /* Perf: the soft glow is a pre-blurred radial gradient (colour comes from --blob, set in JS)
+         instead of filter: blur(30px) + mix-blend-mode: screen on a large element. Only transform
+         and opacity animate. */
       .biome-blob {
         position: absolute;
         border-radius: 50%;
-        mix-blend-mode: screen;
-        filter: blur(30px);
-        opacity: 0.2;
+        background: radial-gradient(
+          closest-side,
+          var(--blob, #fff) 0%,
+          var(--blob, #fff) 46%,
+          transparent 100%
+        );
+        opacity: 0.24;
         transition: all 1s ease;
         transform: translate(-50%, -50%);
-        animation: blobFloat 14s ease-in-out infinite alternate;
+        /* Perf: the 14s idle drift (scale 1 -> 1.1 of a ~24%-opacity glow) was invisible but cost 10 running
+           animations; only cleared (bright) blobs animate now, see .cleared below. */
       }
       .biome-blob.cleared {
         opacity: 0.6;
-        filter: blur(18px);
+        background: radial-gradient(
+          closest-side,
+          var(--blob, #fff) 0%,
+          var(--blob, #fff) 56%,
+          transparent 100%
+        );
         animation:
           blobFloat 8s ease-in-out infinite alternate,
           blobGlow 4s ease-in-out infinite;
@@ -684,7 +708,7 @@
           rgba(168, 85, 247, 0.08) 45%,
           transparent 70%
         );
-        filter: blur(20px);
+        /* Perf: no filter: blur(20px) here - the radial gradient already fades to transparent */
         z-index: -1;
         animation: treeHaloPulse 4s ease-in-out infinite;
       }
@@ -748,8 +772,7 @@
         justify-content: center;
         font-size: 1.8rem;
         cursor: pointer;
-        background: rgba(15, 23, 42, 0.8);
-        backdrop-filter: blur(8px);
+        background: rgba(15, 23, 42, 0.86); /* was .8 + backdrop-filter: blur(8px), x10 markers */
         box-shadow: 0 10px 20px rgba(0, 0, 0, 0.35);
         transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.2);
         z-index: 15;
@@ -765,6 +788,9 @@
         filter: grayscale(1) opacity(0.35);
         cursor: not-allowed;
         background: rgba(30, 41, 59, 0.85);
+      }
+      /* Perf: only the next sleeping Guardian breathes (JS adds .breathe), not all of them. */
+      .marker.locked.breathe {
         animation: lockedBreathe 3s ease-in-out infinite;
       }
 
@@ -910,7 +936,7 @@
           rgba(255, 255, 255, 0.35),
           rgba(255, 255, 255, 0) 70%
         );
-        filter: blur(25px);
+        /* Perf: no filter: blur(25px) - the radial gradient is already soft */
         transform: translate(-50%, -50%);
         opacity: 0.85;
         transition: opacity 0.6s ease-out;
@@ -967,9 +993,9 @@
           rgba(255, 255, 255, 0.25) 0%,
           rgba(255, 255, 255, 0) 70%
         );
-        filter: blur(10px);
+        /* Perf: no blur filter / screen blend / animated hazeBlur - the gradient is already soft
+           and plain alpha over this map reads the same. Only transform animates. */
         pointer-events: none;
-        mix-blend-mode: screen;
         z-index: 5;
       }
       .fog1 {
@@ -977,18 +1003,14 @@
         height: 35%;
         top: 5%;
         left: -10%;
-        animation:
-          driftA 26s ease-in-out infinite,
-          hazeBlur 9s ease-in-out infinite;
+        animation: driftA 26s ease-in-out infinite;
       }
       .fog2 {
         width: 60%;
         height: 40%;
         top: 40%;
         left: 50%;
-        animation:
-          driftB 34s ease-in-out infinite,
-          hazeBlur 11s ease-in-out infinite reverse;
+        animation: driftB 34s ease-in-out infinite;
         opacity: 0.6;
       }
       .fog3 {
@@ -996,9 +1018,7 @@
         height: 30%;
         top: 65%;
         left: 10%;
-        animation:
-          driftC 22s ease-in-out infinite,
-          hazeBlur 7s ease-in-out infinite;
+        animation: driftC 22s ease-in-out infinite;
         opacity: 0.45;
       }
 
@@ -1033,15 +1053,6 @@
         }
         100% {
           transform: translate(0, 0);
-        }
-      }
-      @keyframes hazeBlur {
-        0%,
-        100% {
-          filter: blur(10px);
-        }
-        50% {
-          filter: blur(18px);
         }
       }
 
@@ -1231,8 +1242,7 @@
           rgba(30, 41, 59, 0.95),
           rgba(15, 23, 42, 0.95)
         );
-        backdrop-filter: blur(12px);
-        border: 1px solid rgba(163, 230, 53, 0.3);
+        border: 1px solid rgba(163, 230, 53, 0.3); /* backdrop-filter removed: the fill is already .95 opaque */
         color: var(--gog-text-light);
         padding: 14px 20px;
         border-radius: 12px;
@@ -1357,8 +1367,8 @@
         }
         .icon-btn {
           grid-area: gear;
-          width: 42px;
-          height: 42px;
+          width: 48px;
+          height: 48px;
           font-size: 1.15rem;
         }
         .chip-stars {
@@ -1563,6 +1573,13 @@
         }
       }
 
+      /* Perf: page/app in the background (visibilitychange) -> freeze every CSS animation */
+      html.page-hidden *,
+      html.page-hidden *::before,
+      html.page-hidden *::after {
+        animation-play-state: paused !important;
+      }
+
       @media (prefers-reduced-motion: reduce) {
         * {
           animation-duration: 0.01ms !important;
@@ -1570,6 +1587,7 @@
           transition-duration: 0.01ms !important;
         }
       }
+          .reset-btn { min-height: 48px; }
     </style>
   </head>
   <body>
@@ -2345,7 +2363,7 @@
           blob.style.width = size + "%";
           blob.style.height = size + "%";
           placeAt(blob, pos(stage));
-          blob.style.background = stage.color;
+          blob.style.setProperty("--blob", stage.color);
           biomeLayer.appendChild(blob);
         });
 
@@ -2468,6 +2486,9 @@
             });
             markerLayer.appendChild(el);
           });
+          // only the next sleeping Guardian breathes (keeps infinite animations down)
+          var firstLocked = markerLayer.querySelector(".marker.locked");
+          if (firstLocked) firstLocked.classList.add("breathe");
         }
 
         var isAnimatingSpika = false;
@@ -2615,9 +2636,17 @@
 
         // Interactive Hover Micro-Weather System Engine Loops
         var ambientIntervals = [];
-        function startAmbientEffects() {
+        var reducedMotionMQ = window.matchMedia
+          ? window.matchMedia("(prefers-reduced-motion: reduce)")
+          : { matches: false };
+        function stopAmbientEffects() {
           ambientIntervals.forEach(clearInterval);
           ambientIntervals = [];
+        }
+        function startAmbientEffects() {
+          stopAmbientEffects();
+          // no decorative particles while the page is hidden or the user asked for less motion
+          if (document.hidden || reducedMotionMQ.matches) return;
           STAGES.forEach(function (stage) {
             if (save.stagesCleared.indexOf(stage.id) === -1) return;
             var blob = document.getElementById("blob-" + stage.id);
@@ -2953,6 +2982,16 @@
         } else if (portraitMQ.addListener) {
           portraitMQ.addListener(applyLayout);
         }
+
+        // Perf: when the page/app goes to the background, freeze CSS animations (html.page-hidden)
+        // and stop the ambient particle timers; resume when it comes back.
+        function onVisibility() {
+          document.documentElement.classList.toggle("page-hidden", document.hidden);
+          if (document.hidden) stopAmbientEffects();
+          else startAmbientEffects();
+        }
+        document.addEventListener("visibilitychange", onVisibility);
+        onVisibility();
 
         window.addEventListener("focus", function () {
           save = GOGSave.load();

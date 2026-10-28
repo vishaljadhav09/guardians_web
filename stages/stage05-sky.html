@@ -6,318 +6,90 @@
 <title>Breezy & the Two Skies - Guardians of Gaia</title>
 <link rel="stylesheet" href="../src/styles.css">
 <style>
+  /* Stage-private tokens only: --cream / --ink / --lime / --cobalt / --gold used
+     to be redefined here and leaked into every shared widget that reads them. */
   :root{
-    --cream: var(--gog-white, #FDFBF7);
-    --ink: var(--gog-ink, #12120F);
-    --lime: var(--gog-lime, #C6FF3D);
     --lime-dark: #8FCB1A;
-    --cobalt: var(--gog-cobalt, #2C4BFF);
     --cobalt-dark: #1830B0;
     --grey: #8b8b8b;
     --grey-dark: #4a4a4a;
     --grey-light: #d9d9d3;
-    --gold: var(--gog-tangerine, #FFC93C);
-    --gog-frame-aspect: 1.3333; /* 800x600 canvas: keeps the frame 4:3 on short windows */
+    --gog-frame-aspect: 1.33333; /* 800x600 canvas: keeps the frame 4:3 on short windows */
   }
-
-  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
 
   body { position: relative; }
 
-  .stage-wrap {
-    width: min(1180px, calc(100vw - 28px));
-    max-width: 1180px;
-    margin: 0 auto;
-    padding: 12px 0 32px;
-    animation: pageFadeIn 0.5s ease both;
-  }
+  /* Page shell (HUD, title, meters, chips, buttons, guide bar, canvas-frame skin,
+     the <=1200px compact HUD) lives in src/styles.css — only sky colours and
+     stage-only widgets are styled here. */
+  .stage-title small { color: #5a6b9a; }
 
-  .stage-hud {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 10px;
-    flex-wrap: wrap;
-    margin-bottom: 12px;
-  }
-
-  .stage-title {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-  }
-
-  .stage-title h1 {
-    font-family: 'Baloo 2', sans-serif;
-    font-size: 1.6rem;
-    font-weight: 800;
-    margin: 0;
-    color: var(--ink);
-  }
-
-  .stage-title small {
-    display: block;
-    font-family: 'Quicksand', sans-serif;
-    font-size: 0.95rem;
-    font-weight: 700;
-    color: #5a6b9a;
-  }
-
-  .hud-mid {
-    display: flex;
-    align-items: center;
-    gap: 14px;
-    flex-wrap: wrap;
-  }
-
-  .timer-chip {
-    font-family: 'Baloo 2', sans-serif;
-    font-weight: 700;
-    min-width: 68px;
-    text-align: center;
-    background: #FFD23F !important;
-    border: 3px solid var(--gog-ink);
-    box-shadow: 3px 3px 0 var(--gog-ink);
-  }
   .timer-chip.timer-urgent {
     animation: timerPulseScale 0.8s ease-in-out infinite;
-    color: #e82e5d !important;
-    background: #ffcbd8 !important;
+    color: #e82e5d;
+    background: #ffcbd8;
   }
   @keyframes timerPulseScale {
     0%, 100% { transform: scale(1); }
     50% { transform: scale(1.15); }
   }
 
-  .meter {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    background: #FFFFFF;
-    border: 4px solid var(--gog-ink);
-    border-radius: 999px;
-    padding: 8px 16px 8px 12px;
-    box-shadow: 4px 4px 0 var(--gog-ink), 0 0 12px rgba(0,0,0,0.08);
-    min-width: 190px;
-    position: relative;
-    transition: transform 0.2s, box-shadow 0.2s;
+  /* two long-labelled meters: give them room on the big-screen HUD row */
+  @media (min-width: 1201px) {
+    #cityPowerMeter, #skyHealthMeter { min-width: 205px; }
   }
-  .meter:hover {
-    transform: translateY(-2px);
-    box-shadow: 6px 6px 0 var(--gog-ink), 0 0 16px rgba(0,0,0,0.12);
+  /* ...and keep that row on one line at 1201-1330px (title + 2 meters + buttons
+     leave no room for the "Standard Mode" label there). */
+  @media (min-width: 1201px) and (max-width: 1330px) {
+    .calm-badge { display: none; }
   }
-
-  .meter .label,
-  .meter .meter-track {
-    position: relative;
-    z-index: 2;
+  /* "Flying Together!" appears mid-game: float it under the HUD row so it never
+     reflows the HUD (and with it the canvas frame). */
+  .hud-mid { position: relative; }
+  #flockBadge {
+    position: absolute;
+    top: 100%;
+    right: 0;
+    margin-top: 4px;
+    z-index: 41;
+    pointer-events: none;
   }
-
-  .meter .label {
-    font-family: 'Baloo 2', sans-serif;
-    font-size: 0.88rem;
-    font-weight: 800;
-    letter-spacing: 0.5px;
-    white-space: nowrap;
-    color: var(--ink);
-  }
-
-  .meter-track {
-    flex: 1;
-    height: 14px;
-    border-radius: 999px;
-    background: var(--grey-light);
-    border: 3px solid var(--gog-ink);
-    overflow: hidden;
-  }
-
+  .meter-track { background: var(--grey-light); }
   .meter-fill {
     height: 100%;
     width: 0%;
     background: linear-gradient(90deg, #FFD23F, #FF9F1C);
-    box-shadow: inset 0 2px 4px rgba(255,255,255,0.6), 0 0 8px rgba(255,159,28,0.4);
     transition: width 0.25s ease-out;
   }
-
   #clarityFill {
     background: linear-gradient(90deg, #00C6FF, #0072FF);
-    box-shadow: inset 0 2px 4px rgba(255,255,255,0.6), 0 0 10px rgba(0,114,255,0.5);
     transition: width 0.2s linear;
   }
 
-  .canvas-frame {
-    position: relative;
-    width: 100%;
-    margin: 0 auto;
-    aspect-ratio: 4 / 3;
-    max-height: calc(100vh - 220px);
-    overflow: hidden;
-    border: 6px solid var(--gog-ink);
-    border-radius: 28px;
-    box-shadow: 8px 8px 0 var(--gog-ink), 0 0 20px rgba(0,0,0,0.12);
-    background: linear-gradient(135deg, #f9f8f5 0%, #f0ede6 100%);
-    transition: border-color 0.2s, box-shadow 0.2s;
+  /* Smog-danger warning: a hard-edged pink ring inside the frame whose opacity
+     pulses (replaces an animated blurred box-shadow that repainted the frame). */
+  .canvas-frame::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    box-shadow: inset 0 0 0 6px rgba(255, 59, 125, 0.55);
+    opacity: 0;
+    pointer-events: none;
+    z-index: 12;
   }
-
   @keyframes skyDangerPulse {
-    0%, 100% { box-shadow: 8px 8px 0 var(--gog-ink), 0 0 0 0 rgba(255,59,125,0.2); }
-    50% { box-shadow: 8px 8px 0 var(--gog-ink), 0 0 30px 10px rgba(255,59,125,0.15); }
+    0%, 100% { opacity: 0; }
+    50% { opacity: 1; }
   }
-  .canvas-frame.sky-danger {
+  .canvas-frame.sky-danger::after {
     animation: skyDangerPulse 1.2s ease-in-out infinite;
   }
 
-  canvas {
-    width: 100%;
-    height: 100%;
-    display: block;
-    touch-action: none;
-    cursor: grab;
-  }
-  canvas:active { cursor: grabbing; }
+  .canvas-frame canvas { cursor: grab; }
+  .canvas-frame canvas:active { cursor: grabbing; }
 
-  .stage-controls {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-top: 12px;
-    gap: 10px;
-    flex-wrap: wrap;
-  }
-
-  .calm-badge {
-    font-family: 'Baloo 2', sans-serif;
-    font-size: 0.95rem;
-    font-weight: 800;
-    color: var(--cobalt);
-    animation: fadeInUp 0.6s ease both;
-  }
-
-  .icon-btn {
-    width: 48px;
-    height: 48px;
-    min-width: 48px;
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    background: var(--gog-white);
-    border: 4px solid var(--gog-ink);
-    border-radius: 50%;
-    box-shadow: 4px 4px 0 var(--gog-ink), 0 0 8px rgba(0,0,0,0.08);
-    font-size: 1.35rem;
-    line-height: 1;
-    touch-action: manipulation;
-    cursor: pointer;
-    transition: transform 0.08s, box-shadow 0.08s;
-  }
-  .icon-btn:hover {
-    transform: translate(-1px, -1px) scale(1.05);
-    box-shadow: 5px 5px 0 var(--gog-ink), 0 0 12px rgba(0,0,0,0.12);
-  }
-  .icon-btn:active {
-    transform: translate(1px, 1px) scale(0.95);
-    box-shadow: 2px 2px 0 var(--gog-ink);
-  }
-
-  .brutal-btn.ghost {
-    font-family: 'Baloo 2', sans-serif;
-    font-weight: 700;
-    background: #FFF5E1;
-    border: 3px solid var(--gog-ink);
-    border-radius: 14px;
-    padding: 8px 16px;
-    color: var(--gog-ink);
-    box-shadow: 3px 3px 0 var(--gog-ink);
-    text-decoration: none;
-    transition: all 0.1s;
-  }
-  .brutal-btn.ghost:hover {
-    background: #FFE3AD;
-    transform: translateY(-2px);
-    box-shadow: 5px 5px 0 var(--gog-ink), 0 0 10px rgba(255,195,60,0.3);
-  }
-  .brutal-btn.ghost:active {
-    transform: translate(2px, 2px);
-    box-shadow: 1px 1px 0 var(--gog-ink);
-  }
-
-  .guideBar {
-    display: flex;
-    align-items: center;
-    gap: 16px;
-    padding: 12px 20px;
-    background: linear-gradient(135deg, #FFFDEB 0%, #FFF8C6 100%);
-    border: 4px solid var(--gog-ink);
-    border-radius: 24px;
-    box-shadow: 5px 5px 0 var(--gog-ink), 0 0 16px rgba(0,0,0,0.08);
-    margin-bottom: 18px;
-    position: relative;
-  }
-  
-  .guideAvatar {
-    font-size: 2.5rem;
-    filter: drop-shadow(3px 3px 2px rgba(0,0,0,0.12));
-    animation: guideBob 2.6s ease-in-out infinite;
-  }
-
-  @keyframes guideBob {
-    0%, 100% { transform: translateY(0) rotate(-4deg) scale(1); }
-    50% { transform: translateY(-4px) rotate(4deg) scale(1.05); }
-  }
-
-  .guideBubble {
-            padding: 5px 8px;
-          border-width: 2px;
-          border-radius: 10px;
-          font-size: 1rem;
-          line-height: 1.1;
-  }
-  .guideBubble.pop { animation: bubblePop .35s cubic-bezier(.34,1.56,.64,1); }
-  @keyframes bubblePop {
-    0% { transform: scale(.95); }
-    60% { transform: scale(1.05); }
-    100% { transform: scale(1); }
-  }
-
-  @media (max-width: 700px) {
-    .stage-wrap { width: calc(100vw - 12px); max-width: 100%; padding: 6px 0 18px; }
-    .stage-hud { display: grid; grid-template-columns: minmax(0, 1fr); gap: 8px; margin-bottom: 8px; }
-    .stage-title { gap: 6px; min-width: 0; }
-    .stage-title .emoji-float { font-size: 1.5rem !important; }
-    .stage-title h1 { font-size: 1.2rem; }
-    .stage-title small { display: none; }
-    .hud-mid { display: grid; grid-template-columns: minmax(120px, 1fr) minmax(120px, 1fr) auto; gap: 8px; align-items: center; width: 100%; }
-    .meter { min-width: 0; gap: 6px; padding: 6px 10px; border-width: 3px; box-shadow: 2px 2px 0 var(--gog-ink); }
-    .meter .label { font-size: 0.72rem; }
-    .meter-track { height: 10px; border-width: 2px; }
-    .guideBar { gap: 8px; padding: 8px 12px; margin-bottom: 8px; border-width: 3px; border-radius: 16px; box-shadow: 3px 3px 0 var(--gog-ink); }
-    .guideAvatar { font-size: 1.8rem; }
-    .guideBubble { padding: 8px 12px; border-width: 2px; border-radius: 14px; font-size: 1.05rem; }
-    .canvas-frame { border-width: 4px; border-radius: 18px; box-shadow: 4px 4px 0 var(--gog-ink); }
-    .stage-controls { margin-top: 8px; gap: 6px; }
-    .stage-controls .brutal-btn.ghost { padding: 6px 12px; border-width: 3px; border-radius: 10px; font-size: 0.85rem; box-shadow: 2px 2px 0 var(--gog-ink); }
-    .calm-badge { font-size: 0.8rem; }
-  }
-
-  @keyframes pageFadeIn {
-    from { opacity: 0; transform: translateY(10px); }
-    to { opacity: 1; transform: translateY(0); }
-  }
-
-  @keyframes fadeInUp {
-    from { opacity: 0; transform: translateY(6px); }
-    to { opacity: 1; transform: translateY(0); }
-  }
-
-  .emoji-float {
-    display: inline-block;
-    animation: emojiFloat 2.6s ease-in-out infinite;
-  }
-
-  @keyframes emojiFloat {
-    0%, 100% { transform: translateY(0) rotate(-4deg); }
-    50% { transform: translateY(-5px) rotate(5deg); }
-  }
+  .calm-badge { color: var(--gog-cobalt); }
 
   .page-bg {
     position: fixed;
@@ -394,14 +166,14 @@
         </div>
       </div>
       <div class="hud-mid">
-        <div class="meter" id="cityPowerMeter" title="City Power" style="min-width: min(230px, 100%);">
+        <div class="meter" id="cityPowerMeter" title="City Power">
           <span class="label">⚡ Clean Energy</span>
           <div class="meter-track">
             <div class="meter-fill" id="progressFill"></div>
           </div>
           <span class="label" id="progressText">0/8</span>
         </div>
-        <div class="meter" id="skyHealthMeter" title="Clear Skies" style="min-width: min(230px, 100%);">
+        <div class="meter" id="skyHealthMeter" title="Clear Skies">
           <span class="label">🌤️ Sky Health</span>
           <div class="meter-track">
             <div class="meter-fill" id="clarityFill"></div>
@@ -445,7 +217,7 @@
     </div>
 
     <div class="brutal-box canvas-frame" id="canvasFrame">
-      <canvas id="game" width="800" height="600"></canvas>
+      <canvas id="game" width="960" height="600"></canvas>
     </div>
 
   </div>
@@ -454,6 +226,7 @@
   <script src="../src/constants.js"></script>
   <script src="../src/save.js"></script>
   <script src="../src/native.js"></script>
+  <script src="../src/vendor/howler.min.js"></script>
   <script src="../src/engine.js"></script>
   <script src="../src/voice.js"></script>
   <script src="../src/scenery.js"></script>
@@ -485,12 +258,18 @@
   // resolution and rebuilt here when the on-screen size changes.
   let backdrop = null;
   let cloudArt = null;
+  let skyline = null; // baked static skyline strip: rebuilt on resize and for every new run
   const hiDpi = GOGEngine.fitCanvas(canvas, ctx, W, H, {
     onResize: () => {
       backdrop = null;
       cloudArt = null;
+      skyline = null;
     }
   });
+  // One clock reading per update step / drawn frame (instead of Date.now() in dozens of places).
+  let frameNow = Date.now();
+  let drawCount = 0;
+  const TAU = Math.PI * 2;
 
   const progressFill = document.getElementById('progressFill');
   const progressText = document.getElementById('progressText');
@@ -509,7 +288,6 @@
   if (calmMode && cityPowerMeter) {
     cityPowerMeter.style.opacity = '0.55';
     cityPowerMeter.style.transform = 'scale(0.85)';
-    cityPowerMeter.style.minWidth = '170px';
   }
 
   const COLORS = {
@@ -526,7 +304,7 @@
   function GOGSpriteSheet(src, frameCount, customFrames){
     const img = new Image();
     let ready = false;
-    img.onload = () => { ready = true; };
+    img.onload = () => { ready = true; GOGEngine.requestDraw(); };
     img.src = SPRITE_BASE + src;
     return {
       img,
@@ -538,13 +316,61 @@
     };
   }
 
+  // Breezy's two sheets are huge (2172x471 and 1827x861) but she is drawn only ~72px
+  // tall, so every frame was being downscaled 6-12x on every draw. Instead each frame
+  // is scaled ONCE (at 2x her draw size) into a small canvas after the sheet decodes,
+  // and the big Image is dropped so its decoded bitmap can be freed.
+  const BREEZY_H = 72; // = player.radius * 3
+  function BreezySheet(src, frameCount, frames){
+    const sheet = { frameCount, frames, ready: false, baked: null };
+    const img = new Image();
+    function bakeFrames(){
+      try {
+        const fh = img.naturalHeight, scale = BREEZY_H / fh;
+        const out = [];
+        for (let i = 0; i < frameCount; i++) {
+          const f = frames[i];
+          const dw = Math.round(f.sw * scale), dh = Math.round(fh * scale);
+          const c = GOGEngine.bake(dw, dh, (g) => {
+            if ('imageSmoothingQuality' in g) g.imageSmoothingQuality = 'high';
+            g.drawImage(img, f.sx, 0, f.sw, fh, 0, 0, dw, dh);
+          }, 2);
+          c.dx = Math.round(-(f.cx - f.sx) * scale);
+          c.dy = Math.round(-dh / 2);
+          out.push(c);
+        }
+        sheet.baked = out;
+        sheet.ready = true;
+      } catch (e) { sheet.ready = false; }
+      img.onload = null;
+      GOGEngine.requestDraw();
+    }
+    img.onload = () => {
+      if (img.decode) img.decode().then(bakeFrames, bakeFrames); else bakeFrames();
+    };
+    img.src = SPRITE_BASE + src;
+    return sheet;
+  }
+
+  // Breezy's baked frame centred on the current origin; gray = the smog-hit look
+  // (a grayscale copy made once by GOGEngine.tint, never ctx.filter per frame).
+  function drawBreezy(sheet, frameIndex, gray){
+    if(!sheet.ready) return false;
+    const fc = sheet.frameCount;
+    const c = sheet.baked[((frameIndex % fc) + fc) % fc];
+    ctx.drawImage(gray ? GOGEngine.tint(c, 'grayscale(100%)') : c, c.dx, c.dy, c.gw, c.gh);
+    return true;
+  }
+
   // draws a single frame of a sheet centered at (x,y), scaled to displayH (keeps aspect), optional hFlip
+  // (call it with the base hi-DPI transform active)
   function drawSpriteFrame(sheet, frameIndex, x, y, displayH, hFlip){
     if(!sheet.ready) return false;
-    const fi = ((frameIndex % sheet.frameCount) + sheet.frameCount) % sheet.frameCount;
+    const fc = sheet.frameCount;
+    const fi = ((frameIndex % fc) + fc) % fc;
     const fh = sheet.frameH;
     const scale = displayH / fh;
-    
+
     let sx, sw, cx;
     if (sheet.frames) {
       const f = sheet.frames[fi];
@@ -556,28 +382,31 @@
       sx = Math.round(fi * sw);
       cx = sx + sw / 2;
     }
-    
+
     const dw = Math.round(sw * scale), dh = Math.round(fh * scale);
     const dx = Math.round(-(cx - sx) * scale);
     const dy = Math.round(-dh / 2);
-    
-    ctx.save();
-    ctx.translate(x, y);
-    if(hFlip) ctx.scale(-1, 1);
-    ctx.drawImage(sheet.img, sx, 0, sw, fh, dx, dy, dw, dh);
-    ctx.restore();
+
+    if (hFlip) {
+      const S = hiDpi.scale;
+      ctx.setTransform(-S, 0, 0, S, S * x, S * y);
+      ctx.drawImage(sheet.img, sx, 0, sw, fh, dx, dy, dw, dh);
+      ctx.setTransform(S, 0, 0, S, 0, 0);
+    } else {
+      ctx.drawImage(sheet.img, sx, 0, sw, fh, x + dx, y + dy, dw, dh);
+    }
     return true;
   }
 
   const sprites = {
-    breezyFly: GOGSpriteSheet('flying_breezy_v1.png', 5, [
+    breezyFly: BreezySheet('flying_breezy_v1.png', 5, [
       { sx: 36, sw: 334, cx: 203 },
       { sx: 456, sw: 360, cx: 636 },
       { sx: 898, sw: 359, cx: 1078 },
       { sx: 1334, sw: 361, cx: 1514 },
       { sx: 1784, sw: 364, cx: 1966 }
     ]),
-    breezyHappy: GOGSpriteSheet('happy-breezy.png', 3, [
+    breezyHappy: BreezySheet('happy-breezy.png', 3, [
       { sx: 30, sw: 600, cx: 330 },
       { sx: 744, sw: 489, cx: 989 },
       { sx: 1330, sw: 459, cx: 1560 }
@@ -615,8 +444,8 @@
 
   // Display calm mode badge status
   const calmBadge = document.getElementById('calmBadge');
-  if (calmBadge) {
-    calmBadge.textContent = calmMode ? "🧘 Calm Mode" : "⚡ Standard Mode";
+  if (calmBadge && calmMode) {
+    calmBadge.textContent = "🧘 Calm Mode";
   }
 
   // STREAMLINED: one popup before play, matching stage01's pattern — the
@@ -658,8 +487,6 @@
   let winWipeMax = Math.hypot(W, H) * 0.6;
   let winWipeDone = false;
   let winTimer = 0;
-
-  let lastTime = 0;
 
   const GROUND_Y = 520; // top of skyline band
   const PLAY_TOP = 50;
@@ -738,6 +565,7 @@
   }
 
   const buildings = [];
+  const _solarScratch = []; // reused by the solar-spawn timer (no per-spawn filter() array)
 
   // Input
   const input = { up:false, down:false, pointerActive:false, pointerY: 300 };
@@ -751,6 +579,7 @@
   // ---------------------------------------------------------------
   function buildBuildings(){
     buildings.length = 0;
+    skyline = null; // the baked skyline strip belongs to the old layout
     const n = BUILDING_COUNT;
     const slotW = W / n;
     for(let i=0;i<n;i++){
@@ -831,7 +660,7 @@
     msgCooldown = 0;
     skyReactTint = 0; // T059
     birdFlocks = []; flockSpawnTimer = rand(1500, 2400); playerNearFlock = false; // T058
-    if (flockBadge) flockBadge.style.display = 'none';
+    GOGUi.setStyle(flockBadge, 'display', 'none');
     player.diving = false; // T056
     scrollX = 0;
     seedAmbientClouds();
@@ -842,6 +671,7 @@
     audio.playBgm();
   }
 
+  const timerChip = document.getElementById('timerChip');
   function updateHUD(){
     // NEW: a quick chunky "pop" on the City Power meter whenever a new
     // orb lands — cheap DOM-only juice, doesn't touch the canvas/physics.
@@ -849,12 +679,14 @@
       lastScoreForPop = score;
       if (cityPowerMeter) GOGUi.restartAnimation(cityPowerMeter, 'chip-pop');
     }
+    // DOM writes go through GOGUi.set* so an unchanged HUD costs no style work
+    // (this runs every update step; the Sky Health bar is nudged in 0.5% steps).
     const pct = clamp(score/ENERGY_TARGET,0,1)*100;
-    progressFill.style.width = pct + '%';
-    progressText.textContent = score + '/' + ENERGY_TARGET;
+    GOGUi.setStyle(progressFill, 'width', pct + '%');
+    GOGUi.setText(progressText, score + '/' + ENERGY_TARGET);
     const clarityPct = clamp(clarity,0,100);
-    clarityFill.style.width = clarityPct + '%';
-    if(clarityText) clarityText.textContent = Math.round(clarityPct) + '%';
+    GOGUi.setStyle(clarityFill, 'width', (Math.round(clarityPct * 2) / 2) + '%');
+    GOGUi.setText(clarityText, Math.round(clarityPct) + '%');
     // NEW: pop the Sky Health chip only when it climbs into a new 25%
     // bracket (not every frame — clarity drifts continuously, so a
     // per-frame pop would just be noise instead of a felt milestone).
@@ -865,27 +697,16 @@
     } else if (clarityBracket < lastClarityBracket) {
       lastClarityBracket = clarityBracket;
     }
-    if(clarity < 30){
-      clarityFill.style.background = 'linear-gradient(90deg, #888, #bbb)';
-    } else {
-      clarityFill.style.background = 'linear-gradient(90deg, var(--cobalt), #7fa0ff)';
-    }
+    GOGUi.setStyle(clarityFill, 'background', clarity < 30
+      ? 'linear-gradient(90deg, #888, #bbb)'
+      : 'linear-gradient(90deg, var(--gog-cobalt), #7fa0ff)');
 
     // Update Timer Chip
-    const timerChip = document.getElementById('timerChip');
-    if (timerChip) {
-      timerChip.textContent = Math.ceil(timeLeft) + 's';
-      if (timeLeft <= 10) {
-        timerChip.classList.add('timer-urgent');
-      } else {
-        timerChip.classList.remove('timer-urgent');
-      }
-    }
+    GOGUi.setText(timerChip, Math.ceil(timeLeft) + 's');
+    GOGUi.setClass(timerChip, 'timer-urgent', timeLeft <= 10);
 
     // Full-frame pulse once the skies are dangerously smoggy or time is running out
-    if(canvasFrame){
-      canvasFrame.classList.toggle('sky-danger', (clarity < 30 || timeLeft <= 10) && gameState === 'playing');
-    }
+    GOGUi.setClass(canvasFrame, 'sky-danger', (clarity < 30 || timeLeft <= 10) && gameState === 'playing');
   }
 
   // ---------------------------------------------------------------
@@ -1076,13 +897,18 @@
     }
     
     // --- solar panels ticking & spawning orbs ---
-    buildings.forEach(b => {
-      if (b.solarGlowTimer > 0) b.solarGlowTimer -= dt;
-    });
+    for (let i = 0; i < buildings.length; i++) {
+      if (buildings[i].solarGlowTimer > 0) buildings[i].solarGlowTimer -= dt;
+    }
     if (gameState === 'playing' && !learning) {
       solarSpawnTimer -= dt;
       if (solarSpawnTimer <= 0) {
-        const activeSolar = buildings.filter(b => b.hasSolar && b.x > 50 && b.x < W - 50);
+        const activeSolar = _solarScratch;
+        activeSolar.length = 0;
+        for (let i = 0; i < buildings.length; i++) {
+          const sb = buildings[i];
+          if (sb.hasSolar && sb.x > 50 && sb.x < W - 50) activeSolar.push(sb);
+        }
         if (activeSolar.length > 0) {
           const b = activeSolar[Math.floor(Math.random() * activeSolar.length)];
           b.solarGlowTimer = 45;
@@ -1212,7 +1038,7 @@
         // If the particle is not inside the gap
         if (Math.abs(ry - s.gapY) > s.gapWidth / 2) {
           const age = (chimneyY - ry) / (chimneyY + 40);
-          const twist = Math.sin(age * Math.PI * 1.8 - Date.now() * 0.0025 + s.wobble) * 45 * age;
+          const twist = Math.sin(age * Math.PI * 1.8 - frameNow * 0.0025 + s.wobble) * 45 * age;
           particles.push({
             x: s.x + twist + rand(-10, 10),
             y: ry,
@@ -1233,7 +1059,7 @@
         const inGap = Math.abs(player.y - s.gapY) < s.gapWidth / 2;
         if (!inGap) {
           const age = (chimneyY - player.y) / (chimneyY + 40);
-          const twist = Math.sin(age * Math.PI * 1.8 - Date.now() * 0.0025 + s.wobble) * 45 * age;
+          const twist = Math.sin(age * Math.PI * 1.8 - frameNow * 0.0025 + s.wobble) * 45 * age;
           const plumeX = s.x + twist;
           const pr = s.radius * (1.0 + age * 1.6) * diff.enemySpeedMul();
           
@@ -1667,18 +1493,31 @@
     }
   }
 
-  function drawTiled(cv, offset, y){
-    const w = cv.logicalW;
+  // One parallax strip, only for the dest columns x0..x1. Everything is snapped to whole
+  // bitmap pixels: a fractional x forces a bilinear resample of the whole strip on every
+  // frame (the most expensive thing the CPU rasteriser does here), a whole-pixel x is a
+  // plain copy. The src rect keeps the same dest->src mapping as a full-tile draw.
+  function drawTiled(cv, offset, y, x0, x1){
+    const w = cv.logicalW, h = cv.logicalH, r = cv.width / w;
     let x = -(((offset % w) + w) % w);
-    for (; x < W; x += w) ctx.drawImage(cv, x, y, w, cv.logicalH);
+    x = Math.round(x * r) / r;
+    for (; x < x1; x += w) {
+      const a = Math.max(x, x0), b = Math.min(x + w, x1);
+      if (b <= a) continue;
+      ctx.drawImage(cv, Math.round((a - x) * r), 0, Math.round((b - a) * r), cv.height, a, y, b - a, h);
+    }
   }
 
-  function drawBackdropState(state){
-    ctx.drawImage(backdrop.sky[state], 0, 0, W, H);
-    drawTiled(backdrop.far[state], scrollX * 0.12, SKY_TOP);
-    drawTiled(backdrop.mid[state], scrollX * 0.3, SKY_TOP);
-    drawTiled(backdrop.ground[state], scrollX * 0.9, GROUND_Y);
+  // The whole backdrop in one palette for the dest columns x0..x1 (multiples of 4 logical
+  // px, i.e. whole bitmap pixels at every supported scale).
+  function drawBackdropState(state, x0, x1){
+    const sky = backdrop.sky[state], r = sky.width / W;
+    ctx.drawImage(sky, Math.round(x0 * r), 0, Math.round((x1 - x0) * r), sky.height, x0, 0, x1 - x0, H);
+    drawTiled(backdrop.far[state], scrollX * 0.12, SKY_TOP, x0, x1);
+    drawTiled(backdrop.mid[state], scrollX * 0.3, SKY_TOP, x0, x1);
+    drawTiled(backdrop.ground[state], scrollX * 0.9, GROUND_Y, x0, x1);
   }
+
 
   // Faceless Smog puff sprites, quantised by size and cached at the current
   // resolution so a smoke column is ~25 drawImage calls instead of ~100 gradients.
@@ -1696,54 +1535,58 @@
     return cloudArt;
   }
 
-  function starPath(x, y, r){
-    ctx.beginPath();
+  function starPath(x, y, r, g){
+    g = g || ctx;
+    g.beginPath();
     for (let i = 0; i < 10; i++) {
       const a = -Math.PI / 2 + i * Math.PI / 5;
       const rr = i % 2 === 0 ? r : r * 0.45;
-      if (i === 0) ctx.moveTo(x + Math.cos(a) * rr, y + Math.sin(a) * rr);
-      else ctx.lineTo(x + Math.cos(a) * rr, y + Math.sin(a) * rr);
+      if (i === 0) g.moveTo(x + Math.cos(a) * rr, y + Math.sin(a) * rr);
+      else g.lineTo(x + Math.cos(a) * rr, y + Math.sin(a) * rr);
     }
-    ctx.closePath();
+    g.closePath();
   }
 
+  const _edgeX = [];
   function drawSky(){
     if (!backdrop) buildBackdrop();
     const progress = clamp(score / ENERGY_TARGET, 0, 1);
     const front = progress * W;
-    const t = Date.now() * 0.002;
+    const t = frameNow * 0.002;
 
-    drawBackdropState('sick');
+    if (front <= 1) {
+      drawBackdropState('sick', 0, W);
+    } else if (front >= W - 1) {
+      drawBackdropState('well', 0, W);
+    } else {
+      // The clean sky sweeps in from the left as buildings light up. Each palette is only
+      // painted where it can show: 'sick' right of the wavy edge, 'well' (clipped to the
+      // edge) left of it, instead of both full-screen.
+      let n = 0;
+      for (let y = -2; y <= H + 2; y += 10) _edgeX[n++] = front + Math.sin(y * 0.035 + t) * 9;
 
-    // The clean sky sweeps in from the left as buildings light up.
-    if (front > 1) {
+      drawBackdropState('sick', Math.max(0, Math.floor((front - 12) / 4) * 4), W);
+
       ctx.save();
       ctx.beginPath();
-      if (front >= W - 1) {
-        ctx.rect(0, 0, W, H);
-      } else {
-        ctx.moveTo(0, -2);
-        for (let y = -2; y <= H + 2; y += 10) ctx.lineTo(front + Math.sin(y * 0.035 + t) * 9, y);
-        ctx.lineTo(0, H + 2);
-        ctx.closePath();
-      }
+      ctx.moveTo(0, -2);
+      for (let k = 0, y = -2; k < n; k++, y += 10) ctx.lineTo(_edgeX[k], y);
+      ctx.lineTo(0, H + 2);
+      ctx.closePath();
       ctx.clip();
-      drawBackdropState('well');
+      drawBackdropState('well', 0, Math.min(W, Math.ceil((front + 12) / 4) * 4));
       ctx.restore();
 
-      if (front < W - 1) {
-        // "fresh air" edge: a cream stripe with an ink outline
-        ctx.save();
-        ctx.lineJoin = 'round';
-        ctx.beginPath();
-        for (let y = -2; y <= H + 2; y += 10) {
-          const x = front + Math.sin(y * 0.035 + t) * 9;
-          if (y === -2) ctx.moveTo(x, y); else ctx.lineTo(x, y);
-        }
-        ctx.lineWidth = 9; ctx.strokeStyle = COLORS.ink; ctx.stroke();
-        ctx.lineWidth = 4.5; ctx.strokeStyle = '#FFF6D6'; ctx.stroke();
-        ctx.restore();
+      // "fresh air" edge: a cream stripe with an ink outline
+      ctx.save();
+      ctx.lineJoin = 'round';
+      ctx.beginPath();
+      for (let k = 0, y = -2; k < n; k++, y += 10) {
+        if (k === 0) ctx.moveTo(_edgeX[k], y); else ctx.lineTo(_edgeX[k], y);
       }
+      ctx.lineWidth = 9; ctx.strokeStyle = COLORS.ink; ctx.stroke();
+      ctx.lineWidth = 4.5; ctx.strokeStyle = '#FFF6D6'; ctx.stroke();
+      ctx.restore();
     }
 
     // A flat lilac haze while Sky Health is low (soft and light, never dark).
@@ -1778,19 +1621,118 @@
     return true;
   }
 
-  function drawSkyline(){
-    // thin ink strip along the very bottom of the world
-    ctx.fillStyle = COLORS.ink;
-    ctx.fillRect(0, H-6, W, 6);
+  // The ink strip, every contact shadow and every unlit building never change during a
+  // run, so they are painted ONCE into a single strip (at the on-screen resolution) and
+  // blitted. Only what animates is drawn per frame: the lit overlay, the bobbing star,
+  // the spinning turbine, ivy while it grows, and the solar glow.
+  function bakeSkyline(){
+    const sc = hiDpi.scale;
+    let maxH = 0;
+    for (let i = 0; i < buildings.length; i++) maxH = Math.max(maxH, buildings[i].h);
+    const stripH = Math.min(H, Math.ceil((maxH + 4) / 8) * 8);
+    const y0 = H - stripH;
+    const sheet = sprites.buildingUnlit;
+    const c = GOGEngine.bake(W, stripH, (g) => {
+      g.translate(0, -y0);
+      g.fillStyle = COLORS.ink;
+      g.fillRect(0, H - 6, W, 6);
+      const fw = sheet.frameW, fh = sheet.frameH;
+      for (let i = 0; i < buildings.length; i++) {
+        const b = buildings[i];
+        GOGScenery.contactShadow(g, b.x + b.w / 2 + 6, H - 8, b.w * 0.58, 7, 0.26);
+        g.drawImage(sheet.img, b.variant * fw, 0, fw, fh, b.x, b.y, b.w, b.h);
+      }
+    }, sc);
+    skyline = { c: c, y: y0, w: c.width / sc, h: c.height / sc };
+  }
 
-    buildings.forEach(b=>{
+  // Small ink-outlined decorations, painted once (4x) and drawn as sprites.
+  let skyArt = null;
+  function getSkyArt(){
+    if (skyArt) return skyArt;
+    function mk(w, h, ox, oy, scale, paint){
+      const c = GOGEngine.bake(w, h, (g) => { g.translate(-ox, -oy); paint(g); }, scale);
+      c.ox = ox; c.oy = oy;
+      return c;
+    }
+    const INK = COLORS.ink;
+    skyArt = {
+      star: mk(32, 32, -16, -16, 4, (g) => {
+        starPath(0, 0, 12, g);
+        g.fillStyle = COLORS.gold; g.strokeStyle = INK; g.lineWidth = 3; g.lineJoin = 'round';
+        g.fill(); g.stroke();
+      }),
+      tower: mk(12, 30, -6, -26, 4, (g) => {
+        g.strokeStyle = INK; g.lineWidth = 2.5;
+        g.fillStyle = '#f4f7fb';
+        g.beginPath();
+        g.moveTo(-3, 0); g.lineTo(-1.5, -24); g.lineTo(1.5, -24); g.lineTo(3, 0);
+        g.closePath(); g.fill(); g.stroke();
+      }),
+      rotor: mk(32, 32, -16, -16, 4, (g) => {
+        g.strokeStyle = INK; g.lineWidth = 2.5; g.fillStyle = '#ffffff';
+        for (let i = 0; i < 3; i++) {
+          g.rotate(Math.PI * 2 / 3);
+          g.beginPath();
+          g.moveTo(0, 0);
+          g.quadraticCurveTo(3, -5, 1.5, -12);
+          g.quadraticCurveTo(-1.5, -5, 0, 0);
+          g.closePath();
+          g.fill(); g.stroke();
+        }
+      }),
+      leaf: mk(16, 16, -8, -8, 4, (g) => {
+        g.fillStyle = COLORS.limeDark; g.strokeStyle = INK; g.lineWidth = 2;
+        g.beginPath(); g.arc(0, 0, 5.5, 0, TAU); g.fill(); g.stroke();
+      }),
+      panel: mk(56, 26, -28, -22, 4, (g) => {
+        g.strokeStyle = INK;
+        g.lineWidth = 3.5;
+        g.beginPath();
+        g.moveTo(-16, 0); g.lineTo(-12, -8);
+        g.moveTo(16, 0); g.lineTo(12, -8);
+        g.stroke();
+        g.rotate(-0.15);
+        g.fillStyle = '#1c34a1';
+        g.fillRect(-22, -14, 44, 10);
+        g.strokeRect(-22, -14, 44, 10);
+        g.strokeStyle = 'rgba(255,255,255,0.7)';
+        g.lineWidth = 1;
+        g.beginPath();
+        g.moveTo(-11, -14); g.lineTo(-11, -4);
+        g.moveTo(0, -14); g.lineTo(0, -4);
+        g.moveTo(11, -14); g.lineTo(11, -4);
+        g.stroke();
+      })
+    };
+    return skyArt;
+  }
+
+  // the solar glow circle centre, in the panel's -0.15 rad tilted frame
+  const PANEL_GLOW_DX = 12 * Math.sin(-0.15), PANEL_GLOW_DY = -12 * Math.cos(-0.15);
+
+  function drawSkyline(){
+    const baked = sprites.buildingUnlit.ready;
+    if (baked) {
+      if (!skyline) bakeSkyline();
+      ctx.drawImage(skyline.c, 0, skyline.y, skyline.w, skyline.h);
+    } else {
+      // thin ink strip along the very bottom of the world
+      ctx.fillStyle = COLORS.ink;
+      ctx.fillRect(0, H-6, W, 6);
+    }
+    const art = getSkyArt();
+    const S = hiDpi.scale;
+
+    ctx.save();
+    for (let i = 0; i < buildings.length; i++) {
+      const b = buildings[i];
       // smooth lit transition
       b.litProgress = lerp(b.litProgress, b.lit?1:0, 0.08);
+      const lp = b.litProgress;
 
-      GOGScenery.contactShadow(ctx, b.x + b.w/2 + 6, H - 8, b.w*0.58, 7, 0.26);
-
-      const unlitDrawn = drawBuildingSprite(sprites.buildingUnlit, b.variant, b.x, b.y, b.w, b.h);
-      if(!unlitDrawn){
+      if (!baked) {
+        GOGScenery.contactShadow(ctx, b.x + b.w/2 + 6, H - 8, b.w*0.58, 7, 0.26);
         // fallback while sprite loads: neo-brutalist rect
         ctx.fillStyle = '#8D87A6';
         ctx.strokeStyle = COLORS.ink;
@@ -1799,111 +1741,78 @@
         ctx.fill(); ctx.stroke();
       }
 
-      if(b.litProgress > 0.02){
-        ctx.save();
-        ctx.globalAlpha = b.litProgress;
-        const litDrawn = drawBuildingSprite(sprites.buildingLit, b.variant, b.x, b.y, b.w, b.h);
-        if(!litDrawn){
+      if (lp > 0.02) {
+        ctx.globalAlpha = lp;
+        if (!drawBuildingSprite(sprites.buildingLit, b.variant, b.x, b.y, b.w, b.h)) {
           ctx.fillStyle = '#4aaf5a';
           roundRectPath(b.x, b.y, b.w, b.h, 4);
           ctx.fill();
         }
-        ctx.restore();
 
         // a bobbing ink-outlined gold star says "this one is lit!"
-        ctx.save();
-        ctx.globalAlpha = b.litProgress;
-        const bob = Math.sin(Date.now() * 0.004 + b.x) * 3;
-        starPath(b.x + b.w * 0.5, b.y - 22 + bob, 12);
-        ctx.fillStyle = COLORS.gold; ctx.strokeStyle = COLORS.ink; ctx.lineWidth = 3; ctx.lineJoin = 'round';
-        ctx.fill(); ctx.stroke();
-        ctx.restore();
+        const bob = Math.sin(frameNow * 0.004 + b.x) * 3;
+        const st = art.star;
+        ctx.drawImage(st, b.x + b.w * 0.5 + st.ox, b.y - 22 + bob + st.oy, st.gw, st.gh);
+        ctx.globalAlpha = 1;
 
         // small spinning wind turbine on lit rooftops
-        ctx.save();
-        ctx.translate(b.x + b.w * 0.2, b.y);
-        ctx.strokeStyle = COLORS.ink;
-        ctx.lineWidth = 2.5;
-        ctx.fillStyle = '#f4f7fb';
-        ctx.beginPath();
-        ctx.moveTo(-3, 0); ctx.lineTo(-1.5, -24); ctx.lineTo(1.5, -24); ctx.lineTo(3, 0);
-        ctx.closePath(); ctx.fill(); ctx.stroke();
-        ctx.translate(0, -24);
-        const spin = Date.now() * 0.003 * b.litProgress + b.x;
-        ctx.rotate(spin);
-        ctx.fillStyle = '#ffffff';
-        for (let i = 0; i < 3; i++) {
-          ctx.rotate(Math.PI * 2 / 3);
-          ctx.beginPath();
-          ctx.moveTo(0, 0);
-          ctx.quadraticCurveTo(3, -5, 1.5, -12);
-          ctx.quadraticCurveTo(-1.5, -5, 0, 0);
-          ctx.closePath();
-          ctx.fill(); ctx.stroke();
-        }
-        ctx.restore();
+        const tx = b.x + b.w * 0.2, ty = b.y;
+        const tw = art.tower;
+        ctx.drawImage(tw, tx + tw.ox, ty + tw.oy, tw.gw, tw.gh);
+        const spin = frameNow * 0.003 * lp + b.x;
+        const cs = Math.cos(spin) * S, sn = Math.sin(spin) * S;
+        ctx.setTransform(cs, sn, -sn, cs, S * tx, S * (ty - 24));
+        ctx.drawImage(art.rotor, art.rotor.ox, art.rotor.oy, art.rotor.gw, art.rotor.gh);
+        ctx.setTransform(S, 0, 0, S, 0, 0);
 
-        // climbing ivy leaves on the side of lit buildings
-        ctx.save();
-        ctx.fillStyle = COLORS.limeDark;
-        ctx.strokeStyle = COLORS.ink;
-        ctx.lineWidth = 2;
-        for (let leaf = 0; leaf < 3; leaf++) {
-          const ly = b.y + b.h * (0.28 + leaf * 0.2);
-          const lx = b.x + (leaf % 2 === 0 ? 4 : b.w - 4);
-          const r = 5.5 * b.litProgress;
-          ctx.beginPath();
-          ctx.arc(lx, ly, r, 0, Math.PI * 2);
-          ctx.fill(); ctx.stroke();
+        // climbing ivy leaves on the side of lit buildings (they grow while lighting up)
+        if (lp > 0.985) {
+          const lf = art.leaf;
+          for (let leaf = 0; leaf < 3; leaf++) {
+            const ly = b.y + b.h * (0.28 + leaf * 0.2);
+            const lx = b.x + (leaf % 2 === 0 ? 4 : b.w - 4);
+            ctx.drawImage(lf, lx + lf.ox, ly + lf.oy, lf.gw, lf.gh);
+          }
+        } else {
+          ctx.fillStyle = COLORS.limeDark;
+          ctx.strokeStyle = COLORS.ink;
+          ctx.lineWidth = 2;
+          for (let leaf = 0; leaf < 3; leaf++) {
+            const ly = b.y + b.h * (0.28 + leaf * 0.2);
+            const lx = b.x + (leaf % 2 === 0 ? 4 : b.w - 4);
+            const r = 5.5 * lp;
+            ctx.beginPath();
+            ctx.arc(lx, ly, r, 0, Math.PI * 2);
+            ctx.fill(); ctx.stroke();
+          }
         }
-        ctx.restore();
       }
 
       // solar panels on the roof of designated buildings
       if (b.hasSolar) {
-        ctx.save();
-        ctx.translate(b.x + b.w/2, b.y);
-        ctx.strokeStyle = COLORS.ink;
-        ctx.lineWidth = 3.5;
-        ctx.beginPath();
-        ctx.moveTo(-16, 0); ctx.lineTo(-12, -8);
-        ctx.moveTo(16, 0); ctx.lineTo(12, -8);
-        ctx.stroke();
-        ctx.rotate(-0.15);
-        ctx.fillStyle = '#1c34a1';
-        ctx.fillRect(-22, -14, 44, 10);
-        ctx.strokeRect(-22, -14, 44, 10);
-        ctx.strokeStyle = 'rgba(255,255,255,0.7)';
-        ctx.lineWidth = 1;
-        ctx.beginPath();
-        ctx.moveTo(-11, -14); ctx.lineTo(-11, -4);
-        ctx.moveTo(0, -14); ctx.lineTo(0, -4);
-        ctx.moveTo(11, -14); ctx.lineTo(11, -4);
-        ctx.stroke();
+        const cx = b.x + b.w / 2;
+        const pn = art.panel;
+        ctx.drawImage(pn, cx + pn.ox, b.y + pn.oy, pn.gw, pn.gh);
         if (b.solarGlowTimer > 0) {
           const glowAlpha = clamp(b.solarGlowTimer / 30, 0, 1);
           ctx.fillStyle = 'rgba(255, 230, 100, ' + (glowAlpha * 0.5) + ')';
           ctx.beginPath();
-          ctx.arc(0, -12, 28, 0, Math.PI*2);
+          ctx.arc(cx + PANEL_GLOW_DX, b.y + PANEL_GLOW_DY, 28, 0, Math.PI*2);
           ctx.fill();
-        }
-        ctx.restore();
 
-        // flat golden beam from the sun down to the panel
-        if (b.solarGlowTimer > 0) {
-          ctx.save();
+          // flat golden beam from the sun down to the panel
           ctx.fillStyle = 'rgba(255, 224, 100, 0.26)';
           ctx.beginPath();
           ctx.moveTo(80 - 16, 80);
-          ctx.lineTo(b.x + b.w/2 - 22, b.y - 12);
-          ctx.lineTo(b.x + b.w/2 + 22, b.y - 12);
+          ctx.lineTo(cx - 22, b.y - 12);
+          ctx.lineTo(cx + 22, b.y - 12);
           ctx.lineTo(80 + 16, 80);
           ctx.closePath();
           ctx.fill();
-          ctx.restore();
         }
       }
-    });
+    }
+    ctx.restore();
   }
 
   function mixColor(a,b,t){
@@ -1963,15 +1872,17 @@
   }
 
   function drawForegroundClouds(){
-    foregroundClouds.forEach(c=>{
-      ctx.save();
-      ctx.globalAlpha = 0.50; // semi-transparent
+    if(!foregroundClouds.length) return;
+    ctx.save();
+    ctx.globalAlpha = 0.50; // semi-transparent
+    for(let i=0;i<foregroundClouds.length;i++){
+      const c = foregroundClouds[i];
       if(!drawSpriteFrame(sprites.cloudHappy, c.frame, c.x, c.y, c.h)){
         ctx.fillStyle = 'rgba(255,255,255,0.6)';
         drawCloud(c.x, c.y, c.h*0.9);
       }
-      ctx.restore();
-    });
+    }
+    ctx.restore();
   }
 
   function drawBirds(){
@@ -2028,7 +1939,7 @@
     if(alongside){
       player.speedFactor = Math.max(player.speedFactor, 1.5);
     }
-    if(flockBadge) flockBadge.style.display = alongside ? '' : 'none';
+    GOGUi.setStyle(flockBadge, 'display', alongside ? '' : 'none');
   }
 
   function drawBirdFlocks(){
@@ -2053,254 +1964,295 @@
   // which way to fly. Flat shapes + ink, readable without any text.
 
   // A friendly-looking, faceless factory that sits on the grass.
+  // Smoke art, baked once. The plume is ~25 soft puffs per column, and each used to build
+  // two radial gradients every frame. The puffs now share two pre-rendered sprites
+  // (outer haze + inner core) that are scaled to the puff size and faded with globalAlpha:
+  // a gradient's alpha stops scale linearly, so this is the same picture. Painted at 3x
+  // because they get scaled up to ~110px radius.
+  const SMOKE_U = 40; // unit "size" the sprites are baked at
+  let smokeArt = null;
+  function getSmokeArt(){
+    if (smokeArt) return smokeArt;
+    const U = SMOKE_U, oR = U * 1.3;
+    smokeArt = {
+      // (outer) haze: focus slightly up-left of centre
+      outer: GOGEngine.bake(oR * 2, oR * 2, (g) => {
+        const grad = g.createRadialGradient(oR - U * 0.1, oR - U * 0.1, 0, oR, oR, oR);
+        grad.addColorStop(0, 'rgba(45, 48, 55, 0.45)');
+        grad.addColorStop(0.5, 'rgba(35, 37, 42, 0.25)');
+        grad.addColorStop(1, 'rgba(20, 20, 22, 0)');
+        g.fillStyle = grad;
+        g.beginPath(); g.arc(oR, oR, oR, 0, TAU); g.fill();
+      }, 4),
+      // heavy billowing core with a lighter highlight
+      core: GOGEngine.bake(U * 2, U * 2, (g) => {
+        const grad = g.createRadialGradient(U - U * 0.2, U - U * 0.2, 0, U, U, U);
+        grad.addColorStop(0, 'rgba(75, 78, 85, 0.85)');
+        grad.addColorStop(0.5, 'rgba(35, 37, 42, 0.75)');
+        grad.addColorStop(0.9, 'rgba(20, 21, 23, 0.45)');
+        grad.addColorStop(1, 'rgba(15, 15, 17, 0)');
+        g.fillStyle = grad;
+        g.beginPath(); g.arc(U, U, U, 0, TAU); g.fill();
+      }, 4),
+      // soft lime glow behind the clean gap
+      gap: GOGEngine.bake(200, 200, (g) => {
+        const grad = g.createRadialGradient(100, 100, 0, 100, 100, 100);
+        grad.addColorStop(0, 'rgba(198, 255, 61, 0.15)');
+        grad.addColorStop(1, 'rgba(198, 255, 61, 0)');
+        g.fillStyle = grad;
+        g.beginPath(); g.arc(100, 100, 100, 0, TAU); g.fill();
+      }, 2),
+      // the factory body (everything that does not animate); origin = (s.x, GROUND_Y)
+      factory: GOGEngine.bake(62, 62, (g) => {
+        g.translate(30, 60);
+        g.fillStyle = 'rgba(0,0,0,0.15)';
+        g.fillRect(-20, -30, 48, 30);
+        g.fillStyle = '#3c4046';
+        g.strokeStyle = COLORS.ink;
+        g.lineWidth = 4;
+        g.beginPath();
+        g.rect(-24, -32, 48, 32);
+        g.fill(); g.stroke();
+        g.fillStyle = '#52575f';
+        g.beginPath();
+        g.rect(-16, -52, 10, 20);
+        g.rect(6, -52, 10, 20);
+        g.fill(); g.stroke();
+        g.fillStyle = '#ff3d3d';
+        g.fillRect(-17, -56, 12, 4);
+        g.fillRect(5, -56, 12, 4);
+        g.strokeRect(-17, -56, 12, 4);
+        g.strokeRect(5, -56, 12, 4);
+      }, 3)
+    };
+    return smokeArt;
+  }
+
+  // cheap deterministic [0,1) noise (replaces Math.random() inside render)
+  function hash01(a, b){
+    const v = Math.sin(a * 12.9898 + b * 78.233) * 43758.5453;
+    return v - Math.floor(v);
+  }
+
   function drawCustomSmoke(s) {
+    const art = getSmokeArt();
     const chimneyY = GROUND_Y - 56;
-    
-    // 1. Draw the smoke plume rising from the chimneys (from chimneyY to -40)
-    ctx.save();
-    
-    // We draw overlapping puff circles that grow and twist
-    for (let y = chimneyY; y >= -40; y -= 10) {
-      // Is this height inside the safe gap?
-      if (Math.abs(y - s.gapY) < s.gapWidth / 2) {
-        // Draw a clean air pocket instead of black smoke
-        if (Math.random() < 0.1) {
+    const span = chimneyY + 40;
+    const tw = frameNow * 0.0025, bt = frameNow * 0.003;
+    const gapHalf = s.gapWidth / 2;
+
+    // 1. The smoke plume rising from the chimneys (from chimneyY to -40): overlapping puffs
+    // that grow and twist; the safe gap is left clean. The puffs are huge, soft and overlap
+    // ~8 deep, so they are drawn with nearest sampling (they are baked bigger than they are
+    // drawn): half the cost of bilinear and indistinguishable on a smooth gradient.
+    ctx.imageSmoothingEnabled = false;
+    for (let y = chimneyY, j = 0; y >= -40; y -= 10, j++) {
+      if (Math.abs(y - s.gapY) < gapHalf) {
+        // a clean air pocket instead of smoke: now and then a little lime spark
+        if (hash01(j + s.wobble * 7.1, drawCount) < 0.1) {
+          const rr = 3 + 4 * hash01(j * 1.7 + 3.1 + s.wobble * 5.3, drawCount * 1.3 + 7);
+          ctx.globalAlpha = 1;
           ctx.fillStyle = 'rgba(198, 255, 61, 0.3)';
           ctx.beginPath();
-          ctx.arc(s.x + Math.sin((GROUND_Y - y) * 0.01 + s.wobble) * 10, y, rand(3, 7), 0, Math.PI*2);
+          ctx.arc(s.x + Math.sin((GROUND_Y - y) * 0.01 + s.wobble) * 10, y, rr, 0, TAU);
           ctx.fill();
         }
         continue;
       }
-      
-      const age = (chimneyY - y) / (chimneyY + 40); // 0 at chimney, 1 at top
-      const twist = Math.sin(age * Math.PI * 1.8 - Date.now() * 0.0025 + s.wobble) * 45 * age;
-      const px = s.x + twist;
-      
-      // Billowing wave to make the size fluctuate organically
-      const billow = Math.sin(y * 0.03 + Date.now() * 0.003 + s.wobble) * 8;
-      const size = s.radius * (1.0 + age * 1.6) + billow;
-      
-      // Double-layered soft volumetric rendering
-      // Outer grey smoke haze (semi-transparent, wide, soft fade)
-      const outerGrad = ctx.createRadialGradient(px - size * 0.1, y - size * 0.1, 0, px, y, size * 1.3);
-      outerGrad.addColorStop(0, `rgba(45, 48, 55, ${0.45 * (1 - age * 0.4)})`);
-      outerGrad.addColorStop(0.5, `rgba(35, 37, 42, ${0.25 * (1 - age * 0.4)})`);
-      outerGrad.addColorStop(1, `rgba(20, 20, 22, 0)`);
-      ctx.fillStyle = outerGrad;
-      ctx.beginPath();
-      ctx.arc(px, y, size * 1.3, 0, Math.PI * 2);
-      ctx.fill();
-      
-      // Inner heavy billowing smoke core (fades to transparent at edge for soft volume)
-      const coreGrad = ctx.createRadialGradient(px - size * 0.2, y - size * 0.2, 0, px, y, size);
-      coreGrad.addColorStop(0, `rgba(75, 78, 85, ${0.85 * (1 - age * 0.45)})`); // lighter highlight center
-      coreGrad.addColorStop(0.5, `rgba(35, 37, 42, ${0.75 * (1 - age * 0.45)})`); // darker main body
-      coreGrad.addColorStop(0.9, `rgba(20, 21, 23, ${0.45 * (1 - age * 0.45)})`); // fading out
-      coreGrad.addColorStop(1, `rgba(15, 15, 17, 0)`); // fully transparent at edge!
-      
-      ctx.fillStyle = coreGrad;
-      ctx.beginPath();
-      ctx.arc(px, y, size, 0, Math.PI * 2);
-      ctx.fill();
+
+      const age = (chimneyY - y) / span; // 0 at chimney, 1 at top
+      const px = s.x + Math.sin(age * Math.PI * 1.8 - tw + s.wobble) * 45 * age;
+      // billowing wave to make the size fluctuate organically
+      const size = s.radius * (1.0 + age * 1.6) + Math.sin(y * 0.03 + bt + s.wobble) * 8;
+      const so = size * 1.3;
+      if (px + so < 0 || px - so > W) continue; // fully off-screen
+
+      ctx.globalAlpha = 1 - age * 0.4;
+      ctx.drawImage(art.outer, px - so, y - so, so * 2, so * 2);
+      ctx.globalAlpha = 1 - age * 0.45;
+      ctx.drawImage(art.core, px - size, y - size, size * 2, size * 2);
     }
-    
-    // Draw the green glowing gap boundaries so players can spot the opening
-    ctx.restore();
-    ctx.save();
-    // Soft glowing circle background for the gap
-    const gapGrad = ctx.createRadialGradient(s.x, s.gapY, 0, s.x, s.gapY, s.gapWidth * 0.7);
-    gapGrad.addColorStop(0, 'rgba(198, 255, 61, 0.15)');
-    gapGrad.addColorStop(1, 'rgba(198, 255, 61, 0)');
-    ctx.fillStyle = gapGrad;
-    ctx.beginPath();
-    ctx.arc(s.x, s.gapY, s.gapWidth * 0.7, 0, Math.PI * 2);
-    ctx.fill();
-    
+    ctx.globalAlpha = 1;
+    ctx.imageSmoothingEnabled = true;
+
+    // The green gap boundaries so players can spot the opening
+    const gr = s.gapWidth * 0.7;
+    ctx.drawImage(art.gap, s.x - gr, s.gapY - gr, gr * 2, gr * 2);
+
     // Dotted guide rings
+    ctx.save();
     ctx.strokeStyle = 'rgba(198, 255, 61, 0.5)';
     ctx.lineWidth = 2.5;
     ctx.setLineDash([4, 6]);
     ctx.beginPath();
-    ctx.arc(s.x, s.gapY - s.gapWidth / 2, 16, 0, Math.PI * 2);
-    ctx.arc(s.x, s.gapY + s.gapWidth / 2, 16, 0, Math.PI * 2);
+    ctx.arc(s.x, s.gapY - s.gapWidth / 2, 16, 0, TAU);
+    ctx.arc(s.x, s.gapY + s.gapWidth / 2, 16, 0, TAU);
     ctx.stroke();
-    ctx.setLineDash([]); // clear dash array
     ctx.restore();
 
-    // 2. Draw the factory on the ground *on top* of the smoke base (if it's on screen)
+    // 2. The factory on the ground *on top* of the smoke base (if it's on screen)
     if (s.x > -100 && s.x < W + 100) {
+      ctx.drawImage(art.factory, s.x - 30, GROUND_Y - 60, 62, 62);
       ctx.save();
-      // Factory building shadow
-      ctx.fillStyle = 'rgba(0,0,0,0.15)';
-      ctx.fillRect(s.x - 20, GROUND_Y - 30, 48, 30);
-      
-      // Factory building
-      ctx.fillStyle = '#3c4046';
       ctx.strokeStyle = COLORS.ink;
       ctx.lineWidth = 4;
-      ctx.beginPath();
-      ctx.rect(s.x - 24, GROUND_Y - 32, 48, 32);
-      ctx.fill(); ctx.stroke();
-      
-      // Chimneys
-      ctx.fillStyle = '#52575f';
-      ctx.beginPath();
-      ctx.rect(s.x - 16, GROUND_Y - 52, 10, 20);
-      ctx.rect(s.x + 6, GROUND_Y - 52, 10, 20);
-      ctx.fill(); ctx.stroke();
-      
-      // Chimney rims
-      ctx.fillStyle = '#ff3d3d';
-      ctx.fillRect(s.x - 17, GROUND_Y - 56, 12, 4);
-      ctx.fillRect(s.x + 5, GROUND_Y - 56, 12, 4);
-      ctx.strokeRect(s.x - 17, GROUND_Y - 56, 12, 4);
-      ctx.strokeRect(s.x + 5, GROUND_Y - 56, 12, 4);
-      
+
       // Glowing factory windows (dirty orange, pulsing)
-      const windowPulse = 0.7 + Math.sin(Date.now() * 0.005 + s.wobble) * 0.3;
-      ctx.fillStyle = `rgba(255, 124, 59, ${windowPulse})`;
+      const windowPulse = 0.7 + Math.sin(frameNow * 0.005 + s.wobble) * 0.3;
+      ctx.fillStyle = 'rgba(255, 124, 59, ' + windowPulse + ')';
       ctx.fillRect(s.x - 16, GROUND_Y - 22, 10, 10);
       ctx.fillRect(s.x + 6, GROUND_Y - 22, 10, 10);
       ctx.strokeRect(s.x - 16, GROUND_Y - 22, 10, 10);
       ctx.strokeRect(s.x + 6, GROUND_Y - 22, 10, 10);
-      
-      // 1. Draw animated, rotating smoke puffs right at the chimney tops
-      const puffTime = Date.now() * 0.004 + s.wobble;
+
+      // Animated smoke puffs right at the chimney tops
+      const puffTime = frameNow * 0.004 + s.wobble;
       const pRadius = 13 + Math.sin(puffTime) * 3;
       ctx.fillStyle = 'rgba(45, 48, 54, 0.9)';
       ctx.beginPath();
-      ctx.arc(s.x - 11, GROUND_Y - 56, pRadius, 0, Math.PI * 2);
-      ctx.arc(s.x - 11 + Math.sin(puffTime)*4, GROUND_Y - 68, pRadius * 0.8, 0, Math.PI * 2);
-      ctx.arc(s.x + 11, GROUND_Y - 56, pRadius, 0, Math.PI * 2);
-      ctx.arc(s.x + 11 - Math.sin(puffTime)*4, GROUND_Y - 68, pRadius * 0.8, 0, Math.PI * 2);
+      ctx.arc(s.x - 11, GROUND_Y - 56, pRadius, 0, TAU);
+      ctx.arc(s.x - 11 + Math.sin(puffTime)*4, GROUND_Y - 68, pRadius * 0.8, 0, TAU);
+      ctx.arc(s.x + 11, GROUND_Y - 56, pRadius, 0, TAU);
+      ctx.arc(s.x + 11 - Math.sin(puffTime)*4, GROUND_Y - 68, pRadius * 0.8, 0, TAU);
       ctx.fill();
-      
+
       ctx.restore();
     }
   }
   function drawSmokes(){
-    smokes.forEach(s=>{
-      drawCustomSmoke(s);
-    });
+    for(let i=0;i<smokes.length;i++) drawCustomSmoke(smokes[i]);
   }
 
   // A little pill that says "ride the wind first" (suns are always bright now,
   // so a dimmed sun is never mistaken for a broken one).
+  // (the pill is painted once and then blitted)
+  let badgeArt = null;
   function drawWindBadge(x, y){
-    ctx.save();
-    ctx.translate(x, y + Math.sin(Date.now() * 0.006) * 2);
-    ctx.lineJoin = 'round'; ctx.lineCap = 'round';
-    GOGScenery.roundRect(ctx, -19, -12, 38, 24, 12);
-    ctx.fillStyle = '#fff'; ctx.fill();
-    ctx.lineWidth = 3; ctx.strokeStyle = COLORS.ink; ctx.stroke();
-    ctx.strokeStyle = '#27B7E8'; ctx.lineWidth = 3;
-    [-4.5, 4.5].forEach(k => {
-      ctx.beginPath();
-      ctx.moveTo(-11, k); ctx.quadraticCurveTo(-5, k - 6, 1, k); ctx.quadraticCurveTo(7, k + 6, 12, k);
-      ctx.stroke();
-    });
-    ctx.restore();
+    if (!badgeArt) {
+      badgeArt = GOGEngine.bake(44, 30, (g) => {
+        g.translate(22, 15);
+        g.lineJoin = 'round'; g.lineCap = 'round';
+        GOGScenery.roundRect(g, -19, -12, 38, 24, 12);
+        g.fillStyle = '#fff'; g.fill();
+        g.lineWidth = 3; g.strokeStyle = COLORS.ink; g.stroke();
+        g.strokeStyle = '#27B7E8'; g.lineWidth = 3;
+        [-4.5, 4.5].forEach(k => {
+          g.beginPath();
+          g.moveTo(-11, k); g.quadraticCurveTo(-5, k - 6, 1, k); g.quadraticCurveTo(7, k + 6, 12, k);
+          g.stroke();
+        });
+      }, 3);
+    }
+    ctx.drawImage(badgeArt, x - 22, y + Math.sin(frameNow * 0.006) * 2 - 15, 44, 30);
   }
 
   function drawOrbs(time){
+    if(!orbs.length) return;
     const inCurrent = (player.windInfluence || 0) > 0.15;
-    orbs.forEach(o=>{
+    for(let i=0;i<orbs.length;i++){
+      const o = orbs[i];
       const pulse = 1 + Math.sin(time*0.006 + o.wobble)*0.1;
       const r = o.radius * 1.35 * pulse;
-      ctx.save();
-      ctx.translate(o.x, o.y);
       // The painted sun-orbit sprite (always full bright); the vector sun only shows while it loads.
-      if (!drawSpriteFrame(sprites.sunOrbit, 0, 0, 0, r * 2.6)) {
+      if (!drawSpriteFrame(sprites.sunOrbit, 0, o.x, o.y, r * 2.6)) {
+        ctx.save();
+        ctx.translate(o.x, o.y);
         ctx.fillStyle = 'rgba(17,17,17,0.3)';
         ctx.beginPath(); ctx.arc(4, 5, r + 2, 0, Math.PI*2); ctx.fill();
         GOGScenery.sun(ctx, 0, 0, r, { rays: 10, spin: time * 0.0015 });
+        ctx.restore();
       }
       if (inCurrent) {
+        ctx.save();
         ctx.lineWidth = 3.5;
         ctx.strokeStyle = COLORS.lime;
         ctx.setLineDash([7, 6]);
         ctx.lineDashOffset = -time * 0.02;
-        ctx.beginPath(); ctx.arc(0, 0, r * 1.9, 0, Math.PI*2); ctx.stroke();
-        ctx.setLineDash([]);
+        ctx.beginPath(); ctx.arc(o.x, o.y, r * 1.9, 0, Math.PI*2); ctx.stroke();
+        ctx.restore();
+      } else {
+        drawWindBadge(o.x, o.y - r * 1.9 - 12);
       }
-      ctx.restore();
-      if (!inCurrent) drawWindBadge(o.x, o.y - r * 1.9 - 12);
-    });
+    }
   }
 
   function drawParticles(){
-    particles.forEach(p=>{
-      ctx.save();
+    const n = particles.length;
+    if(!n) return;
+    ctx.save();
+    for(let i=0;i<n;i++){
+      const p = particles[i];
       ctx.globalAlpha = clamp(p.life,0,1);
       ctx.fillStyle = p.color;
       ctx.beginPath();
-      ctx.arc(p.x,p.y,p.size,0,Math.PI*2);
+      ctx.arc(p.x,p.y,p.size,0,TAU);
       ctx.fill();
-      ctx.restore();
-    });
+    }
+    ctx.restore();
+  }
+
+  // Breezy's glow discs, painted once (the radial gradients used to be rebuilt every frame).
+  let glowArt = null;
+  function getGlowArt(){
+    if (glowArt) return glowArt;
+    const R = player.radius;
+    function disc(rOuter, rInner, c0){
+      const gr = GOGEngine.bake(rOuter * 2, rOuter * 2, (g) => {
+        const grad = g.createRadialGradient(rOuter, rOuter, rInner, rOuter, rOuter, rOuter);
+        grad.addColorStop(0, c0);
+        grad.addColorStop(1, c0.replace(/[\d.]+\)$/, '0)'));
+        g.fillStyle = grad;
+        g.beginPath(); g.arc(rOuter, rOuter, rOuter, 0, TAU); g.fill();
+      }, 3);
+      return gr;
+    }
+    glowArt = {
+      boost: disc(R * 1.9, R * 0.6, 'rgba(198,255,61,0.55)'),
+      smoke: disc(R * 1.7, R * 0.6, 'rgba(80,80,80,0.6)')
+    };
+    return glowArt;
   }
 
   function drawPlayer(){
-    ctx.save();
-    ctx.translate(player.x, player.y);
-    
-    // Leans forward slightly when surfing the wind current!
-    const surfTilt = (player.windInfluence || 0) * 0.18;
-    ctx.rotate(player.angle + surfTilt);
-
+    const R = player.radius;
     const glowing = player.boostTimer > 0 && !smokeOverlapThisFrame;
+    const wi = player.windInfluence || 0;
+    const rot = player.angle + wi * 0.18; // leans forward slightly when surfing the wind current!
 
-    // hard offset shadow disc
+    // hard offset shadow disc (its offset turns with Breezy)
+    const cs = Math.cos(rot), sn = Math.sin(rot);
     ctx.fillStyle = 'rgba(0,0,0,0.18)';
     ctx.beginPath();
-    ctx.arc(5,6, player.radius, 0, Math.PI*2);
+    ctx.arc(player.x + 5 * cs - 6 * sn, player.y + 5 * sn + 6 * cs, R, 0, TAU);
     ctx.fill();
 
-    // glow ring when boosted
-    if(glowing){
-      const g = ctx.createRadialGradient(0,0,player.radius*0.6,0,0,player.radius*1.9);
-      g.addColorStop(0,'rgba(198,255,61,0.55)');
-      g.addColorStop(1,'rgba(198,255,61,0)');
-      ctx.fillStyle = g;
-      ctx.beginPath(); ctx.arc(0,0,player.radius*1.9,0,Math.PI*2); ctx.fill();
-    } else if(smokeOverlapThisFrame){
-      const g = ctx.createRadialGradient(0,0,player.radius*0.6,0,0,player.radius*1.7);
-      g.addColorStop(0,'rgba(80,80,80,0.6)');
-      g.addColorStop(1,'rgba(80,80,80,0)');
-      ctx.fillStyle = g;
-      ctx.beginPath(); ctx.arc(0,0,player.radius*1.7,0,Math.PI*2); ctx.fill();
+    // glow ring when boosted / smog haze when coughing
+    if(glowing || smokeOverlapThisFrame){
+      const gl = glowing ? getGlowArt().boost : getGlowArt().smoke;
+      ctx.drawImage(gl, player.x - gl.gw / 2, player.y - gl.gh / 2, gl.gw, gl.gh);
     }
-
-    ctx.restore();
 
     // Breezy sprite: happy pose while boosted, flight loop otherwise.
     ctx.save();
     ctx.translate(player.x, player.y);
-    
+
     // Squash & Stretch based on vertical velocity and wind riding
     const dy = player.y - player.prevY;
     const stretch = clamp(Math.abs(dy) * 0.03, 0, 0.12);
-    const scaleX = 1 - stretch + (player.windInfluence || 0) * 0.05;
-    const scaleY = 1 + stretch - (player.windInfluence || 0) * 0.05;
+    const scaleX = 1 - stretch + wi * 0.05;
+    const scaleY = 1 + stretch - wi * 0.05;
     ctx.scale(scaleX, scaleY);
-    
-    const surfTiltSprite = (player.windInfluence || 0) * 0.12;
-    ctx.rotate(player.angle*0.35 + surfTiltSprite);
-    
-    const spriteH = player.radius * 3.0;
+
+    ctx.rotate(player.angle*0.35 + wi * 0.12);
+
     const sheet = (player.boostTimer > 0 && !smokeOverlapThisFrame) ? sprites.breezyHappy : sprites.breezyFly;
-    
+
     if(smokeOverlapThisFrame) {
-      ctx.globalAlpha = 0.55;
-      ctx.filter = 'grayscale(100%)'; // turns Breezy grey!
+      ctx.globalAlpha = 0.55; // ...and Breezy goes grey (a pre-made grayscale copy)
     }
-    
-    const drawn = drawSpriteFrame(sheet, player.animFrame, 0, 0, spriteH, false);
-    if(smokeOverlapThisFrame) {
-      ctx.filter = 'none'; // reset filter
-    }
-    
+
+    const drawn = drawBreezy(sheet, player.animFrame, smokeOverlapThisFrame);
+
     if(!drawn){
       // fallback while sprite loads: original neo-brutalist disc
       ctx.fillStyle = glowing ? COLORS.lime : (smokeOverlapThisFrame ? '#888' : COLORS.cream);
@@ -2335,7 +2287,7 @@
     if (smokeOverlapThisFrame) {
       ctx.save();
       ctx.translate(player.x, player.y - player.radius * 1.75);
-      
+
       // Bubble box shadow
       ctx.fillStyle = COLORS.ink;
       roundRectPath(-32 + 3, -18 + 3, 64, 20, 6);
@@ -2347,7 +2299,7 @@
       ctx.lineWidth = 3;
       roundRectPath(-32, -18, 64, 20, 6);
       ctx.fill(); ctx.stroke();
-      
+
       // Little pointer at bottom
       ctx.beginPath();
       ctx.moveTo(-6, 2); ctx.lineTo(0, 8); ctx.lineTo(6, 2);
@@ -2356,7 +2308,7 @@
       ctx.moveTo(-6, 2); ctx.lineTo(0, 8); ctx.lineTo(6, 2);
       ctx.strokeStyle = COLORS.ink; ctx.lineWidth = 3;
       ctx.stroke();
-      
+
       // Text inside bubble
       ctx.fillStyle = '#ff3d8a'; // pink/red text
       ctx.font = "800 11px 'Quicksand', sans-serif";
@@ -2367,16 +2319,21 @@
     }
   }
 
+  // The smoke vignette is a smooth radial ramp, so it is painted once at 1/4 size and
+  // stretched over the frame instead of a full-screen gradient every frame.
+  let vignetteArt = null;
   function drawSmokeVignette(){
-    if(smokeOverlapThisFrame){
-      ctx.save();
-      const vig = ctx.createRadialGradient(W/2, H/2, W*0.35, W/2, H/2, W*0.7);
-      vig.addColorStop(0, 'rgba(40, 40, 40, 0)');
-      vig.addColorStop(1, 'rgba(15, 15, 15, 0.45)');
-      ctx.fillStyle = vig;
-      ctx.fillRect(0,0,W,H);
-      ctx.restore();
+    if(!smokeOverlapThisFrame) return;
+    if(!vignetteArt){
+      vignetteArt = GOGEngine.bake(W, H, (g) => {
+        const vig = g.createRadialGradient(W/2, H/2, W*0.35, W/2, H/2, W*0.7);
+        vig.addColorStop(0, 'rgba(40, 40, 40, 0)');
+        vig.addColorStop(1, 'rgba(15, 15, 15, 0.45)');
+        g.fillStyle = vig;
+        g.fillRect(0, 0, W, H);
+      }, 0.25);
     }
+    ctx.drawImage(vignetteArt, 0, 0, W, H);
   }
 
   // T059: explicit reactive contrast — smoothly gray-tints the whole scene
@@ -2419,6 +2376,8 @@
   }
 
   function render(time){
+    frameNow = Date.now();
+    drawCount++;
     ctx.clearRect(0,0,W,H);
     
     // Base Sky & Landscape
@@ -2554,38 +2513,60 @@
   const _windInfluenceScratch = { influence:0, current:null, centerY:0 };
   const _sampleScratch = { y:0, thick:0, splitOff:0 };
 
-  // ---- lightweight self-contained wind audio (does not touch GOGEngine.Audio) ----
-  let windCtx = null, windNoiseSource = null, windNoiseGain = null, windNoiseFilter = null;
+  // ---- wind audio, built on the SHARED AudioContext (audio.ctx, the one Howler uses) so the
+  // stage never opens a second context. audio.ctx is null until the first user gesture, so
+  // each use re-checks. The looped noise source only exists while the wind is audible:
+  // it is stopped when Breezy leaves the wind, on mute, and when the tab is hidden.
+  let windCtx = null, windNoiseSource = null, windNoiseGain = null, windNoiseFilter = null, windNoiseBuffer = null;
 
   function ensureWindAudioCtx(){
-    if(windCtx) return windCtx;
-    try { windCtx = new (window.AudioContext || window.webkitAudioContext)(); }
-    catch(e){ windCtx = null; }
+    const c = audio.ctx;
+    if(c !== windCtx){ // first use, or the shared context was replaced
+      windCtx = c;
+      windNoiseSource = windNoiseGain = windNoiseFilter = windNoiseBuffer = null;
+    }
     return windCtx;
   }
+
+  function stopWindNoise(){
+    if(windNoiseSource){
+      try { windNoiseSource.stop(); windNoiseSource.disconnect(); } catch(e){}
+      windNoiseSource = null;
+    }
+  }
+  GOGEngine.onVisibility(function(visible){ if(!visible) stopWindNoise(); });
 
   function initWindAmbientSound(){
     const ctx2 = ensureWindAudioCtx();
     if(!ctx2 || windNoiseSource) return;
-    const bufferSize = ctx2.sampleRate * 2;
-    const buffer = ctx2.createBuffer(1, bufferSize, ctx2.sampleRate);
-    const data = buffer.getChannelData(0);
-    for(let i=0;i<bufferSize;i++) data[i] = (Math.random()*2-1)*0.6;
+    if(!windNoiseBuffer){
+      const bufferSize = ctx2.sampleRate * 2;
+      windNoiseBuffer = ctx2.createBuffer(1, bufferSize, ctx2.sampleRate);
+      const data = windNoiseBuffer.getChannelData(0);
+      for(let i=0;i<bufferSize;i++) data[i] = (Math.random()*2-1)*0.6;
+    }
+    if(!windNoiseFilter){
+      windNoiseFilter = ctx2.createBiquadFilter();
+      windNoiseFilter.type = 'bandpass';
+      windNoiseFilter.frequency.value = 900;
+      windNoiseFilter.Q.value = 0.6;
+      windNoiseGain = ctx2.createGain();
+      windNoiseGain.gain.value = 0;
+      windNoiseFilter.connect(windNoiseGain).connect(ctx2.destination);
+    }
     windNoiseSource = ctx2.createBufferSource();
-    windNoiseSource.buffer = buffer;
+    windNoiseSource.buffer = windNoiseBuffer;
     windNoiseSource.loop = true;
-    windNoiseFilter = ctx2.createBiquadFilter();
-    windNoiseFilter.type = 'bandpass';
-    windNoiseFilter.frequency.value = 900;
-    windNoiseFilter.Q.value = 0.6;
-    windNoiseGain = ctx2.createGain();
-    windNoiseGain.gain.value = 0;
-    windNoiseSource.connect(windNoiseFilter).connect(windNoiseGain).connect(ctx2.destination);
+    windNoiseSource.connect(windNoiseFilter);
     windNoiseSource.start();
   }
 
   function updateWindAudio(influence, dt){
-    if(audio.muted){ if(windNoiseGain) windNoiseGain.gain.value = 0; return; }
+    if(audio.muted){
+      if(windNoiseGain) windNoiseGain.gain.value = 0;
+      stopWindNoise();
+      return;
+    }
     if(influence > 0.05){
       initWindAmbientSound();
       if(windNoiseGain){
@@ -2596,8 +2577,10 @@
         const targetFreq = 600 + influence * 1200; // sweep frequency from 600Hz to 1800Hz
         windNoiseFilter.frequency.value = lerp(windNoiseFilter.frequency.value, targetFreq, clamp(0.15*dt,0,1));
       }
-    } else if(windNoiseGain){
-      windNoiseGain.gain.value = lerp(windNoiseGain.gain.value, 0, clamp(0.12*dt,0,1));
+    } else if(windNoiseSource && windNoiseGain){
+      const g = lerp(windNoiseGain.gain.value, 0, clamp(0.12*dt,0,1));
+      windNoiseGain.gain.value = g;
+      if(g < 0.002){ windNoiseGain.gain.value = 0; stopWindNoise(); } // silent: let the source go
     }
   }
 
@@ -2681,12 +2664,16 @@
   }
 
   function drawWindParticles(){
-    windParticles.forEach(p=>{
+    const n = windParticles.length;
+    if(!n) return;
+    const S = hiDpi.scale;
+    ctx.save();
+    for(let i=0;i<n;i++){
+      const p = windParticles[i];
       const a = clamp(p.life,0,1);
-      ctx.save();
+      const c = Math.cos(p.angle) * S, sn = Math.sin(p.angle) * S;
+      ctx.setTransform(c, sn, -sn, c, S * p.x, S * p.y); // translate + rotate without save/restore
       ctx.globalAlpha = a;
-      ctx.translate(p.x,p.y);
-      ctx.rotate(p.angle);
       if(p.type === 'sparkle'){
         ctx.fillStyle = p.color;
         ctx.beginPath();
@@ -2716,8 +2703,8 @@
         ctx.arc(0,-p.size*0.3,p.size*0.7,0,Math.PI*2);
         ctx.fill();
       }
-      ctx.restore();
-    });
+    }
+    ctx.restore();
   }
 
   // -----------------------------------------------------------------
@@ -3234,28 +3221,35 @@
     drawWindParticles();
   }
 
+  // Radial light-blue glow behind Breezy: painted once at full strength and faded with
+  // globalAlpha (the gradient's alpha stops all scale with the wind influence).
+  let auraArt = null;
   function drawWindAura(){
     const wi = player.windInfluence || 0;
     if(wi < 0.03) return;
-    
-    // Radial light-blue glow behind Breezy
+
+    if(!auraArt){
+      const R = player.radius, r = R * 2.4;
+      auraArt = GOGEngine.bake(r * 2, r * 2, (g) => {
+        const grad = g.createRadialGradient(r, r, R * 0.4, r, r, r);
+        grad.addColorStop(0, 'rgba(255,255,255,0.6)');
+        grad.addColorStop(0.5, 'rgba(135,206,250,0.4)');
+        grad.addColorStop(1, 'rgba(135,206,255,0)');
+        g.fillStyle = grad;
+        g.beginPath(); g.arc(r, r, r, 0, TAU); g.fill();
+      }, 3);
+    }
     ctx.save();
-    ctx.translate(player.x, player.y);
-    const g = ctx.createRadialGradient(0,0,player.radius*0.4,0,0,player.radius*2.4);
-    g.addColorStop(0, `rgba(255,255,255,${0.6*wi})`);
-    g.addColorStop(0.5, `rgba(135,206,250,${0.4*wi})`);
-    g.addColorStop(1, 'rgba(135,206,255,0)');
-    ctx.fillStyle = g;
-    ctx.beginPath(); ctx.arc(0,0, player.radius*2.4, 0, Math.PI*2); ctx.fill();
-    ctx.restore();
+    ctx.globalAlpha = wi;
+    ctx.drawImage(auraArt, player.x - auraArt.gw / 2, player.y - auraArt.gh / 2, auraArt.gw, auraArt.gh);
 
     // Flowing wind streaks (trails) trailing from Breezy
-    ctx.save();
-    ctx.strokeStyle = `rgba(173, 216, 255, ${0.85 * wi})`;
+    ctx.globalAlpha = 1;
+    ctx.strokeStyle = 'rgba(173, 216, 255, ' + (0.85 * wi) + ')';
     ctx.lineWidth = 3.5;
     ctx.lineCap = 'round';
-    
-    const time = Date.now() * 0.015;
+
+    const time = frameNow * 0.015;
     for (let i = 0; i < 3; i++) {
       const dy = -16 + i * 16 + Math.sin(time + i * 2) * 4;
       const length = 55 + Math.sin(time + i) * 15;
@@ -3285,6 +3279,7 @@
     player.windMultiplierActive = false;
     player.windFeatherTimer = 0;
     if(windNoiseGain) windNoiseGain.gain.value = 0;
+    stopWindNoise();
   }
 
 
@@ -3323,8 +3318,8 @@
     
     // 2. Draw glowing Seed leaf droplet icon bobbing in the center
     ctx.globalAlpha = alpha;
-    ctx.translate(W/2, H/2 + 25 + Math.sin(Date.now() * 0.005) * 8);
-    ctx.rotate(Date.now() * 0.0015);
+    ctx.translate(W/2, H/2 + 25 + Math.sin(frameNow * 0.005) * 8);
+    ctx.rotate(frameNow * 0.0015);
     
     // Outer radial aura
     const sg = ctx.createRadialGradient(0, 0, 2, 0, 0, 36);
@@ -3357,17 +3352,15 @@
   // ---------------------------------------------------------------
   // MAIN LOOP
   // ---------------------------------------------------------------
-  function loop(ts){
-    if(!lastTime) lastTime = ts;
-    let dt = (ts - lastTime) / 16.6667; // normalized to ~60fps units
-    dt = clamp(dt, 0, 2.5);
-    lastTime = ts;
-
-    if (GOGUi.paused) {
-      // "How to play" pop-up is open: freeze the world
-    } else if(gameState === 'playing'){
+  // One fixed 1/60 s step of the world (GOGEngine.GameLoop calls this at 60 Hz, so every
+  // speed below is exactly what it was at 60 fps; dt stays in "frames" units).
+  function stepWorld(){
+    const dt = 1;
+    frameNow = Date.now();
+    if(gameState === 'playing'){
       update(dt);
     } else {
+      if(windNoiseSource) updateWindAudio(0, dt); // let the whoosh fade out after a win/fail
       // idle background motion on start/win/fail screens
       bgOffset1 = (bgOffset1 + 0.4*dt) % W;
       bgOffset2 = (bgOffset2 + 0.8*dt) % W;
@@ -3393,9 +3386,9 @@
       player.animFrame = Math.floor(player.animTimer) % frameCount;
 
       // 2. Gentle hover bobbing in place
-      player.y = 280 + Math.sin(Date.now() * 0.0035) * 10;
+      player.y = 280 + Math.sin(frameNow * 0.0035) * 10;
       player.prevY = player.y; // keep previous y aligned to prevent stretch triggers
-      player.angle = Math.sin(Date.now() * 0.002) * 0.04;
+      player.angle = Math.sin(frameNow * 0.002) * 0.04;
     }
     if(gameState === 'winning'){
       winTimer += dt;
@@ -3476,9 +3469,14 @@
         }
       }
     }
-    render(ts);
-    requestAnimationFrame(loop);
   }
+
+  // Fixed-step loop: skips draw() on frames without a step, stops while the tab is hidden.
+  // The "How to play" pop-up (GOGUi.paused) freezes both the world and the drawing.
+  const loop = new GOGEngine.GameLoop({
+    update: function(){ if(!GOGUi.paused) stepWorld(); },
+    draw: function(){ if(!GOGUi.paused) render(performance.now()); }
+  });
 
   // STREAMLINED: start/replay/retry are now driven entirely by the single
   // GOGUi popup at each moment (the guardian beat's onDone for the first
@@ -3489,7 +3487,7 @@
   buildBuildings();
   seedAmbientClouds();
   updateHUD();
-  requestAnimationFrame(loop);
+  loop.start();
   
 })();
 </script>

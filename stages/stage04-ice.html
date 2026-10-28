@@ -7,72 +7,16 @@
     <link rel="stylesheet" href="../src/styles.css" />
     <style>
       :root {
-        --gog-frame-aspect: 1.3333; /* 800x600 canvas: keeps the frame 4:3 on short windows */
+        --gog-frame-aspect: 1.33333; /* 800x600 canvas: keeps the frame 4:3 on short windows */
       }
-      .stage-wrap {
-        width: min(1180px, calc(100vw - 28px));
-        max-width: 1180px;
-        margin: 0 auto;
-        padding: 12px 0 32px;
-        animation: pageFadeIn 0.5s ease both;
-      }
-      .stage-hud {
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-        gap: 10px;
-        flex-wrap: wrap;
-        margin-bottom: 12px;
-      }
-      .stage-title {
-        display: flex;
-        align-items: center;
-        gap: 10px;
-      }
-      .stage-title h1 {
-        font-size: 1.25rem;
-      }
+      /* Page shell (HUD, title, meters, chips, buttons, canvas-frame base, the
+         <=1200px compact HUD) lives in src/styles.css — only stage colours and
+         stage-only widgets are styled here. */
       .stage-title small {
-        display: block;
-        font-family: var(--gog-font-hand);
-        font-size: 1rem;
         color: #4d5c37;
       }
-      .hud-mid {
-        display: flex;
-        align-items: center;
-        gap: 14px;
-        flex-wrap: wrap;
-      }
-      .meter {
-        display: flex;
-        align-items: center;
-        gap: 8px;
-        background: var(--gog-white);
-        border: 3px solid var(--gog-ink);
-        border-radius: 999px;
-        padding: 6px 14px 6px 10px;
-        box-shadow: var(--gog-shadow-sm);
-        min-width: 168px;
-        position: relative;
-      }
-      .meter .label,
-      .meter .meter-track {
-        position: relative;
-        z-index: 2;
-      }
-      .meter .label {
-        font-size: 0.78rem;
-        font-weight: 700;
-        white-space: nowrap;
-      }
       .meter-track {
-        flex: 1;
-        height: 10px;
-        border-radius: 999px;
         background: #d8e8f5;
-        border: 2px solid var(--gog-ink);
-        overflow: hidden;
       }
       .meter-fill {
         height: 100%;
@@ -81,9 +25,6 @@
         transition: width 0.35s cubic-bezier(0.175, 0.885, 0.32, 1.275);
       }
       .timer-chip {
-        font-weight: 700;
-        min-width: 64px;
-        text-align: center;
         position: relative;
       }
       .timer-chip::after {
@@ -121,39 +62,34 @@
           opacity: 1;
         }
       }
-      .canvas-frame {
-        position: relative;
-        width: 100%;
-        aspect-ratio: 4 / 3;
-        overflow: hidden;
-        max-height: calc(100vh - 220px);
-        transition:
-          border-color 0.2s,
-          box-shadow 0.2s;
-        margin: 0 auto;
-        /* max-width: 800px; */
+      /* Low-warmth warning: a hard-edged red ring INSIDE the frame whose
+         opacity pulses (replaces an animated blurred box-shadow that repainted
+         the whole frame every tick). */
+      .canvas-frame::after {
+        content: "";
+        position: absolute;
+        inset: 0;
+        border-radius: inherit;
+        box-shadow: inset 0 0 0 7px rgba(239, 68, 68, 0.8);
+        opacity: 0;
+        pointer-events: none;
+        z-index: 12;
       }
       @keyframes warmthPulse {
         0%,
         100% {
-          box-shadow:
-            4px 4px 0 var(--gog-ink),
-            0 0 0 0 rgba(239, 68, 68, 0);
+          opacity: 0;
         }
         50% {
-          box-shadow:
-            4px 4px 0 var(--gog-ink),
-            0 0 22px 6px rgba(239, 68, 68, 0.55);
+          opacity: 1;
         }
       }
-      .canvas-frame.warmth-danger {
+      .canvas-frame.warmth-danger::after {
         animation: warmthPulse 1.1s ease-in-out infinite;
       }
-      canvas {
-        width: 100%;
-        height: 100%;
-        display: block;
-        touch-action: none;
+      /* The touch pad is not a mouse game: keep the plain arrow cursor */
+      .canvas-frame canvas {
+        cursor: default;
       }
       /* On-screen controls: walk pad bottom-left, Grab/Jump bottom-right.
          Every button carries a word as well as an icon, so nothing is a
@@ -166,6 +102,29 @@
         align-items: flex-end;
         pointer-events: none;
         z-index: 10;
+        /* Base button size. Where container units exist it scales with the
+           frame (below) so the pad never swallows a small frame. */
+        --ctl: 62px;
+      }
+      @media (max-width: 700px) {
+        .controls {
+          --ctl: 52px;
+        }
+      }
+      @supports (width: 1cqw) {
+        #canvasFrame {
+          container-type: inline-size;
+        }
+        /* 48px on small frames (mouse / keyboard users), up to 62px on big
+           ones; touch screens never go below 52px. */
+        .controls {
+          --ctl: clamp(48px, 7.2cqw, 62px);
+        }
+        @media (pointer: coarse) {
+          .controls {
+            --ctl: clamp(52px, 8.4cqw, 62px);
+          }
+        }
       }
       .pad {
         display: flex;
@@ -174,8 +133,9 @@
         pointer-events: auto;
       }
       .ctrl-btn {
-        width: 62px;
-        height: 62px;
+        position: relative;
+        width: var(--ctl);
+        height: var(--ctl);
         padding: 0;
         border: 3px solid var(--gog-ink);
         background: #fff;
@@ -196,13 +156,13 @@
           box-shadow 0.08s;
       }
       .ctrl-btn .ico {
-        font-size: 24px;
+        font-size: calc(var(--ctl) * 0.39);
         font-weight: 900;
       }
       .ctrl-btn .cap {
         margin-top: 3px;
         font-family: var(--gog-font-head);
-        font-size: 11px;
+        font-size: max(9px, calc(var(--ctl) * 0.18));
         font-weight: 800;
         letter-spacing: 0.03em;
         text-transform: uppercase;
@@ -212,215 +172,54 @@
         box-shadow: 1px 1px 0 var(--gog-ink);
       }
       .ctrl-btn.jump {
-        width: 74px;
-        height: 74px;
+        width: calc(var(--ctl) * 1.2);
+        height: calc(var(--ctl) * 1.2);
         background: var(--gog-lavender);
       }
       .ctrl-btn.act {
-        width: 84px;
-        height: 84px;
+        width: calc(var(--ctl) * 1.35);
+        height: calc(var(--ctl) * 1.35);
         border-radius: 50%;
         background: var(--gog-lime);
       }
       .ctrl-btn.act .ico {
-        font-size: 32px;
+        font-size: calc(var(--ctl) * 0.52);
       }
-      /* "Something to grab / spin is in reach" and the guided-coach highlight */
+      /* "Something to grab / spin is in reach" and the guided-coach highlight:
+         the button scales (compositor-only) and a hard lime ring fades in. */
+      .ctrl-btn::after {
+        content: "";
+        position: absolute;
+        inset: -3px;
+        border-radius: inherit;
+        box-shadow: 0 0 0 7px var(--gog-lime);
+        opacity: 0;
+        pointer-events: none;
+      }
       .ctrl-btn.ready,
       .ctrl-btn.coach-pulse {
         animation: ctrlPulse 0.85s ease-in-out infinite;
+      }
+      .ctrl-btn.ready::after,
+      .ctrl-btn.coach-pulse::after {
+        animation: ctrlRing 0.85s ease-in-out infinite;
       }
       @keyframes ctrlPulse {
         0%,
         100% {
           transform: scale(1);
-          box-shadow:
-            4px 4px 0 var(--gog-ink),
-            0 0 0 0 var(--gog-lime);
         }
         50% {
           transform: scale(1.1);
-          box-shadow:
-            4px 4px 0 var(--gog-ink),
-            0 0 0 7px var(--gog-lime);
         }
       }
-      @media (max-width: 700px) {
-        .ctrl-btn {
-          width: 52px;
-          height: 52px;
-          border-radius: 14px;
-        }
-        .ctrl-btn .ico {
-          font-size: 20px;
-        }
-        .ctrl-btn .cap {
-          font-size: 9px;
-        }
-        .ctrl-btn.jump {
-          width: 60px;
-          height: 60px;
-        }
-        .ctrl-btn.act {
-          width: 68px;
-          height: 68px;
-        }
-      }
-
-      .calm-badge {
-        font-size: 0.78rem;
-        font-weight: 700;
-        animation: fadeInUp 0.6s ease both;
-      }
-
-      .icon-btn {
-        width: 42px;
-        height: 42px;
-        min-width: 42px;
-        display: inline-flex;
-        align-items: center;
-        justify-content: center;
-        background: var(--gog-white);
-        border: 3px solid var(--gog-ink);
-        border-radius: 50%;
-        box-shadow: 3px 3px 0 var(--gog-ink);
-        font-size: 1.15rem;
-        line-height: 1;
-        touch-action: manipulation;
-      }
-
-      @media (max-width: 700px) {
-        .stage-wrap {
-          width: calc(100vw - 12px);
-          max-width: 100%;
-          padding: 6px 0 18px;
-        }
-
-        .stage-hud {
-          display: grid;
-          grid-template-columns: minmax(0, 1fr);
-          gap: 6px;
-          margin-bottom: 8px;
-        }
-
-        .stage-title {
-          gap: 6px;
-          min-width: 0;
-        }
-
-        .stage-title .emoji-float {
-          font-size: 1.35rem !important;
-        }
-
-        .stage-title h1 {
-          font-size: 0.98rem;
-          line-height: 1;
-        }
-
-        .stage-title small {
-          display: none;
-        }
-
-        .hud-mid {
-          display: grid;
-          grid-template-columns: minmax(72px, 1fr) repeat(4, auto);
-          gap: 5px;
-          align-items: center;
-          width: 100%;
-        }
-
-        .meter {
-          min-width: 0;
-          gap: 5px;
-          padding: 4px 8px 4px 7px;
-          border-width: 2px;
-          box-shadow: 2px 2px 0 var(--gog-ink);
-        }
-
-        .meter .label {
-          font-size: 0.66rem;
-        }
-
-        .meter-track {
-          height: 8px;
-          border-width: 2px;
-        }
-
-        .chip {
-          padding: 4px 7px;
-          border-width: 2px;
-          box-shadow: 2px 2px 0 var(--gog-ink);
-          font-size: 0.72rem;
-          min-height: 30px;
-        }
-
-        .timer-chip {
-          min-width: 44px;
-        }
-
-        .icon-btn {
-          width: 32px;
-          height: 32px;
-          min-width: 32px;
-          font-size: 0.92rem;
-          border-width: 2px;
-          box-shadow: 2px 2px 0 var(--gog-ink);
-        }
-
-        .guideBar {
-          gap: 6px;
-          padding: 3px 4px;
-          margin-bottom: 8px;
-          border-width: 2px;
-          border-radius: 8px;
-          box-shadow: 1px 1px 0 var(--gog-ink);
-        }
-
-        .guideAvatar {
-          font-size: 1.25rem;
-        }
-
-        .guideBubble {
-          padding: 5px 8px;
-          border-width: 2px;
-          border-radius: 10px;
-          font-size: 1rem;
-          line-height: 1.1;
-        }
-
-        .canvas-frame {
-          border-width: 3px;
-          border-radius: 12px;
-          box-shadow: 4px 4px 0 var(--gog-ink);
-        }
-
-        .stage-controls {
-          margin-top: 8px;
-          gap: 6px;
-        }
-
-        .stage-controls .brutal-btn {
-          padding: 8px 12px;
-          min-height: 38px;
-          border-width: 3px;
-          border-radius: 10px;
-          font-size: 0.86rem;
-          box-shadow: 3px 3px 0 var(--gog-ink);
-        }
-
-        .calm-badge {
-          font-size: 0.72rem;
-        }
-      }
-
-      @keyframes fadeInUp {
-        from {
+      @keyframes ctrlRing {
+        0%,
+        100% {
           opacity: 0;
-          transform: translateY(6px);
         }
-        to {
+        50% {
           opacity: 1;
-          transform: translateY(0);
         }
       }
 
@@ -640,7 +439,7 @@
       <div class="brutal-box canvas-frame" id="canvasFrame">
         <canvas
           id="game"
-          width="800"
+          width="960"
           height="600"
           aria-label="Penny on Thin Ice game canvas"
         ></canvas>
@@ -709,6 +508,7 @@
     <script src="../src/constants.js"></script>
     <script src="../src/save.js"></script>
     <script src="../src/native.js"></script>
+    <script src="../src/vendor/howler.min.js"></script>
     <script src="../src/engine.js"></script>
     <script src="../src/voice.js"></script>
     <script src="../src/ui.js"></script>
@@ -719,7 +519,7 @@
         const canvas = document.getElementById("game");
         // Phone portrait: canvas fills the screen (see GOGEngine.fitCanvasToScreen)
         GOGEngine.fitCanvasToScreen(canvas, document.getElementById("canvasFrame"));
-        const ctx = canvas.getContext("2d");
+        let ctx = canvas.getContext("2d"); // swapped by withCtx() while baking
 
         // Logical play-field size. The canvas bitmap is sized to the pixels
         // actually on screen (see GOGEngine.fitCanvas) so art stays crisp, but
@@ -729,9 +529,14 @@
         const VIEW_W = canvas.width;
         const VIEW_H = 600;
         let backdropDirty = true; // rebuild the pre-rendered backdrop after a resize
+        // Every cached raster below (backdrop strips, sky, emoji, sprite frames,
+        // floes) is baked at the on-screen bitmap scale; a resize that changes the
+        // scale just bumps this and each cache rebuilds lazily on its next use.
+        let rasterEpoch = 0;
         const hiDpi = GOGEngine.fitCanvas(canvas, ctx, VIEW_W, VIEW_H, {
           onResize: function () {
             backdropDirty = true;
+            rasterEpoch++;
           },
         });
 
@@ -809,14 +614,25 @@
           },
         };
 
+        // A sheet counts as loaded only once it is decoded, so the first frame
+        // that uses it never pays for a synchronous decode in the middle of play.
+        function whenDecoded(img, done) {
+          if (img.decode) img.decode().then(done, done);
+          else done();
+        }
+
         Object.keys(spriteSheets).forEach((key) => {
           const sheet = spriteSheets[key];
-          sheet.img.src = sheet.src;
+          sheet.key = key;
           sheet.img.onload = function () {
             sheet.frameW = sheet.img.naturalWidth / sheet.cols;
             sheet.frameH = sheet.img.naturalHeight / sheet.rows;
-            sheet.loaded = true;
+            whenDecoded(sheet.img, function () {
+              sheet.loaded = true;
+              GOGEngine.requestDraw();
+            });
           };
+          sheet.img.src = sheet.src;
         });
 
         // Baby-chick sheet (3x2): 0 open eyes, 1 flat/worried eyes, 2 eyes shut,
@@ -831,12 +647,16 @@
           frameW: 0,
           frameH: 0,
         };
-        chickSprite.img.src = chickSprite.src;
+        chickSprite.key = "chick";
         chickSprite.img.onload = function () {
           chickSprite.frameW = chickSprite.img.naturalWidth / chickSprite.cols;
           chickSprite.frameH = chickSprite.img.naturalHeight / chickSprite.rows;
-          chickSprite.loaded = true;
+          whenDecoded(chickSprite.img, function () {
+            chickSprite.loaded = true;
+            GOGEngine.requestDraw();
+          });
         };
+        chickSprite.img.src = chickSprite.src;
 
         const penguinAnim = {
           frameIndex: 0,
@@ -992,8 +812,11 @@
         };
 
         let state;
-        let lastTime = 0;
         let cameraX = 0;
+        // cameraX snapped to a whole device pixel, set once per render(): the world
+        // and the parallax layers scroll on the pixel grid so cached bitmaps blit
+        // 1:1 instead of being bilinear-resampled at fractional offsets.
+        let camX = 0;
         let gameRunning = false;
 
         let winWipeRadius = 0;
@@ -1018,9 +841,142 @@
         // The square around a chick where Grab works. Deliberately generous
         // (GOGConstants.STAGE4.chickReach) so a young player doesn't have to
         // line Penny up pixel-perfectly with a tiny chick.
-        function chickReachRect(chick) {
+        // chickInReach() is the allocation-free form of
+        // rectsOverlap(p, { x: chick.x + 9 - s/2, y: chick.y + 18 - s, w: s, h: s + 8 }).
+        function chickInReach(p, chick) {
           const s = GOGConstants.STAGE4.chickReach;
-          return { x: chick.x + 9 - s / 2, y: chick.y + 18 - s, w: s, h: s + 8 };
+          const rx = chick.x + 9 - s / 2;
+          const ry = chick.y + 18 - s;
+          return p.x < rx + s && p.x + p.w > rx && p.y < ry + s + 8 && p.y + p.h > ry;
+        }
+
+        // ---- Raster caches ------------------------------------------------------
+        // Everything that used to be re-painted (or re-parsed) every frame is built
+        // once here: baked emoji incl. their ink outline, pre-scaled sprite frames,
+        // and the warmth colour ramps (no per-frame hex parsing / string building).
+        const TAU = Math.PI * 2;
+
+        const emojiCache = {};
+        let emojiEpoch = -1;
+        // Emoji as a cached bitmap (the old drawEmoji ran strokeText + fillText with a
+        // font-family list on every call). outlined=true is drawEmoji's inked look;
+        // false is the plain particle emoji. Bitmap is centred on (x, y) like the text was.
+        function emojiSprite(glyph, size, outlined) {
+          if (emojiEpoch !== rasterEpoch) {
+            for (const k in emojiCache) delete emojiCache[k];
+            emojiEpoch = rasterEpoch;
+          }
+          const key = glyph + "|" + size + "|" + (outlined ? 1 : 0);
+          let c = emojiCache[key];
+          if (c) return c;
+          const box = Math.ceil(size * 2 + 8);
+          c = GOGEngine.bake(
+            box,
+            box,
+            function (g) {
+              g.textAlign = "center";
+              g.textBaseline = "middle";
+              g.fillStyle = "#111";
+              if (outlined) {
+                g.font = size + 'px "Segoe UI Emoji", "Apple Color Emoji", Arial';
+                g.lineWidth = 3;
+                g.strokeStyle = "#111";
+                g.strokeText(glyph, box / 2, box / 2);
+              } else {
+                g.font = size + "px Arial";
+              }
+              g.fillText(glyph, box / 2, box / 2);
+            },
+            hiDpi.scale,
+          );
+          emojiCache[key] = c;
+          return c;
+        }
+
+        const frameCache = {};
+        let frameEpoch = -1;
+        // One sprite-sheet frame scaled ONCE (high quality) to its draw size at the
+        // bitmap scale, so each frame is a 1:1 blit instead of a 4-12x downscale of
+        // the whole sheet. Draw it with ctx.drawImage(c, -c.gw / 2, -c.gh, c.gw, c.gh).
+        function frameSprite(sheet, frame, destW) {
+          if (frameEpoch !== rasterEpoch) {
+            for (const k in frameCache) delete frameCache[k];
+            frameEpoch = rasterEpoch;
+          }
+          const key = sheet.key + ":" + frame + ":" + destW;
+          let c = frameCache[key];
+          if (c) return c;
+          const s = hiDpi.scale;
+          const destH = (sheet.frameH / sheet.frameW) * destW;
+          const dw = Math.max(1, Math.round(destW * s));
+          const dh = Math.max(1, Math.round(destH * s));
+          c = document.createElement("canvas");
+          c.width = dw;
+          c.height = dh;
+          const g = c.getContext("2d");
+          g.imageSmoothingEnabled = true;
+          if ("imageSmoothingQuality" in g) g.imageSmoothingQuality = "high";
+          g.drawImage(
+            sheet.img,
+            (frame % sheet.cols) * sheet.frameW,
+            Math.floor(frame / sheet.cols) * sheet.frameH,
+            sheet.frameW,
+            sheet.frameH,
+            0,
+            0,
+            dw,
+            dh,
+          );
+          c.gw = dw / s;
+          c.gh = dh / s;
+          frameCache[key] = c;
+          return c;
+        }
+
+        // Warmth (0..1) goes through WSTEPS quantised steps; every colour that used
+        // to be lerped + re-parsed per frame is looked up in a precomputed ramp.
+        const WSTEPS = 64;
+        const hexParts = {};
+        function parseHex(hex) {
+          let v = hexParts[hex];
+          if (v) return v;
+          const h = hex.replace("#", "");
+          v =
+            h.length === 3
+              ? [parseInt(h[0] + h[0], 16), parseInt(h[1] + h[1], 16), parseInt(h[2] + h[2], 16)]
+              : [parseInt(h.substring(0, 2), 16), parseInt(h.substring(2, 4), 16), parseInt(h.substring(4, 6), 16)];
+          hexParts[hex] = v;
+          return v;
+        }
+        function lerpColor(c1, c2, pct) {
+          const rgb1 = parseHex(c1);
+          const rgb2 = parseHex(c2);
+          const r = Math.round(rgb1[0] + (rgb2[0] - rgb1[0]) * pct);
+          const g = Math.round(rgb1[1] + (rgb2[1] - rgb1[1]) * pct);
+          const b = Math.round(rgb1[2] + (rgb2[2] - rgb1[2]) * pct);
+          return "rgb(" + r + ", " + g + ", " + b + ")";
+        }
+        function makeRamp(c1, c2) {
+          const ramp = [];
+          for (let i = 0; i <= WSTEPS; i++) ramp.push(lerpColor(c1, c2, i / WSTEPS));
+          return ramp;
+        }
+        function warmIdx(w) {
+          return Math.round((w < 0 ? 0 : w > 1 ? 1 : w) * WSTEPS);
+        }
+        const RAMP = {
+          sky0: makeRamp("#3F6FD8", "#4B2A7B"),
+          sky1: makeRamp("#8FB8F5", "#C45F8E"),
+          sky2: makeRamp("#FFE6C7", "#FF9A4D"),
+          glow: makeRamp("#FFF6C8", "#FFC27A"),
+          sun: makeRamp("#FFF3B8", "#FF9E5E"),
+          water0: makeRamp("#4C93F2", "#1F3068"),
+          water1: makeRamp("#2456B8", "#0D1B3E"),
+          foam: makeRamp("#EAF8FF", "#8FA9D2"),
+        };
+        const HAZE = [];
+        for (let i = 0; i <= WSTEPS; i++) {
+          HAZE.push("rgba(255, 120, 60, " + ((i / WSTEPS) * 0.2).toFixed(3) + ")");
         }
 
         function createState() {
@@ -1307,6 +1263,7 @@
         }
 
         function resetGame() {
+          GOGEngine.requestDraw();
           state = createState();
           cameraX = 0;
           coachJumped = false;
@@ -1534,7 +1491,7 @@
           if (!coach.active || state.state !== "playing") return;
           const t = coach.t;
           const p = state.player;
-          const toScreen = (wx) => wx - cameraX;
+          const toScreen = (wx) => wx - camX;
           ctx.save();
           if (coach.index === 0) {
             const tx = toScreen(p.x + p.w) + 170;
@@ -1745,13 +1702,7 @@
 
           // Check if standing on melting ice to apply slippage
           let onIce = false;
-          const solids = getSolids();
-          const under = solids.find(
-            (s) =>
-              p.x + p.w > s.x &&
-              p.x < s.x + s.w &&
-              Math.abs(p.y + p.h - s.y) < 4,
-          );
+          const under = findUnder(p, getSolids(), 4);
           if (under && under.drift !== undefined) {
             onIce = true;
           }
@@ -2115,56 +2066,77 @@
           }
 
           if (p.onGround && !soft) {
-            const under = solids.find(
-              (s) =>
-                p.x + p.w > s.x &&
-                p.x < s.x + s.w &&
-                Math.abs(p.y + p.h - s.y) < 4,
-            );
+            const under = findUnder(p, solids, 4);
             if (under && under.drift) {
               p.x += under.drift * dt;
             }
           }
         }
 
+        // The solids list is rebuilt on every call (platforms move/shrink), but into
+        // one persistent array of pooled objects instead of ~11 fresh ones per call.
+        // Callers use the result immediately and never keep it across another call.
+        // Slots 0-2 (home, valve platform, shore) never get a `drift`; floe and seal
+        // slots (3+) always do, exactly like the old per-call literals.
+        const solidsBuf = [];
+        const solidPool = [];
+        function solidSlot(i) {
+          return solidPool[i] || (solidPool[i] = { x: 0, y: 0, w: 0, h: 0 });
+        }
+
         function getSolids() {
-          const solids = [
-            {
-              x: state.stableBase.x,
-              y: state.stableBase.y,
-              w: state.stableBase.w,
-              h: state.stableBase.h,
-            },
-            {
-              x: state.valvePlatform.x,
-              y: state.valvePlatform.y,
-              w: state.valvePlatform.w,
-              h: state.valvePlatform.h,
-              stable: true,
-            },
-            { x: SHORE.x, y: SHORE.y, w: SHORE.w, h: SHORE.h, stable: true },
-          ];
-          for (const pl of state.meltPlatforms) {
+          let n = 0;
+          let s = solidSlot(n++);
+          const sb = state.stableBase;
+          s.x = sb.x;
+          s.y = sb.y;
+          s.w = sb.w;
+          s.h = sb.h;
+          s = solidSlot(n++);
+          const vp = state.valvePlatform;
+          s.x = vp.x;
+          s.y = vp.y;
+          s.w = vp.w;
+          s.h = vp.h;
+          s.stable = true;
+          s = solidSlot(n++);
+          s.x = SHORE.x;
+          s.y = SHORE.y;
+          s.w = SHORE.w;
+          s.h = SHORE.h;
+          s.stable = true;
+          const mp = state.meltPlatforms;
+          for (let i = 0; i < mp.length; i++) {
+            const pl = mp[i];
             if (pl.gone) continue;
-            const drift = Math.cos(state.time * 0.55 + pl.phase) * pl.drift;
-            solids.push({
-              x: pl.x + pl.shrink * 0.5,
-              y: pl.y,
-              w: pl.w,
-              h: pl.h,
-              drift,
-            });
+            s = solidSlot(n++);
+            s.x = pl.x + pl.shrink * 0.5;
+            s.y = pl.y;
+            s.w = pl.w;
+            s.h = pl.h;
+            s.drift = Math.cos(state.time * 0.55 + pl.phase) * pl.drift;
           }
-          if (state.waterLift && state.waterLift.surfaced) {
-            solids.push({
-              x: state.waterLift.x,
-              y: state.waterLift.y,
-              w: state.waterLift.w,
-              h: state.waterLift.h,
-              drift: 0,
-            });
+          const wl = state.waterLift;
+          if (wl && wl.surfaced) {
+            s = solidSlot(n++);
+            s.x = wl.x;
+            s.y = wl.y;
+            s.w = wl.w;
+            s.h = wl.h;
+            s.drift = 0;
           }
-          return solids;
+          solidsBuf.length = n;
+          for (let i = 0; i < n; i++) solidsBuf[i] = solidPool[i];
+          return solidsBuf;
+        }
+
+        // First solid Penny stands on (same test the old solids.find closures used).
+        function findUnder(p, solids, tol) {
+          for (let i = 0; i < solids.length; i++) {
+            const s = solids[i];
+            if (p.x + p.w > s.x && p.x < s.x + s.w && Math.abs(p.y + p.h - s.y) < tol) return s;
+          }
+          return undefined;
         }
 
         function getMaxCarryingCapacity() {
@@ -2173,7 +2145,10 @@
           // a "follow in a line" duckling formation instead of ferrying them
           // one trip at a time, so young kids aren't punished for exploring.
           if (calmMode) return state.chicks.length;
-          const deliveredCount = state.chicks.filter((c) => c.delivered).length;
+          let deliveredCount = 0;
+          for (let i = 0; i < state.chicks.length; i++) {
+            if (state.chicks[i].delivered) deliveredCount++;
+          }
           if (deliveredCount === 0) return 1;
           if (deliveredCount === 1) return 2;
           return 3;
@@ -2239,7 +2214,7 @@
               }
             }
 
-            const nearChick = rectsOverlap(p, chickReachRect(chick));
+            const nearChick = chickInReach(p, chick);
             if (!chick.rescued && nearChick) {
               const maxCarry = getMaxCarryingCapacity();
               if (p.carrying.length >= maxCarry) {
@@ -2363,19 +2338,18 @@
           return "linear-gradient(90deg, #ff8c42, #ef4444)"; // danger
         }
 
+        // Runs every fixed step, so every write is change-only (GOGUi.setText /
+        // setStyle / setClass skip the DOM when the value is the same as last time).
         function updateUI() {
-          if (ui.warmFill) {
-            ui.warmFill.style.width = (state.warmth * 100).toFixed(0) + "%";
-            ui.warmFill.style.background = warmthGradient(state.warmth);
-          }
-          if (ui.canvasFrame) {
-            ui.canvasFrame.classList.toggle(
-              "warmth-danger",
-              state.warmth >= 0.7 && state.state === "playing",
-            );
-          }
-          if (ui.warmthText)
-            ui.warmthText.textContent = (state.warmth * 100).toFixed(0) + "%";
+          const warmPct = (state.warmth * 100).toFixed(0) + "%";
+          GOGUi.setStyle(ui.warmFill, "width", warmPct);
+          GOGUi.setStyle(ui.warmFill, "background", warmthGradient(state.warmth));
+          GOGUi.setClass(
+            ui.canvasFrame,
+            "warmth-danger",
+            state.warmth >= 0.7 && state.state === "playing",
+          );
+          GOGUi.setText(ui.warmthText, warmPct);
           if (ui.warmthLabel) {
             let labelText = "WARMTH ";
             if (state.warmth <= 0.2) labelText += "❄️❄️❄️❄️❄️";
@@ -2384,27 +2358,23 @@
             else if (state.warmth <= 0.8) labelText += "❄️❄️";
             else if (state.warmth <= 0.9) labelText += "❄️";
             else labelText += "🔥🔥🔥🔥🔥";
-            ui.warmthLabel.textContent = labelText;
+            GOGUi.setText(ui.warmthLabel, labelText);
           }
-          if (ui.rescuedText)
-            ui.rescuedText.textContent =
-              "🐥 " + state.rescuedCount + " / " + TARGET_RESCUES + " rescued";
-          if (ui.timerText) {
-            ui.timerText.textContent = Math.ceil(state.timeLeft) + "s";
-            if (state.timeLeft <= 10) {
-              ui.timerText.classList.add("timer-urgent");
-            } else {
-              ui.timerText.classList.remove("timer-urgent");
+          GOGUi.setText(
+            ui.rescuedText,
+            "🐥 " + state.rescuedCount + " / " + TARGET_RESCUES + " rescued",
+          );
+          GOGUi.setText(ui.timerText, Math.ceil(state.timeLeft) + "s");
+          GOGUi.setClass(ui.timerText, "timer-urgent", state.timeLeft <= 10);
+          if (ui.iceText) {
+            let floesLeft = 0;
+            for (let i = 0; i < state.meltPlatforms.length; i++) {
+              if (!state.meltPlatforms[i].gone) floesLeft++;
             }
+            GOGUi.setText(ui.iceText, "🧊 " + floesLeft + " floes left");
           }
-          if (ui.iceText)
-            ui.iceText.textContent =
-              "🧊 " +
-              state.meltPlatforms.filter((pl) => !pl.gone).length +
-              " floes left";
           const seaPct = Math.round(((560 - state.seaLevel) / 140) * 100);
-          if (ui.seaText)
-            ui.seaText.textContent = "🌊 Sea " + Math.max(0, seaPct) + "%";
+          GOGUi.setText(ui.seaText, "🌊 Sea " + Math.max(0, seaPct) + "%");
           refreshActionButton();
         }
 
@@ -2422,9 +2392,13 @@
             ) < 78;
           let nearChick = false;
           if (p.carrying.length < getMaxCarryingCapacity()) {
-            nearChick = state.chicks.some(
-              (c) => !c.rescued && !c.delivered && rectsOverlap(p, chickReachRect(c)),
-            );
+            for (let i = 0; i < state.chicks.length; i++) {
+              const c = state.chicks[i];
+              if (!c.rescued && !c.delivered && chickInReach(p, c)) {
+                nearChick = true;
+                break;
+              }
+            }
           }
           const key = nearValve ? "spin" : nearChick ? "grab" : "idle";
           if (key === actionStateKey) return;
@@ -2498,28 +2472,50 @@
           ctx.restore();
         }
 
+        // All flakes are one colour, so they go into a single path / single fill.
         function drawSnowfall() {
           ctx.save();
           ctx.fillStyle = "#ffffff";
-          for (const s of snowfallParticles) {
-            circle(s.x, s.y, s.size, true);
+          ctx.beginPath();
+          for (let i = 0; i < snowfallParticles.length; i++) {
+            const s = snowfallParticles[i];
+            ctx.moveTo(s.x + s.size, s.y);
+            ctx.arc(s.x, s.y, s.size, 0, TAU);
           }
+          ctx.fill();
           ctx.restore();
         }
 
+        // World-space visibility test: is any part of [x0, x1] on screen? (margins are
+        // baked into the numbers callers pass, so nothing pops in at the edge.)
+        function inView(x0, x1) {
+          return x1 > camX && x0 < camX + VIEW_W;
+        }
+
+        // The world scrolls on the device-pixel grid (see camX).
+        function syncCamera() {
+          const sc = hiDpi.scale;
+          camX = Math.round(cameraX * sc) / sc;
+        }
+
+        // The backdrop paints every pixel (opaque sky down to the horizon, opaque sea
+        // below it), so the frame no longer needs a clearRect first. The 2000px world
+        // is culled: the factory, home iceberg and valve platform (and every floe,
+        // chick and particle, inside their own draw functions) only paint when in view.
         function render() {
           if (!state) {
             drawIdleScene();
             return;
           }
 
-          ctx.clearRect(0, 0, VIEW_W, VIEW_H);
+          syncCamera();
           drawBackground();
           ctx.save();
-          ctx.translate(-cameraX, 0);
-          drawSmogFactory();
-          drawHomeBase();
-          drawValvePlatform();
+          ctx.translate(-camX, 0);
+          if (inView(1770, 2100)) drawSmogFactory();
+          if (inView(-10, 340)) drawHomeBase();
+          spawnHomeSparkles();
+          if (inView(1020, 1320)) drawValvePlatform();
           drawPlatforms();
           drawWaterLift();
           drawChicks();
@@ -2565,35 +2561,11 @@
         }
 
         function drawIdleScene() {
-          ctx.clearRect(0, 0, VIEW_W, VIEW_H);
+          syncCamera();
           drawBackground();
           ctx.save();
           drawWater();
           ctx.restore();
-        }
-
-        function lerpColor(c1, c2, pct) {
-          const parseHex = (hex) => {
-            const h = hex.replace("#", "");
-            if (h.length === 3) {
-              return [
-                parseInt(h[0] + h[0], 16),
-                parseInt(h[1] + h[1], 16),
-                parseInt(h[2] + h[2], 16),
-              ];
-            }
-            return [
-              parseInt(h.substring(0, 2), 16),
-              parseInt(h.substring(2, 4), 16),
-              parseInt(h.substring(4, 6), 16),
-            ];
-          };
-          const rgb1 = parseHex(c1);
-          const rgb2 = parseHex(c2);
-          const r = Math.round(rgb1[0] + (rgb2[0] - rgb1[0]) * pct);
-          const g = Math.round(rgb1[1] + (rgb2[1] - rgb1[1]) * pct);
-          const b = Math.round(rgb1[2] + (rgb2[2] - rgb1[2]) * pct);
-          return `rgb(${r}, ${g}, ${b})`;
         }
 
         // ---- Backdrop -------------------------------------------------------
@@ -2604,15 +2576,40 @@
         // were small bitmaps stretched ~2x, which is why they looked soft.)
         const BACKDROP_TILE = 1280; // logical px before a parallax layer repeats
         const HORIZON_Y = 452; // where the far sea meets the sky
-        const backdrop = { far: null, mid: null, sea: null, clouds: [] };
+        // Each parallax layer only has paint inside a horizontal band of the 600px-high
+        // view (glaciers ~271-460, bergs ~394-500, sea 451-600), so only that band is
+        // baked and blitted: about a quarter of the old full-height tiles in memory and
+        // in fill. Band edges are multiples of 4 so they land on whole device pixels at
+        // every canvas scale (1, 1.25, 1.5).
+        const BAND = {
+          far: { y: 260, h: 204 },
+          mid: { y: 388, h: 116 },
+          sea: { y: 448, h: 152 },
+        };
+        const SKY_H = 456; // sky bitmap height: the opaque sea takes over from HORIZON_Y
+        const SUN_X = 590;
+        const SUN_Y = 318;
+        const backdrop = { far: null, mid: null, sea: null, clouds: [], sky: null, skyIdx: -1 };
 
-        function makeLayer(scale) {
-          const c = document.createElement("canvas");
-          c.width = Math.round(BACKDROP_TILE * scale);
-          c.height = Math.round(VIEW_H * scale);
-          const g = c.getContext("2d");
-          g.setTransform(scale, 0, 0, scale, 0, 0);
-          return g;
+        // Paints `paint(g)` (in full-view logical coordinates) into a BACKDROP_TILE x band.h bitmap.
+        function makeBand(band, paint, scale) {
+          return GOGEngine.bake(
+            BACKDROP_TILE,
+            band.h,
+            function (g) {
+              g.translate(0, -band.y);
+              paint(g);
+            },
+            scale,
+          );
+        }
+
+        // Free a baked canvas right away (rather than waiting for GC) when it is replaced.
+        function releaseCanvas(c) {
+          if (c) {
+            c.width = 0;
+            c.height = 0;
+          }
         }
 
         // A rounded ice mountain: smooth dome, pale top, shaded right flank.
@@ -2764,12 +2761,16 @@
         }
 
         function buildBackdrop(scale) {
-          backdrop.far = makeLayer(scale);
-          buildFarLayer(backdrop.far);
-          backdrop.mid = makeLayer(scale);
-          buildMidLayer(backdrop.mid);
-          backdrop.sea = makeLayer(scale);
-          buildSeaLayer(backdrop.sea);
+          releaseCanvas(backdrop.far);
+          releaseCanvas(backdrop.mid);
+          releaseCanvas(backdrop.sea);
+          releaseCanvas(backdrop.sky);
+          backdrop.clouds.forEach(releaseCanvas);
+          backdrop.sky = null;
+          backdrop.skyIdx = -1; // sky is rebuilt at the new scale on next use
+          backdrop.far = makeBand(BAND.far, buildFarLayer, scale);
+          backdrop.mid = makeBand(BAND.mid, buildMidLayer, scale);
+          backdrop.sea = makeBand(BAND.sea, buildSeaLayer, scale);
           backdrop.clouds = [
             makeCloudSprite(scale, 190, 84, 11),
             makeCloudSprite(scale, 150, 70, 23),
@@ -2778,86 +2779,167 @@
           backdropDirty = false;
         }
 
-        function drawTiledLayer(g, scroll) {
-          const cv = g.canvas;
-          let x = -(scroll % BACKDROP_TILE);
-          if (x > 0) x -= BACKDROP_TILE;
-          for (let dx = x; dx < VIEW_W; dx += BACKDROP_TILE) {
-            ctx.drawImage(cv, dx, 0, BACKDROP_TILE, VIEW_H);
+        // Sky gradient + the soft sun glow, painted ONCE per warmth step (64 steps over
+        // 0..1, ~1 colour level apart) into a bitmap that is then a single opaque blit.
+        // This replaces a per-frame 3-stop gradient (3 hex re-parses) + a 400x400
+        // radial-gradient glow. The glow is baked at the sun's resting height; the sun
+        // disc itself still bobs in drawBackground().
+        function buildSky(idx, scale) {
+          const pw = Math.max(1, Math.ceil(VIEW_W * scale));
+          const ph = Math.ceil(SKY_H * scale);
+          let c = backdrop.sky;
+          if (!c || c.width !== pw || c.height !== ph) {
+            releaseCanvas(c);
+            c = document.createElement("canvas");
+            c.width = pw;
+            c.height = ph;
+            backdrop.sky = c;
           }
+          const g = c.getContext("2d");
+          g.setTransform(scale, 0, 0, scale, 0, 0);
+          const sky = g.createLinearGradient(0, 0, 0, HORIZON_Y);
+          sky.addColorStop(0, RAMP.sky0[idx]);
+          sky.addColorStop(0.55, RAMP.sky1[idx]);
+          sky.addColorStop(1, RAMP.sky2[idx]);
+          g.fillStyle = sky;
+          g.fillRect(0, 0, VIEW_W, SKY_H);
+          const glow = g.createRadialGradient(SUN_X, SUN_Y, 10, SUN_X, SUN_Y, 190);
+          glow.addColorStop(0, RAMP.glow[idx]);
+          glow.addColorStop(1, "rgba(255, 246, 200, 0)");
+          g.save();
+          g.globalAlpha = 0.65;
+          g.fillStyle = glow;
+          g.fillRect(SUN_X - 200, SUN_Y - 200, 400, 400);
+          g.restore();
+          backdrop.skyIdx = idx;
+        }
+
+        // One parallax band, 1:1 in DEVICE pixels (identity transform, integer offsets):
+        // no resampling, and at most two blits per layer (tile seam).
+        function drawBand(layer, band, scroll) {
+          const sc = hiDpi.scale;
+          const tile = layer.width;
+          const x0 = -(((Math.floor(scroll * sc) % tile) + tile) % tile);
+          const y = Math.round(band.y * sc);
+          const vw = canvas.width;
+          for (let dx = x0; dx < vw; dx += tile) ctx.drawImage(layer, dx, y);
+        }
+
+        // Aurora gradients never change (only the paths and alpha move), so they are
+        // created once instead of every frame.
+        let auroraIdle = null;
+        let auroraWon = null;
+        function auroraGradient(won) {
+          if (won) {
+            if (!auroraWon) {
+              auroraWon = ctx.createLinearGradient(0, 0, 0, 190);
+              auroraWon.addColorStop(0, "rgba(90, 255, 160, 0.55)");
+              auroraWon.addColorStop(1, "rgba(255, 140, 220, 0)");
+            }
+            return auroraWon;
+          }
+          if (!auroraIdle) {
+            auroraIdle = ctx.createLinearGradient(0, 0, 0, 190);
+            auroraIdle.addColorStop(0, "rgba(120, 255, 214, 0.38)");
+            auroraIdle.addColorStop(1, "rgba(255, 140, 220, 0)");
+          }
+          return auroraIdle;
+        }
+
+        // The two ribbons are big alpha gradient fills (the priciest part of the sky), and
+        // they only drift ~20 px/s, so they are painted into a small offscreen bitmap at
+        // most every 50 ms (and whenever the scale / win state changes) and that bitmap is
+        // blitted 1:1 each frame. Same shapes, sampled 20x per second.
+        const AURORA_H = 136; // ribbons stay above y = 128; multiple of 4 -> whole device px
+        const aurora = { c: null, t: -1, won: false, epoch: -1 };
+        function drawAurora(timeVal, warmthVal, won) {
+          const sc = hiDpi.scale;
+          const stale =
+            !aurora.c ||
+            aurora.epoch !== rasterEpoch ||
+            aurora.won !== won ||
+            Math.abs(timeVal - aurora.t) >= 0.05;
+          if (stale) {
+            if (!aurora.c || aurora.epoch !== rasterEpoch) {
+              releaseCanvas(aurora.c);
+              aurora.c = document.createElement("canvas");
+              aurora.c.width = Math.max(1, Math.ceil(VIEW_W * sc));
+              aurora.c.height = Math.ceil(AURORA_H * sc);
+            }
+            const g = aurora.c.getContext("2d");
+            g.setTransform(1, 0, 0, 1, 0, 0);
+            g.clearRect(0, 0, aurora.c.width, aurora.c.height);
+            g.setTransform(sc, 0, 0, sc, 0, 0);
+            g.globalAlpha = 0.35 + (1 - warmthVal) * 0.45;
+            g.fillStyle = auroraGradient(won);
+            for (let j = 0; j < 2; j++) {
+              g.beginPath();
+              g.moveTo(0, 0);
+              for (let x = 0; x <= VIEW_W + 20; x += 20) {
+                const y = 70 + j * 34 + Math.sin(timeVal * 0.9 + x * 0.004 + j * 1.5) * 24 * Math.cos(timeVal * 0.35 + x * 0.002);
+                g.lineTo(x, y);
+              }
+              g.lineTo(VIEW_W, 0);
+              g.closePath();
+              g.fill();
+            }
+            aurora.t = timeVal;
+            aurora.won = won;
+            aurora.epoch = rasterEpoch;
+          }
+          ctx.save();
+          ctx.setTransform(1, 0, 0, 1, 0, 0);
+          ctx.drawImage(aurora.c, 0, 0);
+          ctx.restore();
         }
 
         function drawBackground() {
           if (backdropDirty) buildBackdrop(hiDpi.scale);
           const W = VIEW_W;
           const H = VIEW_H;
+          const sc = hiDpi.scale;
           const warmthVal = state ? state.warmth : 0.0;
+          const wi = warmIdx(warmthVal);
           const timeVal = state ? state.time : performance.now() * 0.001;
-          const scrollVal = gameRunning ? cameraX : cameraX + performance.now() * 0.02;
+          const scrollVal = gameRunning ? camX : camX + performance.now() * 0.02;
+          if (backdrop.skyIdx !== wi) buildSky(wi, sc);
 
-          // 1. Sky: cobalt -> lilac -> peach horizon (dusky purple/orange as warmth climbs)
-          const sky = ctx.createLinearGradient(0, 0, 0, HORIZON_Y);
-          sky.addColorStop(0, lerpColor("#3F6FD8", "#4B2A7B", warmthVal));
-          sky.addColorStop(0.55, lerpColor("#8FB8F5", "#C45F8E", warmthVal));
-          sky.addColorStop(1, lerpColor("#FFE6C7", "#FF9A4D", warmthVal));
-          ctx.fillStyle = sky;
-          ctx.fillRect(0, 0, W, H);
-
-          // 2. Aurora ribbons
+          // 1. Sky: cobalt -> lilac -> peach horizon (dusky purple/orange as warmth
+          // climbs) with the sun glow baked in. Opaque, so no clearRect is needed.
           ctx.save();
-          const won = state && state.state === "won";
-          const aurora = ctx.createLinearGradient(0, 0, 0, 190);
-          aurora.addColorStop(0, won ? "rgba(90, 255, 160, 0.55)" : "rgba(120, 255, 214, 0.38)");
-          aurora.addColorStop(1, "rgba(255, 140, 220, 0)");
-          ctx.globalAlpha = 0.35 + (1 - warmthVal) * 0.45;
-          ctx.fillStyle = aurora;
-          for (let j = 0; j < 2; j++) {
-            ctx.beginPath();
-            ctx.moveTo(0, 0);
-            for (let x = 0; x <= W + 20; x += 20) {
-              const y = 70 + j * 34 + Math.sin(timeVal * 0.9 + x * 0.004 + j * 1.5) * 24 * Math.cos(timeVal * 0.35 + x * 0.002);
-              ctx.lineTo(x, y);
-            }
-            ctx.lineTo(W, 0);
-            ctx.closePath();
-            ctx.fill();
-          }
+          ctx.setTransform(1, 0, 0, 1, 0, 0);
+          ctx.drawImage(backdrop.sky, 0, 0);
           ctx.restore();
 
-          // 3. Low sun behind the glaciers
-          const sunX = 590;
-          const sunY = 318 + Math.sin(timeVal * 0.4) * 3;
-          const glow = ctx.createRadialGradient(sunX, sunY, 10, sunX, sunY, 190);
-          glow.addColorStop(0, lerpColor("#FFF6C8", "#FFC27A", warmthVal));
-          glow.addColorStop(1, "rgba(255, 246, 200, 0)");
-          ctx.save();
-          ctx.globalAlpha = 0.65;
-          ctx.fillStyle = glow;
-          ctx.fillRect(sunX - 200, sunY - 200, 400, 400);
-          ctx.restore();
-          ctx.fillStyle = lerpColor("#FFF3B8", "#FF9E5E", warmthVal);
-          circle(sunX, sunY, 34, true);
+          // 2. Aurora ribbons (painted offscreen at ~20 Hz, see drawAurora)
+          drawAurora(timeVal, warmthVal, state && state.state === "won");
+
+          // 3. Low sun behind the glaciers (glow is part of the sky bitmap)
+          ctx.fillStyle = RAMP.sun[wi];
+          circle(SUN_X, SUN_Y + Math.sin(timeVal * 0.4) * 3, 34, true);
 
           // 4. Drifting clouds
           for (let i = 0; i < clouds.length; i++) {
             const c = clouds[i];
             const sprite = backdrop.clouds[i % backdrop.clouds.length];
-            const cw = sprite.width / hiDpi.scale;
-            const ch = sprite.height / hiDpi.scale;
-            ctx.save();
+            const cw = sprite.width / sc;
+            const ch = sprite.height / sc;
             ctx.globalAlpha = c.layer === "back" ? 0.75 : 0.95;
             ctx.drawImage(sprite, c.x - (cw * c.scale) / 2, c.y, cw * c.scale, ch * c.scale);
-            ctx.restore();
           }
+          ctx.globalAlpha = 1;
 
-          // 5. Parallax scenery: glaciers, far sea, drifting bergs
-          drawTiledLayer(backdrop.far, scrollVal * 0.08);
-          drawTiledLayer(backdrop.sea, scrollVal * 0.3);
-          drawTiledLayer(backdrop.mid, scrollVal * 0.22);
+          // 5. Parallax scenery: glaciers, far sea, drifting bergs (device-pixel blits)
+          ctx.save();
+          ctx.setTransform(1, 0, 0, 1, 0, 0);
+          drawBand(backdrop.far, BAND.far, scrollVal * 0.08);
+          drawBand(backdrop.sea, BAND.sea, scrollVal * 0.3);
+          drawBand(backdrop.mid, BAND.mid, scrollVal * 0.22);
+          ctx.restore();
 
           // 6. Heat haze as warmth rises
           if (warmthVal > 0.05) {
-            ctx.fillStyle = "rgba(255, 120, 60, " + (warmthVal * 0.2).toFixed(3) + ")";
+            ctx.fillStyle = HAZE[wi];
             ctx.fillRect(0, 0, W, H);
           }
         }
@@ -2987,7 +3069,10 @@
           }
         }
 
-        function drawHomeBase() {
+        // The home iceberg's static look: warm halo, ice block, face, grass cap and the
+        // welcome sign. Baked once (HOME_BOX) by drawHomeBase(); the parent penguins,
+        // the jumping fish and the sparkles stay live.
+        function drawHomeStatic() {
           const b = state.stableBase;
           
           // 1. Warm cozy sun glow halo over the safe iceberg
@@ -3071,6 +3156,52 @@
           ctx.textAlign = "center";
           ctx.textBaseline = "middle";
           ctx.fillText("💚 SAFE ICEBERG", b.x + b.w / 2, signY + signH / 2 + 1);
+        }
+
+        // Run drawFn with every ctx-based helper (roundedRect, circle, ...) painting into g.
+        function withCtx(g, drawFn) {
+          const prev = ctx;
+          ctx = g;
+          try {
+            drawFn();
+          } finally {
+            ctx = prev;
+          }
+        }
+
+        // World rect of the baked home sprite: halo (r=150 around x=160,y=370), block,
+        // sign. Origin on multiples of 4 so it lands on whole device pixels.
+        const HOME_BOX = { x: 8, y: 216, w: 304, h: 372 };
+        let homeSprite = null;
+        let homeEpoch = -1;
+
+        // Blit a baked world-space bitmap 1:1 in device pixels (wx, wy: multiples of 4).
+        function blitWorld(c, wx, wy) {
+          const sc = hiDpi.scale;
+          ctx.save();
+          ctx.setTransform(1, 0, 0, 1, 0, 0);
+          ctx.drawImage(c, Math.round(wx * sc) - Math.round(camX * sc), Math.round(wy * sc));
+          ctx.restore();
+        }
+
+        function drawHomeBase() {
+          const b = state.stableBase;
+          if (!homeSprite || homeEpoch !== rasterEpoch) {
+            releaseCanvas(homeSprite);
+            homeSprite = GOGEngine.bake(
+              HOME_BOX.w,
+              HOME_BOX.h,
+              function (g) {
+                withCtx(g, function () {
+                  ctx.translate(-HOME_BOX.x, -HOME_BOX.y);
+                  drawHomeStatic();
+                });
+              },
+              hiDpi.scale,
+            );
+            homeEpoch = rasterEpoch;
+          }
+          blitWorld(homeSprite, HOME_BOX.x, HOME_BOX.y);
 
           // 3. Draw Parent Penguins
           // Dad: waddles slightly
@@ -3083,21 +3214,9 @@
           if (spriteSheets.idle.loaded) {
             const frame = Math.floor(state.time * 1.5) % 2; // alternates standing/smiling
             const col = frame % spriteSheets.idle.cols;
-            const sx = col * spriteSheets.idle.frameW;
-            const sy = 0;
             const destW = 44; // Larger Dad
-            const destH = (spriteSheets.idle.frameH / spriteSheets.idle.frameW) * destW;
-            ctx.drawImage(
-              spriteSheets.idle.img,
-              sx,
-              sy,
-              spriteSheets.idle.frameW,
-              spriteSheets.idle.frameH,
-              -destW / 2,
-              -destH,
-              destW,
-              destH,
-            );
+            const fs = frameSprite(spriteSheets.idle, col, destW);
+            ctx.drawImage(fs, -fs.gw / 2, -fs.gh, fs.gw, fs.gh);
           } else {
             drawEmoji("🐧", 0, -18, 42); // Fallback Larger Dad
           }
@@ -3113,21 +3232,9 @@
           if (spriteSheets.idle.loaded) {
             const frame = Math.floor(state.time * 1.2 + 1) % 2;
             const col = frame % spriteSheets.idle.cols;
-            const sx = col * spriteSheets.idle.frameW;
-            const sy = 0;
             const destW = 40; // Smaller Mom
-            const destH = (spriteSheets.idle.frameH / spriteSheets.idle.frameW) * destW;
-            ctx.drawImage(
-              spriteSheets.idle.img,
-              sx,
-              sy,
-              spriteSheets.idle.frameW,
-              spriteSheets.idle.frameH,
-              -destW / 2,
-              -destH,
-              destW,
-              destH,
-            );
+            const fs = frameSprite(spriteSheets.idle, col, destW);
+            ctx.drawImage(fs, -fs.gw / 2, -fs.gh, fs.gw, fs.gh);
           } else {
             drawEmoji("🐧", 0, -16, 38); // Fallback Mom
           }
@@ -3145,9 +3252,12 @@
             drawEmoji("🐟", 0, 0, 18);
             ctx.restore();
           }
+        }
 
-          // 5. Draw snow sparkles rising from base
+        // Snow sparkles rising off the home iceberg (spawned each frame, drawn as particles).
+        function spawnHomeSparkles() {
           if (Math.random() < 0.12) {
+            const b = state.stableBase;
             state.particles.push({
               x: b.x + Math.random() * b.w,
               y: b.y,
@@ -3160,7 +3270,6 @@
               kind: "snow"
             });
           }
-
         }
 
         function drawValvePlatform() {
@@ -3278,6 +3387,35 @@
           return lines;
         }
 
+        const FLOE_PALETTE = [
+          null,
+          { lip: "#FFFFFF", top: "#E9F8FF", bot: "#80C6EE" },
+          { lip: "#F2FAFF", top: "#D4EFFB", bot: "#6DB5E1" },
+          { lip: "#DDEBF5", top: "#BADAEC", bot: "#5B9DC9" },
+          { lip: "#C6D9E8", top: "#9FC5DE", bot: "#4B83AF" },
+          { lip: "#B2C6DA", top: "#87AFCC", bot: "#3B6B94" },
+        ];
+        // One vertical gradient per (melt stage, slab height), created once. It is
+        // defined in the floe's local space, so it follows the translate/rotate.
+        const floeGradients = {};
+        function floeBodyGradient(stage, palette, h) {
+          const key = stage + "|" + h;
+          let g = floeGradients[key];
+          if (!g) {
+            g = ctx.createLinearGradient(0, 0, 0, h);
+            g.addColorStop(0, palette.top);
+            g.addColorStop(1, palette.bot);
+            floeGradients[key] = g;
+          }
+          return g;
+        }
+        // Critical-floe warning outline: 41 pre-built alphas (0.50 .. 0.90) instead of a
+        // template string per frame.
+        const CRITICAL_STROKES = [];
+        for (let i = 50; i <= 90; i++) {
+          CRITICAL_STROKES.push("rgba(239, 68, 68, " + (i / 100).toFixed(2) + ")");
+        }
+
         // Draws one organic ice floe: jagged silhouette, snow cap, interior
         // shading, and stage-appropriate cracks/puddles/fragment gaps.
         function drawIceFloe(pl, x, w, meltRatio) {
@@ -3294,14 +3432,7 @@
                     : 5;
 
           // Fresh white-blue ice greys and thins out as it melts.
-          const palette = [
-            null,
-            { lip: "#FFFFFF", top: "#E9F8FF", bot: "#80C6EE" },
-            { lip: "#F2FAFF", top: "#D4EFFB", bot: "#6DB5E1" },
-            { lip: "#DDEBF5", top: "#BADAEC", bot: "#5B9DC9" },
-            { lip: "#C6D9E8", top: "#9FC5DE", bot: "#4B83AF" },
-            { lip: "#B2C6DA", top: "#87AFCC", bot: "#3B6B94" },
-          ][stage];
+          const palette = FLOE_PALETTE[stage];
 
           ctx.save();
           ctx.translate(x + w / 2, pl.y + pl.h / 2);
@@ -3313,10 +3444,7 @@
           roundedRect(4, 5, w, h, 14, true, false);
 
           // 2. One solid slab with a vertical ice gradient
-          const body = ctx.createLinearGradient(0, 0, 0, h);
-          body.addColorStop(0, palette.top);
-          body.addColorStop(1, palette.bot);
-          ctx.fillStyle = body;
+          ctx.fillStyle = floeBodyGradient(stage, palette, h);
           roundedRect(0, 0, w, h, 14, true, false);
 
           // 3. Details, clipped to the slab
@@ -3344,32 +3472,34 @@
           ctx.lineWidth = 3;
           ctx.lineCap = "round";
           const streaks = Math.max(2, Math.floor(w / 60));
+          ctx.beginPath(); // the streaks never overlap: one path, one stroke
           for (let i = 0; i < streaks; i++) {
             const sx = w * (0.14 + ((i + 0.3) / streaks) * 0.7);
-            ctx.beginPath();
             ctx.moveTo(sx, SLAB_LIP + 8);
             ctx.lineTo(sx + 9, SLAB_LIP + 20);
-            ctx.stroke();
           }
+          ctx.stroke();
           ctx.globalAlpha = 1;
 
           // cracks appear as the slab melts
           if (stage >= 2) {
             ctx.strokeStyle = stage >= 4 ? "#1D4F73" : "#3B7FB8";
             ctx.lineWidth = stage >= 4 ? 2.4 : 1.6;
-            for (const c of getCrackLines(pl, stage)) {
+            const cracks = getCrackLines(pl, stage);
+            ctx.beginPath(); // all cracks share one colour/width: one path, one stroke
+            for (let i = 0; i < cracks.length; i++) {
+              const c = cracks[i];
               const cx = c.cx * w;
               const cy = SLAB_LIP + 4 + c.cy * (h - SLAB_LIP - 8);
               const dx = Math.cos(c.ang) * c.len * w;
               const dy = Math.sin(c.ang) * c.len * (h - SLAB_LIP);
-              ctx.beginPath();
               ctx.moveTo(cx - dx / 2, cy - dy / 2);
               ctx.lineTo(cx + dx / 2, cy + dy / 2);
               if (c.branch) {
                 ctx.lineTo(cx + dx / 2 + dy * 0.3, cy + dy / 2 - dx * 0.3);
               }
-              ctx.stroke();
             }
+            ctx.stroke();
           }
           ctx.restore();
 
@@ -3391,8 +3521,9 @@
           for (const pl of state.meltPlatforms) {
             if (pl.gone) continue;
             const x = pl.x + pl.shrink * 0.5;
+            if (!inView(x - 30, x + pl.w + 30)) continue; // off screen
             const meltRatio = 1 - pl.w / pl.baseW;
-            
+
             // Draw the beautiful, organic, bobbing/rotating ice floe!
             drawIceFloe(pl, x, pl.w, meltRatio);
 
@@ -3400,7 +3531,7 @@
             if (critical) {
               const pulse = 0.5 + Math.sin(state.time * 9) * 0.5;
               ctx.save();
-              ctx.strokeStyle = `rgba(239, 68, 68, ${(0.5 + pulse * 0.4).toFixed(2)})`;
+              ctx.strokeStyle = CRITICAL_STROKES[Math.round((0.5 + pulse * 0.4) * 100) - 50];
               ctx.lineWidth = 4;
               ctx.setLineDash([8, 6]);
               ctx.lineDashOffset = -state.time * 40;
@@ -3460,18 +3591,8 @@
             const frame = cheering
               ? (Math.floor(chick.bob * 4) % 2 === 0 ? 4 : 5)
               : (Math.floor(chick.bob) % 6 === 5 ? 2 : 0);
-            const fCol = frame % chickSprite.cols;
-            const fRow = Math.floor(frame / chickSprite.cols);
-            const sx = fCol * chickSprite.frameW;
-            const sy = fRow * chickSprite.frameH;
-            ctx.save();
-            ctx.translate(drawX, drawY);
-            ctx.drawImage(
-              chickSprite.img,
-              sx, sy, chickSprite.frameW, chickSprite.frameH,
-              -destW / 2, -destH, destW, destH,
-            );
-            ctx.restore();
+            const fs = frameSprite(chickSprite, frame, destW);
+            ctx.drawImage(fs, drawX - fs.gw / 2, drawY - fs.gh, fs.gw, fs.gh);
           } else {
             drawEmoji("🐥", drawX, drawY - 10, 26);
           }
@@ -3499,9 +3620,10 @@
           for (const chick of state.chicks) {
             if (state.player.carrying.includes(chick)) continue;
             if (chick.delivered) {
-              drawHuddleChick(chick);
+              if (inView(-10, 340)) drawHuddleChick(chick);
               continue;
             }
+            if (!inView(chick.x - 60, chick.x + 80)) continue; // off screen
             const bob = Math.sin(chick.bob) * 3;
             let shiver = 0;
             let crying = false;
@@ -3588,27 +3710,13 @@
                 }
               }
 
-              const col = frame % chickSprite.cols;
-              const row = Math.floor(frame / chickSprite.cols);
-              const sx = col * chickSprite.frameW;
-              const sy = row * chickSprite.frameH;
-
               ctx.save();
               ctx.translate(drawX, drawY);
               ctx.rotate(drawRot);
               // soft contact shadow stays on the slab while the chick bobs
               drawContactShadow(0, -bob - (FOOT_SINK - 4), 17);
-              ctx.drawImage(
-                chickSprite.img,
-                sx,
-                sy,
-                chickSprite.frameW,
-                chickSprite.frameH,
-                -destW / 2,
-                -destH,
-                destW,
-                destH,
-              );
+              const fs = frameSprite(chickSprite, frame, destW);
+              ctx.drawImage(fs, -fs.gw / 2, -fs.gh, fs.gw, fs.gh);
 
               // Draw Ice Left progress bar inside coordinate space so it tilts & stays glued
               if (!chick.rescued && nearest && bestDist < 120) {
@@ -3649,7 +3757,7 @@
 
             // "Tap GRAB" prompt while Penny is in reach (drawn after Penny, see drawChickPrompts)
             const maxCarry = getMaxCarryingCapacity();
-            if (!calmMode && !chick.rescued && rectsOverlap(p, chickReachRect(chick)) && p.carrying.length < maxCarry) {
+            if (!calmMode && !chick.rescued && chickInReach(p, chick) && p.carrying.length < maxCarry) {
               chickPrompts.push({ x: drawX, y: drawY - destH - 16 });
             }
 
@@ -3664,6 +3772,7 @@
         function drawWaterLift() {
           const wl = state.waterLift;
           if (!wl) return;
+          if (!inView(wl.x - 60, wl.x + wl.w + 60)) return; // off screen
           if (wl.surfaced) {
             ctx.save();
             ctx.globalAlpha = 0.9;
@@ -3704,20 +3813,11 @@
             waddleY = -Math.abs(Math.cos(runCycle)) * 4.5; // waddle bounce
           }
 
-          // Match tilt of bobbing/rotating platforms if standing on one
-          let platformRot = 0;
-          if (p.onGround) {
-            const solids = getSolids();
-            const under = solids.find(
-              (s) =>
-                p.x + p.w > s.x &&
-                p.x < s.x + s.w &&
-                Math.abs(p.y + p.h - s.y) < 6,
-            );
-            if (under && under.rot !== undefined) {
-              platformRot = under.rot;
-            }
-          }
+          // Tilt of a bobbing/rotating platform Penny stands on. getSolids() entries
+          // have never carried a `rot`, so this was always 0; the per-frame solids
+          // rebuild + search that used to compute it is gone (add `rot` to the solids
+          // in getSolids() and look it up with findUnder(p, getSolids(), 6) to use it).
+          const platformRot = 0;
 
           // Mother penguin is visually larger
           const destW = 72;
@@ -3741,11 +3841,7 @@
               frame = frame % totalFrames;
             }
 
-            const col = frame % sheet.cols;
-            const row = Math.floor(frame / sheet.cols);
-
-            const sx = col * sheet.frameW;
-            const sy = row * sheet.frameH;
+            const fs = frameSprite(sheet, frame, destW);
 
             ctx.save();
             ctx.translate(x + p.w / 2 + jitterX, y + p.h + waddleY + FOOT_SINK);
@@ -3756,17 +3852,7 @@
             let faceDirection = p.facing;
 
             ctx.scale(faceDirection, 1);
-            ctx.drawImage(
-              sheet.img,
-              sx,
-              sy,
-              sheet.frameW,
-              sheet.frameH,
-              -destW / 2,
-              -destH,
-              destW,
-              destH,
-            );
+            ctx.drawImage(fs, -fs.gw / 2, -fs.gh, fs.gw, fs.gh);
             ctx.restore();
           } else {
             // Fallback render
@@ -3797,7 +3883,7 @@
             // Draw hugging emoji above Penny
             drawEmoji("🤗", x + p.w / 2 - p.facing * 18, y + p.h - destH - 12 + Math.sin(state.time * 6) * 3, 18);
 
-            p.carrying.forEach((chick, index) => {
+            for (let index = 0; index < p.carrying.length; index++) {
               const cW = 34; // a little smaller than a chick on the ice (CHICK_W)
               const cH = chickSprite.loaded
                 ? (chickSprite.frameH / chickSprite.frameW) * cW
@@ -3812,36 +3898,26 @@
                 const flapCycle = Math.floor(state.time * 8 + index) % 2;
                 let frame = flapCycle === 0 ? 4 : 5; // wriggling feet while being carried
 
-                const col = frame % chickSprite.cols;
-                const row = Math.floor(frame / chickSprite.cols);
-                const sx = col * chickSprite.frameW;
-                const sy = row * chickSprite.frameH;
+                const fs = frameSprite(chickSprite, frame, cW);
 
                 ctx.save();
                 ctx.translate(x + p.w / 2, y + p.h + waddleY + FOOT_SINK);
                 ctx.scale(p.facing, 1); // Face same direction as Mother!
                 ctx.translate(offsetX, offsetY);
-                ctx.drawImage(
-                  chickSprite.img,
-                  sx,
-                  sy,
-                  chickSprite.frameW,
-                  chickSprite.frameH,
-                  -cW / 2,
-                  -cH,
-                  cW,
-                  cH,
-                );
+                ctx.drawImage(fs, -fs.gw / 2, -fs.gh, fs.gw, fs.gh);
                 ctx.restore();
               } else {
                 drawEmoji("🐥", x + p.w / 2 + offsetX * p.facing, y + p.h + waddleY + offsetY - 10, 20);
               }
-            });
+            }
           }
         }
 
         function drawParticles() {
-          for (const pt of state.particles) {
+          for (let i = 0; i < state.particles.length; i++) {
+            const pt = state.particles[i];
+            // off-screen: wind streaks reach `size` px to the right of x, the rest ~30px around
+            if (pt.x + (pt.kind === "wind" ? pt.size : 30) < camX || pt.x - 30 > camX + VIEW_W) continue;
             const alpha = Math.max(0, Math.min(1, pt.life / (pt.maxLife || 0.8)));
             ctx.globalAlpha = alpha;
             if (pt.kind === "snow") {
@@ -3858,11 +3934,8 @@
               ctx.lineTo(pt.x + pt.size, pt.y);
               ctx.stroke();
             } else if (pt.kind === "emoji") {
-              ctx.fillStyle = "#111"; // Fallback color, though filled emojis don't care
-              ctx.font = `${pt.size || 14}px Arial`;
-              ctx.textAlign = "center";
-              ctx.textBaseline = "middle";
-              ctx.fillText(pt.text, pt.x, pt.y);
+              const es = emojiSprite(pt.text, pt.size || 14, false);
+              ctx.drawImage(es, pt.x - es.gw / 2, pt.y - es.gh / 2, es.gw, es.gh);
             } else if (pt.kind === "footprint") {
               ctx.fillStyle = pt.color;
               ctx.beginPath();
@@ -3879,33 +3952,97 @@
           }
         }
 
+        // Water body gradient: rebuilt only when the (whole-pixel) sea level or the
+        // warmth step changes, not every frame.
+        let waterGrad = null;
+        let waterGradTop = NaN;
+        let waterGradIdx = -1;
+        function getWaterGradient(top, wi) {
+          const qTop = Math.round(top);
+          if (!waterGrad || qTop !== waterGradTop || wi !== waterGradIdx) {
+            waterGrad = ctx.createLinearGradient(0, qTop - 24, 0, VIEW_H);
+            waterGrad.addColorStop(0, RAMP.water0[wi]);
+            waterGrad.addColorStop(1, RAMP.water1[wi]);
+            waterGradTop = qTop;
+            waterGradIdx = wi;
+          }
+          return waterGrad;
+        }
+
+        // Waves move the surface at most (6 + 16) + 3 = 25 px from the sea level.
+        const WATER_BAND = 26;
+        const WATER_BAND_TOP = 24; // the gradient starts this far above the sea level
+        const waterBody = { c: null, top: NaN, idx: -1, epoch: -1 };
+        // The water below ySplit as a device-pixel bitmap blitted 1:1 (gradient colours
+        // match getWaterGradient: same two ramp colours from qTop-24 down to the bottom).
+        function drawWaterBody(qTop, wi, ySplit) {
+          const sc = hiDpi.scale;
+          const yDev = Math.round(ySplit * sc);
+          const hDev = canvas.height - yDev;
+          if (hDev <= 0) return;
+          const wDev = canvas.width;
+          let c = waterBody.c;
+          if (
+            !c ||
+            waterBody.epoch !== rasterEpoch ||
+            waterBody.top !== qTop ||
+            waterBody.idx !== wi ||
+            c.width !== wDev ||
+            c.height !== hDev
+          ) {
+            if (!c) c = waterBody.c = document.createElement("canvas");
+            if (c.width !== wDev || c.height !== hDev) {
+              c.width = wDev;
+              c.height = hDev;
+            }
+            const g = c.getContext("2d");
+            const grad = g.createLinearGradient(0, (qTop - WATER_BAND_TOP) * sc - yDev, 0, canvas.height - yDev);
+            grad.addColorStop(0, RAMP.water0[wi]);
+            grad.addColorStop(1, RAMP.water1[wi]);
+            g.fillStyle = grad;
+            g.fillRect(0, 0, wDev, hDev);
+            waterBody.top = qTop;
+            waterBody.idx = wi;
+            waterBody.epoch = rasterEpoch;
+          }
+          ctx.save();
+          ctx.setTransform(1, 0, 0, 1, 0, 0);
+          ctx.drawImage(c, 0, yDev);
+          ctx.restore();
+        }
+
         function drawWater() {
           const top = state.seaLevel;
           const warmthVal = state ? state.warmth : 0;
+          const wi = warmIdx(warmthVal);
           const roughness = 1 + warmthVal * 2.2;
           
           const W = VIEW_W;
           const H = VIEW_H;
-          const scrollVal = cameraX;
+          const scrollVal = camX;
           ctx.save();
-          const waterGrad = ctx.createLinearGradient(0, top - 24, 0, H);
-          waterGrad.addColorStop(0, lerpColor("#4C93F2", "#1F3068", warmthVal));
-          waterGrad.addColorStop(1, lerpColor("#2456B8", "#0D1B3E", warmthVal));
-          ctx.fillStyle = waterGrad;
+          // Below the wave band the water is a plain vertical gradient: blit it from a
+          // bitmap (rebuilt only when the whole-pixel sea level / warmth step changes);
+          // only the band the waves move in is a gradient-filled path. The band path runs
+          // 2px past the split so the two opaque, same-colour pieces never leave a seam.
+          const qTop = Math.round(top);
+          const ySplit = qTop + WATER_BAND;
+          drawWaterBody(qTop, wi, ySplit);
+          ctx.fillStyle = getWaterGradient(top, wi);
           ctx.beginPath();
 
-          ctx.moveTo(0, H);
+          ctx.moveTo(0, ySplit + 2);
           for (let x = 0; x <= W + 20; x += 15) {
             const worldX = x + scrollVal;
             const amp = (6 + warmthVal * 16) * Math.sin(worldX * 0.015 + state.time * (2.2 + warmthVal * 2.0));
             const amp2 = 3 * Math.cos(worldX * 0.04 - state.time * 3.5);
             ctx.lineTo(x, top + amp + amp2);
           }
-          ctx.lineTo(W, H);
+          ctx.lineTo(W, ySplit + 2);
           ctx.closePath();
           ctx.fill();
 
-          ctx.strokeStyle = lerpColor("#EAF8FF", "#8FA9D2", warmthVal); // foam crest
+          ctx.strokeStyle = RAMP.foam[wi]; // foam crest
           ctx.lineWidth = 3.5;
           ctx.beginPath();
           for (let x = 0; x <= W + 20; x += 15) {
@@ -3956,11 +4093,15 @@
 
           ctx.globalAlpha = 0.5 - warmthVal * 0.35;
           ctx.fillStyle = "#A0D5FF";
-          for (const b of waterBubbles) {
+          ctx.beginPath(); // all bubbles share one fill
+          for (let i = 0; i < waterBubbles.length; i++) {
+            const b = waterBubbles[i];
             const bx = ((b.x - scrollVal) % (W + 100) + (W + 100)) % (W + 100) - 50;
             const by = top + b.depth + Math.sin(state.time * b.speed * 0.05 + b.phase) * 6;
-            circle(bx, by, b.size, true);
+            ctx.moveTo(bx + b.size, by);
+            ctx.arc(bx, by, b.size, 0, TAU);
           }
+          ctx.fill();
 
           for (const f of waterFish) {
             const fx = ((f.baseX + Math.sin(state.time * 0.5 + f.phase) * 110 - scrollVal) % (W + 200) + (W + 200)) % (W + 200) - 100;
@@ -3983,7 +4124,7 @@
             ) < 78;
           if (nearValve && state.state === "playing") {
             const bounce = Math.sin(state.time * 6) * 3;
-            const sx = state.valve.x - cameraX;
+            const sx = state.valve.x - camX;
             const sy = state.valve.y - 70 + bounce;
             // "E" and "tap ☸️" shown together — a keyboard-only hint
             // would leave touch players (no keyboard) with no message
@@ -4063,25 +4204,18 @@
 
         // Flat soft ellipse under a character's feet so it reads as standing ON
         // the ice rather than floating in front of it.
+        // (No save/restore: every caller sets its own fill before the next fill.)
         function drawContactShadow(x, y, halfW) {
-          ctx.save();
           ctx.fillStyle = "rgba(18, 40, 78, 0.3)";
           ctx.beginPath();
-          ctx.ellipse(x, y, halfW, halfW * 0.26, 0, 0, Math.PI * 2);
+          ctx.ellipse(x, y, halfW, halfW * 0.26, 0, 0, TAU);
           ctx.fill();
-          ctx.restore();
         }
 
+        // Inked emoji, drawn from a cached bitmap (see emojiSprite) centred on x, y.
         function drawEmoji(emoji, x, y, size) {
-          ctx.save();
-          ctx.font = size + 'px "Segoe UI Emoji", "Apple Color Emoji", Arial';
-          ctx.textAlign = "center";
-          ctx.textBaseline = "middle";
-          ctx.lineWidth = 3;
-          ctx.strokeStyle = "#111";
-          ctx.strokeText(emoji, x, y);
-          ctx.fillText(emoji, x, y);
-          ctx.restore();
+          const c = emojiSprite(emoji, size, true);
+          ctx.drawImage(c, x - c.gw / 2, y - c.gh / 2, c.gw, c.gh);
         }
 
         function setControl(name, isDown) {
@@ -4150,10 +4284,15 @@
           btn.addEventListener("pointerleave", onUp);
         });
 
-        function frame(ts) {
-          if (!lastTime) lastTime = ts;
-          const dt = Math.min(0.033, (ts - lastTime) / 1000);
-          lastTime = ts;
+        // Main loop: GOGEngine.GameLoop (fixed 60 Hz steps) instead of this stage's own
+        // requestAnimationFrame. update() keeps its "dt in seconds" meaning (dt = 1/60 s
+        // per step), so every speed is unchanged at 60 fps; below 30 fps the world now
+        // catches up (up to 5 steps per frame) instead of crawling in slow motion under
+        // the old 0.033 s dt clamp. The loop draws after a step (or a resize), and it
+        // stops requesting animation frames while the page is hidden.
+        function step(dt) {
+          // "How to play" / "Did you know?" pop-up open: freeze the world (and skip drawing).
+          if (GOGUi.paused) return;
 
           // Update background clouds position
           for (const cloud of clouds) {
@@ -4163,16 +4302,19 @@
             }
           }
 
-          if (gameRunning && GOGUi.paused) {
-            // "How to play" pop-up is open: freeze the world
-          } else if (gameRunning) {
+          if (gameRunning) {
             update(dt);
           } else {
             updatePenguinAnim(dt);
           }
-          render();
-          requestAnimationFrame(frame);
         }
+
+        const loop = new GOGEngine.GameLoop({
+          update: step,
+          draw: function () {
+            if (!GOGUi.paused) render();
+          },
+        });
 
         if (ui.helpBtn) {
           // Replay the guided intro: a fresh run with the coach on.
@@ -4186,7 +4328,7 @@
         state = createState();
         updateUI();
         render();
-        requestAnimationFrame(frame);
+        loop.start();
         showPennyIntroBeat();
       })();
     </script>

@@ -6,59 +6,15 @@
     <title>Splash & the Plastic Tide — Guardians of Gaia</title>
     <link rel="stylesheet" href="../src/styles.css" />
     <style>
-      .stage-wrap {
-        width: min(1180px, calc(100vw - 28px));
-        max-width: 1180px;
-        margin: 0 auto;
-        padding: 12px 0 ;
-        animation: pageFadeIn 0.5s ease both;
-      }
-      .stage-hud {
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-        gap: 10px;
-        flex-wrap: wrap;
-        margin-bottom: 12px;
-      }
-      .stage-title {
-        display: flex;
-        align-items: center;
-        gap: 10px;
-      }
-      .stage-title h1 {
-        font-size: 1.25rem;
-      }
+      /* Page shell (HUD, title, meters, chips, buttons, canvas-frame base, the
+         <=1200px compact HUD) lives in src/styles.css — only stage colours and
+         stage-only widgets are styled here. */
       .stage-title small {
-        display: block;
-        font-family: var(--gog-font-hand);
-        font-size: 1rem;
         color: #5b5347;
       }
 
-      .hud-mid {
-        display: flex;
-        align-items: center;
-        gap: 14px;
-        flex-wrap: wrap;
-      }
       .meter {
-        display: flex;
-        align-items: center;
-        gap: 8px;
-        background: var(--gog-white);
-        border: 3px solid var(--gog-ink);
-        border-radius: 999px;
-        padding: 6px 14px 6px 10px;
-        box-shadow: var(--gog-shadow-sm);
-        min-width: 168px;
         transition: transform 0.15s ease;
-        position: relative;
-      }
-      .meter .label,
-      .meter .meter-track {
-        position: relative;
-        z-index: 2;
       }
       .meter::after {
         content: "";
@@ -69,29 +25,14 @@
         pointer-events: none;
         z-index: 1;
       }
-      .meter .label {
-        font-size: 0.78rem;
-        font-weight: 700;
-        white-space: nowrap;
-      }
       .meter-track {
-        flex: 1;
-        height: 10px;
-        border-radius: 999px;
         background: #d8e8f5;
-        border: 2px solid var(--gog-ink);
-        overflow: hidden;
       }
       .meter-fill {
         height: 100%;
         background: linear-gradient(90deg, #3dd6c0, #2e5ee8);
         width: 0%;
         transition: width 0.35s cubic-bezier(0.175, 0.885, 0.32, 1.275);
-      }
-      .timer-chip {
-        font-weight: 700;
-        min-width: 64px;
-        text-align: center;
       }
       .lives-widget {
         display: inline-flex;
@@ -191,18 +132,8 @@
         }
       }
 
-      .canvas-frame {
-        position: relative;
-        width: 100%;
-        aspect-ratio: 16 / 10;
-        overflow: hidden;
-        transition:
-          border-color 0.2s,
-          box-shadow 0.2s;
-      }
-      .canvas-frame.boosting-active {
-        /* No direct animation on the frame itself to prevent expensive repaints */
-      }
+      /* The boost / win / lose flashes are separate overlay <div>s whose
+         opacity (not box-shadow) is animated, so the frame never repaints. */
       .frame-overlay-win,
       .frame-overlay-lose,
       .frame-overlay-boost-teal,
@@ -280,119 +211,13 @@
           opacity: 1;
         }
       }
-      canvas {
-        width: 100%;
-        height: 100%;
-        display: block;
-        touch-action: none;
-        cursor: crosshair;
-      }
-
-      .stage-controls {
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        margin-top: 12px;
-        gap: 10px;
-        flex-wrap: wrap;
-      }
 
       .tuning-controls {
         display: none;
       }
 
-      .calm-badge {
-        font-size: 0.78rem;
-        font-weight: 700;
-        animation: fadeInUp 0.6s ease both;
-      }
-
-      .icon-btn {
-        width: 42px;
-        height: 42px;
-        min-width: 42px;
-        display: inline-flex;
-        align-items: center;
-        justify-content: center;
-        background: var(--gog-white);
-        border: 3px solid var(--gog-ink);
-        border-radius: 50%;
-        box-shadow: 3px 3px 0 var(--gog-ink);
-        font-size: 1.15rem;
-        line-height: 1;
-        touch-action: manipulation;
-      }
-
+      /* Lives hearts shrink with the shared <=1200px compact HUD */
       @media (max-width: 1200px) {
-        .stage-wrap {
-          width: calc(100vw - 12px);
-          max-width: 100%;
-          padding: 6px 0 ;
-        }
-
-        .stage-hud {
-          display: grid;
-          grid-template-columns: minmax(0, 1fr);
-          gap: 6px;
-          margin-bottom: 8px;
-        }
-
-        .stage-title {
-          gap: 6px;
-          min-width: 0;
-        }
-
-        .stage-title .emoji-float {
-          font-size: 1.35rem !important;
-        }
-
-        .stage-title h1 {
-          font-size: 0.98rem;
-          line-height: 1;
-        }
-
-        .stage-title small {
-          display: none;
-        }
-
-        .hud-mid {
-          display: grid;
-          grid-template-columns: minmax(128px, 1fr) repeat(5, auto);
-          gap: 5px;
-          align-items: center;
-          align-
-          width: 100%;
-        }
-
-        .meter {
-          min-width: 0;
-          gap: 5px;
-          padding: 4px 8px 4px 7px;
-          border-width: 2px;
-          box-shadow: 2px 2px 0 var(--gog-ink);
-        }
-
-        .meter .label {
-          font-size: 0.66rem;
-        }
-
-        .meter-track {
-          height: 8px;
-          border-width: 2px;
-        }
-
-        .chip {
-          padding: 4px 7px;
-          border-width: 2px;
-          box-shadow: 2px 2px 0 var(--gog-ink);
-          font-size: 0.72rem;
-          min-height: 30px;
-        }
-
-        .timer-chip {
-          min-width: 44px;
-        }
-
         .lives-widget {
           min-width: 82px;
           gap: 3px;
@@ -404,118 +229,11 @@
           height: 24px;
           font-size: 1.18rem;
         }
-
-        .icon-btn {
-          width: 32px;
-          height: 32px;
-          min-width: 32px;
-          font-size: 0.92rem;
-          border-width: 2px;
-          box-shadow: 2px 2px 0 var(--gog-ink);
-        }
-
-        .guideBar {
-          gap: 6px;
-          padding: 3px 4px;
-          margin-bottom: 8px;
-          border-width: 2px;
-          border-radius: 8px;
-          box-shadow: 1px 1px 0 var(--gog-ink);
-        }
-
-        .guideAvatar {
-          font-size: 1.25rem;
-        }
-
-        .guideBubble {
-          padding: 5px 8px;
-          border-width: 2px;
-          border-radius: 10px;
-          font-size: 1rem;
-          line-height: 1.1;
-        }
-
-        .canvas-frame {
-          border-width: 3px;
-          border-radius: 12px;
-          box-shadow: 4px 4px 0 var(--gog-ink);
-        }
-
-        .stage-controls {
-          margin-top: 8px;
-          gap: 6px;
-        }
-
-        .stage-controls .brutal-btn {
-          padding: 8px 12px;
-          min-height: 38px;
-          border-width: 3px;
-          border-radius: 10px;
-          font-size: 0.86rem;
-          box-shadow: 3px 3px 0 var(--gog-ink);
-        }
-
-        .calm-badge {
-          font-size: 0.72rem;
-        }
-      }
-
-      @media (max-width: 420px) {
-        .hud-mid {
-          grid-template-columns: minmax(118px, 1fr) repeat(3, auto);
-        }
-
-        #difficultyChip {
-          display: none;
-        }
-
-        .combo-chip:not(.combo-visible) {
-          display: none;
-        }
       }
 
       /* =========================================================
      NEW: kid-friendly delight animations
      ========================================================= */
-
-      /* Whole page gently settles in on load */
-      @keyframes pageFadeIn {
-        from {
-          opacity: 0;
-          transform: translateY(10px);
-        }
-        to {
-          opacity: 1;
-          transform: translateY(0);
-        }
-      }
-
-      /* Title dolphin icon bobs & wiggles forever */
-      .emoji-float {
-        display: inline-block;
-        animation: emojiFloat 2.6s ease-in-out infinite;
-      }
-      @keyframes emojiFloat {
-        0%,
-        100% {
-          transform: translateY(0) rotate(-4deg);
-        }
-        50% {
-          transform: translateY(-5px) rotate(5deg);
-        }
-      }
-
-      /* Calm-mode badge slides up into place */
-      @keyframes fadeInUp {
-        from {
-          opacity: 0;
-          transform: translateY(6px);
-        }
-        to {
-          opacity: 1;
-          transform: translateY(0);
-        }
-      }
 
       /* Sprout chip "pops" every time it goes up */
       .chip-pop {
@@ -1183,6 +901,7 @@
     <script src="../src/constants.js"></script>
     <script src="../src/save.js"></script>
     <script src="../src/native.js"></script>
+    <script src="../src/vendor/howler.min.js"></script>
     <script src="../src/engine.js"></script>
     <script src="../src/voice.js"></script>
     <script src="../src/coach.js"></script>
@@ -1227,17 +946,46 @@
         var winWipeDone = false;
         var pendingStars = 1;
 
-        // PERF: these gradients are created ONCE and reused every frame instead of
-        // being rebuilt 60 times a second. Re-creating gradients per-frame was the
-        // single biggest cause of the intermittent stutter — it forces the browser
-        // to allocate + garbage-collect a new object on every draw call.
-        var pollutionHazeGradient = ctx.createLinearGradient(0, 0, 0, H);
-        pollutionHazeGradient.addColorStop(0, "rgba(70,60,40,0.6)");
-        pollutionHazeGradient.addColorStop(1, "rgba(40,50,40,0.2)");
+        // PERF: the haze and the light ray are gradient fills; a gradient shader
+        // over a big area is slow on a software canvas, so each is rendered ONCE
+        // into a small bitmap here and blitted every frame instead.
+        var pollutionHazeImg = GOGEngine.bake(W, H, function (g) {
+          var grad = g.createLinearGradient(0, 0, 0, H);
+          grad.addColorStop(0, "rgba(70,60,40,0.6)");
+          grad.addColorStop(1, "rgba(40,50,40,0.2)");
+          g.fillStyle = grad;
+          g.fillRect(0, 0, W, H);
+        }, 1);
 
-        var causticRayGradient = ctx.createLinearGradient(0, 0, 70, H);
-        causticRayGradient.addColorStop(0, "rgba(255,255,255,0.4)");
-        causticRayGradient.addColorStop(1, "rgba(255,255,255,0)");
+        // (the ray includes its own 0.15 lean: 70 + 0.15 * H px wide)
+        var causticRayW = Math.ceil(70 + 0.15 * H) + 1;
+        var causticRayImg = GOGEngine.bake(causticRayW, H, function (g) {
+          var grad = g.createLinearGradient(0, 0, 70, H);
+          grad.addColorStop(0, "rgba(255,255,255,0.4)");
+          grad.addColorStop(1, "rgba(255,255,255,0)");
+          g.transform(1, 0, 0.15, 1, 0, 0);
+          g.fillStyle = grad;
+          g.fillRect(0, 0, 70, H);
+        }, 1);
+
+        // PERF: HUD elements looked up once, not by id inside update().
+        var timerChipEl = document.getElementById("timerChip");
+        var comboChipEl = document.getElementById("comboChip");
+        var livesWidgetEl = document.getElementById("livesWidget");
+        var reefFillEl = document.getElementById("reefFill");
+        var reefPctEl = document.getElementById("reefPct");
+        var sproutsChipEl = document.getElementById("sproutsChip");
+        var meterEl = document.querySelector(".meter");
+        var pageFxEl = document.getElementById("pageFx");
+        var difficultyChipEl = document.getElementById("difficultyChip");
+        var spawnRightOnlyEl = document.getElementById("spawnRightOnly");
+        var trashQtyEl = document.getElementById("trashQtyMult");
+        var speedMultEls = {
+          trash: document.getElementById("trashSpeedMult"),
+          turtle: document.getElementById("turtleSpeedMult"),
+          pearl: document.getElementById("pearlSpeedMult"),
+          pufferfish: document.getElementById("pufferSpeedMult"),
+        };
 
         var input = new GOGEngine.Input(canvas);
         var particles = new GOGEngine.ParticleSystem(140);
@@ -1323,6 +1071,7 @@
         // NEW: Echo Boost — a short dash with invincibility, on a cooldown.
         // Implemented as a HUD button (rather than a key/hold gesture) so it works
         // identically for mouse, touch, and keyboard players.
+        var boostCooling = false; // true while the button shows the cooldown countdown
         var BOOST_DURATION = 1.1;
         var BOOST_COOLDOWN = 5;
         var SONAR_REVEAL_DURATION = 3; // NEW: how long trash glows cyan after an Echo Boost ping
@@ -1356,11 +1105,122 @@
         ];
         var scrollX = 0;
 
+        /* ---------------- PERF: cached, pre-filtered background ----------------
+           The reef "heals" by washing the four scenery layers out/in with
+           saturate()+brightness(). Running ctx.filter on every layer every frame
+           is very expensive on a software canvas, so each layer is filtered ONCE
+           per health step (reef quantised to 5% - the same size as one trash
+           pickup), baked at its on-screen size, and the four layers are then
+           composited with plain integer blits. Only the current + the next step
+           stay in memory (the next one is baked one layer per idle frame so a
+           pickup never hitches). The composite gets the same gentle shear as
+           before in a single blit. */
+        var BG_PAD = 10; // headroom for the current-shear (<= ~7px at the bottom edge)
+        var BG_STEPS = 20;
+        var bgLayers = null;
+        var bgComposite = null;
+        var bgCompositeCtx = null;
+
+        function bgFilterFor(step) {
+          var reef = step * (100 / BG_STEPS);
+          var sat = 45 + reef * 0.55; // 45% -> 100%
+          var bright = 82 + reef * 0.18; // 82% -> 100%
+          return "saturate(" + sat.toFixed(0) + "%) brightness(" + bright.toFixed(0) + "%)";
+        }
+        function bgStepNow() {
+          var r = state.reef < 0 ? 0 : state.reef > 100 ? 100 : state.reef;
+          return Math.round(r / (100 / BG_STEPS));
+        }
+        function bgBakeTile(lay, step) {
+          var filt = bgFilterFor(step);
+          var img = lay.img;
+          lay.tiles[step] = GOGEngine.bake(
+            lay.tileW,
+            H,
+            function (g, w, h) {
+              if (step < BG_STEPS && "filter" in g) g.filter = filt; // full health = no filter
+              g.drawImage(img, 0, 0, w, h);
+            },
+            1,
+          );
+          lay.n++;
+        }
+        function bgInit() {
+          bgLayers = [];
+          for (var i = 0; i < layers.length; i++) {
+            if (!layers[i].img) continue;
+            bgLayers.push({
+              img: layers[i].img,
+              tileW: layers[i].img.width,
+              speed: layers[i].speed,
+              y: layers[i].y,
+              tiles: {},
+              n: 0,
+              shown: null,
+            });
+          }
+          bgComposite = document.createElement("canvas");
+          bgComposite.width = W + BG_PAD * 2;
+          bgComposite.height = H;
+          bgCompositeCtx = bgComposite.getContext("2d");
+          bgEnsureNow(bgStepNow());
+        }
+        // Bake every layer of a step right now (first frame / round restart).
+        function bgEnsureNow(step) {
+          if (!bgLayers) return;
+          for (var i = 0; i < bgLayers.length; i++) {
+            var lay = bgLayers[i];
+            if (!lay.tiles[step]) bgBakeTile(lay, step);
+            lay.shown = lay.tiles[step];
+          }
+        }
+        // At most one bake per frame: missing layers of the current step first
+        // (the old tile keeps showing meanwhile), then the next step.
+        function bgPrepare(step) {
+          var budget = 1;
+          var i, lay;
+          for (i = 0; i < bgLayers.length; i++) {
+            lay = bgLayers[i];
+            if (!lay.tiles[step] && (budget > 0 || !lay.shown)) {
+              bgBakeTile(lay, step);
+              budget--;
+            }
+          }
+          if (budget > 0 && step < BG_STEPS) {
+            for (i = 0; i < bgLayers.length; i++) {
+              lay = bgLayers[i];
+              if (!lay.tiles[step + 1]) {
+                bgBakeTile(lay, step + 1);
+                break;
+              }
+            }
+          }
+          for (i = 0; i < bgLayers.length; i++) {
+            lay = bgLayers[i];
+            if (lay.n > 2 && lay.tiles[step]) {
+              for (var k in lay.tiles) {
+                if (+k !== step && +k !== step + 1) {
+                  delete lay.tiles[k];
+                  lay.n--;
+                }
+              }
+            }
+          }
+        }
+
         function loadImage(src) {
           return new Promise(function (resolve) {
             var img = new Image();
             img.onload = function () {
-              resolve(img);
+              // PERF: decode before the first draw so big sheets don't hitch it
+              if (img.decode) {
+                img.decode().then(
+                  function () { resolve(img); },
+                  function () { resolve(img); }
+                );
+              } else {
+                resolve(img);
+              }
             };
             img.src = src;
           });
@@ -1411,6 +1271,7 @@
             fishTangledImg = loaded[13];
 
             initSeaweed();
+            bgInit();
             initLivesWidget();
 
             // NEW: "meet the guardian" beat — Splash in trouble, before play begins.
@@ -1498,13 +1359,18 @@
         (function initKelp() {
           var count = 7;
           for (var k = 0; k < count; k++) {
-            kelpStalks.push({
+            var stalk = {
               baseX: (k + 0.5) * (W / count) + rand(-20, 20),
               height: rand(70, 130),
               phase: rand(0, Math.PI * 2),
               speed: rand(0.6, 1.1),
               hue: rand(150, 170),
-            });
+            };
+            // PERF: colour strings built once, not per leaf per frame
+            stalk.stemStyle = "hsla(" + stalk.hue + ", 50%, 26%, 0.65)";
+            stalk.leftStyle = "hsla(" + (stalk.hue + 12) + ", 65%, 32%, 0.75)";
+            stalk.rightStyle = "hsla(" + (stalk.hue - 12) + ", 65%, 28%, 0.75)";
+            kelpStalks.push(stalk);
           }
         })();
 
@@ -1573,6 +1439,31 @@
           seaweedElements.sort(function(a, b) {
             return a.scale - b.scale;
           });
+
+          // PERF: the sheets are ~800x760 but drawn at 60-240 px. Down-scaling
+          // them every frame (x35, rotated) was the second biggest draw cost, so
+          // each plant is rendered once at its final size (opacity baked in) and
+          // only rotated + blitted per frame. The big originals are then released.
+          for (var b = 0; b < seaweedElements.length; b++) {
+            bakeSeaweedSprite(seaweedElements[b], seaweedElements[b].type === 0 ? seaWedImg : seaWed2Img);
+          }
+          seaWedImg = null;
+          seaWed2Img = null;
+        }
+        function bakeSeaweedSprite(sw, img) {
+          var w = Math.max(1, Math.round(img.width * sw.scale));
+          var h = Math.max(1, Math.round(img.height * sw.scale));
+          sw.cw = w;
+          sw.ch = h;
+          sw.cv = GOGEngine.bake(
+            w,
+            h,
+            function (g) {
+              g.globalAlpha = sw.opacity;
+              g.drawImage(img, 0, 0, w, h);
+            },
+            1,
+          );
         }
 
         function rand(min, max) {
@@ -1582,7 +1473,7 @@
         function spawnTrash() {
           var glyphs = ["🍶", "🛍️", "🥤", "🧴"];
           var fromLeft = Math.random() < 0.5;
-          var rightOnly = document.getElementById("spawnRightOnly")?.checked;
+          var rightOnly = spawnRightOnlyEl && spawnRightOnlyEl.checked;
           var x, vx;
           if (rightOnly) {
             x = W + 30;
@@ -1607,7 +1498,7 @@
 
         function spawnTurtle() {
           var fromLeft = Math.random() < 0.5;
-          var rightOnly = document.getElementById("spawnRightOnly")?.checked;
+          var rightOnly = spawnRightOnlyEl && spawnRightOnlyEl.checked;
           var x, vx;
           if (rightOnly) {
             x = W + 40;
@@ -1632,7 +1523,7 @@
 
         function spawnPuffer() {
           var fromTop = Math.random() < 0.5;
-          var rightOnly = document.getElementById("spawnRightOnly")?.checked;
+          var rightOnly = spawnRightOnlyEl && spawnRightOnlyEl.checked;
           var x, y, vx, vy;
           if (rightOnly) {
             x = W + 30;
@@ -1664,7 +1555,7 @@
         // NEW: a rare, extra-valuable pickup — sells the "ocean has treasures too" feeling
         function spawnPearl() {
           var fromLeft = Math.random() < 0.5;
-          var rightOnly = document.getElementById("spawnRightOnly")?.checked;
+          var rightOnly = spawnRightOnlyEl && spawnRightOnlyEl.checked;
           var x, vx;
           if (rightOnly) {
             x = W + 40;
@@ -1690,7 +1581,7 @@
         // NEW: rescue moment — tangled fish drifting in a plastic ring
         function spawnTangledFish() {
           var fromLeft = Math.random() < 0.5;
-          var rightOnly = document.getElementById("spawnRightOnly")?.checked;
+          var rightOnly = spawnRightOnlyEl && spawnRightOnlyEl.checked;
           var x, vx;
           if (rightOnly) {
             x = W + 40;
@@ -1741,33 +1632,31 @@
           }
         }
         function drawBubbles() {
-          // PERF: one fill per bubble, no stroke — visually almost identical, half the canvas calls
+          // PERF: one fill per bubble, no stroke; plain loop, style set once
+          var n = bubbles.length;
+          if (n === 0) return;
           ctx.save();
-          bubbles.forEach(function (b) {
-            var bx = b.x + Math.sin(b.phase) * b.wobbleAmt;
+          ctx.fillStyle = "rgba(255,255,255,0.6)";
+          for (var i = 0; i < n; i++) {
+            var b = bubbles[i];
             ctx.globalAlpha = b.alpha;
             ctx.beginPath();
-            ctx.arc(bx, b.y, b.r, 0, Math.PI * 2);
-            ctx.fillStyle = "rgba(255,255,255,0.6)";
+            ctx.arc(b.x + Math.sin(b.phase) * b.wobbleAmt, b.y, b.r, 0, Math.PI * 2);
             ctx.fill();
-          });
-          ctx.globalAlpha = 1;
+          }
           ctx.restore();
         }
 
         /* ---------------- NEW: drifting underwater light rays ---------------- */
         function drawCaustics(t) {
+          // PERF: the ray is a pre-rendered (already leaning) bitmap, see
+          // causticRayImg, blitted at whole-pixel x instead of a sheared gradient fill.
           ctx.save();
           ctx.globalAlpha = 0.1 + 0.04 * Math.sin(t * 0.6);
           var rayCount = 3; // PERF: fewer rays — still reads as drifting light, far cheaper
           for (var i = 0; i < rayCount; i++) {
             var rx = (((i / rayCount) * W + t * 18) % (W + 200)) - 100;
-            ctx.save();
-            ctx.translate(rx, 0);
-            ctx.transform(1, 0, 0.15, 1, 0, 0);
-            ctx.fillStyle = causticRayGradient; // PERF: reused, not recreated
-            ctx.fillRect(0, 0, 70, H);
-            ctx.restore();
+            ctx.drawImage(causticRayImg, Math.round(rx), 0);
           }
           ctx.restore();
         }
@@ -1776,17 +1665,17 @@
         function drawPollutionHaze() {
           var haze = Collision.clamp(1 - state.reef / 100, 0, 1);
           if (haze <= 0.02) return;
-          ctx.save();
+          var prevAlpha = ctx.globalAlpha;
           ctx.globalAlpha = haze * 0.35;
-          ctx.fillStyle = pollutionHazeGradient; // PERF: reused, not recreated
-          ctx.fillRect(0, 0, W, H);
-          ctx.restore();
+          ctx.drawImage(pollutionHazeImg, 0, 0); // PERF: pre-rendered gradient, not a per-frame gradient fill
+          ctx.globalAlpha = prevAlpha;
         }
 
         /* ---------------- NEW: little bubble trail behind the swimming dolphin ---------------- */
         function emitTrail(x, y, speedT) {
           speedT = speedT || 0;
           var boosting = state.elapsed < state.boostUntil;
+          var hue = boosting ? Math.floor(state.elapsed * 450) % 360 : 200;
           trail.push({
             x: x + rand(-4, 4),
             y: y + rand(-4, 4),
@@ -1794,7 +1683,8 @@
             alpha: 0.5 + speedT * 0.2,
             life: boosting ? 0.7 : 0.5,
             boosting: boosting,
-            hue: boosting ? Math.floor(state.elapsed * 450) % 360 : 200,
+            hue: hue,
+            col: boosting ? "hsl(" + hue + ", 95%, 68%)" : "rgb(191, 233, 255)", // PERF: colour built once per bubble
           });
         }
         function updateTrail(dt) {
@@ -1808,33 +1698,30 @@
           }
         }
         function drawTrail() {
+          var n = trail.length;
+          if (n === 0) return;
           ctx.save();
-          trail.forEach(function (t) {
-            ctx.globalAlpha = t.alpha;
+          // The colour used to carry its own alpha ON TOP of globalAlpha (so the
+          // visible opacity was alpha^2). The product is now set once via
+          // globalAlpha, which looks the same and builds no strings per frame.
+          for (var i = 0; i < n; i++) {
+            var t = trail[i];
+            var a2 = t.alpha * t.alpha;
+            ctx.globalAlpha = a2;
             ctx.beginPath();
             ctx.arc(t.x, t.y, t.r, 0, Math.PI * 2);
-            if (t.boosting) {
-              ctx.fillStyle = "hsla(" + t.hue + ", 95%, 68%, " + t.alpha + ")";
-            } else {
-              ctx.fillStyle = "rgba(191, 233, 255, " + t.alpha + ")";
-            }
+            ctx.fillStyle = t.col;
             ctx.fill();
 
             // Inner highlight
             if (t.r > 4) {
+              ctx.globalAlpha = a2 * 0.85;
               ctx.beginPath();
-              ctx.arc(
-                t.x - t.r * 0.3,
-                t.y - t.r * 0.3,
-                t.r * 0.22,
-                0,
-                Math.PI * 2,
-              );
-              ctx.fillStyle = "rgba(255, 255, 255, " + t.alpha * 0.85 + ")";
+              ctx.arc(t.x - t.r * 0.3, t.y - t.r * 0.3, t.r * 0.22, 0, Math.PI * 2);
+              ctx.fillStyle = "#ffffff";
               ctx.fill();
             }
-          });
-          ctx.globalAlpha = 1;
+          }
           ctx.restore();
         }
 
@@ -1868,24 +1755,18 @@
           }
         }
         function drawConfetti() {
-          if (confetti.length === 0) return;
+          var n = confetti.length;
+          if (n === 0) return;
           // PERF: one save/restore for the whole batch, using setTransform per piece
-          // instead of save+translate+rotate+restore per piece (4 stack ops -> 1 matrix op).
           ctx.save();
-          confetti.forEach(function (c) {
-            var hw = c.size / 2,
-              hh = c.size * 0.33;
-            ctx.setTransform(
-              Math.cos(c.rot),
-              Math.sin(c.rot),
-              -Math.sin(c.rot),
-              Math.cos(c.rot),
-              c.x,
-              c.y,
-            );
+          for (var i = 0; i < n; i++) {
+            var c = confetti[i];
+            var cs = Math.cos(c.rot),
+              sn = Math.sin(c.rot);
+            ctx.setTransform(cs, sn, -sn, cs, c.x, c.y);
             ctx.fillStyle = c.color;
-            ctx.fillRect(-hw, -hh, c.size, c.size * 0.66);
-          });
+            ctx.fillRect(-c.size / 2, -c.size * 0.33, c.size, c.size * 0.66);
+          }
           ctx.restore();
         }
 
@@ -1899,102 +1780,89 @@
           }
         }
         function drawRipples() {
+          var n = ripples.length;
+          if (n === 0) return;
           ctx.save();
-          ripples.forEach(function (r) {
+          ctx.lineWidth = 3;
+          ctx.strokeStyle = "#ffffff";
+          for (var i = 0; i < n; i++) {
+            var r = ripples[i];
             ctx.globalAlpha = Math.max(0, r.alpha);
-            ctx.lineWidth = 3;
-            ctx.strokeStyle = "#ffffff";
             ctx.beginPath();
             ctx.arc(r.x, r.y, r.radius, 0, Math.PI * 2);
             ctx.stroke();
-          });
-          ctx.globalAlpha = 1;
+          }
           ctx.restore();
         }
 
         /* ---------------- NEW: swaying kelp (pure procedural, no art needed) ---------------- */
         /* ---------------- swaying kelp: flat, ink-outlined, greener as the reef heals ---------------- */
+        // leaf positions along the stalk curve depend only on u: computed once
+        var KELP_LEAVES = [];
+        for (var ku = 0.25; ku <= 0.95; ku += 0.18) {
+          KELP_LEAVES.push({
+            u: ku,
+            t0: (1 - ku) * (1 - ku),
+            t1: 2 * (1 - ku) * ku,
+            t2: ku * ku,
+            a: (1 - ku * 0.5) * 8.5 * 1.8, // ellipse radii
+            b: (1 - ku * 0.5) * 8.5 * 0.75,
+          });
+        }
         function drawKelp(t) {
           ctx.save();
           ctx.lineCap = "round";
-          kelpStalks.forEach(function (k) {
+          for (var s = 0; s < kelpStalks.length; s++) {
+            var k = kelpStalks[s];
             var sway = Math.sin(t * k.speed + k.phase) * 16;
             var midSway = sway * 0.5;
+            var topY = H - k.height;
+            var midY = H - k.height * 0.55;
 
             // Draw stalk stem
             ctx.beginPath();
             ctx.moveTo(k.baseX, H);
-            ctx.quadraticCurveTo(
-              k.baseX + midSway,
-              H - k.height * 0.55,
-              k.baseX + sway,
-              H - k.height,
-            );
+            ctx.quadraticCurveTo(k.baseX + midSway, midY, k.baseX + sway, topY);
             ctx.lineWidth = 7;
-            ctx.strokeStyle = "hsla(" + k.hue + ", 50%, 26%, 0.65)";
+            ctx.strokeStyle = k.stemStyle;
             ctx.stroke();
 
-            // Draw leaves branching off the stem
-            for (var u = 0.25; u <= 0.95; u += 0.18) {
-              var t0 = (1 - u) * (1 - u);
-              var t1 = 2 * (1 - u) * u;
-              var t2 = u * u;
+            // Draw leaves branching off the stem (setTransform, no save/restore per leaf)
+            for (var li = 0; li < KELP_LEAVES.length; li++) {
+              var L = KELP_LEAVES[li];
+              var u = L.u;
 
               // Position on the curve
-              var lx =
-                t0 * k.baseX + t1 * (k.baseX + midSway) + t2 * (k.baseX + sway);
-              var ly =
-                t0 * H + t1 * (H - k.height * 0.55) + t2 * (H - k.height);
+              var lx = L.t0 * k.baseX + L.t1 * (k.baseX + midSway) + L.t2 * (k.baseX + sway);
+              var ly = L.t0 * H + L.t1 * midY + L.t2 * topY;
 
               // Stalk tangent derivative B'(u)
               var dx = 2 * (1 - u) * midSway + 2 * u * (sway - midSway);
-              var dy =
-                2 * (1 - u) * (-k.height * 0.55) + 2 * u * (-k.height * 0.45);
+              var dy = 2 * (1 - u) * (-k.height * 0.55) + 2 * u * (-k.height * 0.45);
               var angle = Math.atan2(dy, dx);
 
-              var leafSize = (1 - u * 0.5) * 8.5;
-
               // Left Leaf
-              ctx.save();
-              ctx.translate(lx, ly);
-              ctx.rotate(
-                angle - Math.PI / 2 + Math.sin(t * 1.8 + u * 8) * 0.22,
-              );
+              var ang = angle - Math.PI / 2 + Math.sin(t * 1.8 + u * 8) * 0.22;
+              var ca = Math.cos(ang),
+                sa = Math.sin(ang);
+              ctx.setTransform(ca, sa, -sa, ca, lx, ly);
               ctx.beginPath();
-              ctx.ellipse(
-                0,
-                0,
-                leafSize * 1.8,
-                leafSize * 0.75,
-                0,
-                0,
-                Math.PI * 2,
-              );
-              ctx.fillStyle = "hsla(" + (k.hue + 12) + ", 65%, 32%, 0.75)";
+              ctx.ellipse(0, 0, L.a, L.b, 0, 0, Math.PI * 2);
+              ctx.fillStyle = k.leftStyle;
               ctx.fill();
-              ctx.restore();
 
               // Right Leaf
-              ctx.save();
-              ctx.translate(lx, ly);
-              ctx.rotate(
-                angle + Math.PI / 2 + Math.cos(t * 1.8 + u * 8) * 0.22,
-              );
+              ang = angle + Math.PI / 2 + Math.cos(t * 1.8 + u * 8) * 0.22;
+              ca = Math.cos(ang);
+              sa = Math.sin(ang);
+              ctx.setTransform(ca, sa, -sa, ca, lx, ly);
               ctx.beginPath();
-              ctx.ellipse(
-                0,
-                0,
-                leafSize * 1.8,
-                leafSize * 0.75,
-                0,
-                0,
-                Math.PI * 2,
-              );
-              ctx.fillStyle = "hsla(" + (k.hue - 12) + ", 65%, 28%, 0.75)";
+              ctx.ellipse(0, 0, L.a, L.b, 0, 0, Math.PI * 2);
+              ctx.fillStyle = k.rightStyle;
               ctx.fill();
-              ctx.restore();
             }
-          });
+            ctx.setTransform(1, 0, 0, 1, 0, 0);
+          }
           ctx.restore();
         }
 
@@ -2017,8 +1885,11 @@
         }
 
         function drawSeabedDecorations() {
+          var n = seabedDecorations.length;
+          if (n === 0) return;
           ctx.save();
-          seabedDecorations.forEach(function (d) {
+          for (var i = 0; i < n; i++) {
+            var d = seabedDecorations[i];
             ctx.save();
             ctx.translate(d.x, d.y);
             if (d.glyph === "🦀") {
@@ -2034,28 +1905,25 @@
             var sprite = EmojiSprite.get(d.glyph, 20);
             ctx.drawImage(sprite, -sprite.width / 2, -sprite.height / 2);
             ctx.restore();
-          });
+          }
+          ctx.restore();
         }
 
         function drawSeaweed(t) {
-          if (!seaWedImg || !seaWed2Img) return;
+          var n = seaweedElements.length;
+          if (n === 0) return;
+          // PERF: each plant is pre-scaled once (bakeSeaweedSprite) so a frame is
+          // just 35 small rotated blits via setTransform, no save/restore.
           ctx.save();
-          seaweedElements.forEach(function (sw) {
-            ctx.save();
+          for (var i = 0; i < n; i++) {
+            var sw = seaweedElements[i];
             // Completely screen-static position (no scrolling adjustment, stays fixed on screen)
-            var drawX = sw.x;
             var sway = Math.sin(t * sw.speed + sw.phase) * 0.08; // gentle current sway
-            var img = sw.type === 0 ? seaWedImg : seaWed2Img;
-
-            ctx.translate(drawX, sw.y);
-            ctx.rotate(sway);
-            ctx.scale(sw.scale, sw.scale);
-            ctx.globalAlpha = sw.opacity;
-
-            // Draw seaweed anchored at the seabed floor
-            ctx.drawImage(img, -img.width / 2, -img.height);
-            ctx.restore();
-          });
+            var cs = Math.cos(sway),
+              sn = Math.sin(sway);
+            ctx.setTransform(cs, sn, -sn, cs, sw.x, sw.y);
+            ctx.drawImage(sw.cv, -sw.cw / 2, -sw.ch, sw.cw, sw.ch);
+          }
           ctx.restore();
         }
 
@@ -2068,8 +1936,11 @@
           });
         }
         function drawBgFish(t) {
+          var n = bgFish.length;
+          if (n === 0) return;
           ctx.save();
-          bgFish.forEach(function (f) {
+          for (var i = 0; i < n; i++) {
+            var f = bgFish[i];
             ctx.save();
             // Bobbing speed is proportional to their size/type
             var yBob = Math.sin(t * 1.6 + f.bob) * 10;
@@ -2086,7 +1957,7 @@
             var sprite = EmojiSprite.get(f.glyph, Math.round(f.size));
             ctx.drawImage(sprite, -sprite.width / 2, -sprite.height / 2);
             ctx.restore();
-          });
+          }
           ctx.restore();
         }
 
@@ -2099,32 +1970,41 @@
             if (sl.life <= 0) speedLines.splice(i, 1);
           }
         }
+        // PERF: the swoosh gradient is baked once into two thin strips (one per
+        // direction) and stretched to each line's length, instead of building a
+        // linear gradient per line per frame.
+        var speedStrips = null;
+        function getSpeedStrips() {
+          if (speedStrips) return speedStrips;
+          var w = 32;
+          function strip(flip) {
+            return GOGEngine.bake(w, 4, function (g) {
+              var grad = g.createLinearGradient(flip ? w : 0, 0, flip ? 0 : w, 0);
+              grad.addColorStop(0, "rgba(255,255,255,0)");
+              grad.addColorStop(0.3, "rgba(61,214,192,0.95)");
+              grad.addColorStop(0.7, "rgba(255,255,255,0.95)");
+              grad.addColorStop(1, "rgba(255,255,255,0)");
+              g.fillStyle = grad;
+              g.fillRect(0, 0.25, w, 3.5); // same 3.5px thickness as the old stroke
+            }, 1);
+          }
+          speedStrips = { right: strip(false), left: strip(true) };
+          return speedStrips;
+        }
         function drawSpeedLines() {
-          if (speedLines.length === 0) return;
+          var n = speedLines.length;
+          if (n === 0) return;
+          var strips = getSpeedStrips();
           ctx.save();
-          ctx.lineWidth = 3.5;
-          speedLines.forEach(function (sl) {
+          for (var i = 0; i < n; i++) {
+            var sl = speedLines[i];
             ctx.globalAlpha = sl.alpha;
-            ctx.beginPath();
-            ctx.moveTo(sl.x, sl.y);
-            ctx.lineTo(sl.x + sl.facing * sl.len, sl.y);
-
-            // Draw colorful/white gradient speed line
-            var grad = ctx.createLinearGradient(
-              sl.x,
-              sl.y,
-              sl.x + sl.facing * sl.len,
-              sl.y,
-            );
-            grad.addColorStop(0, "rgba(255,255,255,0)");
-            grad.addColorStop(0.3, "rgba(61,214,192,0.95)");
-            grad.addColorStop(0.7, "rgba(255,255,255,0.95)");
-            grad.addColorStop(1, "rgba(255,255,255,0)");
-
-            ctx.strokeStyle = grad;
-            ctx.stroke();
-          });
-          ctx.globalAlpha = 1;
+            if (sl.facing >= 0) {
+              ctx.drawImage(strips.right, sl.x, sl.y - 2, sl.len, 4);
+            } else {
+              ctx.drawImage(strips.left, sl.x - sl.len, sl.y - 2, sl.len, 4);
+            }
+          }
           ctx.restore();
         }
 
@@ -2166,7 +2046,7 @@
         /* ---------------- NEW: combo streak — consecutive pickups without getting hit ---------------- */
         function addCombo() {
           state.combo++;
-          var comboChip = document.getElementById("comboChip");
+          var comboChip = comboChipEl;
           if (state.combo >= 2) {
             comboChip.textContent = "🔥 x" + state.combo;
             comboChip.classList.add("combo-visible");
@@ -2187,9 +2067,7 @@
         }
         function resetCombo() {
           state.combo = 0;
-          document
-            .getElementById("comboChip")
-            .classList.remove("combo-visible", "combo-tier-2", "combo-tier-3");
+          comboChipEl.classList.remove("combo-visible", "combo-tier-2", "combo-tier-3");
         }
 
         /* ---------------- NEW: reef milestone celebrations (25% / 50% / 75%) ---------------- */
@@ -2240,8 +2118,9 @@
 
           currentDifficulty = level;
 
-          var diffChip = document.getElementById("difficultyChip");
+          var diffChip = difficultyChipEl;
           if (!diffChip) return;
+          ensureCanvasRect(); // read layout BEFORE the chip writes below
 
           // Update styling based on new level
           var colors = [
@@ -2303,8 +2182,7 @@
           else if (level === 4) spawnFreqMultiplier = 0.5;
           else if (level === 5) spawnFreqMultiplier = 0.35;
 
-          var qtySlider = document.getElementById("trashQtyMult");
-          var trashQuantityMult = qtySlider ? parseFloat(qtySlider.value) : 0.4;
+          var trashQuantityMult = trashQtyEl ? parseFloat(trashQtyEl.value) : 0.4;
 
           trashTimer -= dt;
           if (trashTimer <= 0) {
@@ -2340,7 +2218,7 @@
         }
 
         function initLivesWidget() {
-          var widget = document.getElementById("livesWidget");
+          var widget = livesWidgetEl;
           if (!widget) return;
           widget.innerHTML = "";
           var maxLives = 3 + diff.bonusLives();
@@ -2355,7 +2233,7 @@
         }
 
         function updateLivesUi() {
-          var widget = document.getElementById("livesWidget");
+          var widget = livesWidgetEl;
           if (!widget) return;
           var hearts = widget.querySelectorAll(".life-heart");
           hearts.forEach(function (heart, index) {
@@ -2369,7 +2247,7 @@
           if (state.lives > 0) {
             state.lives--;
             updateLivesUi();
-            var widget = document.getElementById("livesWidget");
+            var widget = livesWidgetEl;
             if (widget) {
               widget.classList.remove("heart-shake");
               void widget.offsetWidth; // trigger reflow
@@ -2426,16 +2304,14 @@
         function flushUIUpdates() {
           // 1. Reef HUD Update
           if (lastReefValue !== state.reef) {
-            var fillElem = document.getElementById("reefFill");
-            var pctElem = document.getElementById("reefPct");
-            if (fillElem) fillElem.style.width = state.reef + "%";
-            if (pctElem) pctElem.textContent = Math.round(state.reef) + "%";
+            GOGUi.setStyle(reefFillEl, "width", state.reef + "%");
+            GOGUi.setText(reefPctEl, Math.round(state.reef) + "%");
             lastReefValue = state.reef;
           }
 
           // 2. Reef Meter Bounce Animation
           if (reefAnimationDelta !== 0) {
-            var meterHUD = document.querySelector(".meter");
+            var meterHUD = meterEl;
             if (meterHUD) {
               meterHUD.classList.remove("meter-pulse-up", "meter-pulse-down");
               if (typeof meterHUD.getAnimations === "function") {
@@ -2459,9 +2335,9 @@
 
           // 3. Sprouts HUD Update and bounce animation
           if (lastSproutsValue !== state.sproutsEarned) {
-            var chip = document.getElementById("sproutsChip");
+            var chip = sproutsChipEl;
             if (chip) {
-              chip.textContent = state.sproutsEarned;
+              GOGUi.setText(chip, state.sproutsEarned);
               if (sproutsGainPending) {
                 var chipParent = chip.parentElement;
                 if (chipParent) {
@@ -2526,31 +2402,27 @@
 
           // NEW: keep the Echo Boost button's cooldown countdown in sync
           if (state.elapsed < state.boostReadyAt) {
-            boostBtn.textContent =
-              Math.ceil(state.boostReadyAt - state.elapsed) + "s";
-          } else if (boostBtn.textContent !== "💨") {
-            boostBtn.textContent = "💨";
+            boostCooling = true;
+            GOGUi.setText(boostBtn, Math.ceil(state.boostReadyAt - state.elapsed) + "s");
+          } else if (boostCooling) {
+            boostCooling = false;
+            GOGUi.setText(boostBtn, "💨");
             boostBtn.classList.remove("boost-cooldown");
           }
 
           if (!calmMode && !coach.active) {
             state.timeLeft = Math.max(0, state.timeLeft - dt);
-            var timerChipEl = document.getElementById("timerChip");
-            timerChipEl.textContent = Math.ceil(state.timeLeft) + "s";
+            GOGUi.setText(timerChipEl, Math.ceil(state.timeLeft) + "s");
 
             // NEW: timer starts pulsing red in the last 10 seconds
-            if (state.timeLeft <= 10) {
-              timerChipEl.classList.add("timer-urgent");
-            } else {
-              timerChipEl.classList.remove("timer-urgent");
-            }
+            GOGUi.setClass(timerChipEl, "timer-urgent", state.timeLeft <= 10);
 
             if (state.timeLeft <= 0 && state.reef < 100) {
               endLose();
               return;
             }
           } else {
-            document.getElementById("timerChip").textContent = "∞";
+            GOGUi.setText(timerChipEl, "∞");
           }
 
           // --- background scroll update ---
@@ -2562,9 +2434,7 @@
 
           // --- dolphin follows pointer, with keyboard fallback ---
           var boosting = state.elapsed < state.boostUntil; // NEW: Echo Boost in progress
-          if (canvasFrame) {
-            canvasFrame.classList.toggle("boosting-active", boosting);
-          }
+          GOGUi.setClass(canvasFrame, "boosting-active", boosting);
           var prevX = dolphin.x,
             prevY = dolphin.y;
           var followLerp = boosting ? 0.34 : 0.16;
@@ -2649,28 +2519,27 @@
           }
 
           // --- items ---
+          // PERF: the tuning sliders and difficulty multipliers are read once per
+          // step (cached elements), not once per item.
+          var trashSpeedMult = speedMultEls.trash ? parseFloat(speedMultEls.trash.value) : 1.0;
+          var turtleSpeedMult = speedMultEls.turtle ? parseFloat(speedMultEls.turtle.value) : 1.0;
+          var pearlSpeedMult = speedMultEls.pearl ? parseFloat(speedMultEls.pearl.value) : 1.0;
+          var pufferSpeedMult = speedMultEls.pufferfish ? parseFloat(speedMultEls.pufferfish.value) : 1.0;
+          var enemySpeedMul = diff.enemySpeedMul();
+          var forgivenessMul = diff.forgivenessMul();
           for (var i = items.length - 1; i >= 0; i--) {
             var it = items[i];
             it.age += dt; // NEW: used to scale items in with a little pop when they spawn
 
             var speedMult = 1.0;
-            if (it.type === "trash") {
-              var el = document.getElementById("trashSpeedMult");
-              if (el) speedMult = parseFloat(el.value);
-            } else if (it.type === "turtle") {
-              var el = document.getElementById("turtleSpeedMult");
-              if (el) speedMult = parseFloat(el.value);
-            } else if (it.type === "pearl") {
-              var el = document.getElementById("pearlSpeedMult");
-              if (el) speedMult = parseFloat(el.value);
-            } else if (it.type === "pufferfish") {
-              var el = document.getElementById("pufferSpeedMult");
-              if (el) speedMult = parseFloat(el.value);
-            }
+            if (it.type === "trash") speedMult = trashSpeedMult;
+            else if (it.type === "turtle") speedMult = turtleSpeedMult;
+            else if (it.type === "pearl") speedMult = pearlSpeedMult;
+            else if (it.type === "pufferfish") speedMult = pufferSpeedMult;
 
             var dynamicSpeedMul = 1.0;
             if (it.type === "trash" || it.type === "pufferfish") {
-              dynamicSpeedMul = diff.enemySpeedMul();
+              dynamicSpeedMul = enemySpeedMul;
             }
 
             it.x += it.vx * speedMult * dynamicSpeedMul * dt * gameSpeedMult;
@@ -2705,6 +2574,7 @@
 
             var offscreen = it.x < -80 || it.x > W + 80;
             if (offscreen) {
+              if (it.type === "trash") ensureCanvasRect();
               if (it.type === "trash") {
                 var forgiving = calmMode || coach.active;
                 if (!forgiving) damageLife();
@@ -2744,8 +2614,8 @@
               it.type === "pearl" ||
               it.type === "tangled_fish"
             ) {
-              dolphinHitR *= diff.forgivenessMul();
-              itemHitR *= diff.forgivenessMul();
+              dolphinHitR *= forgivenessMul;
+              itemHitR *= forgivenessMul;
             }
 
             var hit = Collision.circleHit(
@@ -2776,6 +2646,7 @@
             }
 
             if (!hit) continue;
+            ensureCanvasRect();
 
             if (it.type === "trash") {
               items.splice(i, 1);
@@ -3023,6 +2894,12 @@
           rectUpdatedThisFrame = false;
         }
 
+        // PERF: read the canvas rect once, BEFORE a pickup / hit starts writing to
+        // the DOM (class toggles, animations, float labels), so the layout read
+        // doesn't force a second synchronous layout in the same step.
+        function ensureCanvasRect() {
+          if (!rectUpdatedThisFrame || !cachedCanvasRect) updateCanvasRect();
+        }
         function canvasXToClient(x) {
           if (!rectUpdatedThisFrame || !cachedCanvasRect) {
             updateCanvasRect();
@@ -3045,7 +2922,7 @@
         // for these three moments reads beyond the canvas frame, across the whole
         // screen — the HUD, the margins, everything.
         function pageFx(kind) {
-          var el = document.getElementById("pageFx");
+          var el = pageFxEl;
           if (!el) return;
           el.classList.remove("fx-collect", "fx-oops", "fx-heal");
           if (typeof el.getAnimations === "function") {
@@ -3062,15 +2939,17 @@
         }
 
         var lastDizzyStarAt = 0;
+        var dizzyStars = [];
         function spawnDizzyStars() {
           var now = performance.now();
           if (now - lastDizzyStarAt < 100) {
             return;
           }
-          var activeStars = document.querySelectorAll(".dizzyStar");
-          if (activeStars.length >= 9) {
+          // PERF: track the live stars in an array instead of a document-wide query
+          if (dizzyStars.length >= 9) {
             for (var i = 0; i < 3; i++) {
-              if (activeStars[i]) activeStars[i].remove();
+              var oldStar = dizzyStars.shift();
+              if (oldStar) oldStar.remove();
             }
           }
           lastDizzyStarAt = now;
@@ -3091,9 +2970,12 @@
             star.style.setProperty("--dx", (i - 1) * 22 + "px");
             star.style.animationDelay = i * 0.06 + "s";
             document.body.appendChild(star);
+            dizzyStars.push(star);
             (function (el) {
               setTimeout(function () {
                 el.remove();
+                var at = dizzyStars.indexOf(el);
+                if (at >= 0) dizzyStars.splice(at, 1);
               }, 850);
             })(star);
           }
@@ -3101,48 +2983,71 @@
 
         /* ---------------- draw ---------------- */
 
+        var coralSprite = null;
+        var rockSprite = null;
         function drawBackground() {
-          // Clear canvas before drawing layers
-          ctx.clearRect(0, 0, W, H);
+          if (!bgLayers) {
+            // fallback fill so it never looks "dirty" before the images are ready
+            ctx.fillStyle = "#1a6fa3";
+            ctx.fillRect(0, 0, W, H);
+          } else {
+            // The reef itself visibly heals — background scenery is
+            // washed-out/desaturated at low Reef Health and blooms to full
+            // vibrant color as it rises (pre-filtered tiles, see bgPrepare).
+            // Gameplay items/dolphin/HUD signals are drawn on top, unfiltered,
+            // so hazard/reward cues stay crisp.
+            var step = bgStepNow();
+            bgPrepare(step);
 
-          // fallback fill so it never looks "dirty" even before images are ready
-          ctx.fillStyle = "#1a6fa3";
-          ctx.fillRect(0, 0, W, H);
-
-          // NEW: a very gentle shear that drifts back and forth — reads as a slow current
-          var currentShear = Math.sin(state.elapsed * 0.4) * 0.012;
-          ctx.save();
-          ctx.transform(1, 0, currentShear, 1, 0, 0);
-          // NEW: the reef itself visibly heals — background scenery is
-          // washed-out/desaturated at low Reef Health and blooms to full
-          // vibrant color as it rises. Gameplay items/dolphin/HUD signals
-          // are drawn outside this filter so hazard/reward cues stay crisp.
-          var reefSat = 45 + Collision.clamp(state.reef, 0, 100) * 0.55; // 45% -> 100%
-          var reefBright = 82 + Collision.clamp(state.reef, 0, 100) * 0.18; // 82% -> 100%
-          ctx.filter = "saturate(" + reefSat.toFixed(0) + "%) brightness(" + reefBright.toFixed(0) + "%)";
-          layers.forEach(function (layer) {
-            if (!layer.img) return;
-            var img = layer.img;
-            var tileW = img.width;
-            var x = (scrollX * (layer.speed * 0.1)) % tileW;
-            if (x > 0) x -= tileW; // normalize into (-tileW, 0]
-            for (var dx = x; dx < W; dx += tileW) {
-              ctx.drawImage(img, dx, layer.y, tileW, H);
+            // 1) scroll the layers into the composite with integer blits. The
+            //    first layer is opaque and tiled across the whole composite
+            //    (pad included), so the composite never needs clearing and the
+            //    canvas needs no backdrop fill.
+            var g = bgCompositeCtx;
+            for (var li = 0; li < bgLayers.length; li++) {
+              var lay = bgLayers[li];
+              var tile = lay.tiles[step] || lay.shown;
+              if (!tile) continue;
+              lay.shown = tile;
+              var tileW = lay.tileW;
+              var x = (scrollX * (lay.speed * 0.1)) % tileW;
+              if (x > 0) x -= tileW; // normalize into (-tileW, 0]
+              x = Math.round(x);
+              while (x > -BG_PAD) x -= tileW; // start left of the composite's pad
+              for (var dx = x; dx < W + BG_PAD; dx += tileW) {
+                g.drawImage(tile, dx + BG_PAD, lay.y);
+              }
             }
-          });
-          ctx.filter = "none";
-          ctx.restore();
+
+            // 2) a very gentle shear that drifts back and forth — reads as a
+            //    slow current. A fractionally-sheared blit is ~10x slower than
+            //    plain copies on a software canvas, so the shear is applied as
+            //    horizontal strips shifted by whole pixels (same drift, +-1px).
+            var currentShear = Math.sin(state.elapsed * 0.4) * 0.012;
+            var sy0 = 0;
+            var so0 = Math.round(currentShear * 0.5);
+            for (var sy = 1; sy <= H; sy++) {
+              var so = sy < H ? Math.round(currentShear * (sy + 0.5)) : NaN;
+              if (so !== so0) {
+                ctx.drawImage(bgComposite, BG_PAD - so0, sy0, W, sy - sy0, 0, sy0, W, sy - sy0);
+                sy0 = sy;
+                so0 = so;
+              }
+            }
+          }
 
           // seabed coral strip — grows greener/brighter as reef heals
           var coralH = 60;
-          ctx.save();
-          ctx.translate(0, H - coralH);
           var reefT = state.reef / 100;
           ctx.fillStyle = "rgba(20,40,30," + (0.25 + reefT * 0.3) + ")";
-          ctx.fillRect(0, 0, W, coralH);
+          ctx.fillRect(0, H - coralH, W, coralH);
+          if (!coralSprite) {
+            coralSprite = EmojiSprite.get("🪸", 26);
+            rockSprite = EmojiSprite.get("🪨", 26);
+          }
+          ctx.save();
           for (var cx = 20; cx < W; cx += 70) {
             var bloom = cx / W < reefT + 0.08;
-            ctx.save();
 
             // Bobbing and wiggling in the current
             var bobY = Math.sin(state.elapsed * 1.5 + cx) * 3;
@@ -3150,18 +3055,15 @@
             var scale = bloom
               ? 1 + Math.sin(state.elapsed * 2 + cx) * 0.04
               : 0.95;
+            var sc = Math.cos(sway) * scale,
+              ss = Math.sin(sway) * scale;
 
-            ctx.translate(cx, coralH - 18 + bobY);
-            ctx.rotate(sway);
-            ctx.scale(scale, scale);
-
+            // translate(cx, H - 18 + bobY) · rotate(sway) · scale(scale)
+            ctx.setTransform(sc, ss, -ss, sc, cx, H - 18 + bobY);
             ctx.globalAlpha = bloom ? 1 : 0.22;
-            var glyph = bloom ? "🪸" : "🪨";
-            var sprite = EmojiSprite.get(glyph, 26);
+            var sprite = bloom ? coralSprite : rockSprite;
             ctx.drawImage(sprite, -sprite.width / 2, -sprite.height / 2);
-            ctx.restore();
           }
-          ctx.globalAlpha = 1;
           ctx.restore();
         }
 
@@ -3263,8 +3165,46 @@
 
         // vector Golden Pearl: an open clam shell with a pearl (replaces the 🦪 emoji)
 
+        // PERF: the cyan sonar halo used ctx.shadowBlur on every revealed piece of
+        // trash every frame (very slow on a software canvas). The ring + its
+        // blurred glow are rendered once here (shadowBlur runs once per ring
+        // size, never in the frame loop) and blitted with the pulse as alpha.
+        var sonarRings = {};
+        function getSonarRing(r) {
+          var c = sonarRings[r];
+          if (c) return c;
+          var ringR = r + 6;
+          var size = (ringR + 30) * 2;
+          c = GOGEngine.bake(
+            size,
+            size,
+            function (g) {
+              g.translate(size / 2, size / 2);
+              g.shadowColor = "rgba(34, 211, 238, 0.9)";
+              g.shadowBlur = 14 * 0.9; // ~ the average of the old 14 * pulse
+              g.lineWidth = 3;
+              g.strokeStyle = "#22d3ee";
+              g.beginPath();
+              g.arc(0, 0, ringR, 0, Math.PI * 2);
+              g.stroke();
+            },
+            1,
+          );
+          sonarRings[r] = c;
+          return c;
+        }
+        var DASH_RING = [4, 4];
+        var DASH_NONE = [];
+
         function drawItems() {
-          items.forEach(function (it) {
+          var n = items.length;
+          if (n === 0) return;
+          var elapsed = state.elapsed;
+          var sonarOn = elapsed < state.sonarUntil;
+          // PERF: one save/restore for all items; each item sets its own matrix
+          ctx.save();
+          for (var ii = 0; ii < n; ii++) {
+            var it = items[ii];
             // NEW: items pop in with a little overshoot when they spawn, and wiggle gently
             var growT = Math.min(1, it.age / 0.25);
             var growEase = 1 - Math.pow(1 - growT, 3);
@@ -3272,48 +3212,40 @@
               growT < 1
                 ? growEase + Math.sin(growT * Math.PI) * 0.25 * (1 - growT)
                 : 1;
-            var wiggle = Math.sin(state.elapsed * 3 + it.bob) * 0.12;
+            var wiggle = Math.sin(elapsed * 3 + it.bob) * 0.12;
 
-            ctx.save();
-            ctx.translate(it.x, it.y);
+            ctx.setTransform(1, 0, 0, 1, it.x, it.y);
 
             // NEW: pufferfish telegraph their danger with a fading warning ring before arming
             if (it.type === "pufferfish" && !it.armed) {
               var telegraphT = it.age / 0.5;
-              ctx.save();
               ctx.globalAlpha = 0.5 * (1 - telegraphT);
               ctx.lineWidth = 3;
               ctx.strokeStyle = "#ffd166";
               ctx.beginPath();
               ctx.arc(0, 0, 26 + telegraphT * 14, 0, Math.PI * 2);
               ctx.stroke();
-              ctx.restore();
+              ctx.globalAlpha = 1;
             }
 
             // NEW: Echo Boost sonar reveal — trash glows with a pulsing cyan
             // outline for a few seconds so it's easy to spot in the clutter.
-            if (it.type === "trash" && state.elapsed < state.sonarUntil) {
-              var sonarPulse = Math.sin(state.elapsed * 10) * 0.2 + 0.8;
-              ctx.save();
-              ctx.shadowColor = "rgba(34, 211, 238, 0.9)";
-              ctx.shadowBlur = 14 * sonarPulse;
+            if (it.type === "trash" && sonarOn) {
+              var sonarPulse = Math.sin(elapsed * 10) * 0.2 + 0.8;
+              var ring = getSonarRing(it.r);
               ctx.globalAlpha = sonarPulse;
-              ctx.lineWidth = 3;
-              ctx.strokeStyle = "#22d3ee";
-              ctx.beginPath();
-              ctx.arc(0, 0, it.r + 6, 0, Math.PI * 2);
-              ctx.stroke();
-              ctx.restore();
+              ctx.drawImage(ring, -ring.gw / 2, -ring.gh / 2, ring.gw, ring.gh);
+              ctx.globalAlpha = 1;
             }
 
-            ctx.rotate(wiggle);
-            ctx.scale(growScale, growScale);
+            // rotate(wiggle) · scale(growScale) · optional horizontal flip
             var flipFish =
               (it.type === "pufferfish" && it.vx > 0) ||
               (it.type === "tangled_fish" && it.vx < 0);
-            if (flipFish) {
-              ctx.scale(-1, 1);
-            }
+            var fx = flipFish ? -1 : 1;
+            var mc = Math.cos(wiggle) * growScale;
+            var ms = Math.sin(wiggle) * growScale;
+            ctx.setTransform(mc * fx, ms * fx, -ms, mc, it.x, it.y);
 
             var img = null;
             var drawW = 54;
@@ -3323,9 +3255,8 @@
               drawW = 76;
               drawH = 76;
             } else if (it.type === "tangled_fish") {
-              // Was 70x46 â too small/flat to read clearly against the busy
-              // ocean background; scaled up (~1.4x) while keeping the
-              // sprite's real aspect ratio (measured content is ~1.5:1).
+              // Scaled up (~1.4x) while keeping the sprite's real aspect ratio
+              // (measured content is ~1.5:1) so it reads against the busy ocean.
               drawW = 96;
               drawH = 64;
             }
@@ -3350,8 +3281,7 @@
             if (img) {
               if (it.type === "turtle") {
                 // Spritesheet animation: 4 columns, 2 rows (8 frames)
-                var animSpeed = it.type === "turtle" ? 8 : 12;
-                var frameIndex = Math.floor((it.age * animSpeed + it.bob * 5) % 8);
+                var frameIndex = Math.floor((it.age * 8 + it.bob * 5) % 8);
                 var col = frameIndex % 4;
                 var row = Math.floor(frameIndex / 4);
                 var fw = img.width / 4;
@@ -3404,40 +3334,39 @@
                 drawW,
                 drawH,
               );
-              var rescuePulse = Math.sin(state.elapsed * 8) * 0.25 + 0.75;
-              ctx.save();
-              ctx.strokeStyle =
-                "rgba(245, 158, 11, " + rescuePulse * 0.9 + ")";
+              ctx.globalAlpha = (Math.sin(elapsed * 8) * 0.25 + 0.75) * 0.9;
+              ctx.strokeStyle = "rgb(245, 158, 11)";
               ctx.lineWidth = 2.5;
-              ctx.setLineDash([4, 4]);
+              ctx.setLineDash(DASH_RING);
               ctx.beginPath();
               ctx.arc(0, 0, 46, 0, Math.PI * 2);
               ctx.stroke();
-              ctx.restore();
+              ctx.setLineDash(DASH_NONE);
+              ctx.globalAlpha = 1;
             } else if (it.type === "tangled_fish") {
-              var size = 60;
-              var sprite = EmojiSprite.get("🐠", size);
-              ctx.drawImage(sprite, -sprite.width / 2, -sprite.height / 2);
-              var pulse = Math.sin(state.elapsed * 8) * 0.25 + 0.75;
-              ctx.save();
-              ctx.strokeStyle = "rgba(245, 158, 11, " + (pulse * 0.9) + ")";
+              var tfSprite = it.spr || (it.spr = EmojiSprite.get("🐠", 60));
+              ctx.drawImage(tfSprite, -tfSprite.width / 2, -tfSprite.height / 2);
+              ctx.globalAlpha = (Math.sin(elapsed * 8) * 0.25 + 0.75) * 0.9;
+              ctx.strokeStyle = "rgb(245, 158, 11)";
               ctx.lineWidth = 2.5;
-              ctx.setLineDash([4, 4]);
+              ctx.setLineDash(DASH_RING);
               ctx.beginPath();
               ctx.arc(0, 0, 38, 0, Math.PI * 2);
               ctx.stroke();
-              ctx.restore();
+              ctx.setLineDash(DASH_NONE);
+              ctx.globalAlpha = 1;
             } else {
-              var size = it.type === "trash" ? 54 : 40;
-              var sprite = EmojiSprite.get(it.glyph, size);
+              var sprite =
+                it.spr ||
+                (it.spr = EmojiSprite.get(it.glyph, it.type === "trash" ? 54 : 40));
               ctx.drawImage(sprite, -sprite.width / 2, -sprite.height / 2);
             }
-
-            ctx.restore();
-          });
+          }
+          ctx.restore();
         }
 
         function draw() {
+          if (GOGUi.paused) return; // info pop-up open: nothing to repaint behind it
           drawBackground();
           drawSeaweed(state.elapsed);
           drawKelp(state.elapsed); // NEW: swaying kelp with leaves
@@ -3455,41 +3384,54 @@
           drawRipples(); // NEW: tap/click ripples
 
           // --- Draw custom shockwaves ---
-          ctx.save();
-          shockwaves.forEach(function (sw) {
-            // Outer ring
-            ctx.lineWidth = 4;
-            ctx.strokeStyle = sw.color + sw.alpha + ")";
-            ctx.beginPath();
-            ctx.arc(sw.x, sw.y, sw.radius, 0, Math.PI * 2);
-            ctx.stroke();
-
-            // Inner soft ring (if positive shockwave)
-            if (sw.maxRadius > 60) {
-              ctx.lineWidth = 2;
-              ctx.strokeStyle = "rgba(255,255,255," + sw.alpha * 0.7 + ")";
+          // (colour is constant per kind; the fade is globalAlpha, so nothing
+          // builds a colour string per frame)
+          if (shockwaves.length > 0) {
+            ctx.save();
+            for (var swi = 0; swi < shockwaves.length; swi++) {
+              var sw = shockwaves[swi];
+              var positive = sw.maxRadius > 60;
+              // Outer ring
+              ctx.globalAlpha = sw.alpha;
+              ctx.lineWidth = 4;
+              ctx.strokeStyle = positive ? "rgb(61, 214, 192)" : "rgb(232, 46, 93)";
               ctx.beginPath();
-              ctx.arc(sw.x, sw.y, Math.max(0, sw.radius - 12), 0, Math.PI * 2);
+              ctx.arc(sw.x, sw.y, sw.radius, 0, Math.PI * 2);
               ctx.stroke();
+
+              // Inner soft ring (if positive shockwave)
+              if (positive) {
+                ctx.globalAlpha = sw.alpha * 0.7;
+                ctx.lineWidth = 2;
+                ctx.strokeStyle = "#ffffff";
+                ctx.beginPath();
+                ctx.arc(sw.x, sw.y, Math.max(0, sw.radius - 12), 0, Math.PI * 2);
+                ctx.stroke();
+              }
             }
-          });
-          ctx.restore();
+            ctx.restore();
+          }
 
           // --- Draw Echo Boost sonar ripples ---
-          ctx.save();
-          sonarRipples.forEach(function (ripple) {
-            ctx.lineWidth = 3;
-            ctx.strokeStyle = "rgba(34, 211, 238, " + ripple.alpha * 0.8 + ")";
-            ctx.beginPath();
-            ctx.arc(ripple.x, ripple.y, ripple.radius, 0, Math.PI * 2);
-            ctx.stroke();
-            ctx.lineWidth = 1.5;
-            ctx.strokeStyle = "rgba(224, 255, 255, " + ripple.alpha * 0.6 + ")";
-            ctx.beginPath();
-            ctx.arc(ripple.x, ripple.y, Math.max(0, ripple.radius - 18), 0, Math.PI * 2);
-            ctx.stroke();
-          });
-          ctx.restore();
+          if (sonarRipples.length > 0) {
+            ctx.save();
+            for (var sri = 0; sri < sonarRipples.length; sri++) {
+              var ripple = sonarRipples[sri];
+              ctx.globalAlpha = ripple.alpha * 0.8;
+              ctx.lineWidth = 3;
+              ctx.strokeStyle = "rgb(34, 211, 238)";
+              ctx.beginPath();
+              ctx.arc(ripple.x, ripple.y, ripple.radius, 0, Math.PI * 2);
+              ctx.stroke();
+              ctx.globalAlpha = ripple.alpha * 0.6;
+              ctx.lineWidth = 1.5;
+              ctx.strokeStyle = "rgb(224, 255, 255)";
+              ctx.beginPath();
+              ctx.arc(ripple.x, ripple.y, Math.max(0, ripple.radius - 18), 0, Math.PI * 2);
+              ctx.stroke();
+            }
+            ctx.restore();
+          }
 
           drawHitFlash(); // NEW: brief red vignette when hit by a pufferfish
           drawHealFlash(); // NEW: brief green vignette when a heal/save occurs
@@ -3498,20 +3440,46 @@
           rectUpdatedThisFrame = false;
         }
 
+        // PERF: the wipe's radial gradient is scale-invariant (white -> sky -> blue
+        // over the radius), so it is baked once as a unit disc and stretched to
+        // the current radius; the finished (full-screen) state is one more bake.
+        var wipeDisc = null;
+        var wipeFull = null;
         function drawWinWipe() {
           if (!winWiping && !winWipeDone) return;
           var r = winWipeDone ? winWipeMax : winWipeRadius;
           ctx.save();
-          ctx.beginPath();
-          ctx.arc(W / 2, H / 2, r, 0, Math.PI * 2);
-          ctx.clip();
-          var grad = ctx.createRadialGradient(W / 2, H / 2, 0, W / 2, H / 2, r || 1);
-          grad.addColorStop(0, "#FFFFFF");
-          grad.addColorStop(0.55, "#7FD8FF");
-          grad.addColorStop(1, "#2C4BFF");
-          ctx.globalAlpha = 0.85;
-          ctx.fillStyle = grad;
-          ctx.fillRect(0, 0, W, H);
+          if (winWipeDone) {
+            if (!wipeFull) {
+              wipeFull = GOGEngine.bake(W, H, function (g) {
+                var grad = g.createRadialGradient(W / 2, H / 2, 0, W / 2, H / 2, winWipeMax);
+                grad.addColorStop(0, "#FFFFFF");
+                grad.addColorStop(0.55, "#7FD8FF");
+                grad.addColorStop(1, "#2C4BFF");
+                g.fillStyle = grad;
+                g.fillRect(0, 0, W, H);
+              }, 1);
+            }
+            ctx.globalAlpha = 0.85;
+            ctx.drawImage(wipeFull, 0, 0);
+          } else {
+            if (!wipeDisc) {
+              wipeDisc = GOGEngine.bake(256, 256, function (g) {
+                var grad = g.createRadialGradient(128, 128, 0, 128, 128, 128);
+                grad.addColorStop(0, "#FFFFFF");
+                grad.addColorStop(0.55, "#7FD8FF");
+                grad.addColorStop(1, "#2C4BFF");
+                g.fillStyle = grad;
+                g.fillRect(0, 0, 256, 256);
+              }, 1);
+            }
+            ctx.beginPath();
+            ctx.arc(W / 2, H / 2, r, 0, Math.PI * 2);
+            ctx.clip();
+            ctx.globalAlpha = 0.85;
+            var rr = r || 1;
+            ctx.drawImage(wipeDisc, W / 2 - rr, H / 2 - rr, rr * 2, rr * 2);
+          }
           ctx.restore();
 
           if (winWiping) {
@@ -3788,6 +3756,7 @@
         function resetRound() {
           state.won = false;
           state.reef = 0;
+          bgEnsureNow(0);
           state.sproutsEarned = 0;
           state.hits = 0;
           state.turtleAttackCount = 0;

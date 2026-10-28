@@ -7,82 +7,18 @@
   <link rel="stylesheet" href="../src/styles.css" />
   <style>
     :root {
-      --gog-frame-aspect: 1.3333; /* 800x600 canvas: keeps the frame 4:3 on short windows */
+      --gog-frame-aspect: 1.33333; /* 800x600 canvas: keeps the frame 4:3 on short windows */
     }
 
-    .stage-wrap {
-      width: min(1180px, calc(100vw - 28px));
-      max-width: 1180px;
-      margin: 0 auto;
-      padding: 12px 0 32px;
-      animation: pageFadeIn 0.5s ease both;
-    }
-
-    .stage-hud {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      gap: 10px;
-      flex-wrap: wrap;
-      margin-bottom: 12px;
-    }
-
-    .stage-title {
-      display: flex;
-      align-items: center;
-      gap: 10px;
-    }
-
-    .stage-title h1 {
-      font-size: 1.25rem;
-    }
-
+    /* Page shell (HUD, title, meters, chips, buttons, canvas-frame base, the
+       <=1200px compact HUD) lives in src/styles.css — only stage colours are
+       styled here. */
     .stage-title small {
-      display: block;
-      font-family: var(--gog-font-hand);
-      font-size: 1rem;
       color: #72624c;
     }
 
-    .hud-mid {
-      display: flex;
-      align-items: center;
-      gap: 14px;
-      flex-wrap: wrap;
-    }
-
-    .meter {
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      background: var(--gog-white);
-      border: 3px solid var(--gog-ink);
-      border-radius: 999px;
-      padding: 6px 14px 6px 10px;
-      box-shadow: var(--gog-shadow-sm);
-      min-width: 168px;
-      position: relative;
-    }
-
-    .meter .label,
-    .meter .meter-track {
-      position: relative;
-      z-index: 2;
-    }
-
-    .meter .label {
-      font-size: 0.78rem;
-      font-weight: 700;
-      white-space: nowrap;
-    }
-
     .meter-track {
-      flex: 1;
-      height: 10px;
-      border-radius: 999px;
       background: #fdf5e6;
-      border: 2px solid var(--gog-ink);
-      overflow: hidden;
     }
 
     .meter-fill {
@@ -90,67 +26,6 @@
       width: 0%;
       background: linear-gradient(90deg, #ffd23f, var(--gog-tangerine));
       transition: width 0.35s cubic-bezier(0.175, 0.885, 0.32, 1.275);
-    }
-
-    .timer-chip {
-      font-weight: 700;
-      min-width: 64px;
-      text-align: center;
-    }
-
-    .canvas-frame {
-      position: relative;
-      width: 100%;
-      max-height: calc(100vh - 220px);
-      aspect-ratio: 4 / 3;
-      margin: 0 auto;
-      overflow: hidden;
-      transition:
-        border-color 0.2s,
-        box-shadow 0.2s;
-    }
-
-    canvas {
-      width: 100%;
-      height: 100%;
-      display: block;
-      touch-action: none;
-      cursor: crosshair;
-    }
-
-    .stage-controls {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      margin-top: 12px;
-      gap: 10px;
-      flex-wrap: wrap;
-    }
-
-    @keyframes pageFadeIn {
-      from {
-        opacity: 0;
-        transform: translateY(10px);
-      }
-      to {
-        opacity: 1;
-        transform: translateY(0);
-      }
-    }
-
-    .emoji-float {
-      display: inline-block;
-      animation: emojiFloat 2.6s ease-in-out infinite;
-    }
-
-    @keyframes emojiFloat {
-      0%,
-      100% {
-        transform: translateY(0) rotate(-4deg);
-      }
-      50% {
-        transform: translateY(-5px) rotate(5deg);
-      }
     }
 
     @keyframes comboPop {
@@ -162,47 +37,12 @@
       animation: comboPop 0.28s ease;
     }
 
-    .calm-badge {
-      font-size: 0.78rem;
-      font-weight: 700;
-      animation: fadeInUp 0.6s ease both;
-    }
-
-    .icon-btn {
-      width: 42px;
-      height: 42px;
-      min-width: 42px;
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
-      background: var(--gog-white);
-      border: 3px solid var(--gog-ink);
-      border-radius: 50%;
-      box-shadow: 3px 3px 0 var(--gog-ink);
-      font-size: 1.15rem;
-      line-height: 1;
-      touch-action: manipulation;
-    }
-
-    /* ================================================================
-       COCOMELON-STYLE CLARITY PASS
-       Bigger, bolder, brighter, with obvious escalating-color + bounce
-       feedback so every HUD element reads at a glance even for a
-       pre-reader — the same "big bold icon + one bright color state +
-       a bounce" language that toddler shows use so nothing needs to be
-       read to be understood.
-       ================================================================ */
-    .stage-hud .chip {
-      font-size: 1.05rem;
-      font-weight: 800;
-      padding: 8px 16px;
-      border-width: 3px;
-      box-shadow: 4px 4px 0 var(--gog-ink);
-    }
-
+    /* Clarity pass: every HUD element reads at a glance for a pre-reader — one
+       bright colour state + a bounce per element. Chips / buttons use the
+       shared sizes (same as Stage 1). */
     #progressVal {
       display: inline-block;
-      font-size: 1.15rem;
+      font-size: 1.15em;
       font-weight: 800;
     }
     .progress-pop {
@@ -278,16 +118,8 @@
     }
 
     /* Guide mascot — idles with a friendly bounce, then reacts big and
-       obviously happy/oops on key beats, so the lesson lands even for
-       a kid who isn't reading the bubble yet. */
-    .guideBar {
-      padding: 10px 14px;
-      border-width: 4px;
-      box-shadow: 5px 5px 0 var(--gog-ink);
-      transition: box-shadow 0.2s;
-    }
+       obviously happy/oops on key beats (bar/bubble sizes are the shared ones). */
     .guideAvatar {
-      font-size: 2.1rem;
       display: inline-block;
       animation: guideIdleBounce 2.4s ease-in-out infinite;
     }
@@ -327,156 +159,6 @@
         transform: translateX(6px) rotate(10deg);
       }
     }
-    .guideBubble {
-      font-size: 1.05rem;
-      font-weight: 700;
-      line-height: 1.25;
-    }
-
-    @media (max-width: 700px) {
-      .stage-wrap {
-        width: calc(100vw - 12px);
-        max-width: 100%;
-        padding: 6px 0 18px;
-      }
-
-      .stage-hud {
-        display: grid;
-        grid-template-columns: minmax(0, 1fr);
-        gap: 6px;
-        margin-bottom: 8px;
-      }
-
-      .stage-title {
-        gap: 6px;
-        min-width: 0;
-      }
-
-      .stage-title .emoji-float {
-        font-size: 1.35rem !important;
-      }
-
-      .stage-title h1 {
-        font-size: 0.98rem;
-        line-height: 1;
-      }
-
-      .stage-title small {
-        display: none;
-      }
-
-      .hud-mid {
-        display: grid;
-        grid-template-columns: minmax(128px, 1fr) repeat(3, auto);
-        gap: 5px;
-        align-items: center;
-        width: 100%;
-      }
-
-      .meter {
-        min-width: 0;
-        gap: 5px;
-        padding: 4px 8px 4px 7px;
-        border-width: 2px;
-        box-shadow: 2px 2px 0 var(--gog-ink);
-      }
-
-      .meter .label {
-        font-size: 0.66rem;
-      }
-
-      .meter-track {
-        height: 8px;
-        border-width: 2px;
-      }
-
-      .chip {
-        padding: 4px 7px;
-        border-width: 2px;
-        box-shadow: 2px 2px 0 var(--gog-ink);
-        font-size: 0.72rem;
-        min-height: 30px;
-      }
-
-      .timer-chip {
-        min-width: 44px;
-      }
-
-      /* keep the round buttons (help, sound) together on the second HUD row */
-      .hud-mid > .icon-btn {
-        order: 2;
-      }
-
-      .hud-mid > .stage-controls {
-        order: 3;
-      }
-
-      .icon-btn {
-        width: 32px;
-        height: 32px;
-        min-width: 32px;
-        font-size: 0.92rem;
-        border-width: 2px;
-        box-shadow: 2px 2px 0 var(--gog-ink);
-      }
-
-      .guideBar {
-        gap: 6px;
-        padding: 3px 4px;
-        margin-bottom: 8px;
-        border-width: 2px;
-        border-radius: 8px;
-        box-shadow: 1px 1px 0 var(--gog-ink);
-      }
-
-      .guideAvatar {
-        font-size: 1.25rem;
-      }
-
-      .guideBubble {
-        padding: 5px 8px;
-        border-width: 2px;
-        border-radius: 10px;
-        font-size: 1rem;
-        line-height: 1.1;
-      }
-
-      .canvas-frame {
-        border-width: 3px;
-        border-radius: 12px;
-        box-shadow: 4px 4px 0 var(--gog-ink);
-      }
-
-      .stage-controls {
-        margin-top: 8px;
-        gap: 6px;
-      }
-
-      .stage-controls .brutal-btn {
-        padding: 8px 12px;
-        min-height: 38px;
-        border-width: 3px;
-        border-radius: 10px;
-        font-size: 0.86rem;
-        box-shadow: 3px 3px 0 var(--gog-ink);
-      }
-
-      .calm-badge {
-        font-size: 0.72rem;
-      }
-    }
-
-    @keyframes fadeInUp {
-      from {
-        opacity: 0;
-        transform: translateY(6px);
-      }
-      to {
-        opacity: 1;
-        transform: translateY(0);
-      }
-    }
-
     body {
       position: relative;
     }
@@ -613,7 +295,7 @@
     </div>
 
     <div class="brutal-box canvas-frame" id="canvasFrame">
-      <canvas id="gameCanvas" width="800" height="600" style="width: 100%; height: 100%; display: block; touch-action: none; cursor: crosshair;"></canvas>
+      <canvas id="gameCanvas" width="960" height="600" style="width: 100%; height: 100%; display: block; touch-action: none; cursor: crosshair;"></canvas>
     </div>
   </div>
 
@@ -629,6 +311,7 @@
   <script src="../src/constants.js"></script>
   <script src="../src/save.js"></script>
   <script src="../src/native.js"></script>
+  <script src="../src/vendor/howler.min.js"></script>
   <script src="../src/engine.js"></script>
   <script src="../src/voice.js"></script>
   <script src="../src/ui.js"></script>
@@ -643,13 +326,18 @@
   "use strict";
 
   var canvas = document.getElementById("gameCanvas");
+  // (Tried { alpha: false }: it turns on LCD text smoothing, which fringes the
+  // float labels / coach tags with colour, so the default context is kept.)
   var ctx = canvas.getContext("2d");
   // Phone portrait: canvas fills the screen (see GOGEngine.fitCanvasToScreen)
   GOGEngine.fitCanvasToScreen(canvas, document.getElementById("canvasFrame"));
   var W = canvas.width, H = canvas.height;
   // Render at the on-screen resolution (not a stretched 800x600 bitmap) so the
   // meadow and sprites stay sharp; drawing code still uses 800x600 coords.
-  var hiDpi = GOGEngine.fitCanvas(canvas, ctx, W, H, { onResize: function () { bgDirty = true; } });
+  // Everything cached offscreen below (backdrop, sun glow, seaweed, bee frames,
+  // smog) is rebuilt in onResize at the new bitmap scale.
+  var hiDpi = GOGEngine.fitCanvas(canvas, ctx, W, H, { onResize: function () { bgDirty = true; seaDirty = true; beeDirty = true; } });
+  var seaDirty = true, beeDirty = true;
 
   var Collision = window.GOGEngine.Collision;
   var particles = new window.GOGEngine.ParticleSystem(160);
@@ -659,12 +347,22 @@
   // Buzz flying sprite sheet — loaded ONCE and reused every frame
   // Sprite sheet uses grid layout: 4 columns × 2 rows (8 frames total)
   // Each frame shows bee wing flapping positions for smooth animation
+  // Decode a sheet as soon as it arrives (img.decode() rasterises the bitmap now
+  // instead of on its first drawImage — a visible hitch mid-round on phones) and
+  // ask the loop for one repaint, since GameLoop skips frames with no update step.
+  function decodeImg(img) {
+    if (img && typeof img.decode === "function") {
+      img.decode().then(function () { GOGEngine.requestDraw(); }, function () {});
+    }
+    return img;
+  }
   var beesFlyingSpriteSheet = new Image();
   beesFlyingSpriteSheet.src = "assets/sprites/stage03/bees-flying.png";
+  decodeImg(beesFlyingSpriteSheet);
   var beeSheetLoaded = false;
   beesFlyingSpriteSheet.onload = function () {
     beeSheetLoaded = true;
-    console.log("✓ Bee sprite sheet loaded successfully at", beesFlyingSpriteSheet.src);
+    beeDirty = true;
   };
   beesFlyingSpriteSheet.onerror = function () {
     console.warn("⚠ Bee sprite sheet not found at:", "assets/sprites/stage03/bees-flying.png");
@@ -689,7 +387,9 @@
   meadowPaintCanvas.width = W;
   meadowPaintCanvas.height = H;
   var paintCtx = meadowPaintCanvas.getContext("2d");
+  var paintHasContent = false; // blit the layer only once a flower has stamped it
   function paintBloomTrail(x, y) {
+    paintHasContent = true;
     paintCtx.save();
     var grad = paintCtx.createRadialGradient(x, y, 0, x, y, 65);
     grad.addColorStop(0, "rgba(139,195,74,0.4)");
@@ -804,33 +504,51 @@
   var BG_LADYBUG_COUNT = 2;
   var GRASS_SPACING = 22;
 
+  // Glow looks that used to be ctx.shadowBlur, now cached glow sprites (see glowAt)
+  var FIREFLY_GLOW_R = 11, FIREFLY_GLOW_A = 0.3;
+  var PATH_HALO_A1 = 0.14, PATH_HALO_W1 = 24, PATH_HALO_A2 = 0.2, PATH_HALO_W2 = 12; // flight-path halo strokes
+  var PATH_DOT_GLOW_R = 12, PATH_DOT_GLOW_A = 0.35;
+  var RIBBON_GLOW_R0 = 14, RIBBON_GLOW_R1 = 10, RIBBON_GLOW_A = 0.36;               // drag ribbon glow stamps
+  var DUST_GLOW_R = 9, DUST_GLOW_A = 0.3;                                           // pollen dust around Buzz
+  var FLOWER_HOVER_GLOW_K = 0.33, FLOWER_GLOW_K = 0.29, FLOWER_GLOW_SPREAD = 0.95, FLOWER_GLOW_A = 1.0;           // pollinated / hovered flower halo
+  var SEA_OVERSAMPLE = 2;
+  var SMOG_WASH_COLOR = "#9a9a9a";
+
   var CRITTERS = ["🐸", "🐰"];
   var FRUITS = ["🍎", "🍇", "🍒", "🍓", "🍑"];
 
   /* ---------------- Sprites preloading ---------------- */
   var boarImg = new Image();
   boarImg.src = "assets/sprites/stage03/Boar_Run_with_shadow.png";
+  decodeImg(boarImg);
 
   var deerImg = new Image();
   deerImg.src = "assets/sprites/stage03/Deer_Run_with_shadow.png";
+  decodeImg(deerImg);
 
   var hareImg = new Image();
   hareImg.src = "assets/sprites/stage03/rabbit_run.png";
+  decodeImg(hareImg);
 
   var flowerGrowingImg = new Image();
   flowerGrowingImg.src = "assets/sprites/stage03/flower_1.png";
+  decodeImg(flowerGrowingImg);
 
   var flowerWiltingImg = new Image();
   flowerWiltingImg.src = "assets/sprites/stage03/flower_2.png";
+  decodeImg(flowerWiltingImg);
 
   var birdsImg = new Image();
   birdsImg.src = "assets/sprites/stage05/flying-birds.png";
+  decodeImg(birdsImg);
 
   var seaWedImg = new Image();
   seaWedImg.src = "assets/sprites/stage01/sea_wed.png";
+  decodeImg(seaWedImg);
 
   var seaWed2Img = new Image();
   seaWed2Img.src = "assets/sprites/stage01/sea_wed_2.png";
+  decodeImg(seaWed2Img);
 
 
   // Frame geometry below is measured directly from each PNG (sheet pixel
@@ -1019,6 +737,7 @@
     seaweedElements.sort(function (a, b) {
       return a.scale - b.scale;
     });
+    seaDirty = true; // re-bake the pre-scaled copies in drawSeaweed()
   }
   initSeaweed();
 
@@ -1041,8 +760,22 @@
     ctx.drawImage(sprite, x - sprite.width / 2, y - sprite.height / 2);
   }
 
-  function canvasPointFromEvent(e) {
-    var rect = canvas.getBoundingClientRect();
+  // The canvas rect is cached (getBoundingClientRect on every pointermove forces a
+  // layout read). It is dropped on any layout change, refreshed on pointerdown,
+  // and expires after 250 ms, so a moving/resizing frame is never mapped wrongly.
+  var canvasRectCache = null, canvasRectAt = 0;
+  function invalidateCanvasRect() { canvasRectCache = null; }
+  window.addEventListener("resize", invalidateCanvasRect);
+  window.addEventListener("orientationchange", invalidateCanvasRect);
+  window.addEventListener("scroll", invalidateCanvasRect, { passive: true, capture: true });
+  if (typeof ResizeObserver === "function") new ResizeObserver(invalidateCanvasRect).observe(canvas);
+  function canvasPointFromEvent(e, fresh) {
+    var now = performance.now();
+    if (fresh || !canvasRectCache || now - canvasRectAt > 250) {
+      canvasRectCache = canvas.getBoundingClientRect();
+      canvasRectAt = now;
+    }
+    var rect = canvasRectCache;
     var scaleX = W / rect.width;
     var scaleY = H / rect.height;
     return {
@@ -1051,8 +784,42 @@
     };
   }
 
+  // Active flowers, collected into one reused array (callers read it right away
+  // and never keep it across frames).
+  var activeScratch = [];
   function activeFlowers() {
-    return flowers.filter(function (f) { return f.state === "active"; });
+    activeScratch.length = 0;
+    for (var i = 0; i < flowers.length; i++) {
+      if (flowers[i].state === "active") activeScratch.push(flowers[i]);
+    }
+    return activeScratch;
+  }
+
+  // Trail points ({x, y[, age]}) are recycled instead of allocated + shifted away
+  // 60 times a second while Buzz flies.
+  var trailPool = [];
+  function pushTrail(arr, x, y, withAge) {
+    var p;
+    if (arr.length >= BUZZ_TRAIL_MAX) p = arr.shift();
+    else p = trailPool.pop() || { x: 0, y: 0, age: 0 };
+    p.x = x; p.y = y;
+    if (withAge) p.age = 0;
+    arr.push(p);
+  }
+  function ageTrail(arr, dt) {
+    for (var i = 0; i < arr.length; i++) arr[i].age += dt;
+    while (arr.length && arr[0].age > BUZZ_TRAIL_LIFE) trailPool.push(arr.shift());
+  }
+
+  // Cached soft glows — replaces ctx.shadowBlur (a per-draw blur pass). One
+  // canonical sprite per colour and size class, drawn scaled to the requested
+  // radius, so a continuously changing radius never rebuilds anything.
+  function glowAt(color, r, x, y, alpha) {
+    var c = GOGEngine.glowSprite(color, r <= 20 ? 16 : 64);
+    var prev = ctx.globalAlpha;
+    ctx.globalAlpha = prev * alpha;
+    ctx.drawImage(c, x - r, y - r, r * 2, r * 2);
+    ctx.globalAlpha = prev;
   }
 
   /* ---------------- Buzz (player bee) ---------------- */
@@ -1115,14 +882,12 @@
       buzz.angle += (targetAngle - buzz.angle) * Math.min(1, dt * 10);
 
       // Sample the buzzing/motion-blur trail from the EASED position.
-      buzz.trail.push({ x: buzz.x, y: buzz.y, age: 0 });
-      if (buzz.trail.length > BUZZ_TRAIL_MAX) buzz.trail.shift();
+      pushTrail(buzz.trail, buzz.x, buzz.y, true);
 
       // Also feed the ribbon polyline (dragTrail) from the same eased
       // position — this is what gives the ribbon its natural curve, since
       // Buzz always lags slightly behind the raw pointer.
-      dragTrail.push({ x: buzz.x, y: buzz.y });
-      if (dragTrail.length > BUZZ_TRAIL_MAX) dragTrail.shift();
+      pushTrail(dragTrail, buzz.x, buzz.y, false);
 
       // Periodic spark particles along the flight path (pooled system).
       buzz.emitTimer -= dt;
@@ -1207,10 +972,7 @@
     }
 
     // Age out and cull the motion-blur trail.
-    for (var bt = buzz.trail.length - 1; bt >= 0; bt--) {
-      buzz.trail[bt].age += dt;
-      if (buzz.trail[bt].age > BUZZ_TRAIL_LIFE) buzz.trail.splice(bt, 1);
-    }
+    ageTrail(buzz.trail, dt);
   }
 
   /* ---------------- Ambient background ----------------
@@ -1517,6 +1279,7 @@ flowers.push({
     fruitIdSeq = 1;
     hotStreakAnnounced = false; // T044
     paintCtx.clearRect(0, 0, W, H); // T042: fresh meadow each round
+    paintHasContent = false;
     if (activeOverlay) {
       GOGUi.closeOverlay(activeOverlay);
       activeOverlay = null;
@@ -1629,7 +1392,7 @@ flowers.push({
     if (audio._bgMusic) {
       var maxVol = audio._bgmMaxVol !== undefined ? audio._bgmMaxVol : 0.5;
       var targetVol = maxVol * (1 - smogAlpha * 0.7);
-      audio._bgMusic.volume = targetVol;
+      audio.setBgmVolume(targetVol); // change-only: no per-step player write
     }
 
     // Lerp rainbowAlpha: show fully on win, show partially on high combos
@@ -1870,8 +1633,7 @@ flowers.push({
         var ease = easeAmount(dt, 5);
         buzz.x += (buzz.restX - buzz.x) * ease;
         buzz.y += (buzz.restY - buzz.y) * ease;
-        buzz.trail.push({ x: buzz.x, y: buzz.y, age: 0 });
-        if (buzz.trail.length > BUZZ_TRAIL_MAX) buzz.trail.shift();
+        pushTrail(buzz.trail, buzz.x, buzz.y, true);
 
         // Spawn falling sparkles/stars
         if (Math.random() < 0.28) {
@@ -1925,25 +1687,39 @@ flowers.push({
   }
 
   var lastShownPollinated = 0;
+  // HUD writes go through GOGUi.setText/setClass/setStyle (change-only), and the
+  // strings are only built when a value actually changed — update() runs 60x/s.
+  var hudScore = -1, hudCombo = -1, hudPollinated = -1, hudSecs = -1;
   function updateHUD() {
-    scoreChip.textContent = score;
-
-    comboChip.textContent = "🔥 x" + combo;
-    comboChip.classList.remove("combo-warm", "combo-hot");
-    if (combo >= 8) comboChip.classList.add("combo-hot");
-    else if (combo >= 4) comboChip.classList.add("combo-warm");
-
-    var shownPollinated = Math.min(pollinatedCount, WIN_TARGET);
-    progressVal.textContent = shownPollinated;
-    if (shownPollinated !== lastShownPollinated) {
-      lastShownPollinated = shownPollinated;
-      if (window.GOGUi) window.GOGUi.restartAnimation(progressVal, "progress-pop");
+    if (score !== hudScore) {
+      hudScore = score;
+      GOGUi.setText(scoreChip, score);
     }
-    progressFill.style.width = Math.min(100, (pollinatedCount / WIN_TARGET) * 100) + "%";
+
+    if (combo !== hudCombo) {
+      hudCombo = combo;
+      GOGUi.setText(comboChip, "🔥 x" + combo);
+      GOGUi.setClass(comboChip, "combo-hot", combo >= 8);
+      GOGUi.setClass(comboChip, "combo-warm", combo < 8 && combo >= 4);
+    }
+
+    if (pollinatedCount !== hudPollinated) {
+      hudPollinated = pollinatedCount;
+      var shownPollinated = Math.min(pollinatedCount, WIN_TARGET);
+      GOGUi.setText(progressVal, shownPollinated);
+      if (shownPollinated !== lastShownPollinated) {
+        lastShownPollinated = shownPollinated;
+        if (window.GOGUi) window.GOGUi.restartAnimation(progressVal, "progress-pop");
+      }
+      GOGUi.setStyle(progressFill, "width", Math.min(100, (pollinatedCount / WIN_TARGET) * 100) + "%");
+    }
 
     var secs = Math.ceil(sessionTimeLeft / 1000);
-    timerChip.textContent = Math.max(0, secs) + "s";
-    timerChip.classList.toggle("timer-danger", secs <= 15 && gameState === "playing");
+    if (secs !== hudSecs) {
+      hudSecs = secs;
+      GOGUi.setText(timerChip, Math.max(0, secs) + "s");
+    }
+    GOGUi.setClass(timerChip, "timer-danger", secs <= 15 && gameState === "playing");
   }
 
   /* ---------------- Meadow backdrop ----------------
@@ -2049,10 +1825,14 @@ flowers.push({
   }
 
   /* ---------------- Draw ---------------- */
-  // Static gradients are built ONCE and reused — only the sun glow below is
-  // rebuilt per frame, because its center actually drifts. This is the same
-  // lesson from Stage 1: per-frame gradient object creation causes GC
-  // stutter, so anything that doesn't change gets cached.
+  // Every gradient is built ONCE and reused (the drifting sun glow, the smog
+  // haze/blobs and the win wipe are pre-rendered sprites that are moved/scaled
+  // at draw time). This is the same lesson from Stage 1: per-frame gradient
+  // object creation causes GC stutter, so anything that doesn't change gets cached.
+  var sunGlowSprite = null;
+  var smogHazeSprite = null;  // full-frame grey radial haze (drawn stretched)
+  var smogBlobSprite = null;  // one soft smog blob, scaled to each cloud's radius
+  var wipeSprite = null;      // win-wipe radial gradient, scaled to the wipe radius
   var skyGradientCache = null;
   function getSkyGradient() {
     if (!skyGradientCache) {
@@ -2079,13 +1859,19 @@ flowers.push({
     // sweeping rays — cheap (one radial gradient + three low-alpha rects).
     var sx = W * 0.78 + Math.sin(windPhase * 0.05) * 40;
     var sy = 70 + Math.cos(windPhase * 0.04) * 12;
-    var glow = ctx.createRadialGradient(sx, sy, 0, sx, sy, 190);
-    glow.addColorStop(0, "rgba(255,246,200,0.55)");
-    glow.addColorStop(1, "rgba(255,246,200,0)");
+    // (glow is a pre-rendered radial sprite — same gradient, no per-frame gradient object)
+    if (!sunGlowSprite) {
+      sunGlowSprite = GOGEngine.bake(380, 380, function (g) {
+        var grad = g.createRadialGradient(190, 190, 0, 190, 190, 190);
+        grad.addColorStop(0, "rgba(255,246,200,0.55)");
+        grad.addColorStop(1, "rgba(255,246,200,0)");
+        g.fillStyle = grad;
+        g.fillRect(0, 0, 380, 380);
+      }, 0.5);
+    }
     ctx.save();
     ctx.globalAlpha = ambientVividness;
-    ctx.fillStyle = glow;
-    ctx.fillRect(0, 0, W, GROUND_Y);
+    ctx.drawImage(sunGlowSprite, sx - 190, sy - 190, 380, 380);
     ctx.restore();
 
     ctx.save();
@@ -2139,65 +1925,68 @@ flowers.push({
     ctx.restore();
   }
 
+  // Blade colours only change when the bloom count or the smog level does (the
+  // smog level is quantised to 1/64 — under one colour step), so the hex maths
+  // runs a handful of times a round instead of every frame.
+  var grassKey = -1, grassRear = "", grassFront = "";
+  var grassBends = new Float32Array(Math.ceil(W / GRASS_SPACING) + 1);
+
+  // All blades of one colour/width go in ONE path (2 strokes per frame instead of
+  // ~185). Blade geometry is unchanged.
   function drawGrass() {
     ctx.save();
     ctx.lineCap = "round";
 
-    var progressPct = pollinatedCount / WIN_TARGET;
-    var rearCol = lerpColor("#7D7F4B", "#3E631A", progressPct);
-    var frontCol = lerpColor("#9BA85A", "#5C8D2B", progressPct);
-    if (smogAlpha > 0) {
-      rearCol = lerpColor(rearCol, "#555F4D", smogAlpha);
-      frontCol = lerpColor(frontCol, "#6D7863", smogAlpha);
+    var smogQ = smogAlpha > 0 ? Math.round(smogAlpha * 64) : 0;
+    var key = pollinatedCount * 128 + smogQ;
+    if (key !== grassKey) {
+      grassKey = key;
+      var progressPct = pollinatedCount / WIN_TARGET;
+      grassRear = lerpColor("#7D7F4B", "#3E631A", progressPct);
+      grassFront = lerpColor("#9BA85A", "#5C8D2B", progressPct);
+      if (smogQ > 0) {
+        grassRear = lerpColor(grassRear, "#555F4D", smogQ / 64);
+        grassFront = lerpColor(grassFront, "#6D7863", smogQ / 64);
+      }
     }
 
-    for (var x = 6; x < W; x += GRASS_SPACING) {
-      var wind = Math.sin(windPhase * 1.6 + x * 0.06);
-      var bend = wind * 6;
+    var gy = GROUND_Y + 1;
+    var n = 0, x, bend;
 
-      // --- Rear blades (darker green, slightly offset/shorter for depth) ---
-      ctx.strokeStyle = rearCol;
-      ctx.lineWidth = 2.5;
-
-      // Left rear blade
-      var hRearLeft = 10;
-      ctx.beginPath();
-      ctx.moveTo(x - 3, GROUND_Y + 1);
-      ctx.quadraticCurveTo(x - 3 - hRearLeft * 0.2 + bend * 0.6, GROUND_Y - hRearLeft * 0.4, x - 3 - 3 + bend * 0.8, GROUND_Y - hRearLeft);
-      ctx.stroke();
-
-      // Right rear blade
-      var hRearRight = 11;
-      ctx.beginPath();
-      ctx.moveTo(x + 3, GROUND_Y + 1);
-      ctx.quadraticCurveTo(x + 3 + hRearRight * 0.2 + bend * 0.6, GROUND_Y - hRearRight * 0.4, x + 3 + 2 + bend * 0.8, GROUND_Y - hRearRight);
-      ctx.stroke();
-
-      // --- Front blades (brighter/standard green) ---
-      ctx.strokeStyle = frontCol;
-      ctx.lineWidth = 3;
-
-      // Tall center blade
-      var hCenter = 16;
-      ctx.beginPath();
-      ctx.moveTo(x, GROUND_Y + 1);
-      ctx.quadraticCurveTo(x + bend * 0.6, GROUND_Y - hCenter * 0.4, x + bend, GROUND_Y - hCenter);
-      ctx.stroke();
-
-      // Left front blade
-      var hLeft = 12;
-      ctx.beginPath();
-      ctx.moveTo(x - 2, GROUND_Y + 1);
-      ctx.quadraticCurveTo(x - 2 - hLeft * 0.1 + bend * 0.6, GROUND_Y - hLeft * 0.4, x - 2 - 2 + bend * 0.8, GROUND_Y - hLeft);
-      ctx.stroke();
-
-      // Right front blade
-      var hRight = 13;
-      ctx.beginPath();
-      ctx.moveTo(x + 2, GROUND_Y + 1);
-      ctx.quadraticCurveTo(x + 2 + hRight * 0.1 + bend * 0.6, GROUND_Y - hRight * 0.4, x + 2 + 2 + bend * 0.8, GROUND_Y - hRight);
-      ctx.stroke();
+    // --- Rear blades (darker green, slightly offset/shorter for depth) ---
+    ctx.strokeStyle = grassRear;
+    ctx.lineWidth = 2.5;
+    ctx.beginPath();
+    for (x = 6; x < W; x += GRASS_SPACING) {
+      bend = Math.sin(windPhase * 1.6 + x * 0.06) * 6;
+      grassBends[n++] = bend;
+      // Left rear blade (h = 10)
+      ctx.moveTo(x - 3, gy);
+      ctx.quadraticCurveTo(x - 3 - 2 + bend * 0.6, GROUND_Y - 4, x - 6 + bend * 0.8, GROUND_Y - 10);
+      // Right rear blade (h = 11)
+      ctx.moveTo(x + 3, gy);
+      ctx.quadraticCurveTo(x + 3 + 2.2 + bend * 0.6, GROUND_Y - 4.4, x + 5 + bend * 0.8, GROUND_Y - 11);
     }
+    ctx.stroke();
+
+    // --- Front blades (brighter/standard green) ---
+    ctx.strokeStyle = grassFront;
+    ctx.lineWidth = 3;
+    ctx.beginPath();
+    n = 0;
+    for (x = 6; x < W; x += GRASS_SPACING) {
+      bend = grassBends[n++];
+      // Tall center blade (h = 16)
+      ctx.moveTo(x, gy);
+      ctx.quadraticCurveTo(x + bend * 0.6, GROUND_Y - 6.4, x + bend, GROUND_Y - 16);
+      // Left front blade (h = 12)
+      ctx.moveTo(x - 2, gy);
+      ctx.quadraticCurveTo(x - 2 - 1.2 + bend * 0.6, GROUND_Y - 4.8, x - 4 + bend * 0.8, GROUND_Y - 12);
+      // Right front blade (h = 13)
+      ctx.moveTo(x + 2, gy);
+      ctx.quadraticCurveTo(x + 2 + 1.3 + bend * 0.6, GROUND_Y - 5.2, x + 4 + bend * 0.8, GROUND_Y - 13);
+    }
+    ctx.stroke();
     ctx.restore();
   }
 
@@ -2210,9 +1999,7 @@ flowers.push({
 
   function drawBackground() {
     if (bgDirty) buildMeadowBackdrop(hiDpi.scale);
-    ctx.fillStyle = "#FDFBF7";
-    ctx.fillRect(0, 0, W, H);
-
+    // (no full-frame clear fill: the sky gradient + backdrop below cover every pixel)
     ctx.fillStyle = getSkyGradient();
     ctx.fillRect(0, 0, W, GROUND_Y);
 
@@ -2223,11 +2010,14 @@ flowers.push({
     ctx.drawImage(bgStatic, 0, 0, W, H);
 
     // T042: painted bloom trail — soft green blotches left by every
-    // pollinated flower, building up over the round.
-    ctx.save();
-    ctx.globalAlpha = Math.max(0.35, ambientVividness);
-    ctx.drawImage(meadowPaintCanvas, 0, 0);
-    ctx.restore();
+    // pollinated flower, building up over the round. Skipped until the first
+    // flower has stamped it (an empty layer is a full-frame blit for nothing).
+    if (paintHasContent) {
+      ctx.save();
+      ctx.globalAlpha = Math.max(0.35, ambientVividness);
+      ctx.drawImage(meadowPaintCanvas, 0, 0);
+      ctx.restore();
+    }
 
     drawCloudShadows();
     drawDepthFog();
@@ -2246,28 +2036,32 @@ flowers.push({
 
   /* ---------------- Ambient background drawing ---------------- */
   function drawPollenMotes() {
+    // Same colour and alpha for every mote, so they go in one path / one fill.
     ctx.save();
     ctx.fillStyle = "#FFE9A8";
+    ctx.globalAlpha = 0.5 * ambientVividness;
+    ctx.beginPath();
     for (var i = 0; i < pollenMotes.length; i++) {
       var m = pollenMotes[i];
-      var sway = Math.sin(m.swayPhase) * 10;
-      ctx.globalAlpha = 0.5 * ambientVividness;
-      ctx.beginPath();
-      ctx.arc(m.x + sway, m.y, m.r, 0, Math.PI * 2);
-      ctx.fill();
+      var px = m.x + Math.sin(m.swayPhase) * 10;
+      ctx.moveTo(px + m.r, m.y);
+      ctx.arc(px, m.y, m.r, 0, Math.PI * 2);
     }
+    ctx.fill();
     ctx.restore();
   }
 
   function drawFireflies() {
+    // A tiny gold dot over a cached soft glow (was shadowBlur 8 per firefly).
     ctx.save();
+    ctx.fillStyle = "#FFD23F";
     for (var i = 0; i < fireflies.length; i++) {
       var f = fireflies[i];
       var pulse = 0.35 + Math.sin(f.pulsePhase) * 0.35 + 0.35; // roughly 0..1
-      ctx.globalAlpha = pulse * 0.7 * ambientVividness;
-      ctx.fillStyle = "#FFD23F";
-      ctx.shadowColor = "#FFD23F";
-      ctx.shadowBlur = 8;
+      var a = pulse * 0.7 * ambientVividness;
+      if (a < 0.01) continue;
+      ctx.globalAlpha = a;
+      glowAt("#FFD23F", FIREFLY_GLOW_R, f.x, f.y, FIREFLY_GLOW_A);
       ctx.beginPath();
       ctx.arc(f.x, f.y, 2.4, 0, Math.PI * 2);
       ctx.fill();
@@ -2276,20 +2070,19 @@ flowers.push({
   }
 
   function drawFallingPetals() {
+    // Same colour and alpha for every petal; ellipse() takes the rotation, so
+    // no per-petal save/translate/rotate/restore and one fill.
     ctx.save();
     ctx.fillStyle = "#FF9FC7";
+    ctx.globalAlpha = 0.75 * ambientVividness;
+    ctx.beginPath();
     for (var i = 0; i < petals.length; i++) {
       var p = petals[i];
-      var sway = Math.sin(p.swayPhase) * 14;
-      ctx.save();
-      ctx.globalAlpha = 0.75 * ambientVividness;
-      ctx.translate(p.x + sway, p.y);
-      ctx.rotate(p.rot);
-      ctx.beginPath();
-      ctx.ellipse(0, 0, p.size, p.size * 0.5, 0, 0, Math.PI * 2);
-      ctx.fill();
-      ctx.restore();
+      var px = p.x + Math.sin(p.swayPhase) * 14;
+      ctx.moveTo(px + Math.cos(p.rot) * p.size, p.y + Math.sin(p.rot) * p.size);
+      ctx.ellipse(px, p.y, p.size, p.size * 0.5, p.rot, 0, Math.PI * 2);
     }
+    ctx.fill();
     ctx.restore();
   }
 
@@ -2412,12 +2205,15 @@ flowers.push({
     ctx.restore();
   }
 
+  // The smog used to be washed out with a full-frame globalCompositeOperation
+  // "color" fill — a per-pixel read-modify-write over the whole canvas. A plain
+  // source-over grey at the same alpha gives the same muted look (the 34% grey
+  // haze from drawSmog() is already on top) at a fraction of the cost.
   function drawSmogDesaturation() {
     if (smogAlpha <= 0.001) return;
     ctx.save();
     ctx.globalAlpha = smogAlpha * 0.55;
-    ctx.globalCompositeOperation = "color";
-    ctx.fillStyle = "#666666";
+    ctx.fillStyle = SMOG_WASH_COLOR;
     ctx.fillRect(0, 0, W, H);
     ctx.restore();
   }
@@ -2441,13 +2237,19 @@ flowers.push({
     ctx.restore();
   }
 
+  var stemColKey = -1, stemColVal = "";
   function drawFlowerStem(f, bendAmt, topX, topY) {
     ctx.save();
-    // Greener grass/stem progression
-    var progressPct = pollinatedCount / WIN_TARGET;
-    var stemCol = lerpColor("#4CAF50", "#2E7D32", progressPct);
+    // Greener grass/stem progression (colour memoised per bloom count)
+    var stemCol;
     if (f.state === "wilted") {
       stemCol = "#795548"; // brown withered stem
+    } else {
+      if (stemColKey !== pollinatedCount) {
+        stemColKey = pollinatedCount;
+        stemColVal = lerpColor("#4CAF50", "#2E7D32", pollinatedCount / WIN_TARGET);
+      }
+      stemCol = stemColVal;
     }
     ctx.strokeStyle = stemCol;
     ctx.lineWidth = 3.5;
@@ -2524,21 +2326,51 @@ flowers.push({
     ctx.restore();
   }
 
+  // The 793x766 / 613x714 sheets used to be minified from full size 14 times a
+  // frame. Each type is baked once at 2x its largest on-screen size (so the
+  // per-frame blit is still a minification, which keeps the crisp look of the
+  // original sampling) and re-baked on a bitmap resize; each plant then scales
+  // down from that small copy.
+  var seaBaked = [null, null], seaBakedScale = [0, 0];
+  function bakeSeaweed() {
+    var imgs = [seaWedImg, seaWed2Img];
+    var maxScale = [0, 0];
+    for (var i = 0; i < seaweedElements.length; i++) {
+      var sw0 = seaweedElements[i];
+      if (sw0.scale > maxScale[sw0.type]) maxScale[sw0.type] = sw0.scale;
+    }
+    for (var t = 0; t < 2; t++) {
+      var img = imgs[t], ms = maxScale[t];
+      seaBaked[t] = null;
+      if (!ms) continue;
+      var dw = img.naturalWidth * ms, dh = img.naturalHeight * ms;
+      seaBaked[t] = GOGEngine.bake(dw, dh, function (g) {
+        g.imageSmoothingQuality = "low";
+        g.drawImage(img, 0, 0, dw, dh);
+      }, hiDpi.scale * SEA_OVERSAMPLE);
+      seaBakedScale[t] = ms;
+    }
+    seaDirty = false;
+  }
+
   function drawSeaweed() {
-    if (!seaWedImg.complete || !seaWed2Img.complete) return;
+    if (!seaWedImg.complete || !seaWed2Img.complete || !seaWedImg.naturalWidth || !seaWed2Img.naturalWidth) return;
+    if (seaDirty) bakeSeaweed();
     ctx.save();
+    var vivid = Math.max(0.4, ambientVividness);
     for (var i = 0; i < seaweedElements.length; i++) {
       var sw = seaweedElements[i];
-      ctx.save();
+      var spr = seaBaked[sw.type];
+      if (!spr) continue;
+      var k = sw.scale / seaBakedScale[sw.type];
+      var dw = spr.gw * k, dh = spr.gh * k;
       var sway = Math.sin(windPhase * sw.speed + sw.phase) * 0.08;
-      var img = sw.type === 0 ? seaWedImg : seaWed2Img;
-      // Calculate how much we need to offset downward to hide the rocky base (about 42% of the scaled height)
-      var rockOffset = img.height * sw.scale * 0.42;
-      ctx.translate(sw.x, sw.y + rockOffset);
+      // Offset downward to hide the rocky base (about 42% of the scaled height)
+      ctx.save();
+      ctx.translate(sw.x, sw.y + dh * 0.42);
       ctx.rotate(sway);
-      ctx.scale(sw.scale, sw.scale);
-      ctx.globalAlpha = sw.opacity * Math.max(0.4, ambientVividness);
-      ctx.drawImage(img, -img.width / 2, -img.height);
+      ctx.globalAlpha = sw.opacity * vivid;
+      ctx.drawImage(spr, -dw / 2, -dh, dw, dh);
       ctx.restore();
     }
     ctx.restore();
@@ -2569,14 +2401,14 @@ flowers.push({
     ctx.restore();
   }
 
-  // Point on a quadratic bezier at t in [0,1]. Pure/allocation-light: reused
-  // by both the flight-path arcs and (in a later patch) other ribbon FX.
+  // Point on a quadratic bezier at t in [0,1]. Writes into one shared point (the
+  // caller reads it straight away) instead of allocating {x, y} per call.
+  var bezierTmp = { x: 0, y: 0 };
   function bezierPoint(t, x1, y1, cx, cy, x2, y2) {
     var mt = 1 - t;
-    return {
-      x: mt * mt * x1 + 2 * mt * t * cx + t * t * x2,
-      y: mt * mt * y1 + 2 * mt * t * cy + t * t * y2
-    };
+    bezierTmp.x = mt * mt * x1 + 2 * mt * t * cx + t * t * x2;
+    bezierTmp.y = mt * mt * y1 + 2 * mt * t * cy + t * t * y2;
+    return bezierTmp;
   }
 
   function drawFlightPaths() {
@@ -2586,36 +2418,40 @@ flowers.push({
       var fade = Math.max(0, 1 - t);
 
       // Glowing pollen-ribbon arc (quadratic bezier, not a straight line —
-      // this is the "swoop" a bee actually flies between two flowers).
+      // this is the "swoop" a bee actually flies between two flowers). The soft
+      // pink halo is two wider, fainter strokes under the ribbon (was shadowBlur 16).
       ctx.save();
-      ctx.globalAlpha = fade * 0.85;
       ctx.lineCap = "round";
-      ctx.shadowColor = "#FF9FC7";
-      ctx.shadowBlur = 16;
-      ctx.strokeStyle = "#FF007F";
-      ctx.lineWidth = 5 * fade + 1.5;
+      var lw = 5 * fade + 1.5;
       ctx.beginPath();
       ctx.moveTo(p.x1, p.y1);
       ctx.quadraticCurveTo(p.cx, p.cy, p.x2, p.y2);
+      ctx.strokeStyle = "#FF9FC7";
+      ctx.globalAlpha = fade * 0.85 * PATH_HALO_A1;
+      ctx.lineWidth = lw + PATH_HALO_W1;
       ctx.stroke();
-      ctx.restore();
+      ctx.globalAlpha = fade * 0.85 * PATH_HALO_A2;
+      ctx.lineWidth = lw + PATH_HALO_W2;
+      ctx.stroke();
+      ctx.globalAlpha = fade * 0.85;
+      ctx.strokeStyle = "#FF007F";
+      ctx.lineWidth = lw;
+      ctx.stroke();
 
       // Three staggered glowing dots travel along the curve as it fades,
       // tracing the path Buzz just flew.
+      ctx.globalAlpha = fade;
+      ctx.fillStyle = "#FFD23F";
       for (var d = 0; d < 3; d++) {
         var dt2 = Collision.clamp(t * 1.4 - d * 0.18, 0, 1);
         if (dt2 <= 0 || dt2 >= 1) continue;
         var pos = bezierPoint(dt2, p.x1, p.y1, p.cx, p.cy, p.x2, p.y2);
-        ctx.save();
-        ctx.globalAlpha = fade;
-        ctx.fillStyle = "#FFD23F";
-        ctx.shadowColor = "#FFD23F";
-        ctx.shadowBlur = 10;
+        glowAt("#FFD23F", PATH_DOT_GLOW_R, pos.x, pos.y, PATH_DOT_GLOW_A);
         ctx.beginPath();
         ctx.arc(pos.x, pos.y, 4, 0, Math.PI * 2);
         ctx.fill();
-        ctx.restore();
       }
+      ctx.restore();
     }
   }
 
@@ -2718,6 +2554,7 @@ flowers.push({
           var growScale = 1.0;
           var frameIndex = 0; // 0 = Bud
 
+          var glowColor = null, glowSpread = 0, glowK = FLOWER_GLOW_K; // soft halo behind the sprite (was shadowBlur)
           var finalFrame = 1; // Pink
           if (f.variety === 1 || f.variety === 3) finalFrame = 2; // Yellow
           else if (f.variety === 2) finalFrame = 3; // Blue
@@ -2740,8 +2577,8 @@ flowers.push({
               } else {
                 frameIndex = finalFrame;
                 // Magical neon glow around Yellow/Blue pollinated flowers
-                ctx.shadowColor = (finalFrame === 2) ? "#FFD500" : "#00D5FF";
-                ctx.shadowBlur = 25;
+                glowColor = (finalFrame === 2) ? "#FFD500" : "#00D5FF";
+                glowSpread = 25;
               }
             } else {
               frameIndex = finalFrame;
@@ -2750,8 +2587,9 @@ flowers.push({
 
           // Active hover/drag glowing effect
           if (f.state === "active" && (hoverTargetId === f.id || dragSourceId === f.id)) {
-            ctx.shadowColor = "#FFD500";
-            ctx.shadowBlur = 15;
+            glowColor = "#FFD500";
+            glowSpread = 15;
+            glowK = FLOWER_HOVER_GLOW_K;
           }
 
           var sw = 152;
@@ -2767,6 +2605,10 @@ flowers.push({
             var popScale = 1.35 + Math.sin(pT * Math.PI) * 0.35;
             dw *= popScale;
             dh *= popScale;
+          }
+
+          if (glowColor) {
+            glowAt(glowColor, Math.max(dw, dh) * glowK + glowSpread * FLOWER_GLOW_SPREAD, 0, -dh * 0.6, FLOWER_GLOW_A);
           }
 
           // Draw the sprite centered horizontally at root, and baseline at root
@@ -2833,21 +2675,29 @@ flowers.push({
   // Live "pollen ribbon" while actively dragging. Drawn as short segments
   // (not one long stroke) so each segment can fade independently by age —
   // dragTrail is capped at BUZZ_TRAIL_MAX points, so this is at most ~19
-  // segments × 2 stroke calls, only while a drag is in progress.
+  // segments × 2 stroke calls, only while a drag is in progress. The golden
+  // glow is a cached sprite stamped on each trail point (was a 20px shadowBlur
+  // on every segment, the heaviest thing in the stage).
   function drawFlightRibbon() {
     if (!dragging || dragTrail.length < 2) return;
     ctx.save();
     ctx.lineCap = "round";
     ctx.lineJoin = "round";
     var n = dragTrail.length;
-    for (var i = 1; i < n; i++) {
-      var a = i / n; // 0 = oldest/tail (faded), 1 = newest/head (bright)
-      var p0 = dragTrail[i - 1], p1 = dragTrail[i];
-
-      // Outer golden glow pass
+    var a, p0, p1, i;
+    for (i = 1; i < n; i++) {
+      a = i / n;
+      p1 = dragTrail[i];
       ctx.globalAlpha = a * 0.75;
-      ctx.shadowColor = "#FFD23F";
-      ctx.shadowBlur = 20;
+      glowAt("#FFD23F", RIBBON_GLOW_R0 + RIBBON_GLOW_R1 * a, p1.x, p1.y, RIBBON_GLOW_A);
+    }
+    for (i = 1; i < n; i++) {
+      a = i / n; // 0 = oldest/tail (faded), 1 = newest/head (bright)
+      p0 = dragTrail[i - 1];
+      p1 = dragTrail[i];
+
+      // Outer golden pass
+      ctx.globalAlpha = a * 0.75;
       ctx.strokeStyle = "#FFA800";
       ctx.lineWidth = 10 * a + 3;
       ctx.beginPath();
@@ -2856,7 +2706,6 @@ flowers.push({
       ctx.stroke();
 
       // Bright yellow-white core
-      ctx.shadowBlur = 0;
       ctx.globalAlpha = a * 0.95;
       ctx.strokeStyle = "#FFFFDD";
       ctx.lineWidth = 3 * a + 1;
@@ -2933,18 +2782,42 @@ flowers.push({
   // Buzz himself: motion-blur trail dots and the animated sprite sheet
   // — all transformed with a single translate/rotate/scale so banking +
   // squash/stretch apply consistently to every part.
+  // Buzz's 8 wing-flap frames are 256px cells drawn at 64px: baked once into a
+  // small sheet (cells at ~1.4x the largest on-screen size) instead of
+  // minifying the 1024x502 image 4:1 every frame. Same frame rects, so the
+  // clipping of the short second row is identical to drawing from the source.
+  var beeBaked = null, beeCell = 0;
+  function bakeBeeFrames() {
+    var s = Math.ceil(hiDpi.scale * 1.4 * 4) / 4; // whole pixels per cell
+    var S = BUZZ_SPRITE_SIZE;
+    beeBaked = GOGEngine.bake(BEES_SHEET_COLS * S, BEES_SHEET_ROWS * S, function (g) {
+      g.imageSmoothingQuality = "high";
+      for (var f = 0; f < BEES_FRAME_COUNT; f++) {
+        var col = f % BEES_SHEET_COLS, row = Math.floor(f / BEES_SHEET_COLS);
+        g.drawImage(beesFlyingSpriteSheet,
+          col * BEES_SHEET_FRAME_WIDTH, row * BEES_SHEET_FRAME_HEIGHT, BEES_SHEET_FRAME_WIDTH, BEES_SHEET_FRAME_HEIGHT,
+          col * S, row * S, S, S);
+      }
+    }, s);
+    beeCell = S * s;
+    beeDirty = false;
+  }
+
   function drawBuzz() {
     if (gameState !== "playing") return;
 
-    for (var i = 0; i < buzz.trail.length; i++) {
-      var pt = buzz.trail[i];
-      var a = 1 - pt.age / BUZZ_TRAIL_LIFE;
+    // motion-blur trail dots
+    if (buzz.trail.length) {
       ctx.save();
-      ctx.globalAlpha = a * 0.35;
       ctx.fillStyle = "#FFD23F";
-      ctx.beginPath();
-      ctx.arc(pt.x, pt.y, 5 * a, 0, Math.PI * 2);
-      ctx.fill();
+      for (var i = 0; i < buzz.trail.length; i++) {
+        var pt = buzz.trail[i];
+        var a = 1 - pt.age / BUZZ_TRAIL_LIFE;
+        ctx.globalAlpha = a * 0.35;
+        ctx.beginPath();
+        ctx.arc(pt.x, pt.y, 5 * a, 0, Math.PI * 2);
+        ctx.fill();
+      }
       ctx.restore();
     }
 
@@ -2952,16 +2825,15 @@ flowers.push({
     // touches flower A until she drops it off on flower B (drag = in flight).
     if (dragging) {
       ctx.save();
+      ctx.fillStyle = "#FFE066";
+      ctx.globalAlpha = 0.8;
       var pdN = 4;
       for (var pd = 0; pd < pdN; pd++) {
         var pAngle = buzz.wingPhase * 0.5 + (pd / pdN) * Math.PI * 2;
         var pRad = 18 + Math.sin(buzz.wingPhase * 0.4 + pd) * 4;
         var px = buzz.x + Math.cos(pAngle) * pRad;
         var py = buzz.y + Math.sin(pAngle) * pRad * 0.6 - 4;
-        ctx.globalAlpha = 0.8;
-        ctx.fillStyle = "#FFE066";
-        ctx.shadowColor = "#FFD23F";
-        ctx.shadowBlur = 8;
+        glowAt("#FFD23F", DUST_GLOW_R, px, py, DUST_GLOW_A);
         ctx.beginPath();
         ctx.arc(px, py, 3, 0, Math.PI * 2);
         ctx.fill();
@@ -2974,18 +2846,17 @@ flowers.push({
     ctx.rotate(buzz.angle);
     ctx.scale(buzz.scaleX, buzz.scaleY);
 
-    // Use sprite sheet with better error handling and frame calculation
+    // Use the baked sprite sheet with better error handling and frame calculation
     if (beeSheetLoaded && beesFlyingSpriteSheet.complete && beesFlyingSpriteSheet.naturalWidth > 0) {
       try {
+        if (beeDirty || !beeBaked) bakeBeeFrames();
         var col = buzz.frameIndex % BEES_SHEET_COLS;
         var row = Math.floor(buzz.frameIndex / BEES_SHEET_COLS);
-        var sx = col * BEES_SHEET_FRAME_WIDTH;
-        var sy = row * BEES_SHEET_FRAME_HEIGHT;
 
         ctx.drawImage(
-          beesFlyingSpriteSheet,
-          sx, sy,
-          BEES_SHEET_FRAME_WIDTH, BEES_SHEET_FRAME_HEIGHT,
+          beeBaked,
+          col * beeCell, row * beeCell,
+          beeCell, beeCell,
           -BUZZ_SPRITE_SIZE / 2, -BUZZ_SPRITE_SIZE / 2,
           BUZZ_SPRITE_SIZE, BUZZ_SPRITE_SIZE
         );
@@ -3160,25 +3031,35 @@ flowers.push({
     }
   }
 
-  function drawSmog() {
-    if (smogAlpha <= 0.001) return;
-    ctx.save();
-    ctx.globalAlpha = smogAlpha;
-    var grad = ctx.createRadialGradient(W / 2, H / 2, 40, W / 2, H / 2, W * 0.7);
-    grad.addColorStop(0, "#8a8a8a");
-    grad.addColorStop(1, "#4a4a4a");
-    ctx.fillStyle = grad;
-    ctx.fillRect(0, 0, W, H);
-
-    for (var i = 0; i < smogClouds.length; i++) {
-      var cl = smogClouds[i];
-      var cg = ctx.createRadialGradient(cl.x, cl.y, 0, cl.x, cl.y, cl.r);
+  // Smog haze + blobs are pre-rendered once (they used to be 1 + 6 radial
+  // gradients created per frame). The haze is smooth, so it is baked at half
+  // resolution and stretched.
+  function bakeSmog() {
+    smogHazeSprite = GOGEngine.bake(W, H, function (g) {
+      var grad = g.createRadialGradient(W / 2, H / 2, 40, W / 2, H / 2, W * 0.7);
+      grad.addColorStop(0, "#8a8a8a");
+      grad.addColorStop(1, "#4a4a4a");
+      g.fillStyle = grad;
+      g.fillRect(0, 0, W, H);
+    }, 0.5);
+    smogBlobSprite = GOGEngine.bake(256, 256, function (g) {
+      var cg = g.createRadialGradient(128, 128, 0, 128, 128, 128);
       cg.addColorStop(0, "rgba(60,60,60,0.65)");
       cg.addColorStop(1, "rgba(60,60,60,0)");
-      ctx.fillStyle = cg;
-      ctx.beginPath();
-      ctx.arc(cl.x, cl.y, cl.r, 0, Math.PI * 2);
-      ctx.fill();
+      g.fillStyle = cg;
+      g.fillRect(0, 0, 256, 256);
+    }, 1);
+  }
+
+  function drawSmog() {
+    if (smogAlpha <= 0.001) return;
+    if (!smogHazeSprite) bakeSmog();
+    ctx.save();
+    ctx.globalAlpha = smogAlpha;
+    ctx.drawImage(smogHazeSprite, 0, 0, W, H);
+    for (var i = 0; i < smogClouds.length; i++) {
+      var cl = smogClouds[i];
+      ctx.drawImage(smogBlobSprite, cl.x - cl.r, cl.y - cl.r, cl.r * 2, cl.r * 2);
     }
     ctx.restore();
   }
@@ -3186,18 +3067,26 @@ flowers.push({
   function drawWinWipe() {
     if (gameState !== "winning" && gameState !== "win") return;
     var r = gameState === "win" ? winWipeMax : winWipeRadius;
-    ctx.save();
-    ctx.beginPath();
-    ctx.arc(W / 2, H / 2, r, 0, Math.PI * 2);
-    ctx.clip();
-    var grad = ctx.createRadialGradient(W / 2, H / 2, 0, W / 2, H / 2, r || 1);
-    grad.addColorStop(0, "#FFD23F");
-    grad.addColorStop(0.55, "#FF9FC7");
-    grad.addColorStop(1, "#7CB342");
-    ctx.globalAlpha = 0.85;
-    ctx.fillStyle = grad;
-    ctx.fillRect(0, 0, W, H);
-    ctx.restore();
+    if (r > 0) {
+      if (!wipeSprite) {
+        // same 3-stop gradient as before, rendered once; scaled to the wipe radius
+        wipeSprite = GOGEngine.bake(512, 512, function (g) {
+          var grad = g.createRadialGradient(256, 256, 0, 256, 256, 256);
+          grad.addColorStop(0, "#FFD23F");
+          grad.addColorStop(0.55, "#FF9FC7");
+          grad.addColorStop(1, "#7CB342");
+          g.fillStyle = grad;
+          g.fillRect(0, 0, 512, 512);
+        }, 1);
+      }
+      ctx.save();
+      ctx.beginPath();
+      ctx.arc(W / 2, H / 2, r, 0, Math.PI * 2);
+      ctx.clip();
+      ctx.globalAlpha = 0.85;
+      ctx.drawImage(wipeSprite, W / 2 - r, H / 2 - r, r * 2, r * 2);
+      ctx.restore();
+    }
 
     // ring edge for juice
     if (gameState === "winning") {
@@ -3212,6 +3101,8 @@ flowers.push({
   }
 
   function draw() {
+    // The "How to play" pop-up is open: nothing moves behind it, skip the work.
+    if (GOGUi.paused) return;
     ctx.save();
     if (screenShake > 0) {
       var dx = (Math.random() - 0.5) * screenShake;
@@ -3250,7 +3141,7 @@ flowers.push({
   /* ---------------- Pointer / input ---------------- */
   canvas.addEventListener("pointerdown", function (e) {
     if (gameState !== "playing") return;
-    var p = canvasPointFromEvent(e);
+    var p = canvasPointFromEvent(e, true); // a press always re-reads the rect
     var f = findFlowerAt(p.x, p.y, null);
     lastActionAt = performance.now();
     if (f) {
@@ -3259,6 +3150,7 @@ flowers.push({
       dragSourceId = f.id;
       dragTrail = [{ x: f.x, y: f.y }];
       dragCurrent = { x: p.x, y: p.y };
+      GOGEngine.requestDraw();
       buzzTakeoff(f.x, f.y); // Buzz launches from the source flower with a takeoff stretch
       try { canvas.setPointerCapture(e.pointerId); } catch (err) {}
     }
@@ -3273,6 +3165,7 @@ flowers.push({
     // animation frame, so the path curves naturally instead of jittering
     // with raw pointer-event frequency.
     dragCurrent = p;
+    GOGEngine.requestDraw(); // the drag preview must repaint even on a 0-step frame
 
     var target = findFlowerAt(p.x, p.y, dragSourceId);
     hoverTargetId = target ? target.id : null;
@@ -3283,7 +3176,10 @@ flowers.push({
     if (!dragging) return;
     var p = e ? canvasPointFromEvent(e) : dragCurrent;
     var target = findFlowerAt(p.x, p.y, dragSourceId);
-    var source = flowers.filter(function (f) { return f.id === dragSourceId; })[0];
+    var source = null;
+    for (var si = 0; si < flowers.length; si++) {
+      if (flowers[si].id === dragSourceId) { source = flowers[si]; break; }
+    }
     var success = !!(target && source && source.state === "active" && target.state === "active");
 
     if (success) {

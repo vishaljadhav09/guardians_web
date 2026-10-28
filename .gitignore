@@ -1,2 +1,7 @@
 .claude
 CLAUDE.md
+tools/qa/node_modules
+tools/qa/out
+
+# dev-only asset tooling deps
+tools/assets/node_modules

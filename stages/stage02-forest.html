@@ -6,313 +6,21 @@
     <title>Ravi & the Canopy Call - Guardians of Gaia</title>
     <link rel="stylesheet" href="../src/styles.css" />
     <style>
-      .stage-wrap {
-        width: min(1180px, calc(100vw - 28px));
-        max-width: 1180px;
-        margin: 0 auto;
-        padding: 12px 0 32px;
-        animation: pageFadeIn 0.5s ease both;
-      }
-
-      .stage-hud {
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-        gap: 10px;
-        flex-wrap: wrap;
-        margin-bottom: 12px;
-      }
-
-      .stage-title {
-        display: flex;
-        align-items: center;
-        gap: 10px;
-      }
-
-      .stage-title h1 {
-        font-size: 1.25rem;
-      }
-
+      /* Page shell (HUD, title, meters, chips, buttons, canvas-frame base, the
+         <=1200px compact HUD) lives in src/styles.css — only stage colours are
+         styled here. */
       .stage-title small {
-        display: block;
-        font-family: var(--gog-font-hand);
-        font-size: 1rem;
         color: #4d5c37;
       }
 
-      .hud-mid {
-        display: flex;
-        align-items: center;
-        gap: 14px;
-        flex-wrap: wrap;
-      }
-
-      .meter {
-        display: flex;
-        align-items: center;
-        gap: 8px;
-        background: var(--gog-white);
-        border: 3px solid var(--gog-ink);
-        border-radius: 999px;
-        padding: 6px 14px 6px 10px;
-        box-shadow: var(--gog-shadow-sm);
-        min-width: 168px;
-        position: relative;
-      }
-
-      .meter .label,
-      .meter .meter-track {
-        position: relative;
-        z-index: 2;
-      }
-
-      .meter .label {
-        font-size: 0.78rem;
-        font-weight: 700;
-        white-space: nowrap;
-      }
-
       .meter-track {
-        flex: 1;
-        height: 10px;
-        border-radius: 999px;
         background: #dfe8cf;
-        border: 2px solid var(--gog-ink);
-        overflow: hidden;
       }
 
       .meter-fill {
         height: 100%;
         width: 42%;
         background: linear-gradient(90deg, #c9f23d, #2fbf71);
-      }
-
-      .timer-chip {
-        font-weight: 700;
-        min-width: 64px;
-        text-align: center;
-      }
-
-      .canvas-frame {
-        position: relative;
-        width: 100%;
-        aspect-ratio: 16 / 10;
-        overflow: hidden;
-        max-height: calc(100vh - 220px);
-
-        transition:
-          border-color 0.2s,
-          box-shadow 0.2s;
-      }
-
-      canvas {
-        width: 100%;
-        height: 100%;
-        display: block;
-        touch-action: none;
-        cursor: crosshair;
-      }
-
-      .stage-controls {
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        margin-top: 12px;
-        gap: 10px;
-        flex-wrap: wrap;
-      }
-
-      .calm-badge {
-        font-size: 0.78rem;
-        font-weight: 700;
-        animation: fadeInUp 0.6s ease both;
-      }
-
-      .icon-btn {
-        width: 42px;
-        height: 42px;
-        min-width: 42px;
-        display: inline-flex;
-        align-items: center;
-        justify-content: center;
-        background: var(--gog-white);
-        border: 3px solid var(--gog-ink);
-        border-radius: 50%;
-        box-shadow: 3px 3px 0 var(--gog-ink);
-        font-size: 1.15rem;
-        line-height: 1;
-        touch-action: manipulation;
-      }
-
-      @media (max-width: 700px) {
-        .stage-wrap {
-          width: calc(100vw - 12px);
-          max-width: 100%;
-          padding: 6px 0 18px;
-        }
-
-        .stage-hud {
-          display: grid;
-          grid-template-columns: minmax(0, 1fr);
-          gap: 6px;
-          margin-bottom: 8px;
-        }
-
-        .stage-title {
-          gap: 6px;
-          min-width: 0;
-        }
-
-        .stage-title .emoji-float {
-          font-size: 1.35rem !important;
-        }
-
-        .stage-title h1 {
-          font-size: 0.98rem;
-          line-height: 1;
-        }
-
-        .stage-title small {
-          display: none;
-        }
-
-        .hud-mid {
-          display: grid;
-          grid-template-columns: minmax(128px, 1fr) repeat(4, auto);
-          gap: 5px;
-          align-items: center;
-          width: 100%;
-        }
-
-        .meter {
-          min-width: 0;
-          gap: 5px;
-          padding: 4px 8px 4px 7px;
-          border-width: 2px;
-          box-shadow: 2px 2px 0 var(--gog-ink);
-        }
-
-        .meter .label {
-          font-size: 0.66rem;
-        }
-
-        .meter-track {
-          height: 8px;
-          border-width: 2px;
-        }
-
-        .chip {
-          padding: 4px 7px;
-          border-width: 2px;
-          box-shadow: 2px 2px 0 var(--gog-ink);
-          font-size: 0.72rem;
-          min-height: 30px;
-        }
-
-        .timer-chip {
-          min-width: 44px;
-        }
-
-        .icon-btn {
-          width: 32px;
-          height: 32px;
-          min-width: 32px;
-          font-size: 0.92rem;
-          border-width: 2px;
-          box-shadow: 2px 2px 0 var(--gog-ink);
-        }
-
-        .guideBar {
-          gap: 6px;
-          padding: 3px 4px;
-          margin-bottom: 8px;
-          border-width: 2px;
-          border-radius: 8px;
-          box-shadow: 1px 1px 0 var(--gog-ink);
-        }
-
-        .guideAvatar {
-          font-size: 1.25rem;
-        }
-
-        .guideBubble {
-          padding: 5px 8px;
-          border-width: 2px;
-          border-radius: 10px;
-          font-size: 1rem;
-          line-height: 1.1;
-        }
-
-        .canvas-frame {
-          border-width: 3px;
-          border-radius: 12px;
-          box-shadow: 4px 4px 0 var(--gog-ink);
-        }
-
-        .stage-controls {
-          margin-top: 8px;
-          gap: 6px;
-        }
-
-        .stage-controls .brutal-btn {
-          padding: 8px 12px;
-          min-height: 38px;
-          border-width: 3px;
-          border-radius: 10px;
-          font-size: 0.86rem;
-          box-shadow: 3px 3px 0 var(--gog-ink);
-        }
-
-        .calm-badge {
-          font-size: 0.72rem;
-        }
-      }
-
-      @media (max-width: 420px) {
-        .hud-mid {
-          grid-template-columns: minmax(118px, 1fr) repeat(3, auto);
-        }
-
-        #difficultyChip {
-          display: none;
-        }
-      }
-
-      @keyframes pageFadeIn {
-        from {
-          opacity: 0;
-          transform: translateY(10px);
-        }
-        to {
-          opacity: 1;
-          transform: translateY(0);
-        }
-      }
-
-      .emoji-float {
-        display: inline-block;
-        animation: emojiFloat 2.6s ease-in-out infinite;
-      }
-
-      @keyframes emojiFloat {
-        0%,
-        100% {
-          transform: translateY(0) rotate(-4deg);
-        }
-        50% {
-          transform: translateY(-5px) rotate(5deg);
-        }
-      }
-
-      @keyframes fadeInUp {
-        from {
-          opacity: 0;
-          transform: translateY(6px);
-        }
-        to {
-          opacity: 1;
-          transform: translateY(0);
-        }
       }
 
       body {
@@ -485,10 +193,10 @@
             <span class="label" id="canopyPct">42%</span>
           </div>
           <span class="chip timer-chip" id="timerChip">60s</span>
-          <span class="chip" id="difficultyChip" title="Difficulty Level"
+          <span class="chip visually-hidden" id="difficultyChip" title="Difficulty Level"
             >⚡ Lvl 1</span
           >
-          <span class="chip">🌱 <span id="sproutsChip">0</span></span>
+          <span class="chip visually-hidden">🌱 <span id="sproutsChip">0</span></span>
           <button class="icon-btn info-btn" id="infoBtn" title="How to play" aria-label="How to play and fun facts">📖</button>
           <button
             class="icon-btn"
@@ -537,6 +245,7 @@
     <script src="../src/constants.js"></script>
     <script src="../src/save.js"></script>
     <script src="../src/native.js"></script>
+    <script src="../src/vendor/howler.min.js"></script>
     <script src="../src/engine.js"></script>
     <script src="../src/voice.js"></script>
     <script src="../src/coach.js"></script>
@@ -697,12 +406,6 @@
               );
               return;
             }
-            console.log(
-              "[GOGStage2] State transition: " +
-                this.gameState +
-                " -> " +
-                newState,
-            );
             this.gameState = newState;
 
             if (newState === "WAVE_ACTIVE") {
@@ -724,12 +427,10 @@
 
             // Smog cell lock: disable planting if cell is engulfed by smog (crossed column)
             if (c >= Math.floor(this.smogPosition)) {
-              console.log("[GOGStage2] Cannot plant: cell engulfed by smog.");
               return false;
             }
 
             if (this.saplings <= 0) {
-              console.log("[GOGStage2] Cannot plant: 0 saplings remaining.");
               return false;
             }
 
@@ -1211,8 +912,9 @@
       (function () {
         "use strict";
 
-        // Run isolated tests
-        if (typeof GOGStage2 !== "undefined") {
+        // Run isolated tests only when asked for (?test); production must not
+        // spend load time (and console noise) on them.
+        if (typeof GOGStage2 !== "undefined" && /[?&]test(?:[=&]|$)/.test(location.search)) {
           GOGStage2.runTests();
         }
 
@@ -1240,13 +942,35 @@
 
         // Float labels are positioned in CSS pixels inside the frame, so convert
         // from logical canvas coordinates (the frame is rarely exactly 960 wide).
+        // The canvas-vs-frame offsets only change when the layout does, so they
+        // are measured once and re-measured on resize (reading them per label
+        // forced a layout right after the previous label was appended).
+        var floatGeo = null;
+        function invalidateFloatGeo() {
+          floatGeo = null;
+        }
+        window.addEventListener("resize", invalidateFloatGeo);
+        window.addEventListener("orientationchange", invalidateFloatGeo);
+        if (typeof ResizeObserver === "function") {
+          var floatRO = new ResizeObserver(invalidateFloatGeo);
+          floatRO.observe(canvas);
+          floatRO.observe(canvasFrame);
+        }
         var _floatLabel = GOGUi.floatLabel;
         GOGUi.floatLabel = function (parent, x, y, text, color) {
           if (parent === canvasFrame) {
-            var cr = canvas.getBoundingClientRect();
-            var fr = canvasFrame.getBoundingClientRect();
-            x = (x / W) * cr.width + (cr.left - fr.left - canvasFrame.clientLeft);
-            y = (y / H) * cr.height + (cr.top - fr.top - canvasFrame.clientTop);
+            if (!floatGeo) {
+              var cr = canvas.getBoundingClientRect();
+              var fr = canvasFrame.getBoundingClientRect();
+              floatGeo = {
+                w: cr.width,
+                h: cr.height,
+                ox: cr.left - fr.left - canvasFrame.clientLeft,
+                oy: cr.top - fr.top - canvasFrame.clientTop,
+              };
+            }
+            x = (x / W) * floatGeo.w + floatGeo.ox;
+            y = (y / H) * floatGeo.h + floatGeo.oy;
           }
           _floatLabel(parent, x, y, text, color);
         };
@@ -1595,46 +1319,31 @@
           if (!state.running) return;
           var cellW = W / GOGStage2.cols;
 
-          // Find canopy bounds (connected trees)
-          var minCol = -1;
-          var maxCol = -1;
-          for (var c = 0; c < GOGStage2.cols; c++) {
-            var hasConnected = false;
-            for (var r = 0; r < GOGStage2.rows; r++) {
-              if (
-                GOGStage2.grid[r] &&
-                GOGStage2.grid[r][c] &&
-                GOGStage2.grid[r][c].state === "tree" &&
-                GOGStage2.grid[r][c].connected
-              ) {
-                hasConnected = true;
-                break;
-              }
-            }
-            if (hasConnected) {
-              if (minCol === -1) minCol = c;
-              maxCol = c;
-            }
-          }
-
+          // Canopy bounds (connected trees), from this step's shared scan
+          var minCol = canopyHas ? canopyB.minCol : -1;
+          var maxCol = canopyHas ? canopyB.maxCol : -1;
           var minX = minCol * cellW;
           var maxX = (maxCol + 1) * cellW;
+          var smogCol = Math.floor(GOGStage2.smogPosition);
+          var list = state.ambientFauna;
 
-          state.ambientFauna.forEach(function (f) {
+          for (var i = 0; i < list.length; i++) {
+            var f = list[i];
             var colIndex = Math.floor(f.x / cellW);
-            var inSmog = !calmMode && colIndex >= Math.floor(GOGStage2.smogPosition);
-            
+            var inSmog = !calmMode && colIndex >= smogCol;
+            var speedMultiplier;
+
             if (f.type === "flying-bird") {
-              if (GOGStage2.wave < 3) return;
+              if (GOGStage2.wave < 3) continue;
 
               f.x += f.vx * dt;
               f.wobble += 0.04 * dt * 60;
               f.y = (40 + (f.wobble % 5) * 10) + Math.sin(f.wobble) * 6;
               if (f.y < 20) f.y = 20;
               if (f.y > 160) f.y = 160;
-              
+
               f.flapTimer += dt * f.flapRate;
-              
+
               if (f.vx > 0 && f.x > W + 60) {
                 f.x = -60;
                 f.y = 40 + Math.random() * 80;
@@ -1646,14 +1355,14 @@
                 f.vx = (f.vx > 0 ? 1 : -1) * 150;
               }
             } else if (f.type === "deer-run") {
-              if (GOGStage2.wave < 2 || minCol === -1) return;
+              if (GOGStage2.wave < 2 || minCol === -1) continue;
 
               // Force deer inside canopy limits
               if (f.x < minX || f.x > maxX) {
                 f.x = minX + Math.random() * (maxX - minX);
               }
 
-              var speedMultiplier = inSmog ? 1.8 : 1.0;
+              speedMultiplier = inSmog ? 1.8 : 1.0;
               f.x += f.vx * speedMultiplier * dt;
               f.frameTimer += dt * 12 * speedMultiplier;
 
@@ -1666,16 +1375,16 @@
                 f.vx = Math.abs(f.vx);
               }
             } else if (f.type === "bees-flying") {
-              if (GOGStage2.wave < 2 || minCol === -1) return;
+              if (GOGStage2.wave < 2 || minCol === -1) continue;
 
               // Force bees inside canopy limits
               if (f.x < minX || f.x > maxX) {
                 f.x = minX + Math.random() * (maxX - minX);
               }
 
-              var speedMultiplier = inSmog ? 0.5 : 1.0;
+              speedMultiplier = inSmog ? 0.5 : 1.0;
               f.x += f.vx * speedMultiplier * dt;
-              
+
               // Smooth hovering oscillation (fix jumping)
               f.wobble += dt * 3.5;
               f.y = f.baseY + Math.sin(f.wobble) * 6;
@@ -1690,118 +1399,548 @@
                 f.vx = Math.abs(f.vx);
               }
             }
-          });
+          }
         }
 
         function drawAmbientFauna(ctx) {
-          ctx.save();
-
-          // Find canopy bounds
-          var minCol = -1;
-          for (var c = 0; c < GOGStage2.cols; c++) {
-            var hasConnected = false;
-            for (var r = 0; r < GOGStage2.rows; r++) {
-              if (
-                GOGStage2.grid[r] &&
-                GOGStage2.grid[r][c] &&
-                GOGStage2.grid[r][c].state === "tree" &&
-                GOGStage2.grid[r][c].connected
-              ) {
-                hasConnected = true;
-                break;
-              }
-            }
-            if (hasConnected) {
-              minCol = c;
-              break;
-            }
-          }
-
-          state.ambientFauna.forEach(function (f) {
-            ctx.save();
+          var list = state.ambientFauna;
+          for (var i = 0; i < list.length; i++) {
+            var f = list[i];
+            var flip = f.vx < 0 ? -1 : 1;
+            var sx, sw, sh;
             if (f.type === "flying-bird") {
-              if (GOGStage2.wave < 3) {
-                ctx.restore();
-                return;
-              }
-              var frame = Math.floor(f.flapTimer) % 2;
-              var hasImage = flyingBirdsImg && flyingBirdsImg.complete && flyingBirdsImg.naturalWidth > 0;
-              if (hasImage) {
-                var sw = Math.round(flyingBirdsImg.naturalWidth / 2);
-                var sh = flyingBirdsImg.naturalHeight;
-                var sx = frame * sw;
-                ctx.translate(f.x, f.y);
-                if (f.vx < 0) ctx.scale(-1, 1);
-                
-                var displayH = f.h;
-                var scale = displayH / sh;
+              if (GOGStage2.wave < 3) continue;
+              if (flyingBirdsImg && flyingBirdsImg.complete && flyingBirdsImg.naturalWidth > 0) {
+                var frame = Math.floor(f.flapTimer) % 2;
+                sw = Math.round(flyingBirdsImg.naturalWidth / 2);
+                sh = flyingBirdsImg.naturalHeight;
+                sx = frame * sw;
+                var scale = f.h / sh;
                 var dw = sw * scale;
                 var dh = sh * scale;
+                ctx.setTransform(flip, 0, 0, 1, f.x + gShX, f.y + gShY);
                 ctx.drawImage(flyingBirdsImg, sx, 0, sw, sh, -dw / 2, -dh / 2, dw, dh);
-              } else {
-                ctx.translate(f.x, f.y);
-                if (f.vx < 0) ctx.scale(-1, 1);
-                ctx.font = "24px sans-serif";
-                ctx.textAlign = "center";
-                ctx.textBaseline = "middle";
-                // ctx.fillText("🐦", 0, 0);
               }
             } else if (f.type === "deer-run") {
-              if (GOGStage2.wave < 2 || minCol === -1) {
-                ctx.restore();
-                return;
-              }
-              var frame = Math.floor(f.frameTimer) % 6;
-              var hasImage = deerRunImg && deerRunImg.complete && deerRunImg.naturalWidth > 0;
-              if (hasImage) {
-                var sw = 32;
-                var sh = 32;
-                var sx = frame * sw;
-                ctx.translate(f.x, f.y);
-                if (f.vx < 0) ctx.scale(-1, 1);
+              if (GOGStage2.wave < 2 || !canopyHas) continue;
+              if (deerRunImg && deerRunImg.complete && deerRunImg.naturalWidth > 0) {
+                // NOTE: 32x32 source rect is hard-coded (the sheet is 1795x202) - unchanged on purpose.
+                sw = 32;
+                sh = 32;
+                sx = (Math.floor(f.frameTimer) % 6) * sw;
+                ctx.setTransform(flip, 0, 0, 1, f.x + gShX, f.y + gShY);
                 ctx.drawImage(deerRunImg, sx, 0, sw, sh, -40, -70, 80, 80);
-              } else {
-                ctx.translate(f.x, f.y);
-                if (f.vx < 0) ctx.scale(-1, 1);
-                ctx.font = "48px sans-serif";
-                ctx.textAlign = "center";
-                ctx.textBaseline = "middle";
-                // ctx.fillText("🦌", 0, -12);
               }
             } else if (f.type === "bees-flying") {
-              if (GOGStage2.wave < 2 || minCol === -1) {
-                ctx.restore();
-                return;
-              }
-              var col = f.frameIndex % 4;
-              var row = Math.floor(f.frameIndex / 4);
-              var hasImage = beesFlyingImg && beesFlyingImg.complete && beesFlyingImg.naturalWidth > 0;
-              if (hasImage) {
-                var sw = 256;
-                var sh = 256;
-                var sx = col * sw;
-                var sy = row * sh;
-                ctx.translate(f.x, f.y);
-                if (f.vx < 0) ctx.scale(-1, 1);
-                ctx.drawImage(beesFlyingImg, sx, sy, sw, sh, -28, -28, 56, 56);
-              } else {
-                ctx.translate(f.x, f.y);
-                if (f.vx < 0) ctx.scale(-1, 1);
-                ctx.font = "32px sans-serif";
-                ctx.textAlign = "center";
-                ctx.textBaseline = "middle";
-                // ctx.fillText("🐝", 0, 0);
+              if (GOGStage2.wave < 2 || !canopyHas) continue;
+              if (beesFlyingImg && beesFlyingImg.complete && beesFlyingImg.naturalWidth > 0) {
+                // 4x2 sheet, 256px frames at the original 1024px width (scales if the sheet is ever shrunk)
+                var bk = beesFlyingImg.naturalWidth / 1024;
+                sw = 256 * bk;
+                sh = 256 * bk;
+                ctx.setTransform(flip, 0, 0, 1, f.x + gShX, f.y + gShY);
+                ctx.drawImage(beesFlyingImg, (f.frameIndex % 4) * sw, Math.floor(f.frameIndex / 4) * sh, sw, sh, -28, -28, 56, 56);
               }
             }
-            ctx.restore();
-          });
-          ctx.restore();
+          }
+          resetXform();
+        }
+
+        /* ---------------------------------------------------------------
+           PERFORMANCE LAYER — everything between here and the draw functions
+           only caches or re-orders drawing; nothing changes how the stage
+           looks or plays.
+
+           Canvas2D is CPU-rasterised in Android WebViews, so the per-frame
+           costs that matter are ctx.filter, shadowBlur, gradients, save/
+           restore storms, big images re-scaled every frame and emoji
+           fillText. Static art is painted ONCE into offscreen canvases
+           (GOGEngine.bake / tint) and blitted with plain drawImage.
+        ------------------------------------------------------------------*/
+        var gShX = 0; // current screen-shake translate (the only base transform)
+        var gShY = 0;
+        var breachOn = false; // true on breach frames: ctx.filter is the grayscale flash
+        // Colour emoji drawn with fillText take their opacity from the *current
+        // fillStyle*, and the original code drew several of them (rock, butterflies,
+        // blossoms, cutscene hearts/tree/seed) with whatever fillStyle the grid
+        // pass had left behind (tree backdrop 0.28 / smog tint 0.22 / default 1).
+        // emojiA reproduces that opacity.
+        var emojiA = 1;
+        var BREACH_FILTER = "grayscale(1) contrast(1.15)";
+        function resetXform() {
+          ctx.setTransform(1, 0, 0, 1, gShX, gShY);
+        }
+        // Trees, seaweed and the background set their own ctx.filter in the
+        // original draw code, so the breach flash never touched them.
+        function exemptFromBreach(on) {
+          if (breachOn) ctx.filter = on ? "none" : BREACH_FILTER;
+        }
+
+        // rgba(r, g, b, a) strings for a=0..1 in 0.01 steps, built once, so
+        // pulsing alphas never build a string per frame.
+        function alphaTable(r, g, b) {
+          var t = [];
+          for (var i = 0; i <= 100; i++) {
+            t.push("rgba(" + r + ", " + g + ", " + b + ", " + i / 100 + ")");
+          }
+          return t;
+        }
+        function aIdx(a) {
+          a = Math.round(a * 100);
+          return a < 0 ? 0 : a > 100 ? 100 : a;
+        }
+        var RING_RGBA = alphaTable(47, 191, 113);
+        var ROOT_RGBA = alphaTable(120, 80, 50);
+        var SAPLING_ARC = "rgba(47, 191, 113, 0.7)";
+        var TREE_ROOT = "rgba(47, 191, 113, 0.55)";
+        var TREE_BACKDROP = "rgba(47, 191, 113, 0.28)";
+
+        // Emoji drawn with fillText every frame are slow; this bakes one
+        // glyph (optionally with its glow) once and blits it. align/baseline
+        // match the ctx.textAlign/textBaseline the original call used, so
+        // drawEmoji(glyph, px, fam, align, base, x, y) lands exactly where
+        // fillText(glyph, x, y) did.
+        var emojiCache = {};
+        function emojiSpr(glyph, px, family, align, baseline, glowColor, glowBlur) {
+          var key = glyph + "|" + px + "|" + family + "|" + align + "|" + baseline + "|" + (glowColor || "") + "|" + (glowBlur || 0);
+          var s = emojiCache[key];
+          if (s) return s;
+          var pad = glowBlur ? Math.ceil(glowBlur * 3) : 0;
+          var box = Math.ceil(px * 2);
+          var size = box + pad * 2;
+          var ox = pad + (align === "center" ? box / 2 : px * 0.4);
+          var oy = pad + (baseline === "middle" ? box / 2 : baseline === "bottom" ? Math.round(box * 0.75) : Math.round(box * 0.7));
+          var c = GOGEngine.bake(size, size, function (g) {
+            g.font = px + "px " + family;
+            g.textAlign = align === "center" ? "center" : "left";
+            g.textBaseline = baseline;
+            if (glowBlur) {
+              g.shadowColor = glowColor;
+              g.shadowBlur = glowBlur;
+            }
+            g.fillText(glyph, ox, oy);
+          }, 1);
+          s = emojiCache[key] = { c: c, ox: ox, oy: oy };
+          return s;
+        }
+        function drawEmoji(glyph, px, family, align, baseline, x, y, glowColor, glowBlur) {
+          var s = emojiSpr(glyph, px, family, align, baseline, glowColor, glowBlur);
+          ctx.drawImage(s.c, x - s.ox, y - s.oy);
+        }
+
+        // ctx.filter is run ONCE per tree look (GOGEngine.tint caches the
+        // result); the filter strings are exactly the ones the per-tree
+        // ctx.filter used to get. Looks are discrete: 5 variations x
+        // connected/disconnected, plus the smog-engulfed look.
+        function treeFilterFor(variation, connected, engulfed) {
+          if (engulfed) return "grayscale(1) brightness(0.58) contrast(0.95)";
+          var f = "";
+          if (variation === 1) f = "hue-rotate(-12deg) saturate(1.15)";
+          else if (variation === 2) f = "hue-rotate(18deg) brightness(0.92)";
+          else if (variation === 3) f = "hue-rotate(-25deg) saturate(1.25) brightness(1.04)";
+          else if (variation === 4) f = "brightness(1.08) saturate(1.05)";
+          if (!connected) f = "grayscale(0.4) saturate(0.6) " + f;
+          return f;
+        }
+        var treeSprCache = {};
+        function treeSprite(img, variation, connected, engulfed) {
+          var v = variation >= 0 && variation <= 4 ? variation : 0;
+          var key = (engulfed ? 100 : 0) + (connected ? 10 : 0) + (engulfed ? 0 : v);
+          var e = treeSprCache[key];
+          if (e && e.src === img) return e.spr;
+          var f = treeFilterFor(v, connected, engulfed);
+          var spr = f ? GOGEngine.tint(img, f) : img;
+          if (spr !== img || !f) treeSprCache[key] = { src: img, spr: spr };
+          return spr;
+        }
+
+        // Seaweed connectors: one pre-scaled, pre-filtered copy per
+        // (image, width). The 793x766 source is ~9x larger than the ~86px it
+        // is drawn at, so it was being minified every frame, ~70 times.
+        var SEA_FILTER = "brightness(0.85) saturate(0.9) hue-rotate(-5deg)";
+        var seaSprs = [null, null, null, null];
+        function seaSprite(img, id, wide, cellW) {
+          var k = (id - 1) * 2 + (wide ? 1 : 0);
+          var s = seaSprs[k];
+          if (s && s.src === img && s.cw === cellW) return s;
+          var seaW = cellW * (wide ? 0.95 : 0.9);
+          var seaH = (img.height / img.width) * seaW;
+          var c = GOGEngine.bake(Math.ceil(seaW), Math.ceil(seaH), function (g) {
+            if ("filter" in g) g.filter = SEA_FILTER;
+            g.drawImage(img, 0, 0, seaW, seaH);
+          }, 1);
+          s = seaSprs[k] = { src: img, cw: cellW, c: c, h: seaH, ox: seaW / 2 };
+          return s;
+        }
+
+        // Rock: drawn ~3.5x smaller than the (already shrunk) source.
+        var rockSprCache = null;
+        function rockSprite(cellW, cellH) {
+          if (!rockImg || !rockImg.complete || !rockImg.width) return null;
+          if (rockSprCache && rockSprCache.cw === cellW && rockSprCache.ch === cellH && rockSprCache.src === rockImg) return rockSprCache;
+          var rockScale = Math.min((cellW - 12) / rockImg.width, (cellH - 12) / rockImg.height) * 2;
+          var dw = rockImg.width * rockScale;
+          var dh = rockImg.height * rockScale;
+          var img = rockImg;
+          var c = GOGEngine.bake(Math.ceil(dw), Math.ceil(dh), function (g) {
+            g.drawImage(img, 0, 0, dw, dh);
+          }, 1);
+          rockSprCache = { cw: cellW, ch: cellH, src: rockImg, c: c, w: dw, h: dh };
+          return rockSprCache;
+        }
+
+        // Static pieces of the empty-cell marker, the suggested-spot ring and
+        // the vine leaves (were a radial gradient, shadowBlur and two arcs per
+        // cell / leaf per frame). Only the ring path and the pulse stay live.
+        var layoutSpr = null;
+        function layoutSprites(cellW, cellH) {
+          if (layoutSpr && layoutSpr.cw === cellW && layoutSpr.ch === cellH) return layoutSpr;
+          var radius = Math.min(cellW, cellH) * 0.38;
+          var R = radius * 1.15;
+          var soilS = Math.ceil(R * 2) + 2;
+          var soilC = soilS / 2;
+          var soil = GOGEngine.bake(soilS, soilS, function (g) {
+            var grad = g.createRadialGradient(soilC, soilC, 2, soilC, soilC, R);
+            grad.addColorStop(0, "rgba(80, 50, 30, 0.35)");
+            grad.addColorStop(0.6, "rgba(100, 70, 45, 0.15)");
+            grad.addColorStop(1, "rgba(0, 0, 0, 0)");
+            g.fillStyle = grad;
+            g.beginPath();
+            g.arc(soilC, soilC, R, 0, Math.PI * 2);
+            g.fill();
+          }, 1);
+
+          var fontSize = Math.max(14, Math.floor(Math.min(cellW, cellH) * 0.26));
+          var spPad = 14;
+          var spS = Math.ceil(fontSize * 1.6) + spPad * 2;
+          var spC = spS / 2;
+          var sprout = GOGEngine.bake(spS, spS, function (g) {
+            g.shadowColor = "rgba(47, 191, 113, 0.4)";
+            g.shadowBlur = 5;
+            g.font = fontSize + "px Arial";
+            g.textAlign = "center";
+            g.textBaseline = "middle";
+            g.fillText("🌱", spC, spC);
+          }, 1);
+
+          var R2 = radius * 1.35;
+          var sgS = Math.ceil((R2 + 2) * 2) + 56;
+          var sgC = sgS / 2;
+          var suggest = GOGEngine.bake(sgS, sgS, function (g) {
+            g.strokeStyle = "rgba(201, 242, 61, 1)";
+            g.lineWidth = 4;
+            g.shadowColor = "rgba(201, 242, 61, 0.8)";
+            g.shadowBlur = 12;
+            g.beginPath();
+            g.arc(sgC, sgC, R2, 0, Math.PI * 2);
+            g.stroke();
+          }, 1);
+
+          var leaf = GOGEngine.bake(32, 32, function (g) {
+            g.fillStyle = "rgba(47, 191, 113, 0.85)";
+            g.beginPath();
+            g.arc(16, 16, 14, 0, Math.PI * 2);
+            g.fill();
+            g.fillStyle = "rgba(163, 230, 53, 0.4)";
+            g.beginPath();
+            g.arc(13, 13, 8, 0, Math.PI * 2);
+            g.fill();
+          }, 1);
+
+          layoutSpr = {
+            cw: cellW, ch: cellH, radius: radius,
+            soil: soil, soilC: soilC,
+            sprout: sprout, spC: spC,
+            suggest: suggest, sgC: sgC,
+            leaf: leaf
+          };
+          return layoutSpr;
+        }
+
+        // Ring of the empty-cell marker: 16 fixed angles, the wobble is
+        // sin(4a + 1.8t) expanded so only two trig calls per frame are needed.
+        var RING_N = 16;
+        var RING_COS = [];
+        var RING_SIN = [];
+        var RING_S4 = [];
+        var RING_C4 = [];
+        var ringWave = [];
+        for (var rgi = 0; rgi <= RING_N; rgi++) {
+          var rgA = (rgi / RING_N) * Math.PI * 2;
+          RING_COS.push(Math.cos(rgA));
+          RING_SIN.push(Math.sin(rgA));
+          RING_S4.push(Math.sin(rgA * 4));
+          RING_C4.push(Math.cos(rgA * 4));
+          ringWave.push(0);
+        }
+
+        // Background: the four layers never scroll (speed 0), so the filtered
+        // picture is painted once per filter state and just blitted (with the
+        // same slow wind shear) every frame instead of re-filtering 4 layers.
+        var bgCache = {};
+        function bgFilterName() {
+          var gs = GOGStage2.gameState;
+          if (gs === "WAVE_ACTIVE" || gs === "WAVE_CLEARED" || gs === "STAGE_WON_CUTSCENE") {
+            if (GOGStage2.wave === 1) return "grayscale(0.8) sepia(0.3) saturate(0.5) contrast(0.9) brightness(0.95)";
+            if (GOGStage2.wave === 2) return "sepia(0.15) saturate(0.85) contrast(0.95) brightness(0.98)";
+            return "saturate(1.25) contrast(1.05) brightness(1.02)";
+          }
+          return "none";
+        }
+        function bgBake(filter) {
+          var e = bgCache[filter];
+          if (e) return e;
+          // The layers never scroll (speed 0) and share one tile width, so a
+          // single tile strip holds all four: composited once with the filter
+          // applied and stretched vertically exactly as the layers were. The
+          // horizontal stretch + wind shear stay per frame (one pass over the
+          // strip, like the original single pass over each layer), so the
+          // picture keeps its sharpness.
+          var tileW = 0;
+          for (var ti = 0; ti < layers.length; ti++) {
+            if (layers[ti].img) { tileW = layers[ti].img.width; break; }
+          }
+          var stripC = tileW ? GOGEngine.bake(tileW, H, function (g) {
+            if (filter !== "none" && "filter" in g) g.filter = filter;
+            for (var li = 0; li < layers.length; li++) {
+              var layer = layers[li];
+              if (!layer.img) continue;
+              g.drawImage(layer.img, 0, layer.y, tileW, H);
+            }
+          }, 1) : null;
+          // the plain fallback fill, seen only in the sliver the shear uncovers
+          var fillC = GOGEngine.bake(1, 1, function (g) {
+            if (filter !== "none" && "filter" in g) g.filter = filter;
+            g.fillStyle = "#1e4d2b";
+            g.fillRect(0, 0, 1, 1);
+          }, 1);
+          e = bgCache[filter] = { strip: stripC, tileW: tileW, fill: fillC };
+          return e;
+        }
+        // Paints the other filter states while the browser is idle, so a new
+        // wave or the lose backdrop never pays for the bake mid-game.
+        function warmBackgrounds() {
+          var names = [
+            "grayscale(0.8) sepia(0.3) saturate(0.5) contrast(0.9) brightness(0.95)",
+            "sepia(0.15) saturate(0.85) contrast(0.95) brightness(0.98)",
+            "saturate(1.25) contrast(1.05) brightness(1.02)"
+            // "none" (the lose backdrop) bakes on demand: it is drawn once, behind an overlay
+          ];
+          var i = 0;
+          function next() {
+            while (i < names.length && bgCache[names[i]]) i++;
+            if (i >= names.length) return;
+            try { bgBake(names[i]); } catch (e) {}
+            i++;
+            setTimeout(next, 400);
+          }
+          setTimeout(next, 1500);
+        }
+
+        // Fonts used by baked text must be loaded before the text is baked.
+        var labelFontsReady = false;
+        if (document.fonts && document.fonts.load) {
+          var lfDone = function () { labelFontsReady = true; };
+          Promise.all([
+            document.fonts.load("800 24px 'Baloo 2'", "SMOG Tree of Gala"),
+            document.fonts.load("700 16px 'Quicksand'", "dirty air")
+          ]).then(lfDone, lfDone);
+        } else {
+          labelFontsReady = true;
+        }
+        function textWidth(font, text) {
+          var m = GOGEngine.bake(1, 1, null, 1).getContext("2d");
+          m.font = font;
+          return m.measureText(text).width;
+        }
+
+        // "SMOG!" warning label (two outlined lines) as one sprite.
+        var smogLabel = null;
+        function smogLabelSprite() {
+          if (smogLabel) return smogLabel;
+          if (!labelFontsReady) return null;
+          var f1 = "800 24px 'Baloo 2', sans-serif";
+          var f2 = "700 16px 'Quicksand', sans-serif";
+          var t1 = "⚠️ SMOG!";
+          var t2 = "😷 dirty air — keep it out!";
+          var w = Math.ceil(Math.max(textWidth(f1, t1), textWidth(f2, t2))) + 24;
+          var h = 78;
+          var cx = w / 2;
+          var c = GOGEngine.bake(w, h, function (g) {
+            g.textAlign = "center";
+            g.textBaseline = "middle";
+            g.lineJoin = "round";
+            g.font = f1;
+            g.lineWidth = 5;
+            g.strokeStyle = "#241c30";
+            g.fillStyle = "#fdfaef";
+            g.strokeText(t1, cx, 24);
+            g.fillText(t1, cx, 24);
+            g.font = f2;
+            g.lineWidth = 4;
+            g.strokeText(t2, cx, 24 + 27);
+            g.fillText(t2, cx, 24 + 27);
+          }, 1);
+          smogLabel = { c: c, ox: cx, oy: 24 };
+          return smogLabel;
+        }
+
+        // The Smog's face (happy while it creeps, upset while blocked): drawn
+        // at 2x into a sprite so it stays crisp when rotated/translated.
+        var smogFaces = [null, null];
+        var FACE_R = 46;
+        var FACE_SIZE = (FACE_R + 8) * 2;
+        function smogFaceSprite(happy) {
+          var idx = happy ? 1 : 0;
+          if (smogFaces[idx]) return smogFaces[idx];
+          smogFaces[idx] = GOGEngine.bake(FACE_SIZE, FACE_SIZE, function (g) {
+            g.translate(FACE_SIZE / 2, FACE_SIZE / 2);
+            var faceR = FACE_R;
+            var lookDX = -9; // pupils/features shifted left = gazing the way it's moving
+            g.lineCap = "round";
+            g.lineJoin = "round";
+            // Face-plate: a lighter, higher-contrast disc so the face pops clear of the busy cloud texture.
+            g.fillStyle = happy ? "#cbbf9a" : "#8a8067";
+            g.strokeStyle = "#241c30";
+            g.lineWidth = 1;
+            g.beginPath();
+            g.arc(0, 0, faceR, 0, Math.PI * 2);
+            g.fill();
+            g.stroke();
+
+            var eyeDX = 17,
+              eyeY = -8;
+            var dirs = [-1, 1];
+            for (var di = 0; di < 2; di++) {
+              var dir = dirs[di];
+              var ex = dir * eyeDX;
+              if (happy) {
+                // Eyebrow: raised and swept back (glee / gathering speed)
+                g.strokeStyle = "#241c30";
+                g.lineWidth = 2;
+                g.beginPath();
+                g.moveTo(ex - 10, eyeY - 17);
+                g.lineTo(ex + 9, eyeY - 21);
+                g.stroke();
+                // Eye white
+                g.fillStyle = "#fdfaff";
+                g.beginPath();
+                g.arc(ex, eyeY, 11, 0, Math.PI * 2);
+                g.fill();
+                // Pupil shifted left = looking the way the smog moves
+                g.fillStyle = "#241c30";
+                g.beginPath();
+                g.arc(ex + lookDX, eyeY, 6, 0, Math.PI * 2);
+                g.fill();
+                g.fillStyle = "rgba(255,255,255,0.95)";
+                g.beginPath();
+                g.arc(ex + lookDX - 2, eyeY - 2, 2.2, 0, Math.PI * 2);
+                g.fill();
+              } else {
+                // Furrowed brow angled sharply down toward the center
+                g.strokeStyle = "#241c30";
+                g.lineWidth = 2;
+                g.beginPath();
+                if (dir < 0) {
+                  g.moveTo(ex - 12, eyeY - 12);
+                  g.lineTo(ex + 9, eyeY - 3);
+                } else {
+                  g.moveTo(ex + 12, eyeY - 12);
+                  g.lineTo(ex - 9, eyeY - 3);
+                }
+                g.stroke();
+                // Narrowed eye white (squint)
+                g.fillStyle = "#fdfaff";
+                g.beginPath();
+                g.ellipse(ex, eyeY + 3, 9, 6, 0, 0, Math.PI * 2);
+                g.fill();
+                g.fillStyle = "#241c30";
+                g.beginPath();
+                g.arc(ex + lookDX * 0.7, eyeY + 3, 5, 0, Math.PI * 2);
+                g.fill();
+              }
+            }
+            if (happy) {
+              // Big gleeful open grin
+              g.fillStyle = "#241c30";
+              g.beginPath();
+              g.moveTo(-19, 16);
+              g.quadraticCurveTo(-6, 32, 12, 20);
+              g.quadraticCurveTo(20, 15, 15, 10);
+              g.quadraticCurveTo(-4, 22, -19, 8);
+              g.closePath();
+              g.fill();
+            } else {
+              // Deep downturned frown
+              g.strokeStyle = "#241c30";
+              g.lineWidth = 6;
+              g.beginPath();
+              g.arc(-2, 34, 18, 1.12 * Math.PI, 1.88 * Math.PI);
+              g.stroke();
+            }
+          }, 2);
+          return smogFaces[idx];
+        }
+
+        // "Tree of Gala" win-cutscene label (gold text with a 4px glow).
+        var galaLabel = null;
+        function galaLabelSprite() {
+          if (galaLabel) return galaLabel;
+          if (!labelFontsReady) return null;
+          var font = "800 24px 'Baloo 2', sans-serif";
+          var w = Math.ceil(textWidth(font, "Tree of Gala")) + 40;
+          var h = 64;
+          var cx = w / 2;
+          var by = 44;
+          var c = GOGEngine.bake(w, h, function (g) {
+            g.font = font;
+            g.textAlign = "center";
+            g.textBaseline = "bottom";
+            g.shadowColor = "gold";
+            g.shadowBlur = 4;
+            g.fillStyle = "gold";
+            g.strokeStyle = "#111";
+            g.lineWidth = 4.5;
+            g.strokeText("Tree of Gala", cx, by);
+            g.fillText("Tree of Gala", cx, by);
+          }, 1);
+          galaLabel = { c: c, ox: cx, oy: by };
+          return galaLabel;
+        }
+
+        // Last values written to the HUD, so the per-step update only builds
+        // strings / touches the DOM when something actually changed.
+        var hudLast = { pct: -1, target: -1, sap: -1, timer: -2, delay: null, wave: -1 };
+
+        // Paints the static sprites at load (behind the intro) so the first
+        // frames of play never stall on a bake.
+        var BG_WAVE1_FILTER = "grayscale(0.8) sepia(0.3) saturate(0.5) contrast(0.9) brightness(0.95)";
+        function prewarmSprites() {
+          var cellW = W / GRID_COLS;
+          var cellH = GRID_H / GRID_ROWS;
+          layoutSprites(cellW, cellH);
+          rockSprite(cellW, cellH);
+          for (var v = 0; v < 5; v++) {
+            if (treeImg) treeSprite(treeImg, v, true, false);
+            if (treeDisImg) treeSprite(treeDisImg, v, false, false);
+          }
+          if (treeImg) treeSprite(treeImg, 0, true, true);
+          if (treeDisImg) treeSprite(treeDisImg, 0, false, true);
+          if (seaWedImg1 && seaWedImg2) {
+            seaSprite(seaWedImg1, 1, false, cellW);
+            seaSprite(seaWedImg2, 2, false, cellW);
+            seaSprite(seaWedImg1, 1, true, cellW);
+            seaSprite(seaWedImg2, 2, true, cellW);
+          }
+          bgBake(BG_WAVE1_FILTER);
+          warmBackgrounds();
         }
 
         // --- DIVERSE procedurally drawn trees & connections ---
 
         function drawTreeConnection(ctx, x1, y1, x2, y2) {
-          ctx.save();
+          // Called inside one ctx.save()/restore() that wraps the whole vine
+          // pass (was one pair per vine).
           ctx.strokeStyle = "#5c4033";
           ctx.lineWidth = 5;
           ctx.beginPath();
@@ -1812,94 +1951,67 @@
           ctx.strokeStyle = "#2fbf71";
           ctx.lineWidth = 2.5;
           ctx.beginPath();
-          var dist = Math.hypot(x2 - x1, y2 - y1);
+          var dx = x2 - x1;
+          var dy = y2 - y1;
+          var dist = Math.hypot(dx, dy);
           var steps = 12;
-          for (var i = 0; i <= steps; i++) {
-            var t = i / steps;
-            var cx = x1 + (x2 - x1) * t;
-            var cy = y1 + (y2 - y1) * t - 10;
-            var offset = Math.sin(t * Math.PI * 4 + state.elapsed * 2) * 5;
-            var px = -(y2 - y1) / dist;
-            var py = (x2 - x1) / dist;
-            ctx.lineTo(cx + px * offset, cy + py * offset);
+          var px = -dy / dist;
+          var py = dx / dist;
+          var phase = state.elapsed * 2;
+          var i, t;
+          for (i = 0; i <= steps; i++) {
+            t = i / steps;
+            var offset = Math.sin(t * Math.PI * 4 + phase) * 5;
+            ctx.lineTo(x1 + dx * t + px * offset, y1 + dy * t - 10 + py * offset);
           }
           ctx.stroke();
 
-          ctx.fillStyle = "rgba(47, 191, 113, 0.85)";
-          for (var i = 1; i < steps; i += 2) {
-            var t = i / steps;
-            var cx = x1 + (x2 - x1) * t;
-            var cy = y1 + (y2 - y1) * t - 22;
-            ctx.beginPath();
-            ctx.arc(cx, cy, 14, 0, Math.PI * 2);
-            ctx.fill();
-            ctx.fillStyle = "rgba(163, 230, 53, 0.4)";
-            ctx.beginPath();
-            ctx.arc(cx - 3, cy - 3, 8, 0, Math.PI * 2);
-            ctx.fill();
-            ctx.fillStyle = "rgba(47, 191, 113, 0.85)";
+          // leaf blobs (big green disc + light highlight, baked once)
+          var leaf = layoutSpr.leaf;
+          for (i = 1; i < steps; i += 2) {
+            t = i / steps;
+            ctx.drawImage(leaf, x1 + dx * t - 16, y1 + dy * t - 22 - 16);
           }
-          ctx.restore();
         }
 
         function drawProceduralTree(ctx, cx, cy, cellW, cellH, variation, connected, sway, isEngulfed, popScale) {
-          ctx.save();
-          // Translate to center bottom of grid cell (where trunk roots grow)
-          ctx.translate(cx + sway, cy + cellH / 2 - 6);
-          ctx.scale(popScale, popScale);
-
           // Tree Diversity (Requirement 9): Randomize size, height, and tilt based on variation index
           var sizeMultiplier = 0.85 + (variation % 3) * 0.12; // 0.85x to 1.09x width
           var heightMultiplier = 0.88 + ((variation + 2) % 3) * 0.12; // 0.88x to 1.12x height
           var tilt = ((variation % 4) - 1.5) * 0.045; // slight organic tilt (-0.067 to +0.067 rad)
-          ctx.rotate(tilt);
-
           var treeDestW = cellW * TREE_SIZE_SCALE * sizeMultiplier;
-
-          // Apply filters for smog or dynamic color/shade diversity (Requirement 9 & 8)
-          if (isEngulfed) {
-            ctx.filter = "grayscale(1) brightness(0.58) contrast(0.95)";
-          } else {
-            var varietyFilter = "";
-            if (variation === 1) {
-              varietyFilter = "hue-rotate(-12deg) saturate(1.15)";
-            } else if (variation === 2) {
-              varietyFilter = "hue-rotate(18deg) brightness(0.92)";
-            } else if (variation === 3) {
-              varietyFilter = "hue-rotate(-25deg) saturate(1.25) brightness(1.04)";
-            } else if (variation === 4) {
-              varietyFilter = "brightness(1.08) saturate(1.05)";
-            }
-            
-            if (!connected) {
-              varietyFilter = "grayscale(0.4) saturate(0.6) " + varietyFilter;
-            }
-            ctx.filter = varietyFilter || "none";
-          }
 
           // Pick the correct sprite image (connected canopy vs disconnected branches)
           var img = connected ? treeImg : treeDisImg;
+          // Translate to center bottom of grid cell (where trunk roots grow)
+          var ox = cx + sway;
+          var oy = cy + cellH / 2 - 6;
 
           if (img && img.complete && img.width > 0) {
             var destH = (img.height / img.width) * treeDestW * heightMultiplier;
-            ctx.drawImage(
-              img,
-              -treeDestW / 2,
-              -destH,
-              treeDestW,
-              destH
-            );
+            // translate(ox,oy) * scale(pop) * rotate(tilt) as one matrix; the
+            // colour variety / smog grayscale come from the pre-tinted sprite
+            // (was a ctx.filter per tree per frame).
+            var cs = Math.cos(tilt) * popScale;
+            var sn = Math.sin(tilt) * popScale;
+            ctx.setTransform(cs, sn, -sn, cs, ox + gShX, oy + gShY);
+            exemptFromBreach(true);
+            ctx.drawImage(treeSprite(img, variation, connected, isEngulfed), -treeDestW / 2, -destH, treeDestW, destH);
+            exemptFromBreach(false);
+            resetXform();
           } else {
             // Fallback to emoji if image is failed/missing
             ctx.save();
+            ctx.translate(ox, oy);
+            ctx.scale(popScale, popScale);
+            ctx.rotate(tilt);
+            ctx.filter = treeFilterFor(variation, connected, isEngulfed) || "none";
             ctx.font = Math.round(52 * sizeMultiplier) + "px Arial";
             ctx.textAlign = "center";
             ctx.textBaseline = "bottom";
             ctx.fillText(connected ? "🌳" : "🌿", 0, 0);
             ctx.restore();
           }
-
-          ctx.restore();
         }
 
         // --- PARALLAX, FOG & FOREGROUND SYSTEM ---
@@ -1910,41 +2022,39 @@
           ctx.lineWidth = 2.5;
           var bladeWidth = 14;
           var growthFactor = 0.5 + (state.canopyPercent / 100) * 0.8;
+          // All blades in one path: one fill + one stroke instead of 69 + 69.
+          ctx.beginPath();
           for (var x = 0; x < W; x += 14) {
             var height = (24 + Math.sin(x * 0.05 + elapsed * 2.2) * 6) * growthFactor;
             var sway = Math.sin(elapsed * 1.6 + x * 0.1) * 5;
-            ctx.beginPath();
             ctx.moveTo(x, H);
             ctx.quadraticCurveTo(x + sway, H - height * 0.65, x + sway * 1.4, H - height);
             ctx.quadraticCurveTo(x + sway * 0.5, H - height * 0.35, x + bladeWidth, H);
-            ctx.fill();
-            ctx.stroke();
           }
+          ctx.fill();
+          ctx.stroke();
           if (state.canopyPercent > 12) {
-            ctx.font = "14px sans-serif";
-            ctx.textAlign = "center";
-            ctx.textBaseline = "bottom";
             var flowerSpacing = Math.max(30, 160 - Math.floor(state.canopyPercent / 100 * 120));
+            var pinkS = emojiSpr("🌸", 14, "sans-serif", "center", "bottom");
+            var yellowS = emojiSpr("🌼", 14, "sans-serif", "center", "bottom");
             for (var fx = 30; fx < W; fx += flowerSpacing) {
-              var fGlyph = (fx % 3 === 0) ? "🌸" : "🌼";
+              var fs = (fx % 3 === 0) ? pinkS : yellowS;
               var swayY = Math.sin(elapsed * 1.5 + fx) * 1.5;
-              ctx.fillText(fGlyph, fx, H - 2 + swayY);
+              ctx.drawImage(fs.c, fx - fs.ox, H - 2 + swayY - fs.oy);
             }
           }
           ctx.restore();
         }
 
+        var FOG_CLEAR = ["rgba(220, 238, 220, 0.16)", "rgba(220, 238, 220, 0.11)"];
+        var FOG_SMOGGY = ["rgba(140, 148, 130, 0.24)", "rgba(140, 148, 130, 0.19)"];
         function drawFog(elapsed) {
           ctx.save();
+          var smogRatio = GOGStage2.smogPosition / GOGStage2.cols;
+          var palette = smogRatio < 0.6 ? FOG_SMOGGY : FOG_CLEAR;
           for (var i = 0; i < 2; i++) {
-            var speed = (i === 0) ? 12 : 22;
             var fogY = H / 2 - 30 + i * 25;
-            var smogRatio = GOGStage2.smogPosition / GOGStage2.cols;
-            var fogColor = "rgba(220, 238, 220, " + (0.16 - i * 0.05) + ")";
-            if (smogRatio < 0.6) {
-              fogColor = "rgba(140, 148, 130, " + (0.24 - i * 0.05) + ")";
-            }
-            ctx.fillStyle = fogColor;
+            ctx.fillStyle = palette[i];
             ctx.beginPath();
             ctx.moveTo(0, fogY);
             for (var x = 0; x <= W; x += 40) {
@@ -1960,14 +2070,16 @@
         }
 
         // --- VICTORY CINEMATIC ---
+        var CUT_RAY_COLORS = ["rgba(255, 250, 200, 0.25)", "rgba(255, 240, 170, 0.2)", "rgba(255, 255, 225, 0.15)"];
+        var CUT_RAY_X = [60, 220, 420, 680];
         function drawStageWonCutscene() {
           var time = state.cutsceneTime || 0;
-          var cellW = W / GOGStage2.cols;
           var gridH = GRID_H;
           var gridYOffset = GRID_Y_OFFSET;
           var canopyProgress = Math.min(1.0, time / 1.5);
           ctx.save();
-          ctx.fillStyle = "rgba(47, 191, 113, " + (canopyProgress * 0.35) + ")";
+          ctx.globalAlpha = canopyProgress * 0.35;
+          ctx.fillStyle = "rgb(47, 191, 113)";
           ctx.fillRect(0, gridYOffset - 30, W, gridH + 30);
           ctx.restore();
 
@@ -1975,10 +2087,9 @@
             var rayAlpha = Math.min(0.4, (time - 1.0) / 1.2);
             ctx.save();
             ctx.globalAlpha = rayAlpha;
-            var rayColors = ["rgba(255, 250, 200, 0.25)", "rgba(255, 240, 170, 0.2)", "rgba(255, 255, 225, 0.15)"];
-            var rayPositions = [60, 220, 420, 680];
-            rayPositions.forEach(function (ox, idx) {
-              ctx.fillStyle = rayColors[idx % rayColors.length];
+            for (var ri = 0; ri < CUT_RAY_X.length; ri++) {
+              var ox = CUT_RAY_X[ri];
+              ctx.fillStyle = CUT_RAY_COLORS[ri % CUT_RAY_COLORS.length];
               ctx.beginPath();
               ctx.moveTo(ox, 0);
               ctx.lineTo(ox + 90, 0);
@@ -1986,18 +2097,8 @@
               ctx.lineTo(ox + 80, H);
               ctx.closePath();
               ctx.fill();
-            });
+            }
             ctx.restore();
-          }
-
-          if (state.cutsceneBirds) {
-            ctx.save();
-            // ctx.font = "24px sans-serif";
-            // ctx.fillStyle = "#111";
-            // state.cutsceneBirds.forEach(function (b) {
-            //   ctx.fillText("🐦", b.x, b.y + Math.sin(b.x * 0.05) * 8);
-            // });
-            // ctx.restore();
           }
 
           if (time > 2.0) {
@@ -2005,20 +2106,37 @@
             var treeScale = treeProgress * 150;
             ctx.save();
             ctx.translate(W / 2, H / 2 + 50);
-            ctx.font = treeScale + "px sans-serif";
-            ctx.textAlign = "center";
-            ctx.textBaseline = "bottom";
-            ctx.shadowColor = "gold";
-            ctx.shadowBlur = 30;
-            ctx.fillText("🌳", 0, 0);
+            if (treeProgress >= 1) {
+              // full-size glowing tree: baked once (was a 30px shadowBlur on a 150px emoji every frame)
+              ctx.globalAlpha = emojiA;
+              drawEmoji("🌳", 150, "sans-serif", "center", "bottom", 0, 0, "gold", 30);
+              ctx.globalAlpha = 1;
+            } else {
+              ctx.font = treeScale + "px sans-serif";
+              ctx.textAlign = "center";
+              ctx.textBaseline = "bottom";
+              ctx.shadowColor = "gold";
+              ctx.shadowBlur = 30;
+              ctx.globalAlpha = emojiA;
+              ctx.fillText("🌳", 0, 0);
+              ctx.globalAlpha = 1;
+            }
             if (time > 3.0) {
-              ctx.shadowBlur = 4;
-              ctx.font = "800 24px 'Baloo 2', sans-serif";
-              ctx.fillStyle = "gold";
-              ctx.strokeStyle = "#111";
-              ctx.lineWidth = 4.5;
-              ctx.strokeText("Tree of Gala", 0, -170);
-              ctx.fillText("Tree of Gala", 0, -170);
+              var gala = galaLabelSprite();
+              if (gala) {
+                ctx.drawImage(gala.c, -gala.ox, -170 - gala.oy);
+              } else {
+                ctx.textAlign = "center";
+                ctx.textBaseline = "bottom";
+                ctx.shadowColor = "gold";
+                ctx.shadowBlur = 4;
+                ctx.font = "800 24px 'Baloo 2', sans-serif";
+                ctx.fillStyle = "gold";
+                ctx.strokeStyle = "#111";
+                ctx.lineWidth = 4.5;
+                ctx.strokeText("Tree of Gala", 0, -170);
+                ctx.fillText("Tree of Gala", 0, -170);
+              }
             }
             ctx.restore();
           }
@@ -2027,25 +2145,21 @@
             var seedProgress = Math.min(1.0, (time - 2.8) / 1.7);
             var seedY = H / 2 - 20 - seedProgress * 220;
             if (seedY > -50) {
-              ctx.save();
-              ctx.font = "30px sans-serif";
-              ctx.shadowColor = "#a3e635";
-              ctx.shadowBlur = 20;
-              ctx.fillText("🌱", W / 2, seedY);
-              ctx.restore();
+              ctx.globalAlpha = emojiA;
+              drawEmoji("🌱", 30, "sans-serif", "left", "alphabetic", W / 2, seedY, "#a3e635", 20);
+              ctx.globalAlpha = 1;
             }
           }
 
           if (time > 1.5) {
-            ctx.save();
-            ctx.font = "18px sans-serif";
+            ctx.globalAlpha = emojiA;
             for (var aIdx = 0; aIdx < state.wildlife.length; aIdx++) {
               var anim = state.wildlife[aIdx];
               if (Math.sin(time * 5 + aIdx) > 0.4) {
-                ctx.fillText("❤️", anim.x, anim.y - 70 + Math.sin(time * 5) * 8);
+                drawEmoji("❤️", 18, "sans-serif", "left", "alphabetic", anim.x, anim.y - 70 + Math.sin(time * 5) * 8);
               }
             }
-            ctx.restore();
+            ctx.globalAlpha = 1;
           }
         }
 
@@ -2106,7 +2220,15 @@
           return new Promise(function (resolve, reject) {
             var img = new Image();
             img.onload = function () {
-              resolve(img);
+              // decode now, so the first draw that uses it never stalls
+              if (typeof img.decode === "function") {
+                img.decode().then(
+                  function () { resolve(img); },
+                  function () { resolve(img); },
+                );
+              } else {
+                resolve(img);
+              }
             };
             img.onerror = function () {
               reject(new Error("Failed to load image: " + src));
@@ -2122,121 +2244,66 @@
             "assets/background/stage02/3.png",
             "assets/background/stage02/4.png",
           ];
-          var results = await Promise.allSettled(paths.map(loadImage));
-          results.forEach(function (result, i) {
-            if (result.status === "fulfilled") {
-              layers[i].img = result.value;
-            }
-          });
-
-          // Preload Stage 2 sprites
-          try {
-            treeImg = await loadImage("assets/sprites/stage02/canopy.png");
-            treeDisImg = await loadImage("assets/sprites/stage02/branches.png");
-            growingPlantsImg = await loadImage(
-              "assets/sprites/stage02/GrowingPlants1.png",
-            );
-            rockImg = await loadImage("assets/sprites/stage02/rock.png");
-          } catch (e) {
-            console.warn(
-              "[sprites] Sprites failed to load. Emojis will be used as fallbacks:",
-              e,
-            );
+          // Every image loads in parallel and independently of the others, so a
+          // single missing asset never stops the rest from appearing.
+          function sprite(src, assign, what) {
+            return loadImage(src).then(assign, function (e) {
+              console.warn("[sprites] " + what + " failed to load (a fallback will be used):", e);
+            });
           }
-
-          // Wildlife sheets are loaded independently of each other (and of
-          // the block above) so a single missing animal asset doesn't stop
-          // the others from appearing.
+          await Promise.all([
+            Promise.all(
+              paths.map(function (p, i) {
+                return loadImage(p).then(
+                  function (img) { layers[i].img = img; },
+                  function () {},
+                );
+              }),
+            ),
+            sprite("assets/sprites/stage02/canopy.png", function (img) { treeImg = img; }, "Canopy"),
+            sprite("assets/sprites/stage02/branches.png", function (img) { treeDisImg = img; }, "Branches"),
+            sprite("assets/sprites/stage02/GrowingPlants1.png", function (img) { growingPlantsImg = img; }, "GrowingPlants1"),
+            sprite("assets/sprites/stage02/rock.png", function (img) { rockImg = img; }, "Rock"),
+            sprite("assets/sprites/stage02/Deer-Spritesheet.png", function (img) { deerImg = img; }, "Deer"),
+            sprite("assets/sprites/stage02/Giraffe-Spritesheet.png", function (img) { giraffeImg = img; }, "Giraffe"),
+            sprite("assets/sprites/stage02/Tiger-Spritesheet.png", function (img) { tigerImg = img; }, "Tiger"),
+            sprite("assets/sprites/stage05/flying-birds.png", function (img) { flyingBirdsImg = img; }, "flying-birds"),
+            sprite("assets/sprites/stage03/Deer_Run_with_shadow.png", function (img) { deerRunImg = img; }, "Deer_Run_with_shadow"),
+            sprite("assets/sprites/stage03/bees-flying.png", function (img) { beesFlyingImg = img; }, "bees-flying"),
+            sprite("assets/sprites/stage01/sea_wed.png", function (img) { seaWedImg1 = img; }, "sea_wed"),
+            sprite("assets/sprites/stage01/sea_wed_2.png", function (img) { seaWedImg2 = img; }, "sea_wed_2"),
+          ]);
           try {
-            deerImg = await loadImage(
-              "assets/sprites/stage02/Deer-Spritesheet.png",
-            );
+            prewarmSprites();
           } catch (e) {
-            console.warn("[sprites] Deer sprite failed to load:", e);
-          }
-          try {
-            giraffeImg = await loadImage(
-              "assets/sprites/stage02/Giraffe-Spritesheet.png",
-            );
-          } catch (e) {
-            console.warn("[sprites] Giraffe sprite failed to load:", e);
-          }
-          try {
-            tigerImg = await loadImage(
-              "assets/sprites/stage02/Tiger-Spritesheet.png",
-            );
-          } catch (e) {
-            console.warn("[sprites] Tiger sprite failed to load:", e);
-          }
-          try {
-            flyingBirdsImg = await loadImage("assets/sprites/stage05/flying-birds.png");
-          } catch (e) {
-            console.warn("[sprites] flying-birds sprite failed to load:", e);
-          }
-          try {
-            deerRunImg = await loadImage("assets/sprites/stage03/Deer_Run_with_shadow.png");
-          } catch (e) {
-            console.warn("[sprites] Deer_Run_with_shadow sprite failed to load:", e);
-          }
-          try {
-            beesFlyingImg = await loadImage("assets/sprites/stage03/bees-flying.png");
-          } catch (e) {
-            console.warn("[sprites] bees-flying sprite failed to load:", e);
-          }
-          try {
-            seaWedImg1 = await loadImage("assets/sprites/stage01/sea_wed.png");
-            seaWedImg2 = await loadImage("assets/sprites/stage01/sea_wed_2.png");
-          } catch (e) {
-            console.warn("[sprites] Seaweed sprites failed to load:", e);
+            console.warn("[sprites] prewarm failed:", e);
           }
         }
 
 
         function drawForestBackground(elapsed) {
-          // Dynamic greyscale/barren background filter depending on wave progress
-          var activeFilter = "none";
-          if (
-            GOGStage2.gameState === "WAVE_ACTIVE" ||
-            GOGStage2.gameState === "WAVE_CLEARED" ||
-            GOGStage2.gameState === "STAGE_WON_CUTSCENE"
-          ) {
-            if (GOGStage2.wave === 1) {
-              activeFilter = "grayscale(0.8) sepia(0.3) saturate(0.5) contrast(0.9) brightness(0.95)";
-            } else if (GOGStage2.wave === 2) {
-              activeFilter = "sepia(0.15) saturate(0.85) contrast(0.95) brightness(0.98)";
-            } else {
-              activeFilter = "saturate(1.25) contrast(1.05) brightness(1.02)";
-            }
-          }
-
-          ctx.save();
-          ctx.filter = activeFilter;
-
-          ctx.fillStyle = "#1e4d2b"; // fallback fill
-          ctx.fillRect(0, 0, W, H);
-
-          var windShear = Math.sin(elapsed * 0.4) * 0.012;
-          ctx.save();
-          ctx.transform(1, 0, windShear, 1, 0, 0);
-          layers.forEach(function (layer) {
-            if (!layer.img) return;
-            var img = layer.img;
-            var tileW = img.width;
-            var x = (scrollX * (layer.speed * 0.1)) % tileW;
-            if (x > 0) x -= tileW;
-            for (var dx = x; dx < W; dx += tileW) {
+          var e = bgBake(bgFilterName());
+          exemptFromBreach(true);
+          ctx.drawImage(e.fill, 0, 0, W, H);
+          if (e.strip) {
+            var windShear = Math.sin(elapsed * 0.4) * 0.012;
+            ctx.save();
+            ctx.transform(1, 0, windShear, 1, 0, 0);
+            for (var dx = 0; dx < W; dx += e.tileW) {
               // Floor the x-coordinate and ceil the width + 1 to prevent floating-point sub-pixel gaps (vertical lines)
-              ctx.drawImage(img, Math.floor(dx), layer.y, Math.ceil(tileW) + 1, H);
+              ctx.drawImage(e.strip, Math.floor(dx), 0, Math.ceil(e.tileW) + 1, H);
             }
-          });
-          ctx.restore();
-          ctx.restore();
+            ctx.restore();
+          }
+          exemptFromBreach(false);
         }
 
         // NEW: dappled sunbeams — soft drifting light shafts through the
         // leaves, fading in as the canopy fills out. Barely visible over
         // bare dirt (nothing to filter light through yet), full strength
         // once the canopy is thriving.
+        var RAY_COS = Math.cos(0.18);
+        var RAY_SIN = Math.sin(0.18);
         function drawDappledSunbeams(elapsed) {
           var canopyT = Math.max(0, Math.min(1, (state.canopyPercent || 0) / 100));
           if (canopyT <= 0.02) return;
@@ -2244,14 +2311,19 @@
           ctx.globalAlpha = 0.10 + canopyT * 0.22;
           ctx.fillStyle = "#fff6c9";
           var rayCount = 4;
+          // four rotated 46px-wide shafts, as polygons (no save/translate/rotate per shaft)
+          var y0 = -40;
+          var y1 = H + 40;
+          ctx.beginPath();
           for (var i = 0; i < rayCount; i++) {
             var rx = (((i / rayCount) * W + elapsed * 14) % (W + 300)) - 150;
-            ctx.save();
-            ctx.translate(rx, 0);
-            ctx.rotate(0.18);
-            ctx.fillRect(0, -40, 46, H + 80);
-            ctx.restore();
+            ctx.moveTo(rx - y0 * RAY_SIN, y0 * RAY_COS);
+            ctx.lineTo(rx + 46 * RAY_COS - y0 * RAY_SIN, 46 * RAY_SIN + y0 * RAY_COS);
+            ctx.lineTo(rx + 46 * RAY_COS - y1 * RAY_SIN, 46 * RAY_SIN + y1 * RAY_COS);
+            ctx.lineTo(rx - y1 * RAY_SIN, y1 * RAY_COS);
+            ctx.closePath();
           }
+          ctx.fill();
           ctx.restore();
 
           // Small drifting dapples of light on the ground, denser with more canopy.
@@ -2259,13 +2331,15 @@
           ctx.globalAlpha = 0.16 + canopyT * 0.24;
           ctx.fillStyle = "#fffbe0";
           var dappleCount = Math.round(canopyT * 10);
+          ctx.beginPath();
           for (var d = 0; d < dappleCount; d++) {
             var dx = (d * 97 + elapsed * 14) % W;
             var dy = (d * 53) % (GRID_H - 20) + GRID_Y_OFFSET + 10 + Math.sin(elapsed * 1.4 + d) * 6;
-            ctx.beginPath();
-            ctx.arc(dx, dy, 5 + (d % 3) * 2, 0, Math.PI * 2);
-            ctx.fill();
+            var dr = 5 + (d % 3) * 2;
+            ctx.moveTo(dx + dr, dy);
+            ctx.arc(dx, dy, dr, 0, Math.PI * 2);
           }
+          ctx.fill();
           ctx.restore();
         }
 
@@ -2275,33 +2349,40 @@
         // ever placed and moved within the horizontal span of columns
         // that currently have connected, grown trees. No connected trees
         // yet ⇒ no animal on screen.
-        function getConnectedCanopyBounds() {
-          var minCol = null;
-          var maxCol = null;
-          var minRow = null;
-          var maxRow = null;
-
+        // One scan per step (refreshCanopy) shared by the HUD, wildlife,
+        // ambient creatures and the draw code; the bounds object is reused.
+        var canopyB = { minCol: 0, maxCol: 0, minRow: 0, maxRow: 0 };
+        var canopyHas = false;
+        var canopyCount = 0;
+        function refreshCanopy() {
+          var minCol = -1;
+          var maxCol = -1;
+          var minRow = -1;
+          var maxRow = -1;
+          var count = 0;
+          var grid = GOGStage2.grid;
           for (var r = 0; r < GOGStage2.rows; r++) {
+            var row = grid[r];
             for (var c = 0; c < GOGStage2.cols; c++) {
-              var cell = GOGStage2.grid[r][c];
-
+              var cell = row[c];
               if (cell.state === "tree" && cell.connected) {
-                if (minCol === null || c < minCol) minCol = c;
-                if (maxCol === null || c > maxCol) maxCol = c;
-                if (minRow === null || r < minRow) minRow = r;
-                if (maxRow === null || r > maxRow) maxRow = r;
+                count++;
+                if (minCol === -1 || c < minCol) minCol = c;
+                if (maxCol === -1 || c > maxCol) maxCol = c;
+                if (minRow === -1 || r < minRow) minRow = r;
+                if (maxRow === -1 || r > maxRow) maxRow = r;
               }
             }
           }
-
-          if (minCol === null) return null;
-
-          return {
-            minCol: minCol,
-            maxCol: maxCol,
-            minRow: minRow,
-            maxRow: maxRow,
-          };
+          canopyCount = count;
+          canopyHas = count > 0;
+          canopyB.minCol = minCol;
+          canopyB.maxCol = maxCol;
+          canopyB.minRow = minRow;
+          canopyB.maxRow = maxRow;
+        }
+        function getConnectedCanopyBounds() {
+          return canopyHas ? canopyB : null;
         }
 
         function updateWildlife(dt) {
@@ -2348,7 +2429,8 @@
 
           var def = WILDLIFE_DEFS[waveIdx];
 
-          state.wildlife.forEach(function (w, idx) {
+          for (var idx = 0; idx < state.wildlife.length; idx++) {
+            var w = state.wildlife[idx];
             if (w.defIndex !== waveIdx) {
               w.defIndex = waveIdx;
               w.revealed = false;
@@ -2507,42 +2589,40 @@
                 }
               }
             }
-          });
+          }
         }
 
         function drawWildlife(filterRow) {
-          if (!state.wildlife || state.wildlife.length === 0) return;
+          var list = state.wildlife;
+          if (!list || list.length === 0) return;
 
           var cellW = W / GOGStage2.cols;
           var cellH = GRID_H / GOGStage2.rows;
 
-          state.wildlife.forEach(function (w) {
-            if (!w.visible || w.defIndex < 0) return;
+          for (var i = 0; i < list.length; i++) {
+            var w = list[i];
+            if (!w.visible || w.defIndex < 0) continue;
 
             // Determine which row layer the animal is in dynamically from its Y coordinate
             var animalRow = Math.floor((w.y - GRID_Y_OFFSET) / cellH);
             animalRow = Math.max(0, Math.min(GOGStage2.rows - 1, animalRow));
 
-            if (filterRow !== undefined && animalRow !== filterRow) return;
+            if (filterRow !== undefined && animalRow !== filterRow) continue;
 
             var def = WILDLIFE_DEFS[w.defIndex];
             var img = def.getImg();
-            if (!img || !img.complete || img.width === 0) return;
+            if (!img || !img.complete || img.width === 0) continue;
 
             var cols = 2;
             var rows = 3;
             var frameW = img.width / cols;
             var frameH = img.height / rows;
-            var frame = GOGSpriteSheet.gridFrame(
-              w.anim.frameIndex,
-              cols,
-              frameW,
-              frameH,
-            );
+            var fi = w.anim.frameIndex;
+            var fx = (fi % cols) * frameW;
+            var fy = Math.floor(fi / cols) * frameH;
 
             var destW = cellW * def.widthScale;
             var destH = (frameH / frameW) * destW;
-            var flip = w.dir < 0;
 
             ctx.save();
             ctx.globalAlpha = w.opacity !== undefined ? w.opacity : 1.0;
@@ -2553,7 +2633,7 @@
             ctx.fill();
 
             ctx.translate(w.x, w.y);
-            if (flip) ctx.scale(-1, 1);
+            if (w.dir < 0) ctx.scale(-1, 1);
 
             // Apply visual adjustments for idle behaviors!
             if (w.state === "IDLE") {
@@ -2566,19 +2646,9 @@
               }
             }
 
-            ctx.drawImage(
-              img,
-              frame.x,
-              frame.y,
-              frame.w,
-              frame.h,
-              -destW / 2,
-              -destH,
-              destW,
-              destH,
-            );
+            ctx.drawImage(img, fx, fy, frameW, frameH, -destW / 2, -destH, destW, destH);
             ctx.restore();
-          });
+          }
         }
 
         /* ---------------- ambient butterflies & birds ---------------- */
@@ -2589,13 +2659,10 @@
         // part of that canopy rather than generic screen-wide decoration.
         function updateAmbientCreatures(dt) {
           var bounds = getConnectedCanopyBounds();
-          var pct = state.canopyPercent;
 
           if (!bounds) {
             // Nothing connected yet — park everyone off screen.
-            state.birds.forEach(function (bird) {
-              bird.x = null;
-            });
+            for (var pi = 0; pi < state.birds.length; pi++) state.birds[pi].x = null;
             return;
           }
 
@@ -2621,10 +2688,12 @@
           );
           var birdUnlocked = Math.min(BIRD_MAX, state.ambientBirdCount);
 
-          state.butterflies.forEach(function (b, i) {
+          var i;
+          for (i = 0; i < state.butterflies.length; i++) {
+            var b = state.butterflies[i];
             if (i >= butterflyUnlocked) {
               b.active = false;
-              return;
+              continue;
             }
             b.active = true;
             b.phase += dt * (1.6 + b.speedMul);
@@ -2637,12 +2706,13 @@
               Math.sin(b.phase * 0.6) * 28 +
               Math.cos(b.phase * 0.37 + i) * 16;
             b.y = homeY + Math.sin(b.phase * 0.9 + i) * 14;
-          });
+          }
 
-          state.birds.forEach(function (bird, i) {
+          for (i = 0; i < state.birds.length; i++) {
+            var bird = state.birds[i];
             if (i >= birdUnlocked) {
               bird.x = null;
-              return;
+              continue;
             }
             var rangeMinX = spanMinX - 50;
             var rangeMaxX = spanMaxX + 50;
@@ -2666,37 +2736,33 @@
               i * 14 +
               Math.sin(bird.phase) * 8 +
               Math.cos(bird.phase * 0.7 + i) * 4;
-          });
+          }
         }
 
         function drawAmbientCreatures() {
-          ctx.save();
-          ctx.textAlign = "center";
-          ctx.textBaseline = "middle";
-
-          ctx.font = "20px Arial";
-          state.butterflies.forEach(function (b) {
-            if (!b.active) return;
+          // Butterflies only (the birds' fillText has long been commented out).
+          var list = state.butterflies;
+          var spr = null;
+          for (var i = 0; i < list.length; i++) {
+            var b = list[i];
+            if (!b.active) continue;
+            if (!spr) {
+              spr = emojiSpr("🦋", 20, "Arial", "center", "middle");
+              ctx.globalAlpha = emojiA;
+            }
             var flap = Math.sin(b.wingPhase);
-            ctx.save();
-            ctx.translate(b.x, b.y);
-            ctx.rotate(flap * 0.2);
-            ctx.scale(1, 0.72 + Math.abs(flap) * 0.28);
-            ctx.fillText("🦋", 0, 0);
-            ctx.restore();
-          });
-
-          ctx.font = "22px Arial";
-          state.birds.forEach(function (bird) {
-            if (bird.x === null) return;
-            ctx.save();
-            ctx.translate(bird.x, bird.y);
-            if (bird.vx < 0) ctx.scale(-1, 1);
-            // ctx.fillText("🐦", 0, 0);
-            ctx.restore();
-          });
-
-          ctx.restore();
+            var rot = flap * 0.2;
+            var cs = Math.cos(rot);
+            var sn = Math.sin(rot);
+            var sy = 0.72 + Math.abs(flap) * 0.28;
+            // translate * rotate * scale(1, sy) as one matrix
+            ctx.setTransform(cs, sn, -sn * sy, cs * sy, b.x + gShX, b.y + gShY);
+            ctx.drawImage(spr.c, -spr.ox, -spr.oy);
+          }
+          if (spr) {
+            resetXform();
+            ctx.globalAlpha = 1;
+          }
         }
 
         /* ---------------- rain clouds spawning ---------------- */
@@ -2865,6 +2931,7 @@
           state.cutsceneBirds = null;
           initAmbientFauna();
           GOGStage2.transitionTo("WAVE_ACTIVE");
+          refreshCanopy();
 
           // NEW: reinforce the "next wave" speed preview right as it starts,
           // in case the wave-cleared overlay was tapped through quickly.
@@ -3301,11 +3368,10 @@
               state.windSoundTimer = 10 + Math.random() * 8;
             }
 
-            // Dynamic BGM volume based on smog distance (forest gets quieter)
+            // Dynamic BGM volume based on smog distance (forest gets quieter).
+            // setBgmVolume only touches the player when the value changes.
             var smogRatio = GOGStage2.smogPosition / GOGStage2.cols;
-            if (audio._bgMusic) {
-              audio._bgMusic.volume = audio.muted ? 0 : audio._bgmMaxVol * Math.max(0.15, smogRatio);
-            }
+            audio.setBgmVolume(Math.round(audio._bgmMaxVol * Math.max(0.15, smogRatio) * 200) / 200);
 
             // Update ambient fauna
             updateAmbientFauna(dt);
@@ -3369,64 +3435,64 @@
             endLose();
           }
 
-          // Update HUD
-          var connectedCount = 0;
+          // Update HUD — one shared grid scan; DOM writes only when a value changed
+          refreshCanopy();
           var totalCells = GOGStage2.rows * GOGStage2.cols;
-          for (var r = 0; r < GOGStage2.rows; r++) {
-            for (var c = 0; c < GOGStage2.cols; c++) {
-              if (
-                GOGStage2.grid[r][c].state === "tree" &&
-                GOGStage2.grid[r][c].connected
-              ) {
-                connectedCount++;
-              }
-            }
+          var canopyPercent = Math.round((canopyCount / totalCells) * 100);
+          var canopyTarget = GOGStage2.getCanopyTarget();
+          if (canopyPercent !== hudLast.pct || canopyTarget !== hudLast.target) {
+            hudLast.pct = canopyPercent;
+            hudLast.target = canopyTarget;
+            GOGUi.setStyle(canopyFill, "width", canopyPercent + "%");
+            GOGUi.setText(canopyPct, canopyPercent + "% / " + canopyTarget + "%");
           }
-          var canopyPercent = Math.round((connectedCount / totalCells) * 100);
-          canopyFill.style.width = canopyPercent + "%";
-          canopyPct.textContent = canopyPercent + "% / " + GOGStage2.getCanopyTarget() + "%";
           state.canopyPercent = canopyPercent;
           updateWildlife(dt);
           updateAmbientCreatures(dt);
 
-          sproutsChip.textContent = GOGStage2.saplings;
-          if (GOGStage2.smogDelay > 0 && !calmMode) {
-            timerChip.textContent = Math.ceil(GOGStage2.timer) + "s";
-            timerChip.style.backgroundColor = "var(--gog-sun)";
-            timerChip.style.color = "var(--gog-ink)";
-          } else {
-            timerChip.textContent = calmMode
-              ? "∞"
-              : Math.ceil(GOGStage2.timer) + "s";
-            timerChip.style.backgroundColor = "";
-            timerChip.style.color = "";
+          if (GOGStage2.saplings !== hudLast.sap) {
+            hudLast.sap = GOGStage2.saplings;
+            GOGUi.setText(sproutsChip, GOGStage2.saplings);
           }
-          difficultyChip.textContent = "⚡ Wave " + GOGStage2.wave;
+          var delayShown = GOGStage2.smogDelay > 0 && !calmMode;
+          var timerSecs = calmMode ? -1 : Math.ceil(GOGStage2.timer);
+          if (timerSecs !== hudLast.timer || delayShown !== hudLast.delay) {
+            hudLast.timer = timerSecs;
+            hudLast.delay = delayShown;
+            GOGUi.setText(timerChip, calmMode ? "∞" : timerSecs + "s");
+            GOGUi.setStyle(timerChip, "backgroundColor", delayShown ? "var(--gog-sun)" : "");
+            GOGUi.setStyle(timerChip, "color", delayShown ? "var(--gog-ink)" : "");
+          }
+          if (GOGStage2.wave !== hudLast.wave) {
+            hudLast.wave = GOGStage2.wave;
+            GOGUi.setText(difficultyChip, "⚡ Wave " + GOGStage2.wave);
+          }
         }
 
         /* ---------------- draw loop ---------------- */
         /* ---------------- draw loop ---------------- */
+        var wipeGrad = null;
         function drawWinWipe() {
           if (!winWiping && !winWipeDone) return;
           var r = winWipeDone ? winWipeMax : winWipeRadius;
+          // One gradient (built once at the final radius) scaled with the circle,
+          // instead of a new radial gradient every frame.
+          if (!wipeGrad) {
+            wipeGrad = ctx.createRadialGradient(0, 0, 0, 0, 0, winWipeMax);
+            wipeGrad.addColorStop(0, "#FFD23F");
+            wipeGrad.addColorStop(0.55, "#a3e635");
+            wipeGrad.addColorStop(1, "#2E7D32");
+          }
+          var k = (r || 1) / winWipeMax;
           ctx.save();
           ctx.beginPath();
           ctx.arc(W / 2, H / 2, r, 0, Math.PI * 2);
           ctx.clip();
-          var grad = ctx.createRadialGradient(
-            W / 2,
-            H / 2,
-            0,
-            W / 2,
-            H / 2,
-            r || 1,
-          );
-          grad.addColorStop(0, "#FFD23F");
-          grad.addColorStop(0.55, "#a3e635");
-          grad.addColorStop(1, "#2E7D32");
+          ctx.translate(W / 2, H / 2);
+          ctx.scale(k, k);
           ctx.globalAlpha = 0.85;
-          ctx.fillStyle = grad;
-          ctx.fillRect(0, 0, W, H);
+          ctx.fillStyle = wipeGrad;
+          ctx.fillRect(-W / (2 * k) - 2, -H / (2 * k) - 2, W / k + 4, H / k + 4);
           ctx.restore();
 
           if (winWiping) {
@@ -3446,31 +3512,38 @@
         // Shown only in calm mode or once auto-easing has kicked in, so it
         // stays a helping hand for struggling/young kids without removing the
         // planning challenge for everyone else.
+        // Allocation-free (it runs every frame while the hint is showing); the
+        // returned object is reused, so read it before calling again.
+        var suggestBest = { r: 0, c: 0 };
+        var DR4 = [-1, 1, 0, 0];
+        var DC4 = [0, 0, -1, 1];
         function findSuggestedPlantCell() {
           if (GOGStage2.gameState !== "WAVE_ACTIVE") return null;
           if (GOGStage2.saplings <= 0) return null;
+          var grid = GOGStage2.grid;
+          var rows = GOGStage2.rows;
+          var cols = GOGStage2.cols;
           var smogCol = Math.floor(GOGStage2.smogPosition);
-          var best = null;
+          var found = false;
           var bestScore = -Infinity;
           // Before anything is planted, the best first move is next to Ravi's
           // root (column 0), so the first tree is connected from the start.
           var anyGrowth = false;
-          for (var gr = 0; gr < GOGStage2.rows && !anyGrowth; gr++) {
-            for (var gc = 0; gc < GOGStage2.cols; gc++) {
-              var gs = GOGStage2.grid[gr][gc].state;
+          for (var gr = 0; gr < rows && !anyGrowth; gr++) {
+            for (var gc = 0; gc < cols; gc++) {
+              var gs = grid[gr][gc].state;
               if (gs === "tree" || gs === "sapling") { anyGrowth = true; break; }
             }
           }
-          for (var r = 0; r < GOGStage2.rows; r++) {
-            for (var c = 0; c < GOGStage2.cols; c++) {
-              var cell = GOGStage2.grid[r][c];
+          for (var r = 0; r < rows; r++) {
+            for (var c = 0; c < cols; c++) {
+              var cell = grid[r][c];
               if (cell.state !== "empty" || c >= smogCol) continue;
               var adjacentGrowth = 0;
-              var neighbors = [[r - 1, c], [r + 1, c], [r, c - 1], [r, c + 1]];
-              for (var n = 0; n < neighbors.length; n++) {
-                var nr = neighbors[n][0], nc = neighbors[n][1];
-                if (nr >= 0 && nr < GOGStage2.rows && nc >= 0 && nc < GOGStage2.cols) {
-                  var ns = GOGStage2.grid[nr][nc].state;
+              for (var n = 0; n < 4; n++) {
+                var nr = r + DR4[n], nc = c + DC4[n];
+                if (nr >= 0 && nr < rows && nc >= 0 && nc < cols) {
+                  var ns = grid[nr][nc].state;
                   if (ns === "tree" || ns === "sapling") adjacentGrowth++;
                 }
               }
@@ -3478,11 +3551,13 @@
               if (!anyGrowth) score = (c === 0 ? 1000 : 0) - Math.abs(r - 1);
               if (score > bestScore) {
                 bestScore = score;
-                best = { r: r, c: c };
+                suggestBest.r = r;
+                suggestBest.c = c;
+                found = true;
               }
             }
           }
-          return best;
+          return found ? suggestBest : null;
         }
 
         // NEW: Ravi's character arc — mood/pace tracks canopy health, with
@@ -3551,32 +3626,266 @@
           ctx.restore();
         }
 
+        // Smog block (INDUSTRIAL HAZE theme — grey-brown, not purple; still a soft
+        // cartoon face, never a monster). Same shapes as before; the wavy edge
+        // is computed once per frame and shared by the body, the clip and the
+        // hazard stripe, the three plume gradients are built once, the face and
+        // the label are baked sprites and the puffs are batched per cluster.
+        var SMOG_STEPS = 26;
+        var smogEdgeX = new Array(SMOG_STEPS + 1);
+        var smogEdgeY = new Array(SMOG_STEPS + 1);
+        var SMOG_BAND_COLORS = [
+          "rgba(132, 120, 90, 0.30)", // murky khaki-brown
+          "rgba(48, 44, 38, 0.30)", // sooty dark
+          "rgba(170, 158, 118, 0.20)", // sickly pale haze highlight
+        ];
+        var SMOG_DASH = [13, 13];
+        var NO_DASH = [];
+        var plumeGrads = [null, null, null];
+        var FACE_COS = Math.cos(-0.09);
+        var FACE_SIN = Math.sin(-0.09);
+
+        function drawSmog(cellW, gridH, gridYOffset) {
+          var smogX = GOGStage2.smogPosition * cellW;
+          var frontWaveTime = state.elapsed * 3.5;
+          var edgeTop = gridYOffset - 6;
+          var edgeBottom = gridYOffset + gridH + 6;
+          var i, y;
+
+          for (i = 0; i <= SMOG_STEPS; i++) {
+            y = edgeTop + ((edgeBottom - edgeTop) * i) / SMOG_STEPS;
+            smogEdgeY[i] = y;
+            smogEdgeX[i] =
+              smogX +
+              Math.sin(y * 0.045 + frontWaveTime) * 12 +
+              Math.cos(y * 0.09 - frontWaveTime * 0.7) * 6;
+          }
+
+          ctx.save();
+
+          // --- LAYER A: Murky Haze Body, wavy undulating leading edge
+          ctx.fillStyle = "rgba(92, 86, 70, 0.78)"; // murky charcoal-khaki
+          ctx.beginPath();
+          ctx.moveTo(W + 4, edgeTop);
+          for (i = 0; i <= SMOG_STEPS; i++) ctx.lineTo(smogEdgeX[i], smogEdgeY[i]);
+          ctx.lineTo(W + 4, edgeBottom);
+          ctx.closePath();
+          ctx.fill();
+
+          // Rolling wave bands + drifting soot flecks, both clipped to the
+          // fog body's own wavy silhouette (the path above is still current).
+          ctx.save();
+          ctx.clip();
+
+          var bandHeight = gridH / SMOG_BAND_COLORS.length;
+          for (var band = 0; band < SMOG_BAND_COLORS.length; band++) {
+            var bandPhase = frontWaveTime * (0.6 + band * 0.25) + band * 2.1;
+            var bandStartY = gridYOffset + band * bandHeight - 10 + Math.sin(bandPhase) * 8;
+
+            ctx.fillStyle = SMOG_BAND_COLORS[band];
+            ctx.beginPath();
+            ctx.moveTo(smogX - 30, bandStartY);
+            for (var bx = smogX - 30; bx <= W + 20; bx += 16) {
+              ctx.lineTo(bx, bandStartY + Math.sin(bx * 0.05 + bandPhase) * 10);
+            }
+            ctx.lineTo(W + 20, bandStartY + bandHeight * 0.6 + 30);
+            for (var bx2 = W + 20; bx2 >= smogX - 30; bx2 -= 16) {
+              ctx.lineTo(
+                bx2,
+                bandStartY + bandHeight * 0.6 + 30 + Math.sin(bx2 * 0.05 + bandPhase + 1.4) * 10,
+              );
+            }
+            ctx.closePath();
+            ctx.fill();
+          }
+
+          // Drifting soot flecks — small dark ash specks (one path, one fill)
+          ctx.fillStyle = "rgba(28, 25, 21, 0.5)";
+          var sootCount = 16;
+          var sootSpanX = W - smogX + 60;
+          ctx.beginPath();
+          for (var si = 0; si < sootCount; si++) {
+            var sootX = smogX - 20 + ((si * 53 + frontWaveTime * 6) % sootSpanX);
+            var sootY = gridYOffset - 10 + ((si * 37 + frontWaveTime * 14) % (gridH + 20));
+            var sootR = 1.4 + (si % 3) * 0.7;
+            ctx.moveTo(sootX + sootR, sootY);
+            ctx.arc(sootX, sootY, sootR, 0, Math.PI * 2);
+          }
+          ctx.fill();
+          ctx.restore();
+
+          // --- LAYER B: Fluffy Haze Front (grey-brown, not lavender) ---
+          var waveTime = frontWaveTime;
+          for (var sy = gridYOffset - 15; sy <= H + 40; sy += 35) {
+            // Calculate a dynamic, organic wobble for this cloud cluster
+            var clusterX = smogX + Math.sin(sy * 0.04 + waveTime) * 14;
+            var baseRadius = 42 + Math.cos(sy * 0.08 + waveTime) * 5;
+
+            // Main central puff + overlapping top-right and bottom-left puffs (the
+            // cartoon cloud cluster), filled together
+            ctx.fillStyle = "rgba(76, 71, 58, 0.93)";
+            ctx.beginPath();
+            ctx.arc(clusterX, sy, baseRadius, 0, Math.PI * 2);
+            ctx.moveTo(clusterX + 15 + baseRadius * 0.75, sy - 15);
+            ctx.arc(clusterX + 15, sy - 15, baseRadius * 0.75, 0, Math.PI * 2);
+            ctx.moveTo(clusterX - 12 + baseRadius * 0.6, sy + 12);
+            ctx.arc(clusterX - 12, sy + 12, baseRadius * 0.6, 0, Math.PI * 2);
+            ctx.fill();
+
+            // Sickly khaki highlight — the "toxic" tint
+            ctx.fillStyle = "rgba(158, 148, 108, 0.4)";
+            ctx.beginPath();
+            ctx.arc(clusterX - 5, sy - 5, baseRadius * 0.8, 0, Math.PI * 2);
+            ctx.fill();
+          }
+
+          // --- LAYER B.2: Hazard-Stripe Boundary (black-and-amber marching dashes)
+          ctx.save();
+          ctx.lineCap = "round";
+          ctx.lineJoin = "round";
+          ctx.beginPath();
+          ctx.moveTo(smogEdgeX[0], edgeTop);
+          for (i = 0; i <= SMOG_STEPS; i++) ctx.lineTo(smogEdgeX[i], smogEdgeY[i]);
+          ctx.strokeStyle = "#241c30";
+          ctx.lineWidth = 7;
+          ctx.stroke();
+          ctx.strokeStyle = "#ffb020";
+          ctx.lineWidth = 7;
+          ctx.setLineDash(SMOG_DASH);
+          ctx.lineDashOffset = -state.elapsed * 45;
+          ctx.stroke();
+          ctx.setLineDash(NO_DASH);
+          ctx.restore();
+
+          // --- LAYER B.3: Rising Soot Plume ---
+          // The gradient is vertical, so it does not depend on x: built once per plume.
+          ctx.save();
+          for (var pl = 0; pl < 3; pl++) {
+            var plumePhase = state.elapsed * 0.9 + pl * 2.3;
+            var plumeBaseX = smogX + 10 + pl * 26 + Math.sin(plumePhase) * 10;
+            var plumeTopY = gridYOffset - 55 - (pl % 2) * 15;
+            var plumeGrad = plumeGrads[pl];
+            if (!plumeGrad) {
+              plumeGrad = plumeGrads[pl] = ctx.createLinearGradient(0, gridYOffset, 0, plumeTopY);
+              plumeGrad.addColorStop(0, "rgba(70, 65, 55, 0.45)");
+              plumeGrad.addColorStop(1, "rgba(70, 65, 55, 0)");
+            }
+            ctx.strokeStyle = plumeGrad;
+            ctx.lineWidth = 10 - pl * 2;
+            ctx.beginPath();
+            ctx.moveTo(plumeBaseX, gridYOffset + 4);
+            ctx.quadraticCurveTo(
+              plumeBaseX + Math.sin(plumePhase * 1.6) * 18,
+              (gridYOffset + plumeTopY) / 2,
+              plumeBaseX + Math.sin(plumePhase * 2.1) * 10,
+              plumeTopY,
+            );
+            ctx.stroke();
+          }
+          ctx.restore();
+
+          // --- LAYER B.5: Cartoon Smog Face (big, focal, left-facing) ---
+          var faceBobY = Math.sin(state.elapsed * 3.2) * 3; // idle bob, nothing sits still
+          var faceCenterY = gridYOffset + gridH / 2 + faceBobY;
+          var faceLead = Math.sin(faceCenterY * 0.04 + waveTime) * 14;
+          // Pull the face out ahead of the body's center toward the left
+          // (direction of travel) so it visibly leads the cloud.
+          var faceCenterX = smogX + faceLead - 22;
+          var face = smogFaceSprite(!!GOGStage2.smogMoving);
+          // translate(face) * rotate(-0.09): slight forward lean into the direction of travel
+          ctx.setTransform(FACE_COS, FACE_SIN, -FACE_SIN, FACE_COS, faceCenterX + gShX, faceCenterY + gShY);
+          ctx.drawImage(face, -FACE_SIZE / 2, -FACE_SIZE / 2, FACE_SIZE, FACE_SIZE);
+          resetXform();
+
+          // --- LAYER C: High-Contrast Warning Label ---
+          var labelX = Math.min(smogX + 74, W - 66);
+          var labelY = gridYOffset + gridH * 0.32;
+          var label = smogLabelSprite();
+          if (label) {
+            ctx.drawImage(label.c, Math.round(labelX - label.ox), Math.round(labelY - label.oy));
+          } else {
+            // fonts still loading: draw the text live this frame
+            ctx.save();
+            ctx.textAlign = "center";
+            ctx.textBaseline = "middle";
+            ctx.lineJoin = "round";
+            ctx.font = "800 24px 'Baloo 2', sans-serif";
+            ctx.lineWidth = 5;
+            ctx.strokeStyle = "#241c30";
+            ctx.fillStyle = "#fdfaef";
+            ctx.strokeText("⚠️ SMOG!", labelX, labelY);
+            ctx.fillText("⚠️ SMOG!", labelX, labelY);
+            ctx.font = "700 16px 'Quicksand', sans-serif";
+            ctx.lineWidth = 4;
+            ctx.strokeText("😷 dirty air — keep it out!", labelX, labelY + 27);
+            ctx.fillText("😷 dirty air — keep it out!", labelX, labelY + 27);
+            ctx.restore();
+          }
+
+          ctx.restore();
+        }
+
+        var staticDrawn = false;
+        function particlesActive() {
+          var pool = particles.pool;
+          for (var i = 0; i < pool.length; i++) {
+            if (pool[i].active) return true;
+          }
+          return false;
+        }
+        var swayTab = null;
+
         function draw() {
+          if (GOGUi.paused) return; // "How to play" pop-up is open
+          // A finished / overlaid scene (intro, wave cleared, win, lose) stands
+          // still: paint it once, then leave the canvas alone.
+          if (state.running || winWiping || state.desaturateTime > 0 || state.screenShake > 0 || particlesActive()) {
+            staticDrawn = false;
+          } else if (staticDrawn) {
+            return;
+          } else {
+            staticDrawn = true;
+          }
+
           var shakeX = 0,
             shakeY = 0;
           if (state.screenShake > 0) {
             shakeX = (Math.random() - 0.5) * state.screenShake;
             shakeY = (Math.random() - 0.5) * state.screenShake;
           }
+          gShX = shakeX;
+          gShY = shakeY;
+          breachOn = state.desaturateTime > 0;
+          emojiA = 1;
 
           ctx.save();
           ctx.translate(shakeX, shakeY);
 
-          // Apply desaturation filter on breach events
-          if (state.desaturateTime > 0) {
-            ctx.filter = "grayscale(1) contrast(1.15)";
+          // Apply desaturation filter on breach events (background, trees and
+          // seaweed opt out, exactly as before)
+          if (breachOn) {
+            ctx.filter = BREACH_FILTER;
           }
 
-          drawForestBackground(state.elapsed);
-          drawDappledSunbeams(state.elapsed); // NEW: light through the leaves, fades in with canopy growth
-          drawFog(state.elapsed);
+          var t = state.elapsed;
+          drawForestBackground(t);
+          drawDappledSunbeams(t); // NEW: light through the leaves, fades in with canopy growth
+          drawFog(t);
           drawRaviCharacter(); // NEW: Ravi watches from the sky band, mood tracking canopy health
 
           // Grid dimension recalculations
-          var cellW = W / GOGStage2.cols;
+          var rows = GOGStage2.rows;
+          var cols = GOGStage2.cols;
+          var grid = GOGStage2.grid;
+          var cellW = W / cols;
           var gridH = GRID_H; // Height of the actionable zone
-          var cellH = gridH / GOGStage2.rows; // Scale rows within the grid height
+          var cellH = gridH / rows; // Scale rows within the grid height
           var gridYOffset = GRID_Y_OFFSET; // Shift everything downwards past the sky
+          var smogCol = Math.floor(GOGStage2.smogPosition);
+          var spr = layoutSprites(cellW, cellH);
+          var rockSpr = null;
+          var rockEmoji = null;
+          var r, c, cell, cx, cy, x, y, i, ph;
 
           // NEW: suggested-spot glow — only for calm mode or once auto-easing
           // has kicked in (assist > 0), so it's a helping hand, not a spoiler.
@@ -3584,124 +3893,87 @@
           // everyone, so a first-time player always sees where to tap.
           var showSuggestedSpot = calmMode || diff.getAssist() > 0 || state.elapsed < 10 || coach.active;
           var suggestedSpot = showSuggestedSpot ? findSuggestedPlantCell() : null;
+          var sugR = suggestedSpot ? suggestedSpot.r : -1;
+          var sugC = suggestedSpot ? suggestedSpot.c : -1;
+
+          // Per-frame tables shared by every cell: ring wobble + wind sway
+          var ct = Math.cos(t * 1.8);
+          var st = Math.sin(t * 1.8);
+          for (i = 0; i <= RING_N; i++) ringWave[i] = (RING_S4[i] * ct + RING_C4[i] * st) * 1.2;
+          if (!swayTab || swayTab.length !== rows * cols) swayTab = new Float64Array(rows * cols);
+          for (r = 0; r < rows; r++) {
+            for (c = 0; c < cols; c++) {
+              swayTab[r * cols + c] = Math.sin(t * 1.8 + (r * 4.3 + c * 2.7)) * 2.5;
+            }
+          }
+          var radius = spr.radius;
 
           // 1. Draw Grid Cells
-          for (var r = 0; r < GOGStage2.rows; r++) {
-            for (var c = 0; c < GOGStage2.cols; c++) {
-              var cell = GOGStage2.grid[r][c];
-              var x = c * cellW;
-              var y = gridYOffset + r * cellH;
+          for (r = 0; r < rows; r++) {
+            for (c = 0; c < cols; c++) {
+              cell = grid[r][c];
+              x = c * cellW;
+              y = gridYOffset + r * cellH;
+              var cstate = cell.state;
 
-              // Empty planting spots - premium organic glowing vine plot design
-              if (cell.state === "empty") {
-                var cx = x + cellW / 2;
-                var cy = y + cellH / 2;
-                var radius = Math.min(cellW, cellH) * 0.38;
+              // Empty planting spots - organic vine plot: soil patch, wobbling
+              // ring and a ghost sprout (the soil and sprout are baked sprites)
+              if (cstate === "empty") {
+                cx = x + cellW / 2;
+                cy = y + cellH / 2;
+                ctx.drawImage(spr.soil, cx - spr.soilC, cy - spr.soilC);
 
-                ctx.save();
-                // 1. Pulsing scale for organic/alive feedback
-                var pulse = 1.0 + Math.sin(state.elapsed * 3.0 + (r * 1.7 + c * 2.3)) * 0.05;
+                var pulse = 1.0 + Math.sin(t * 3.0 + (r * 1.7 + c * 2.3)) * 0.05;
                 var rScale = radius * pulse;
-
-                // 2. Soft earthy/soil radial gradient patch that fades out into grass
-                var soilGrad = ctx.createRadialGradient(cx, cy, 2, cx, cy, radius * 1.15);
-                soilGrad.addColorStop(0, "rgba(80, 50, 30, 0.35)"); 
-                soilGrad.addColorStop(0.6, "rgba(100, 70, 45, 0.15)");
-                soilGrad.addColorStop(1, "rgba(0, 0, 0, 0)");
-                ctx.fillStyle = soilGrad;
-                ctx.beginPath();
-                ctx.arc(cx, cy, radius * 1.15, 0, Math.PI * 2);
-                ctx.fill();
-
-                // 3. Glowing circular vine indicator border (wavy, pulsing green/gold ring)
-                var alphaPulse = 0.32 + Math.sin(state.elapsed * 2.8 + (r + c)) * 0.12;
-                ctx.strokeStyle = "rgba(47, 191, 113, " + alphaPulse + ")";
+                ph = Math.sin(t * 2.8 + (r + c));
+                ctx.strokeStyle = RING_RGBA[aIdx(0.32 + ph * 0.12)];
                 ctx.lineWidth = 1.8;
                 ctx.beginPath();
-                
-                // Draw a beautiful slightly irregular/organic ring
-                var ringSteps = 16;
-                for (var i = 0; i <= ringSteps; i++) {
-                  var angle = (i / ringSteps) * Math.PI * 2;
-                  var wave = Math.sin(angle * 4 + state.elapsed * 1.8) * 1.2;
-                  var currR = rScale + wave;
-                  var wx = cx + Math.cos(angle) * currR;
-                  var wy = cy + Math.sin(angle) * currR;
+                for (i = 0; i <= RING_N; i++) {
+                  var currR = rScale + ringWave[i];
+                  var wx = cx + RING_COS[i] * currR;
+                  var wy = cy + RING_SIN[i] * currR;
                   if (i === 0) ctx.moveTo(wx, wy);
                   else ctx.lineTo(wx, wy);
                 }
                 ctx.stroke();
 
-                // 4. Soft glowing ghost sprout emoji in the center
-                ctx.shadowColor = "rgba(47, 191, 113, 0.4)";
-                ctx.shadowBlur = 5;
-                var fontSize = Math.max(14, Math.floor(Math.min(cellW, cellH) * 0.26));
-                ctx.font = fontSize + "px Arial";
-                ctx.textAlign = "center";
-                ctx.textBaseline = "middle";
-                ctx.globalAlpha = 0.45 + Math.sin(state.elapsed * 2.8 + (r + c)) * 0.15;
-                ctx.fillText("🌱", cx, cy - 2);
-                ctx.restore();
+                ctx.globalAlpha = 0.45 + ph * 0.15;
+                ctx.drawImage(spr.sprout, cx - spr.spC, cy - 2 - spr.spC);
 
                 // NEW: suggested-spot glow — a brighter pulsing lime ring
                 // singles out one good next move for struggling/young kids.
-                if (suggestedSpot && suggestedSpot.r === r && suggestedSpot.c === c) {
-                  ctx.save();
-                  var suggestPulse = 0.55 + Math.sin(state.elapsed * 5) * 0.35;
-                  ctx.strokeStyle = "rgba(201, 242, 61, " + suggestPulse + ")";
-                  ctx.lineWidth = 4;
-                  ctx.shadowColor = "rgba(201, 242, 61, 0.8)";
-                  ctx.shadowBlur = 12;
-                  ctx.beginPath();
-                  ctx.arc(cx, cy, radius * 1.35, 0, Math.PI * 2);
-                  ctx.stroke();
-                  ctx.restore();
+                if (r === sugR && c === sugC) {
+                  ctx.globalAlpha = 0.55 + Math.sin(t * 5) * 0.35;
+                  ctx.drawImage(spr.suggest, cx - spr.sgC, cy - spr.sgC);
                 }
-              }
-
-              // Rock background tint
-              if (cell.state === "rock") {
-                // Draw rock image centered in the cell. use cx/cy (cell center)
-                var cx = x + cellW / 2;
-                var cy = y + cellH / 2;
-                if (rockImg && rockImg.complete && rockImg.width > 0) {
-                  var rockScale = Math.min(
-                    (cellW - 12) / rockImg.width,
-                    (cellH - 12) / rockImg.height,
-                  );
-                  rockScale *= 2;
-                  var destW = rockImg.width * rockScale;
-                  var destH = rockImg.height * rockScale;
-                  ctx.drawImage(
-                    rockImg,
-                    cx - destW / 2,
-                    cy - destH / 2,
-                    destW,
-                    destH,
-                  );
+                ctx.globalAlpha = 1;
+              } else if (cstate === "rock") {
+                // Rock image centered in the cell (pre-scaled sprite)
+                cx = x + cellW / 2;
+                cy = y + cellH / 2;
+                if (!rockSpr) rockSpr = rockSprite(cellW, cellH);
+                if (rockSpr) {
+                  ctx.drawImage(rockSpr.c, cx - rockSpr.w / 2, cy - rockSpr.h / 2);
                 } else {
-                  ctx.save();
-                  ctx.font = "24px Arial";
-                  ctx.textAlign = "center";
-                  ctx.textBaseline = "middle";
-                  ctx.fillStyle = "#555"; // visible fallback if image missing
-                  ctx.fillText("⛰️", cx, cy);
-                  ctx.restore();
+                  drawEmoji("⛰️", 24, "Arial", "center", "middle", cx, cy); // visible fallback if image missing
                 }
               }
 
               // Connected tree backdrop highlight - seamless green background
-              if (cell.state === "tree" && cell.connected) {
-                ctx.fillStyle = "rgba(47, 191, 113, 0.28)";
+              if (cstate === "tree" && cell.connected) {
+                ctx.fillStyle = TREE_BACKDROP;
                 ctx.fillRect(x, y, cellW, cellH);
+                emojiA = 0.28;
               }
 
               // Smog locking visualization — haze-matched tint plus a full
               // hazard X, so "you can't plant here" reads from the shape
               // itself, not just a faint tint (colorblind-safe, per spec).
-              if (!calmMode && c >= Math.floor(GOGStage2.smogPosition)) {
+              if (!calmMode && c >= smogCol) {
                 ctx.fillStyle = "rgba(92, 86, 70, 0.22)";
                 ctx.fillRect(x + 2, y + 2, cellW - 4, cellH - 4);
+                emojiA = 0.22;
                 ctx.strokeStyle = "rgba(40, 36, 30, 0.55)";
                 ctx.lineWidth = 3;
                 ctx.beginPath();
@@ -3715,89 +3987,76 @@
           }
 
           // 2. Draw Connectivity Vine Links (Branches, vines, and canopy overlapping leaves)
-          for (var r = 0; r < GOGStage2.rows; r++) {
-            for (var c = 0; c < GOGStage2.cols; c++) {
-              var cell = GOGStage2.grid[r][c];
+          ctx.save();
+          for (r = 0; r < rows; r++) {
+            for (c = 0; c < cols; c++) {
+              cell = grid[r][c];
               if (cell.state === "tree" && cell.connected) {
-                var cx = c * cellW + cellW / 2;
-                var cy = gridYOffset + r * cellH + cellH / 2;
-                var windSway1 = Math.sin(state.elapsed * 1.8 + (r * 4.3 + c * 2.7)) * 2.5;
+                cx = c * cellW + cellW / 2;
+                cy = gridYOffset + r * cellH + cellH / 2;
+                var windSway1 = swayTab[r * cols + c];
 
                 // draw link to right neighbor
-                if (c + 1 < GOGStage2.cols) {
-                  var right = GOGStage2.grid[r][c + 1];
+                if (c + 1 < cols) {
+                  var right = grid[r][c + 1];
                   if (right.state === "tree" && right.connected) {
                     var ncx = (c + 1) * cellW + cellW / 2;
-                    var ncy = gridYOffset + r * cellH + cellH / 2;
-                    var windSway2 = Math.sin(state.elapsed * 1.8 + (r * 4.3 + (c + 1) * 2.7)) * 2.5;
-                    drawTreeConnection(ctx, cx + windSway1, cy, ncx + windSway2, ncy);
+                    drawTreeConnection(ctx, cx + windSway1, cy, ncx + swayTab[r * cols + c + 1], cy);
                   }
                 }
                 // draw link to down neighbor
-                if (r + 1 < GOGStage2.rows) {
-                  var down = GOGStage2.grid[r + 1][c];
+                if (r + 1 < rows) {
+                  var down = grid[r + 1][c];
                   if (down.state === "tree" && down.connected) {
-                    var ncx = c * cellW + cellW / 2;
                     var ncy = gridYOffset + (r + 1) * cellH + cellH / 2;
-                    var windSway2 = Math.sin(state.elapsed * 1.8 + ((r + 1) * 4.3 + c * 2.7)) * 2.5;
-                    drawTreeConnection(ctx, cx + windSway1, cy, ncx, ncy + windSway2);
+                    drawTreeConnection(ctx, cx + windSway1, cy, cx, ncy + swayTab[(r + 1) * cols + c]);
                   }
                 }
               }
             }
           }
+          ctx.restore();
 
           // 3. Draw Sprites / Glyphs (Saplings, Rocks and Trees)
-          for (var r = 0; r < GOGStage2.rows; r++) {
+          for (r = 0; r < rows; r++) {
             // Draw wildlife for this row (behind this row's trees, but in front of previous rows)
             drawWildlife(r);
 
-            for (var c = 0; c < GOGStage2.cols; c++) {
-              var cell = GOGStage2.grid[r][c];
-              var cx = c * cellW + cellW / 2;
-              var cy = gridYOffset + r * cellH + cellH / 2;
+            for (c = 0; c < cols; c++) {
+              cell = grid[r][c];
+              cx = c * cellW + cellW / 2;
+              cy = gridYOffset + r * cellH + cellH / 2;
 
               var plantOffsetX = (r + c) % 2 === 0 ? -cellW * 0.15 : cellW * 0.15;
               var pcx = cx + plantOffsetX;
+              var cs3 = cell.state;
 
-              if (cell.state === "rock") {
-                ctx.save();
-                ctx.font = "30px Arial";
-                ctx.textAlign = "center";
-                ctx.textBaseline = "middle";
-                ctx.fillText("⛰️", cx, cy - 4);
-                ctx.restore();
-              } else if (cell.state === "sapling") {
+              if (cs3 === "rock") {
+                if (!rockEmoji) rockEmoji = emojiSpr("⛰️", 30, "Arial", "center", "middle");
+                ctx.globalAlpha = emojiA;
+                ctx.drawImage(rockEmoji.c, cx - rockEmoji.ox, cy - 4 - rockEmoji.oy);
+                ctx.globalAlpha = 1;
+              } else if (cs3 === "sapling") {
                 // Growth progress arc
                 var pct = 1 - cell.growTimer / GOGStage2.growthTime;
-                ctx.strokeStyle = "rgba(47, 191, 113, 0.7)";
+                ctx.strokeStyle = SAPLING_ARC;
                 ctx.lineWidth = 4;
                 ctx.beginPath();
-                ctx.arc(
-                  pcx,
-                  cy + 12,
-                  16,
-                  -Math.PI / 2,
-                  -Math.PI / 2 + pct * Math.PI * 2,
-                );
+                ctx.arc(pcx, cy + 12, 16, -Math.PI / 2, -Math.PI / 2 + pct * Math.PI * 2);
                 ctx.stroke();
 
                 // Draw growing roots tendrils branching outwards into the soil
-                ctx.save();
-                ctx.strokeStyle = "rgba(120, 80, 50, " + (0.3 + pct * 0.5) + ")";
+                var rootY = cy + cellH / 2;
+                ctx.strokeStyle = ROOT_RGBA[aIdx(0.3 + pct * 0.5)];
                 ctx.lineWidth = 2.2;
                 ctx.lineCap = "round";
-                // Left root
                 ctx.beginPath();
-                ctx.moveTo(pcx, cy + cellH / 2 - 4);
-                ctx.quadraticCurveTo(pcx - 8, cy + cellH / 2 + 2, pcx - 12 - pct * 12, cy + cellH / 2 + 5 + pct * 6);
+                ctx.moveTo(pcx, rootY - 4);
+                ctx.quadraticCurveTo(pcx - 8, rootY + 2, pcx - 12 - pct * 12, rootY + 5 + pct * 6);
+                ctx.moveTo(pcx, rootY - 4);
+                ctx.quadraticCurveTo(pcx + 8, rootY + 2, pcx + 12 + pct * 12, rootY + 5 + pct * 6);
                 ctx.stroke();
-                // Right root
-                ctx.beginPath();
-                ctx.moveTo(pcx, cy + cellH / 2 - 4);
-                ctx.quadraticCurveTo(pcx + 8, cy + cellH / 2 + 2, pcx + 12 + pct * 12, cy + cellH / 2 + 5 + pct * 6);
-                ctx.stroke();
-                ctx.restore();
+                ctx.lineCap = "butt";
 
                 // Draw growing sprites dynamically from GrowingPlants1 sheet
                 if (
@@ -3805,12 +4064,8 @@
                   growingPlantsImg.complete &&
                   growingPlantsImg.width > 0
                 ) {
-                  var frame = GOGSpriteSheet.progressFrame(
-                    GROWING_PLANT_FRAMES,
-                    pct,
-                  );
-                  var lastFrame =
-                    GROWING_PLANT_FRAMES[GROWING_PLANT_FRAMES.length - 1];
+                  var frame = GOGSpriteSheet.progressFrame(GROWING_PLANT_FRAMES, pct);
+                  var lastFrame = GROWING_PLANT_FRAMES[GROWING_PLANT_FRAMES.length - 1];
                   var plantScale = Math.min(
                     (cellW - 16) / lastFrame.w,
                     (cellH - 10) / lastFrame.h,
@@ -3827,14 +4082,9 @@
                     "bottom",
                   );
                 } else {
-                  ctx.save();
-                  ctx.font = "26px Arial";
-                  ctx.textAlign = "center";
-                  ctx.textBaseline = "middle";
-                  ctx.fillText("🌱", pcx, cy);
-                  ctx.restore();
+                  drawEmoji("🌱", 26, "Arial", "center", "middle", pcx, cy);
                 }
-              } else if (cell.state === "tree") {
+              } else if (cs3 === "tree") {
                 // Determine scale based on grow pop timer
                 var popScale = 1.0;
                 if (cell.growPopTimer > 0) {
@@ -3848,51 +4098,43 @@
                 }
 
                 // Gentle staggered wind sway (2-3px)
-                var windSway = Math.sin(state.elapsed * 1.8 + (r * 4.3 + c * 2.7)) * 2.5;
+                var windSway = swayTab[r * cols + c];
 
                 // Check if tree is engulfed by smog
-                var isEngulfed = !calmMode && c >= Math.floor(GOGStage2.smogPosition);
+                var isEngulfed = !calmMode && c >= smogCol;
 
                 // Draw seaweed from Stage 1 in between connected trees to build a thick canopy
                 if (cell.connected && !isEngulfed) {
                   // Horizontal seaweed connection
-                  if (c + 1 < GOGStage2.cols) {
-                    var right = GOGStage2.grid[r][c + 1];
-                    if (right.state === "tree" && right.connected) {
+                  if (c + 1 < cols) {
+                    var right2 = grid[r][c + 1];
+                    if (right2.state === "tree" && right2.connected) {
                       var midX = (c + 1) * cellW;
                       var midY = gridYOffset + r * cellH + cellH / 2;
-                      var windSwayMid = Math.sin(state.elapsed * 1.8 + (r * 4.3 + (c + 0.5) * 2.7)) * 2.5;
-
-                      ctx.save();
+                      var windSwayMid = Math.sin(t * 1.8 + (r * 4.3 + (c + 0.5) * 2.7)) * 2.5;
                       var seaImg = (r + c) % 2 === 0 ? seaWedImg1 : seaWedImg2;
                       if (seaImg && seaImg.complete && seaImg.width > 0) {
-                        var seaW = cellW * 0.9;
-                        var seaH = (seaImg.height / seaImg.width) * seaW;
-                        ctx.translate(midX + windSwayMid, midY + cellH / 2 - 6);
-                        ctx.filter = "brightness(0.85) saturate(0.9) hue-rotate(-5deg)";
-                        ctx.drawImage(seaImg, -seaW / 2, -seaH + 12, seaW, seaH);
+                        var sea = seaSprite(seaImg, (r + c) % 2 === 0 ? 1 : 2, false, cellW);
+                        exemptFromBreach(true);
+                        ctx.drawImage(sea.c, midX + windSwayMid - sea.ox, midY + cellH / 2 - 6 - sea.h + 12);
+                        exemptFromBreach(false);
                       }
-                      ctx.restore();
                     }
                   }
                   // Vertical seaweed connection
-                  if (r + 1 < GOGStage2.rows) {
-                    var down = GOGStage2.grid[r + 1][c];
-                    if (down.state === "tree" && down.connected) {
-                      var midX = c * cellW + cellW / 2;
-                      var midY = gridYOffset + (r + 1) * cellH;
-                      var windSwayMid = Math.sin(state.elapsed * 1.8 + ((r + 0.5) * 4.3 + c * 2.7)) * 2.5;
-
-                      ctx.save();
-                      var seaImg = (r + c) % 2 === 0 ? seaWedImg2 : seaWedImg1;
-                      if (seaImg && seaImg.complete && seaImg.width > 0) {
-                        var seaW = cellW * 0.95;
-                        var seaH = (seaImg.height / seaImg.width) * seaW;
-                        ctx.translate(midX + windSwayMid, midY + cellH / 2 - 6);
-                        ctx.filter = "brightness(0.85) saturate(0.9) hue-rotate(-5deg)";
-                        ctx.drawImage(seaImg, -seaW / 2, -seaH + 12, seaW, seaH);
+                  if (r + 1 < rows) {
+                    var down2 = grid[r + 1][c];
+                    if (down2.state === "tree" && down2.connected) {
+                      var midX2 = c * cellW + cellW / 2;
+                      var midY2 = gridYOffset + (r + 1) * cellH;
+                      var windSwayMid2 = Math.sin(t * 1.8 + ((r + 0.5) * 4.3 + c * 2.7)) * 2.5;
+                      var seaImg2 = (r + c) % 2 === 0 ? seaWedImg2 : seaWedImg1;
+                      if (seaImg2 && seaImg2.complete && seaImg2.width > 0) {
+                        var sea2 = seaSprite(seaImg2, (r + c) % 2 === 0 ? 2 : 1, true, cellW);
+                        exemptFromBreach(true);
+                        ctx.drawImage(sea2.c, midX2 + windSwayMid2 - sea2.ox, midY2 + cellH / 2 - 6 - sea2.h + 12);
+                        exemptFromBreach(false);
                       }
-                      ctx.restore();
                     }
                   }
                 }
@@ -3902,21 +4144,18 @@
 
                 // Draw healthy roots for fully grown trees if connected!
                 if (cell.connected && !isEngulfed) {
-                  ctx.save();
-                  ctx.strokeStyle = "rgba(47, 191, 113, 0.55)"; // glowing root lines
+                  var tx = cx + windSway;
+                  var ty = cy + cellH / 2;
+                  ctx.strokeStyle = TREE_ROOT; // glowing root lines
                   ctx.lineWidth = 2.5;
                   ctx.lineCap = "round";
-                  // Left root
                   ctx.beginPath();
-                  ctx.moveTo(cx + windSway, cy + cellH / 2 - 4);
-                  ctx.quadraticCurveTo(cx + windSway - 10, cy + cellH / 2 + 2, cx + windSway - 22, cy + cellH / 2 + 10);
+                  ctx.moveTo(tx, ty - 4);
+                  ctx.quadraticCurveTo(tx - 10, ty + 2, tx - 22, ty + 10);
+                  ctx.moveTo(tx, ty - 4);
+                  ctx.quadraticCurveTo(tx + 10, ty + 2, tx + 22, ty + 10);
                   ctx.stroke();
-                  // Right root
-                  ctx.beginPath();
-                  ctx.moveTo(cx + windSway, cy + cellH / 2 - 4);
-                  ctx.quadraticCurveTo(cx + windSway + 10, cy + cellH / 2 + 2, cx + windSway + 22, cy + cellH / 2 + 10);
-                  ctx.stroke();
-                  ctx.restore();
+                  ctx.lineCap = "butt";
                 }
               }
             }
@@ -3927,461 +4166,84 @@
           drawAmbientCreatures();
           drawAmbientFauna(ctx);
 
-          // 4. Draw Blossoms & Wildlife in Win/Cleared state (Phase 5 Juice)
+          // 4. Draw Blossoms in Win/Cleared state (Phase 5 Juice)
           if (
             GOGStage2.gameState === "STAGE_WON" ||
             GOGStage2.gameState === "WAVE_CLEARED"
           ) {
             // Draw colorful blossoms on top of connected trees
-            for (var r = 0; r < GOGStage2.rows; r++) {
-              for (var c = 0; c < GOGStage2.cols; c++) {
-                var cell = GOGStage2.grid[r][c];
+            for (r = 0; r < rows; r++) {
+              for (c = 0; c < cols; c++) {
+                cell = grid[r][c];
                 if (cell.state === "tree" && cell.connected) {
-                  var cx = c * cellW + cellW / 2;
-                  var cy = gridYOffset + r * cellH + cellH / 2;
-                  ctx.save();
-                  ctx.font = "16px Arial";
-                  ctx.fillText("🌸", cx - 12, cy - 24);
-                  if (c % 2 === 0) ctx.fillText("🌼", cx + 12, cy - 28);
-                  ctx.restore();
+                  cx = c * cellW + cellW / 2;
+                  cy = gridYOffset + r * cellH + cellH / 2;
+                  ctx.globalAlpha = emojiA;
+                  drawEmoji("🌸", 16, "Arial", "left", "alphabetic", cx - 12, cy - 24);
+                  if (c % 2 === 0) drawEmoji("🌼", 16, "Arial", "left", "alphabetic", cx + 12, cy - 28);
+                  ctx.globalAlpha = 1;
                 }
               }
             }
-
-            // Draw birds and butterflies returning
-            ctx.save();
-            ctx.font = "24px Arial";
-            var birdX = ((state.elapsed * 60) % (W + 200)) - 100;
-            // ctx.fillText("🐦", birdX, 50);
-            // ctx.fillText("🐦", birdX - 35, 75);
-            // ctx.fillText("🦋", birdX + 20, 110);
-            ctx.restore();
           }
 
           // 5. Draw Rain Clouds and Falling Rain — rain is only ever drawn
           // once a cloud has actually been tapped (state.raining), and it
           // animates as real falling drops rather than a static drizzle
           // glyph frozen under the cloud.
-          state.clouds.forEach(function (c) {
-            if (!c.active) return;
+          var clouds = state.clouds;
+          for (i = 0; i < clouds.length; i++) {
+            var cl = clouds[i];
+            if (!cl.active) continue;
 
-            if (c.raining) {
+            if (cl.raining) {
               ctx.save();
               ctx.strokeStyle = "rgba(100, 180, 255, 0.85)";
               ctx.lineCap = "round";
-              c.drops.forEach(function (d) {
+              ctx.lineWidth = 2.4;
+              for (var di = 0; di < cl.drops.length; di++) {
+                var d = cl.drops[di];
                 var fade = Math.max(0, 1 - d.y / 95);
-                if (fade <= 0) return;
+                if (fade <= 0) continue;
                 ctx.globalAlpha = fade;
-                ctx.lineWidth = 2.4;
                 ctx.beginPath();
-                ctx.moveTo(c.x + d.dx, c.y + 14 + d.y);
-                ctx.lineTo(c.x + d.dx - 3, c.y + 14 + d.y + 15);
+                ctx.moveTo(cl.x + d.dx, cl.y + 14 + d.y);
+                ctx.lineTo(cl.x + d.dx - 3, cl.y + 14 + d.y + 15);
                 ctx.stroke();
-              });
+              }
               ctx.restore();
             }
 
             // Vector outlined cloud — gently dims and cools in color while
             // it rains, then fades as its shower finishes.
             ctx.save();
-            ctx.globalAlpha = c.raining
-              ? Math.max(0.35, Math.min(1, c.rainTimer / 1.4))
+            ctx.globalAlpha = cl.raining
+              ? Math.max(0.35, Math.min(1, cl.rainTimer / 1.4))
               : 1;
-            ctx.fillStyle = c.raining ? "#eaf3ff" : "#ffffff";
+            ctx.fillStyle = cl.raining ? "#eaf3ff" : "#ffffff";
             ctx.strokeStyle = "#1e293b";
             ctx.lineWidth = 3.5;
             ctx.beginPath();
-            ctx.moveTo(c.x - 20, c.y + 8);
-            ctx.bezierCurveTo(
-              c.x - 38,
-              c.y + 8,
-              c.x - 38,
-              c.y - 12,
-              c.x - 20,
-              c.y - 12,
-            );
-            ctx.bezierCurveTo(
-              c.x - 20,
-              c.y - 30,
-              c.x + 20,
-              c.y - 30,
-              c.x + 20,
-              c.y - 12,
-            );
-            ctx.bezierCurveTo(
-              c.x + 38,
-              c.y - 12,
-              c.x + 38,
-              c.y + 8,
-              c.x + 20,
-              c.y + 8,
-            );
+            ctx.moveTo(cl.x - 20, cl.y + 8);
+            ctx.bezierCurveTo(cl.x - 38, cl.y + 8, cl.x - 38, cl.y - 12, cl.x - 20, cl.y - 12);
+            ctx.bezierCurveTo(cl.x - 20, cl.y - 30, cl.x + 20, cl.y - 30, cl.x + 20, cl.y - 12);
+            ctx.bezierCurveTo(cl.x + 38, cl.y - 12, cl.x + 38, cl.y + 8, cl.x + 20, cl.y + 8);
             ctx.closePath();
             ctx.fill();
             ctx.stroke();
             ctx.restore();
-          });
+          }
 
           // 6. Draw creeping Smog — INDUSTRIAL HAZE theme.
-          // Grey-brown/khaki palette (not purple/lavender) so the color
-          // itself reads as "dirty air" on sight, plus a hazard-stripe
-          // boundary and rising soot below. Still soft cartoon, never a
-          // monster — per brand — but now unmistakably pollution, not a
-          // friendly rain cloud.
-          if (!calmMode && GOGStage2.smogPosition < GOGStage2.cols) {
-            var smogX = GOGStage2.smogPosition * cellW;
-
-            ctx.save();
-
-            // --- LAYER A: Murky Haze Body, wavy undulating leading edge
-            // instead of a flat rectangle wall. The edge is a sine-based
-            // path that ripples over time, and a few translucent wave
-            // bands roll through the body itself so the whole
-            // grid-covering fill reads as living haze, not a flat block.
-            var frontWaveTime = state.elapsed * 3.5;
-            var edgeSteps = 26;
-            var edgeTop = gridYOffset - 6;
-            var edgeBottom = gridYOffset + gridH + 6;
-
-            function smogEdgeX(y) {
-              return (
-                smogX +
-                Math.sin(y * 0.045 + frontWaveTime) * 12 +
-                Math.cos(y * 0.09 - frontWaveTime * 0.7) * 6
-              );
-            }
-
-            ctx.fillStyle = "rgba(92, 86, 70, 0.78)"; // murky charcoal-khaki
-            ctx.beginPath();
-            ctx.moveTo(W + 4, edgeTop);
-            for (var wsY = 0; wsY <= edgeSteps; wsY++) {
-              var wy = edgeTop + ((edgeBottom - edgeTop) * wsY) / edgeSteps;
-              ctx.lineTo(smogEdgeX(wy), wy);
-            }
-            ctx.lineTo(W + 4, edgeBottom);
-            ctx.closePath();
-            ctx.fill();
-
-            // Rolling wave bands + drifting soot flecks, both clipped to
-            // the fog body's own wavy silhouette, each drifting at a
-            // slightly different phase and speed for layered motion.
-            ctx.save();
-            ctx.beginPath();
-            ctx.moveTo(W + 4, edgeTop);
-            for (var wcY = 0; wcY <= edgeSteps; wcY++) {
-              var wcy = edgeTop + ((edgeBottom - edgeTop) * wcY) / edgeSteps;
-              ctx.lineTo(smogEdgeX(wcy), wcy);
-            }
-            ctx.lineTo(W + 4, edgeBottom);
-            ctx.closePath();
-            ctx.clip();
-
-            var smogBandColors = [
-              "rgba(132, 120, 90, 0.30)", // murky khaki-brown
-              "rgba(48, 44, 38, 0.30)", // sooty dark
-              "rgba(170, 158, 118, 0.20)", // sickly pale haze highlight
-            ];
-            for (var band = 0; band < smogBandColors.length; band++) {
-              var bandPhase = frontWaveTime * (0.6 + band * 0.25) + band * 2.1;
-              var bandHeight = gridH / smogBandColors.length;
-              var bandStartY =
-                gridYOffset + band * bandHeight - 10 + Math.sin(bandPhase) * 8;
-
-              ctx.fillStyle = smogBandColors[band];
-              ctx.beginPath();
-              ctx.moveTo(smogX - 30, bandStartY);
-              for (var bx = smogX - 30; bx <= W + 20; bx += 16) {
-                ctx.lineTo(
-                  bx,
-                  bandStartY + Math.sin(bx * 0.05 + bandPhase) * 10,
-                );
-              }
-              ctx.lineTo(W + 20, bandStartY + bandHeight * 0.6 + 30);
-              for (var bx2 = W + 20; bx2 >= smogX - 30; bx2 -= 16) {
-                ctx.lineTo(
-                  bx2,
-                  bandStartY +
-                    bandHeight * 0.6 +
-                    30 +
-                    Math.sin(bx2 * 0.05 + bandPhase + 1.4) * 10,
-                );
-              }
-              ctx.closePath();
-              ctx.fill();
-            }
-
-            // Drifting soot flecks — small dark ash specks sinking slowly
-            // through the haze. Cheap: fixed count, no per-frame arrays,
-            // positions are a pure function of time + index (no
-            // allocations, matches the perf discipline used elsewhere).
-            ctx.fillStyle = "rgba(28, 25, 21, 0.5)";
-            var sootCount = 16;
-            for (var si = 0; si < sootCount; si++) {
-              var sootSpanX = W - smogX + 60;
-              var sootX =
-                smogX - 20 + ((si * 53 + frontWaveTime * 6) % sootSpanX);
-              var sootY =
-                gridYOffset -
-                10 +
-                ((si * 37 + frontWaveTime * 14) % (gridH + 20));
-              var sootR = 1.4 + (si % 3) * 0.7;
-              ctx.beginPath();
-              ctx.arc(sootX, sootY, sootR, 0, Math.PI * 2);
-              ctx.fill();
-            }
-            ctx.restore();
-
-            // --- LAYER B: Fluffy Haze Front (grey-brown, not lavender) ---
-            var waveTime = state.elapsed * 3.5;
-
-            // We use a slightly wider vertical step to stack big, fluffy compound shapes
-            for (var sy = gridYOffset - 15; sy <= H + 40; sy += 35) {
-              // Calculate a dynamic, organic wobble for this cloud cluster
-              var clusterX = smogX + Math.sin(sy * 0.04 + waveTime) * 14;
-              var baseRadius = 42 + Math.cos(sy * 0.08 + waveTime) * 5;
-
-              // 1. Draw the Main Central Puff
-              ctx.fillStyle = "rgba(76, 71, 58, 0.93)";
-              ctx.beginPath();
-              ctx.arc(clusterX, sy, baseRadius, 0, Math.PI * 2);
-              ctx.fill();
-
-              // 2. Add an Overlapping Top-Right Secondary Puff (Creates the cartoon cloud cluster effect)
-              ctx.beginPath();
-              ctx.arc(
-                clusterX + 15,
-                sy - 15,
-                baseRadius * 0.75,
-                0,
-                Math.PI * 2,
-              );
-              ctx.fill();
-
-              // 3. Add an Overlapping Bottom-Left Puff to break up any straight lines
-              ctx.beginPath();
-              ctx.arc(clusterX - 12, sy + 12, baseRadius * 0.6, 0, Math.PI * 2);
-              ctx.fill();
-
-              // 4. Sickly khaki highlight — the "toxic" tint that visually
-              // separates this from a plain grey rain cloud.
-              ctx.fillStyle = "rgba(158, 148, 108, 0.4)";
-              ctx.beginPath();
-              ctx.arc(clusterX - 5, sy - 5, baseRadius * 0.8, 0, Math.PI * 2);
-              ctx.fill();
-            }
-
-            // --- LAYER B.2: Hazard-Stripe Boundary ---
-            // A thick black-and-amber marching dashed line traced along the
-            // exact leading edge — the single most universally recognized
-            // "danger / do-not-cross" visual there is, so kids read "this
-            // line means stop" before they read a word of text. Drawn on
-            // top of the puffs so it's never swallowed by the cloud art,
-            // and colorblind-safe since the pattern (not just hue) carries
-            // the meaning.
-            ctx.save();
-            ctx.lineCap = "round";
-            ctx.lineJoin = "round";
-            ctx.beginPath();
-            ctx.moveTo(smogEdgeX(edgeTop), edgeTop);
-            for (var hzY = 0; hzY <= edgeSteps; hzY++) {
-              var hy = edgeTop + ((edgeBottom - edgeTop) * hzY) / edgeSteps;
-              ctx.lineTo(smogEdgeX(hy), hy);
-            }
-            ctx.strokeStyle = "#241c30";
-            ctx.lineWidth = 7;
-            ctx.stroke();
-            ctx.strokeStyle = "#ffb020";
-            ctx.lineWidth = 7;
-            ctx.setLineDash([13, 13]);
-            ctx.lineDashOffset = -state.elapsed * 45;
-            ctx.stroke();
-            ctx.setLineDash([]);
-            ctx.restore();
-
-            // --- LAYER B.3: Rising Soot Plume ---
-            // A few dark tendrils drift up and fade off the top of the
-            // haze — reads instantly as chimney/exhaust smoke rather than
-            // weather, reinforcing "pollution" at a glance.
-            ctx.save();
-            for (var pl = 0; pl < 3; pl++) {
-              var plumePhase = state.elapsed * 0.9 + pl * 2.3;
-              var plumeBaseX = smogX + 10 + pl * 26 + Math.sin(plumePhase) * 10;
-              var plumeTopY = gridYOffset - 55 - (pl % 2) * 15;
-              var plumeGrad = ctx.createLinearGradient(
-                plumeBaseX,
-                gridYOffset,
-                plumeBaseX,
-                plumeTopY,
-              );
-              plumeGrad.addColorStop(0, "rgba(70, 65, 55, 0.45)");
-              plumeGrad.addColorStop(1, "rgba(70, 65, 55, 0)");
-              ctx.strokeStyle = plumeGrad;
-              ctx.lineWidth = 10 - pl * 2;
-              ctx.beginPath();
-              ctx.moveTo(plumeBaseX, gridYOffset + 4);
-              ctx.quadraticCurveTo(
-                plumeBaseX + Math.sin(plumePhase * 1.6) * 18,
-                (gridYOffset + plumeTopY) / 2,
-                plumeBaseX + Math.sin(plumePhase * 2.1) * 10,
-                plumeTopY,
-              );
-              ctx.stroke();
-            }
-            ctx.restore();
-
-            // --- LAYER B.5: Cartoon Smog Face (big, focal, left-facing) ---
-            // The face sits on its own contrasting "face-plate" disc (not
-            // just floating on the puff texture) so it reads instantly as
-            // the character, and it leans/gazes toward the left — the
-            // direction the smog is actually creeping — for a strong
-            // sense of forward motion and intent.
-            var faceBobY = Math.sin(state.elapsed * 3.2) * 3; // idle bob, nothing sits still
-            var faceCenterY = gridYOffset + gridH / 2 + faceBobY;
-            var faceLead = Math.sin(faceCenterY * 0.04 + waveTime) * 14;
-            // Pull the face out ahead of the body's center toward the left
-            // (direction of travel) so it visibly leads the cloud.
-            var faceCenterX = smogX + faceLead - 22;
-            var faceHappy = !!GOGStage2.smogMoving;
-            var faceR = 46;
-            var lookDX = -9; // pupils/features shifted left = gazing the way it's moving
-
-            ctx.save();
-            ctx.translate(faceCenterX, faceCenterY);
-            ctx.rotate(-0.09); // slight forward lean into the direction of travel
-            ctx.lineCap = "round";
-            ctx.lineJoin = "round";
-
-            // Hard offset drop-shadow disc behind the face-plate (flat,
-            // no blur, per the toy-brutalist shadow style used elsewhere).
-            ctx.fillStyle = "#241c30";
-            ctx.beginPath();
-            // ctx.arc(6, 7, faceR, 0, Math.PI * 2);
-            // ctx.fill();
-
-            // Face-plate: a lighter, higher-contrast disc so the face
-            // pops clear of the busy cloud texture behind it.
-            ctx.fillStyle = faceHappy ? "#cbbf9a" : "#8a8067";
-            ctx.strokeStyle = "#241c30";
-            ctx.lineWidth = 1;
-            ctx.beginPath();
-            ctx.arc(0, 0, faceR, 0, Math.PI * 2);
-            ctx.fill();
-            ctx.stroke();
-
-            var eyeDX = 17,
-              eyeY = -8;
-
-            if (faceHappy) {
-              // Happy: big round mischievous eyes gazing left, raised brows, wide grin
-              [-1, 1].forEach(function (dir) {
-                var ex = dir * eyeDX;
-                // Eyebrow: raised and swept back (glee / gathering speed)
-                ctx.strokeStyle = "#241c30";
-                ctx.lineWidth = 2;
-                ctx.beginPath();
-                ctx.moveTo(ex - 10, eyeY - 17);
-                ctx.lineTo(ex + 9, eyeY - 21);
-                ctx.stroke();
-
-                // Eye white
-                ctx.fillStyle = "#fdfaff";
-                ctx.beginPath();
-                ctx.arc(ex, eyeY, 11, 0, Math.PI * 2);
-                ctx.fill();
-                // Pupil shifted left = looking the way the smog moves
-                ctx.fillStyle = "#241c30";
-                ctx.beginPath();
-                ctx.arc(ex + lookDX, eyeY, 6, 0, Math.PI * 2);
-                ctx.fill();
-                ctx.fillStyle = "rgba(255,255,255,0.95)";
-                ctx.beginPath();
-                ctx.arc(ex + lookDX - 2, eyeY - 2, 2.2, 0, Math.PI * 2);
-                ctx.fill();
-              });
-
-              // Big gleeful open grin
-              ctx.fillStyle = "#241c30";
-              ctx.beginPath();
-              ctx.moveTo(-19, 16);
-              ctx.quadraticCurveTo(-6, 32, 12, 20);
-              ctx.quadraticCurveTo(20, 15, 15, 10);
-              ctx.quadraticCurveTo(-4, 22, -19, 8);
-              ctx.closePath();
-              ctx.fill();
-            } else {
-              // Upset: heavy furrowed brows, narrowed worried eyes, deep frown
-              [-1, 1].forEach(function (dir) {
-                var ex = dir * eyeDX;
-                // Furrowed brow angled sharply down toward the center
-                ctx.strokeStyle = "#241c30";
-                ctx.lineWidth = 2;
-                ctx.beginPath();
-                if (dir < 0) {
-                  ctx.moveTo(ex - 12, eyeY - 12);
-                  ctx.lineTo(ex + 9, eyeY - 3);
-                } else {
-                  ctx.moveTo(ex + 12, eyeY - 12);
-                  ctx.lineTo(ex - 9, eyeY - 3);
-                }
-                ctx.stroke();
-
-                // Narrowed eye white (squint)
-                ctx.fillStyle = "#fdfaff";
-                ctx.beginPath();
-                ctx.ellipse(ex, eyeY + 3, 9, 6, 0, 0, Math.PI * 2);
-                ctx.fill();
-                ctx.fillStyle = "#241c30";
-                ctx.beginPath();
-                ctx.arc(ex + lookDX * 0.7, eyeY + 3, 5, 0, Math.PI * 2);
-                ctx.fill();
-              });
-
-              // Deep downturned frown
-              ctx.strokeStyle = "#241c30";
-              ctx.lineWidth = 6;
-              ctx.beginPath();
-              ctx.arc(-2, 34, 18, 1.12 * Math.PI, 1.88 * Math.PI);
-              ctx.stroke();
-            }
-
-            ctx.restore();
-
-            // --- LAYER C: High-Contrast Warning Label ---
-            // Bold, dark-outlined text pinned just behind the hazard
-            // stripe (not buried deep in the fog body) at full opacity,
-            // so the stage's message — this is smog, and it's spreading —
-            // is legible at a glance instead of the old 0.4-alpha text
-            // that all but disappeared against the cloud art.
-            ctx.save();
-            ctx.textAlign = "center";
-            ctx.textBaseline = "middle";
-
-            var labelX = Math.min(smogX + 74, W - 66);
-            var labelY = gridYOffset + gridH * 0.32;
-
-            ctx.lineJoin = "round";
-            ctx.font = "800 24px 'Baloo 2', sans-serif";
-            ctx.lineWidth = 5;
-            ctx.strokeStyle = "#241c30";
-            ctx.fillStyle = "#fdfaef";
-            ctx.strokeText("⚠️ SMOG!", labelX, labelY);
-            ctx.fillText("⚠️ SMOG!", labelX, labelY);
-
-            ctx.font = "700 16px 'Quicksand', sans-serif";
-            ctx.lineWidth = 4;
-            ctx.strokeText("😷 dirty air — keep it out!", labelX, labelY + 27);
-            ctx.fillText("😷 dirty air — keep it out!", labelX, labelY + 27);
-
-            ctx.restore();
-            ctx.restore();
+          if (!calmMode && GOGStage2.smogPosition < cols) {
+            drawSmog(cellW, gridH, gridYOffset);
           }
 
           if (GOGStage2.gameState === "STAGE_WON_CUTSCENE") {
             drawStageWonCutscene();
           }
 
-          drawForegroundGrass(state.elapsed);
+          drawForegroundGrass(t);
           particles.draw(ctx);
           drawCoachHints();
           drawWinWipe();
@@ -4507,6 +4369,11 @@
           update: update,
           draw: draw,
         });
+
+        // The intro backdrop is drawn before the first wave starts; give it a real
+        // (empty) grid instead of relying on the unit tests having left one behind.
+        GOGStage2.init(GRID_ROWS, GRID_COLS);
+        GOGStage2.gameState = "WAVE_ACTIVE";
 
         initBackground().finally(function () {
           loop.start();
