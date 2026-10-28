@@ -7,7 +7,6 @@
     <link rel="stylesheet" href="../src/styles.css" />
     <style>
       :root {
-        --gog-frame-aspect: 1.33333; /* 800x600 canvas: keeps the frame 4:3 on short windows */
       }
       /* Page shell (HUD, title, meters, chips, buttons, canvas-frame base, the
          <=1200px compact HUD) lives in src/styles.css — only stage colours and
@@ -4297,7 +4296,7 @@
           // Update background clouds position
           for (const cloud of clouds) {
             cloud.x += cloud.speed * dt;
-            if (cloud.x > 800 + 120) {
+            if (cloud.x > VIEW_W + 120) {
               cloud.x = -120;
             }
           }
