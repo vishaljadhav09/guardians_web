@@ -1555,6 +1555,8 @@
           p.vx = 0;
           p.vy = 0;
           p.onGround = false;
+          p.coyote = 0;
+          p.jumpBuffer = 0;
           cameraX = 0;
           spawnFloatText(p.x + 20, p.y - 40, "Whoops! Try again 💙", "#2e5ee8");
           audio.blip(300, 80);
@@ -1753,7 +1755,19 @@
           p.wasSliding = isSliding;
           p.isSliding = isSliding;
 
-          if (input.jumpPressed && p.onGround) {
+          // Forgiving jump (young players tap early/late): a tap is remembered for a
+          // moment (buffer) and a jump still works just after leaving an edge (coyote).
+          // p.onGround is last frame's result, so it is "standing" right now.
+          const leniency = calmMode ? GOGConstants.STAGE4.jumpLeniencyCalm : 1;
+          p.coyote = p.onGround
+            ? GOGConstants.STAGE4.jumpCoyote * leniency
+            : Math.max(0, (p.coyote || 0) - dt);
+          p.jumpBuffer = input.jumpPressed
+            ? GOGConstants.STAGE4.jumpBuffer * leniency
+            : Math.max(0, (p.jumpBuffer || 0) - dt);
+          if (p.jumpBuffer > 0 && p.coyote > 0) {
+            p.jumpBuffer = 0;
+            p.coyote = 0; // spent: no second jump until Penny lands again
             p.vy = -p.jumpPower;
             p.onGround = false;
             coachJumped = true;

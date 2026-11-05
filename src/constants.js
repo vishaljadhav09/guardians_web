@@ -77,6 +77,9 @@ const GOGConstants = {
     },
     chicks: 5, // total chicks to rescue
     chickReach: 44, // px - side of the square around a chick where Grab works (forgiving for young players)
+    jumpBuffer: 0.14, // s - a Jump tap this long before landing still jumps on touchdown
+    jumpCoyote: 0.12, // s - a Jump tap this long after walking off an edge still jumps
+    jumpLeniencyCalm: 1.6, // x - calm mode stretches both windows (young / slower players)
     seaLevelRise: 0.15, // units per second when player stands still
   },
 
