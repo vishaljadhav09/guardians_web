@@ -38,7 +38,7 @@
       "position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;" +
       "gap:10px;padding:20px;text-align:center;background:#FFFDF8;color:#111;font:700 1.1rem Baloo 2,sans-serif;z-index:50";
     d.innerHTML = "<div style='font-size:3rem'>🌍</div><div>This device can't show the game yet.</div>" +
-      "<div style='font:600 .9rem Quicksand,sans-serif'>Please update your browser or Android System WebView.</div>";
+      "<div style='font:600 .9rem Quicksand,sans-serif'>Please update your browser.</div>";
     frame.appendChild(d);
   }
 
