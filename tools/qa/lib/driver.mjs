@@ -38,6 +38,7 @@ export async function launch() {
       "--mute-audio", "--hide-scrollbars=false",
     ],
     defaultViewport: null,
+    protocolTimeout: +process.env.QA_PROTOCOL_TIMEOUT || 240000, // screenshots can be slow when several headless runs share the CPU
   });
 }
 
