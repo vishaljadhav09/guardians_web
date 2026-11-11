@@ -1109,6 +1109,12 @@
           try {
             R = await GOGRender.create(canvas, W, H); // rejects (and shows a message) when WebGL is missing
             var loaded = await Promise.all([
+              loadImage("assets/1.png"),
+              loadImage("assets/2.png"),
+              loadImage("assets/3.png"),
+              loadImage("assets/4.png"),
+              loadImage("assets/sprites/stage01/sea_wed.png"),
+              loadImage("assets/sprites/stage01/sea_wed_2.png"),
               loadImage("assets/sprites/stage01/dolphine_swim.png"),
               loadImage("assets/sprites/stage01/dolphine_attack.png"),
               loadImage("assets/sprites/stage01/bottel.png"),
@@ -1118,14 +1124,16 @@
               loadImage("assets/sprites/stage01/purple_fish.png"),
               loadImage("assets/sprites/stage01/fish_tangled.png?v=3"),
             ]);
-            dolphinImg = loaded[0];
-            dolphinAttackImg = loaded[1];
-            bottelImg = loaded[2];
-            canImg = loaded[3];
-            plasticBagImg = loaded[4];
-            turtleImg = loaded[5];
-            purpleFishImg = loaded[6];
-            fishTangledImg = loaded[7];
+            layerImgs = [loaded[0], loaded[1], loaded[2], loaded[3]];
+            seaweedImgs = [loaded[4], loaded[5]];
+            dolphinImg = loaded[6];
+            dolphinAttackImg = loaded[7];
+            bottelImg = loaded[8];
+            canImg = loaded[9];
+            plasticBagImg = loaded[10];
+            turtleImg = loaded[11];
+            purpleFishImg = loaded[12];
+            fishTangledImg = loaded[13];
 
             initSeaweed();
             buildScene();
@@ -2555,317 +2563,56 @@
 
         /* ---------------- draw ---------------- */
 
-
-
-        // vector Golden Pearl: an open clam shell with a pearl (replaces the 🦪 emoji)
-
-        // PERF: the cyan sonar halo used ctx.shadowBlur on every revealed piece of
-        // trash every frame (very slow on a software canvas). The ring + its
-        // blurred glow are rendered once here (shadowBlur runs once per ring
-        // size, never in the frame loop) and blitted with the pulse as alpha.
-
-
-
-        // PERF: the wipe's radial gradient is scale-invariant (white -> sky -> blue
-        // over the radius), so it is baked once as a unit disc and stretched to
-        // the current radius; the finished (full-screen) state is one more bake.
-
-
-
         /* ================= render (PixiJS) =================
-           Retained scene graph. Static art is painted ONCE with Canvas2D (bake) at the
-           on-screen resolution and used as textures; per frame we only move sprites.
-           Look = the "Stage 3 recipe": bright flat water, ink outlines, layered parallax,
-           a pastel haze that lifts as the reef heals (never dark). Visual randomness uses
-           the private `vis` RNG so the gameplay Math.random stream is untouched. */
+           Retained scene graph. The ORIGINAL Stage 1 art is unchanged (assets/1-4.png parallax
+           layers, sea_wed plants, dolphin / trash / turtle / puffer / tangled-fish sheets, emoji
+           reef row, procedural kelp). Pixi adds the cinematic layer on top, all GPU-side:
+             - DisplacementFilter  : liquid refraction of the whole seabed scene
+             - DisplacementFilter  : an expanding lens-ripple on Echo Boost / big saves
+             - ColorMatrixFilter   : the reef "heals" with a smooth saturation/brightness grade
+                                     (was 20 pre-filtered bitmap steps)
+             - additive blend      : two drifting caustic layers, plankton motes, dolphin boost
+                                     aura, golden-pearl glow
+           ?fx=0 turns the extra effects off, ?fx=1 forces them on. Visual randomness uses the
+           private `vis` RNG so the gameplay Math.random stream is untouched. */
         var R = null; // GOGRender handle, set in init()
         var sceneReady = false;
         var vis = GOGScenery.seededRng(52291);
         var TAU = Math.PI * 2;
-        var INK = "#111111";
         var art = null; // baked textures at the current R.scale (rebuilt on resize)
         var nodes = {}; // scene nodes (created once)
+        var frames = {}; // sprite-sheet frame textures (sliced once, same tables as the Canvas2D build)
+
+        var LAYER_SPEEDS = [40, 30, 20, 10]; // background layer parallax factors (x0.1)
+        var layerImgs = []; // assets/1..4.png
+        var seaweedImgs = [null, null]; // sea_wed.png, sea_wed_2.png
+
+        var FX_FULL = true;
+        (function () {
+          var reduced = false;
+          try { reduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches; } catch (e) {}
+          var lowEnd = !!navigator.hardwareConcurrency && navigator.hardwareConcurrency <= 2;
+          FX_FULL = !(reduced || lowEnd);
+          var m = /[?&]fx=([01])/.exec(window.location.search);
+          if (m) FX_FULL = m[1] === "1";
+        })();
 
         /* ---------- painters (Canvas2D, run once per resolution) ---------- */
-        function inkLine(g, w) {
-          g.lineJoin = "round";
-          g.lineCap = "round";
-          g.strokeStyle = INK;
-          g.lineWidth = w;
-          g.stroke();
-        }
-        function moundPath(g, cx, base, w, h) {
-          g.beginPath();
-          g.moveTo(cx - w / 2, base);
-          g.bezierCurveTo(cx - w * 0.5, base - h * 1.3, cx + w * 0.5, base - h * 1.3, cx + w / 2, base);
-          g.closePath();
-        }
-        // flat 3-tone rounded mound: body, darker underside, light highlight, optional ink outline
-        function paintMound(g, cx, base, w, h, fill, shade, light, ink) {
-          moundPath(g, cx, base, w, h);
-          g.fillStyle = fill;
-          g.fill();
-          g.save();
-          g.clip();
-          g.fillStyle = shade;
-          g.fillRect(cx - w / 2 - 2, base - h * 0.38, w + 4, h * 0.6);
-          g.fillStyle = light;
-          g.beginPath();
-          g.ellipse(cx - w * 0.16, base - h * 0.78, w * 0.13, h * 0.1, -0.5, 0, TAU);
-          g.fill();
-          g.restore();
-          if (ink) {
-            moundPath(g, cx, base, w, h);
-            inkLine(g, ink);
-          }
-        }
-        // periodic helper: draw a shape at x and x +- tw so the tile wraps seamlessly
-        function wrapDraw(tw, x, fn) {
-          fn(x - tw);
-          fn(x);
-          fn(x + tw);
-        }
-        // chunky coral: ink pass then colour pass of the same branches (rounded ends)
-        function coralBranches(g, x, base, h, w, col, hi) {
-          var passes = [[w + 7, INK], [w, col]];
-          for (var p = 0; p < passes.length; p++) {
-            g.lineCap = "round";
-            g.lineJoin = "round";
-            g.lineWidth = passes[p][0];
-            g.strokeStyle = passes[p][1];
-            g.beginPath();
-            g.moveTo(x, base);
-            g.lineTo(x, base - h);
-            g.moveTo(x, base - h * 0.42);
-            g.quadraticCurveTo(x - h * 0.12, base - h * 0.66, x - h * 0.36, base - h * 0.8);
-            g.moveTo(x, base - h * 0.42);
-            g.quadraticCurveTo(x + h * 0.12, base - h * 0.66, x + h * 0.36, base - h * 0.8);
-            g.stroke();
-          }
-          g.lineWidth = Math.max(2, w * 0.25);
-          g.strokeStyle = hi;
-          g.beginPath();
-          g.moveTo(x - w * 0.18, base - h * 0.15);
-          g.lineTo(x - w * 0.18, base - h * 0.72);
-          g.stroke();
-        }
-        var CORAL_COLS = [
-          ["#FF6FA5", "#FFB3CE"],
-          ["#FF9A4D", "#FFC999"],
-          ["#B6A6FF", "#DDD4FF"],
-        ];
-
-        function paintWaterStrip(g) {
-          var grad = g.createLinearGradient(0, 0, 0, 64);
-          grad.addColorStop(0, "#A6EEFB");
-          grad.addColorStop(0.45, "#46D3E8");
-          grad.addColorStop(1, "#2E6BE8");
-          g.fillStyle = grad;
-          g.fillRect(0, 0, 4, 64);
-        }
         function paintHazeStrip(g) {
           var grad = g.createLinearGradient(0, 0, 0, 64);
-          grad.addColorStop(0, "rgba(222,214,244,0.95)");
-          grad.addColorStop(1, "rgba(184,190,232,0.85)");
+          grad.addColorStop(0, "rgba(70,60,40,0.6)");
+          grad.addColorStop(1, "rgba(40,50,40,0.2)");
           g.fillStyle = grad;
           g.fillRect(0, 0, 4, 64);
         }
+        // (the ray includes its own 0.15 lean: 70 + 0.15 * H px wide)
         function paintRay(g, w, h) {
-          g.fillStyle = "rgba(255,255,255,0.9)";
-          g.beginPath();
-          g.moveTo(0, 0);
-          g.lineTo(70, 0);
-          g.lineTo(70 + 0.15 * h, h);
-          g.lineTo(0.15 * h - 28, h);
-          g.closePath();
-          g.fill();
-        }
-        // scalloped water-surface strip (periodic)
-        function paintSurface(g, tw, th) {
-          g.fillStyle = "rgba(255,255,255,0.75)";
-          var n = Math.max(6, Math.round(tw / 70));
-          var step = tw / n;
-          g.beginPath();
-          g.moveTo(0, 0);
-          g.lineTo(tw, 0);
-          g.lineTo(tw, th * 0.55);
-          for (var i = n; i > 0; i--) {
-            g.quadraticCurveTo(i * step - step / 2, th * 1.9, (i - 1) * step, th * 0.55);
-          }
-          g.closePath();
-          g.fill();
-        }
-        function paintFar(g, tw, th) {
-          for (var i = 0; i < 5; i++) {
-            var cx = (i + 0.5) * (tw / 5) + (vis() - 0.5) * 40;
-            var w = 200 + vis() * 90;
-            var h = th * (0.42 + vis() * 0.34);
-            wrapDraw(tw, cx, function (x) {
-              paintMound(g, x, th + 8, w, h, "#9BE3F2", "#86D8EC", "#C4F2FB", 0);
-            });
-          }
-        }
-        function paintMid(g, tw, th) {
-          var rockCols = [
-            ["#A99CF0", "#8F82E0", "#D2C9FA"],
-            ["#6FD0D8", "#58BCC8", "#A8EAEE"],
-          ];
-          for (var i = 0; i < 6; i++) {
-            var cx = (i + 0.5) * (tw / 6) + (vis() - 0.5) * 36;
-            var w = 120 + vis() * 60;
-            var h = th * (0.34 + vis() * 0.22);
-            var rc = rockCols[i % 2];
-            var nCoral = 2 + Math.floor(vis() * 2);
-            var cols = [];
-            var offs = [];
-            for (var c = 0; c < nCoral; c++) {
-              cols.push(CORAL_COLS[Math.floor(vis() * 3)]);
-              offs.push((c - (nCoral - 1) / 2) * 34 + (vis() - 0.5) * 10);
-            }
-            var ch = 40 + vis() * 30;
-            wrapDraw(tw, cx, function (x) {
-              for (var k = 0; k < nCoral; k++) coralBranches(g, x + offs[k], th - h * 0.85, ch, 9, cols[k][0], cols[k][1]);
-              paintMound(g, x, th + 2, w, h, rc[0], rc[1], rc[2], 3);
-            });
-          }
-        }
-        function paintNear(g, tw, th) {
-          var top = th * 0.32;
-          function crest(x) {
-            return top + Math.sin((x * 3 * TAU) / tw) * 6 + Math.sin((x * 7 * TAU) / tw + 1) * 2.5;
-          }
-          g.beginPath();
-          g.moveTo(0, th + 4);
-          for (var x = 0; x <= tw; x += 6) g.lineTo(x, crest(x));
-          g.lineTo(tw, th + 4);
-          g.closePath();
-          g.fillStyle = "#FFE9A6";
-          g.fill();
-          g.save();
-          g.clip();
-          g.fillStyle = "#F7CD7C";
-          g.fillRect(0, top + 34, tw, th);
-          g.fillStyle = "rgba(255,255,255,0.45)";
-          for (var s = 0; s < 22; s++) {
-            g.beginPath();
-            g.ellipse(vis() * tw, top + 14 + vis() * (th - top - 22), 7 + vis() * 7, 3, 0, 0, TAU);
-            g.fill();
-          }
-          g.restore();
-          g.beginPath();
-          for (var x2 = 0; x2 <= tw; x2 += 6) {
-            if (x2 === 0) g.moveTo(x2, crest(x2));
-            else g.lineTo(x2, crest(x2));
-          }
-          inkLine(g, 4);
-          // pebbles + shells (periodic)
-          for (var p = 0; p < 9; p++) {
-            var px = vis() * tw;
-            var py = top + 18 + vis() * (th - top - 30);
-            var pr = 5 + vis() * 6;
-            var shell = vis() < 0.4;
-            wrapDraw(tw, px, function (xx) {
-              g.beginPath();
-              g.ellipse(xx, py, pr * 1.3, pr, 0, 0, TAU);
-              g.fillStyle = shell ? "#FFB3CE" : "#B7B0D6";
-              g.fill();
-              inkLine(g, 2.5);
-            });
-          }
-        }
-        function paintCoralSprite(g, w, h, col, hi) {
-          paintMound(g, w / 2, h - 2, 40, 22, "#C9C3E8", "#B2AAD8", "#E4E0F6", 3);
-          coralBranches(g, w / 2 - 12, h - 12, 38, 8, col, hi);
-          coralBranches(g, w / 2 + 12, h - 12, 32, 8, col, hi);
-          coralBranches(g, w / 2, h - 14, 46, 9, col, hi);
-        }
-        function paintRockSprite(g, w, h) {
-          paintMound(g, w / 2, h - 2, 46, 30, "#C9C3E8", "#B2AAD8", "#E4E0F6", 3);
-        }
-        function paintTuft(g, w, h, variant) {
-          var blades = variant === 0 ? 4 : 3;
-          for (var i = 0; i < blades; i++) {
-            var bx = w / 2 + (i - (blades - 1) / 2) * (w / (blades + 1.2));
-            var bh = h * (0.62 + 0.38 * ((i + variant) % 3) / 2);
-            var lean = (i - (blades - 1) / 2) * 7;
-            g.beginPath();
-            g.moveTo(bx - 7, h - 2);
-            g.quadraticCurveTo(bx - 6 + lean, h - bh * 0.55, bx + lean * 1.4, h - bh);
-            g.quadraticCurveTo(bx + 8 + lean, h - bh * 0.5, bx + 7, h - 2);
-            g.closePath();
-            g.fillStyle = i % 2 ? "#49C98B" : "#2FB87A";
-            g.fill();
-            inkLine(g, 2.5);
-          }
-        }
-        function paintKelp(g, w, h, hue) {
-          var sx = w / 2;
-          g.lineCap = "round";
-          var passes = [[10, INK], [5, "hsl(" + hue + ",62%,44%)"]];
-          for (var p = 0; p < passes.length; p++) {
-            g.lineWidth = passes[p][0];
-            g.strokeStyle = passes[p][1];
-            g.beginPath();
-            g.moveTo(sx, h - 2);
-            g.quadraticCurveTo(sx + 5, h * 0.5, sx, 8);
-            g.stroke();
-          }
-          for (var u = 0.22; u <= 0.95; u += 0.18) {
-            var ly = h - 2 - (h - 10) * u;
-            var a = (1 - u * 0.5) * 15;
-            var b = (1 - u * 0.5) * 6.5;
-            for (var side = -1; side <= 1; side += 2) {
-              g.save();
-              g.translate(sx + side * a * 0.55, ly);
-              g.rotate(side * -0.5);
-              g.beginPath();
-              g.ellipse(0, 0, a, b, 0, 0, TAU);
-              g.fillStyle = side < 0 ? "hsl(" + (hue + 12) + ",66%,52%)" : "hsl(" + (hue - 10) + ",66%,46%)";
-              g.fill();
-              inkLine(g, 2);
-              g.restore();
-            }
-          }
-        }
-        function paintPearl(g, w, h) {
-          g.lineJoin = "round";
-          // two shell halves
-          g.beginPath();
-          g.moveTo(4, h * 0.55);
-          g.quadraticCurveTo(w / 2, h * 1.35, w - 4, h * 0.55);
-          g.quadraticCurveTo(w / 2, h * 0.7, 4, h * 0.55);
-          g.fillStyle = "#FF9EC4";
-          g.fill();
-          inkLine(g, 3);
-          g.beginPath();
-          g.moveTo(4, h * 0.5);
-          g.quadraticCurveTo(w / 2, -h * 0.2, w - 4, h * 0.5);
-          g.quadraticCurveTo(w / 2, h * 0.4, 4, h * 0.5);
-          g.fillStyle = "#FFC2DA";
-          g.fill();
-          inkLine(g, 3);
-          g.beginPath();
-          g.arc(w / 2, h * 0.5, 8, 0, TAU);
-          g.fillStyle = "#FFFDF8";
-          g.fill();
-          inkLine(g, 2.5);
-          g.fillStyle = "#FFFFFF";
-          g.beginPath();
-          g.arc(w / 2 - 3, h * 0.5 - 3, 2.6, 0, TAU);
-          g.fill();
-        }
-        function paintBubble(g) {
-          g.beginPath();
-          g.arc(16, 16, 14.5, 0, TAU);
-          g.fillStyle = "rgba(255,255,255,0.55)";
-          g.fill();
-          g.lineWidth = 2;
-          g.strokeStyle = "rgba(25,70,150,0.5)";
-          g.stroke();
-          g.fillStyle = "rgba(255,255,255,0.95)";
-          g.beginPath();
-          g.arc(11, 11, 3.4, 0, TAU);
-          g.fill();
+          var grad = g.createLinearGradient(0, 0, 70, h);
+          grad.addColorStop(0, "rgba(255,255,255,0.4)");
+          grad.addColorStop(1, "rgba(255,255,255,0)");
+          g.transform(1, 0, 0.15, 1, 0, 0);
+          g.fillStyle = grad;
+          g.fillRect(0, 0, 70, h);
         }
         function paintDot(g) {
           g.fillStyle = "#ffffff";
@@ -2873,61 +2620,157 @@
           g.arc(16, 16, 15, 0, TAU);
           g.fill();
         }
+        function paintSoftDot(g) {
+          var grad = g.createRadialGradient(32, 32, 0, 32, 32, 32);
+          grad.addColorStop(0, "rgba(255,255,255,1)");
+          grad.addColorStop(0.35, "rgba(255,255,255,0.45)");
+          grad.addColorStop(1, "rgba(255,255,255,0)");
+          g.fillStyle = grad;
+          g.fillRect(0, 0, 64, 64);
+        }
+        function paintEllipse(g) {
+          g.fillStyle = "#ffffff";
+          g.beginPath();
+          g.ellipse(32, 16, 31, 15, 0, 0, TAU);
+          g.fill();
+        }
+        function paintDashRing(g) {
+          g.translate(50, 50);
+          g.strokeStyle = "rgb(245, 158, 11)";
+          g.lineWidth = 2.5;
+          g.setLineDash([4, 4]);
+          g.beginPath();
+          g.arc(0, 0, 46, 0, TAU);
+          g.stroke();
+        }
+        function paintSonarRing(r) {
+          return function (g, size) {
+            g.translate(size / 2, size / 2);
+            g.shadowColor = "rgba(34, 211, 238, 0.9)";
+            g.shadowBlur = 14 * 0.9; // bake-time only, never in the frame loop
+            g.lineWidth = 3;
+            g.strokeStyle = "#22d3ee";
+            g.beginPath();
+            g.arc(0, 0, r + 6, 0, TAU);
+            g.stroke();
+          };
+        }
+        function paintWipe(radiusGrad, size, disc) {
+          return function (g) {
+            var c = disc ? size / 2 : 0;
+            var grad = disc ? g.createRadialGradient(c, c, 0, c, c, radiusGrad) : g.createRadialGradient(W / 2, H / 2, 0, W / 2, H / 2, radiusGrad);
+            grad.addColorStop(0, "#FFFFFF");
+            grad.addColorStop(0.55, "#7FD8FF");
+            grad.addColorStop(1, "#2C4BFF");
+            g.fillStyle = grad;
+            if (disc) {
+              g.beginPath();
+              g.arc(c, c, c, 0, TAU);
+              g.fill();
+            } else {
+              g.fillRect(0, 0, W, H);
+            }
+          };
+        }
+
+        // per-pixel maps (one-off at load; every frequency is an integer, so they tile)
+        function pixelMap(size, fn) {
+          var c = document.createElement("canvas");
+          c.width = c.height = size;
+          var g = c.getContext("2d");
+          var img = g.createImageData(size, size);
+          var o = [0, 0, 0, 0];
+          for (var y = 0; y < size; y++) {
+            for (var x = 0; x < size; x++) {
+              fn((x / size) * TAU, (y / size) * TAU, x, y, size, o);
+              var i = (y * size + x) * 4;
+              img.data[i] = o[0];
+              img.data[i + 1] = o[1];
+              img.data[i + 2] = o[2];
+              img.data[i + 3] = o[3];
+            }
+          }
+          g.putImageData(img, 0, 0);
+          return c;
+        }
+        function clamp255(v) {
+          return v < 0 ? 0 : v > 255 ? 255 : v;
+        }
+        // flowing refraction field (R = dx, G = dy, 128 = no shift)
+        function makeWaterMap() {
+          return pixelMap(256, function (u, v, x, y, n, o) {
+            o[0] = 128 + 127 * Math.sin(3 * v + 1.3 * Math.sin(2 * u + 0.6));
+            o[1] = 128 + 127 * 0.3 * Math.sin(2 * u + 1.1 * Math.sin(3 * v + 1.1)); // mostly sideways: edge pixels never streak vertically
+            o[2] = 128;
+            o[3] = 255;
+          });
+        }
+        function ridge(w) {
+          var r = 1 - Math.abs(w) * 6;
+          return r > 0 ? r * r : 0;
+        }
+        // bright web of light (white, alpha = brightness) used by the additive caustic layers
+        function makeCausticMap() {
+          return pixelMap(256, function (u, v, x, y, n, o) {
+            var w1 = Math.sin(4 * u + 1.6 * Math.sin(3 * v + 0.8));
+            var w2 = Math.sin(5 * v + 1.4 * Math.sin(4 * u + 2.1));
+            var w3 = Math.sin(3 * (u + v) + 1.2 * Math.sin(5 * u - 2 * v));
+            var c = ridge(w1) + ridge(w2) + ridge(w3);
+            if (c > 1) c = 1;
+            o[0] = o[1] = o[2] = 255;
+            o[3] = clamp255(c * 255);
+          });
+        }
+        // expanding lens ring for the ripple displacement (edges stay neutral so nothing leaks outside)
+        var RIPPLE_R = 96; // ring radius in map px (map is 256 px)
+        function makeRippleMap() {
+          return pixelMap(256, function (u, v, x, y, n, o) {
+            var dx = x - 128, dy = y - 128;
+            var r = Math.sqrt(dx * dx + dy * dy) || 1;
+            var p = (r - RIPPLE_R) / 26;
+            var a = p * Math.exp(-p * p) * 2.2;
+            o[0] = clamp255(128 + 127 * a * (dx / r));
+            o[1] = clamp255(128 + 127 * a * (dy / r));
+            o[2] = 128;
+            o[3] = 255;
+          });
+        }
 
         function bakeArt(s) {
-          var a = { all: [] };
+          var a = { all: [], sonar: {}, seaweed: [] };
           function P(w, h, fn, scale) {
             var p = GOGRender.paint(w, h, scale || s, fn);
             a.all.push(p.tex);
             return p;
           }
-          a.water = P(4, 64, paintWaterStrip, 1);
           a.haze = P(4, 64, paintHazeStrip, 1);
-          a.ray = P(Math.ceil(70 + 0.15 * H) + 1, H, paintRay, 0.5);
-          a.surface = P(W, 22, function (g) { paintSurface(g, W, 22); });
-          a.farH = Math.round(H * 0.5);
-          a.far = P(W, a.farH, function (g) { paintFar(g, W, a.farH); });
-          a.midH = Math.round(H * 0.46);
-          a.mid = P(W, a.midH, function (g) { paintMid(g, W, a.midH); });
-          a.nearH = Math.round(H * 0.24);
-          a.near = P(W, a.nearH, function (g) { paintNear(g, W, a.nearH); });
-          a.coral = [];
-          for (var c = 0; c < 3; c++) {
-            (function (cc) {
-              a.coral.push(P(64, 78, function (g) { paintCoralSprite(g, 64, 78, CORAL_COLS[cc][0], CORAL_COLS[cc][1]); }));
-            })(c);
-          }
-          a.rock = P(64, 52, function (g) { paintRockSprite(g, 64, 52); });
-          a.tuft = [P(60, 110, function (g) { paintTuft(g, 60, 110, 0); }), P(60, 110, function (g) { paintTuft(g, 60, 110, 1); })];
-          a.kelp = [];
-          for (var k = 0; k < kelpStalks.length; k++) {
-            (function (st) {
-              var h = Math.round(st.height) + 12;
-              a.kelp.push({ p: P(64, h, function (g) { paintKelp(g, 64, h, st.hue); }), h: h });
-            })(kelpStalks[k]);
-          }
-          a.pearl = P(52, 44, function (g) { paintPearl(g, 52, 44); });
-          a.bubble = P(32, 32, paintBubble);
+          a.ray = P(Math.ceil(70 + 0.15 * H) + 1, H, paintRay, 1);
           a.dot = P(32, 32, paintDot);
-          a.wipeDisc = P(256, 256, function (g) {
-            var grad = g.createRadialGradient(128, 128, 0, 128, 128, 128);
-            grad.addColorStop(0, "#FFFFFF");
-            grad.addColorStop(0.55, "#9BEBFA");
-            grad.addColorStop(1, "#46A8F0");
-            g.fillStyle = grad;
-            g.beginPath();
-            g.arc(128, 128, 128, 0, TAU);
-            g.fill();
-          }, 1);
-          a.wipeFull = P(W, H, function (g) {
-            var grad = g.createRadialGradient(W / 2, H / 2, 0, W / 2, H / 2, winWipeMax);
-            grad.addColorStop(0, "#FFFFFF");
-            grad.addColorStop(0.55, "#9BEBFA");
-            grad.addColorStop(1, "#46A8F0");
-            g.fillStyle = grad;
-            g.fillRect(0, 0, W, H);
-          }, 0.5);
+          a.soft = P(64, 64, paintSoftDot, 1);
+          a.ellipse = P(64, 32, paintEllipse, 1);
+          a.dash = P(100, 100, paintDashRing);
+          a.wipeDisc = P(256, 256, paintWipe(128, 256, true), 1);
+          a.wipeFull = P(W, H, paintWipe(winWipeMax, 0, false), 0.5);
+          // each plant is rendered once at its final size (like the original), only rotated per frame
+          for (var b = 0; b < seaweedElements.length; b++) {
+            (function (sw) {
+              var img = seaweedImgs[sw.type === 0 ? 0 : 1];
+              var w = Math.max(1, Math.round(img.width * sw.scale));
+              var h = Math.max(1, Math.round(img.height * sw.scale));
+              a.seaweed.push(P(w, h, function (g) { g.drawImage(img, 0, 0, w, h); }));
+            })(seaweedElements[b]);
+          }
           return a;
+        }
+        function sonarRing(r) {
+          var key = Math.round(r);
+          var p = art.sonar[key];
+          if (p) return p;
+          var size = (key + 6 + 30) * 2;
+          p = GOGRender.paint(size, size, R.scale, function (g) { paintSonarRing(key)(g, size); });
+          art.all.push(p.tex);
+          art.sonar[key] = p;
+          return p;
         }
 
         // sets a baked texture on a sprite at its logical size
@@ -2937,82 +2780,16 @@
           spr.height = p.h;
         }
 
-        /* ---------- character / item frames (outlined once, cached) ---------- */
-        var frameCache = {};
-        function outlinedFrame(img, sx, sy, sw, sh, dispW, key) {
-          var c = frameCache[key];
-          if (c) return c;
-          var px = (3 * sw) / dispW; // ~3 on-screen px of ink
-          var o = GOGScenery.outlineSprite(img, sx, sy, sw, sh, px, key);
-          if (!o) return null;
-          c = { tex: GOGRender.tex(o), k: dispW / sw };
-          frameCache[key] = c;
-          return c;
-        }
-        function dolphinFrame() {
-          var attack = dolphin.state === "attack" && dolphinAttackImg;
-          var img = attack ? dolphinAttackImg : dolphinImg;
-          if (!img) return null;
-          var sw = attack ? 256 : 128;
-          var col = dolphin.frameIndex % 5;
-          var row = Math.floor(dolphin.frameIndex / 5);
-          return outlinedFrame(img, col * sw, row * sw, sw, sw, 180, (attack ? "da" : "ds") + dolphin.frameIndex);
-        }
-        function itemFrame(it, elapsed) {
-          if (it.type === "trash") {
-            var img = it.glyph === "🛍️" && plasticBagImg ? plasticBagImg : it.glyph === "🥤" && canImg ? canImg : bottelImg;
-            if (!img) return null;
-            return outlinedFrame(img, 0, 0, img.width, img.height, 75, "tr" + (img === plasticBagImg ? "b" : img === canImg ? "c" : "t"));
-          }
-          if (it.type === "turtle" && turtleImg) {
-            var f = Math.floor((it.age * 8 + it.bob * 5) % 8);
-            var fw = turtleImg.width / 4, fh = turtleImg.height / 2;
-            return outlinedFrame(turtleImg, (f % 4) * fw, Math.floor(f / 4) * fh, fw, fh, 70, "tu" + f);
-          }
-          if (it.type === "pufferfish" && purpleFishImg) {
-            var pf = Math.floor(it.age * 10) % 8;
-            var pw = purpleFishImg.width / 4, ph = purpleFishImg.height / 2;
-            return outlinedFrame(purpleFishImg, (pf % 4) * pw, Math.floor(pf / 4) * ph, pw, ph, 76, "pu" + pf);
-          }
-          if (it.type === "tangled_fish" && fishTangledImg) {
-            var tf = Math.floor(it.age * 9) % 6;
-            var tw = fishTangledImg.width / 6;
-            return outlinedFrame(fishTangledImg, tf * tw, 0, tw, fishTangledImg.height, 96, "tf" + tf);
-          }
-          if (it.type === "pearl") return { tex: art.pearl.tex, k: 1, raw: art.pearl };
-          return null;
-        }
-        // emoji fallback for anything without a sprite
-        function emojiFrame(it) {
-          var e = GOGRender.emojiTex(it.glyph, it.type === "trash" ? 54 : 40);
-          return { tex: e.tex, k: 1 };
-        }
-
-        function warmFrames() {
-          // outline every frame now so no pickup hitches on first sight
-          var i;
-          var swimN = dolphinImg ? Math.floor(dolphinImg.width / 128) * Math.floor(dolphinImg.height / 128) : 0;
-          var atkN = dolphinAttackImg ? Math.floor(dolphinAttackImg.width / 256) * Math.floor(dolphinAttackImg.height / 256) : 0;
-          for (i = 0; i < swimN; i++) {
-            dolphin.frameIndex = i;
-            dolphin.state = "swim";
-            dolphinFrame();
-          }
-          for (i = 0; i < atkN; i++) {
-            dolphin.frameIndex = i;
-            dolphin.state = "attack";
-            dolphinFrame();
-          }
-          dolphin.frameIndex = 0;
-          dolphin.state = "swim";
-          for (i = 0; i < 8; i++) {
-            itemFrame({ type: "turtle", age: i / 8, bob: 0 }, 0);
-            itemFrame({ type: "pufferfish", age: i / 10, bob: 0 }, 0);
-          }
-          for (i = 0; i < 6; i++) itemFrame({ type: "tangled_fish", age: i / 9, bob: 0 }, 0);
-          itemFrame({ type: "trash", glyph: "🛍️" }, 0);
-          itemFrame({ type: "trash", glyph: "🥤" }, 0);
-          itemFrame({ type: "trash", glyph: "🧴" }, 0);
+        /* ---------- sprite-sheet frames (same frame tables as before; no outline, no recolour) ---------- */
+        function sliceFrames() {
+          frames.swim = dolphinImg ? GOGRender.sheet(dolphinImg, 128, 128) : [];
+          frames.attack = dolphinAttackImg ? GOGRender.sheet(dolphinAttackImg, 256, 256) : [];
+          frames.turtle = turtleImg ? GOGRender.sheet(turtleImg, turtleImg.width / 4, turtleImg.height / 2, 8) : [];
+          frames.puffer = purpleFishImg ? GOGRender.sheet(purpleFishImg, purpleFishImg.width / 4, purpleFishImg.height / 2, 8) : [];
+          frames.tangled = fishTangledImg ? GOGRender.sheet(fishTangledImg, fishTangledImg.width / 6, fishTangledImg.height, 6) : [];
+          frames.bottle = bottelImg ? GOGRender.tex(bottelImg) : null;
+          frames.can = canImg ? GOGRender.tex(canImg) : null;
+          frames.bag = plasticBagImg ? GOGRender.tex(plasticBagImg) : null;
         }
 
         /* ---------- scene graph ---------- */
@@ -3027,43 +2804,138 @@
           parent.addChild(c);
           return c;
         }
-        function newPool(parent, tintable) {
+        function newPool(parent) {
           return R.pool(parent, function () {
             return newSprite(null);
+          });
+        }
+        function additive(spr) {
+          spr.blendMode = "add";
+          return spr;
+        }
+
+        // CSS-equivalent saturate()+brightness() as one colour matrix (what the old 20 baked steps approximated)
+        function gradeMatrix(sat, bright) {
+          var s = sat, b = bright;
+          return [
+            (0.213 + 0.787 * s) * b, (0.715 - 0.715 * s) * b, (0.072 - 0.072 * s) * b, 0, 0,
+            (0.213 - 0.213 * s) * b, (0.715 + 0.285 * s) * b, (0.072 - 0.072 * s) * b, 0, 0,
+            (0.213 - 0.213 * s) * b, (0.715 - 0.715 * s) * b, (0.072 + 0.928 * s) * b, 0, 0,
+            0, 0, 0, 1, 0,
+          ];
+        }
+
+        var KELP_LEAVES = [];
+        for (var ku = 0.25; ku <= 0.95; ku += 0.18) {
+          KELP_LEAVES.push({
+            u: ku,
+            t0: (1 - ku) * (1 - ku),
+            t1: 2 * (1 - ku) * ku,
+            t2: ku * ku,
+            a: (1 - ku * 0.5) * 8.5 * 1.8, // ellipse radii
+            b: (1 - ku * 0.5) * 8.5 * 0.75,
+          });
+        }
+
+        var MOTES = [];
+        for (var mi = 0; mi < 46; mi++) {
+          MOTES.push({
+            x: vis() * 960,
+            y: vis() * 600,
+            vx: -(2 + vis() * 6),
+            vy: -(3 + vis() * 7),
+            s: 10 + vis() * 22,
+            ph: vis() * TAU,
+            a: 0.18 + vis() * 0.3,
           });
         }
 
         function buildNodes() {
           var w = R.world;
-          nodes.water = newSprite(w, 0, 0);
-          nodes.shafts = newContainer(w);
-          for (var i = 0; i < 4; i++) {
-            var sh = newSprite(nodes.shafts, 0, 0);
-            sh.x = (i + 0.3) * (W / 4) + (vis() - 0.5) * 40;
-            sh.alpha = 0.1;
-            nodes.shafts.addChild(sh);
+
+          /* the seabed scene: refracted as one piece by the displacement filter */
+          nodes.scenery = newContainer(w);
+          nodes.bgGroup = newContainer(nodes.scenery);
+          nodes.layers = [];
+          for (var li = 0; li < layerImgs.length; li++) {
+            var img = layerImgs[li];
+            var ts = new PIXI.TilingSprite({ texture: GOGRender.tex(img), width: W, height: H });
+            ts.tileScale.set(1, H / img.height);
+            nodes.bgGroup.addChild(ts);
+            nodes.layers.push({ spr: ts, tileW: img.width, speed: LAYER_SPEEDS[li] });
           }
-          nodes.far = new PIXI.TilingSprite({ texture: PIXI.Texture.EMPTY, width: W, height: 10 });
-          nodes.mid = new PIXI.TilingSprite({ texture: PIXI.Texture.EMPTY, width: W, height: 10 });
-          nodes.near = new PIXI.TilingSprite({ texture: PIXI.Texture.EMPTY, width: W, height: 10 });
-          nodes.surface = new PIXI.TilingSprite({ texture: PIXI.Texture.EMPTY, width: W, height: 22 });
-          w.addChild(nodes.far, nodes.mid);
-          nodes.tuftsBack = newContainer(w);
-          w.addChild(nodes.near);
-          nodes.reef = newContainer(w);
-          nodes.tuftsFront = newContainer(w);
-          nodes.kelp = newContainer(w);
-          w.addChild(nodes.surface);
+          nodes.coralStrip = new PIXI.Sprite(PIXI.Texture.WHITE);
+          nodes.coralStrip.tint = 0x14281e;
+          nodes.coralStrip.position.set(0, H - 60);
+          nodes.coralStrip.width = W;
+          nodes.coralStrip.height = 60;
+          nodes.scenery.addChild(nodes.coralStrip);
+
+          // reef health row (rock -> coral blooms left to right as the reef heals) - the original emoji
+          nodes.reefSprites = [];
+          for (var cx = 20; cx < W; cx += 70) {
+            var rs = newSprite(nodes.scenery, 0.5, 0.5);
+            rs.x = cx;
+            nodes.reefSprites.push({ spr: rs, cx: cx });
+          }
+          nodes.coralEmoji = GOGRender.emojiTex("🪸", 26);
+          nodes.rockEmoji = GOGRender.emojiTex("🪨", 26);
+
+          // seaweed (screen-static, swaying) - same layout data / RNG draws as before
+          nodes.seaweed = [];
+          for (var si = 0; si < seaweedElements.length; si++) {
+            var sw = seaweedElements[si];
+            var ss = newSprite(nodes.scenery, 0.5, 1);
+            ss.x = sw.x;
+            ss.y = sw.y;
+            ss.alpha = sw.opacity;
+            nodes.seaweed.push({ spr: ss, sw: sw });
+          }
+
+          // procedural kelp (stem Graphics + leaf sprites per stalk)
+          nodes.kelp = [];
+          for (var k = 0; k < kelpStalks.length; k++) {
+            var st = kelpStalks[k];
+            var kc = newContainer(nodes.scenery);
+            var stem = new PIXI.Graphics();
+            kc.addChild(stem);
+            var leaves = [];
+            for (var l = 0; l < KELP_LEAVES.length; l++) {
+              var left = newSprite(kc, 0.5, 0.5);
+              left.tint = hslNum(st.hue + 12, 0.65, 0.32);
+              left.alpha = 0.75;
+              var right = newSprite(kc, 0.5, 0.5);
+              right.tint = hslNum(st.hue - 12, 0.65, 0.28);
+              right.alpha = 0.75;
+              leaves.push({ left: left, right: right });
+            }
+            nodes.kelp.push({ stem: stem, leaves: leaves, stemColor: hslNum(st.hue, 0.5, 0.26) });
+          }
+
+          nodes.bubbles = newPool(newContainer(w));
+
           nodes.rays = newContainer(w);
           for (var r = 0; r < 3; r++) newSprite(nodes.rays, 0, 0);
           nodes.haze = newSprite(w, 0, 0);
-          nodes.bubbles = newPool(newContainer(w));
-          nodes.itemSprites = newPool(newContainer(w));
+
+          /* extra Pixi atmosphere (additive): two drifting caustic layers + plankton motes */
+          nodes.caustA = new PIXI.TilingSprite({ texture: PIXI.Texture.EMPTY, width: W, height: H });
+          nodes.caustB = new PIXI.TilingSprite({ texture: PIXI.Texture.EMPTY, width: W, height: H });
+          nodes.caustA.blendMode = nodes.caustB.blendMode = "add";
+          nodes.caustA.alpha = nodes.caustB.alpha = 0;
+          w.addChild(nodes.caustA, nodes.caustB);
+          nodes.motes = newContainer(w);
+          for (var m = 0; m < MOTES.length; m++) additive(newSprite(nodes.motes, 0.5, 0.5));
+
+          nodes.itemGlow = newPool(newContainer(w));
           nodes.itemRings = new PIXI.Graphics();
           w.addChild(nodes.itemRings);
+          nodes.itemSprites = newPool(newContainer(w));
           nodes.trail = newPool(newContainer(w));
           nodes.trailHi = newPool(newContainer(w));
           nodes.speed = newPool(newContainer(w));
+          nodes.dolphinGlow = additive(newSprite(w, 0.5, 0.5));
+          nodes.dolphinGlow.visible = false;
           nodes.dolphin = newSprite(w);
           nodes.particlesC = newContainer(w);
           nodes.particles = R.particleView(particles, nodes.particlesC);
@@ -3076,72 +2948,61 @@
           R.fx.addChild(nodes.wipeFull, nodes.wipeDisc, nodes.wipeRing);
           nodes.wipeFull.visible = nodes.wipeDisc.visible = nodes.wipeRing.visible = false;
 
-          // reef health row (rock -> coral blooms left to right as the reef heals)
-          nodes.reefSprites = [];
-          for (var cx = 20, ri = 0; cx < W; cx += 70, ri++) {
-            var rs = newSprite(nodes.reef, 0.5, 0.85);
-            rs.x = cx;
-            nodes.reefSprites.push({ spr: rs, cx: cx, idx: ri });
-          }
-          // seaweed tufts reuse the old seaweed layout data (same RNG draws as before)
-          nodes.tuftSprites = [];
-          for (var t = 0; t < seaweedElements.length; t++) {
-            var sw = seaweedElements[t];
-            var ts = newSprite(sw.layer === "back" ? nodes.tuftsBack : nodes.tuftsFront, 0.5, 1);
-            ts.x = sw.x;
-            ts.y = H;
-            ts.alpha = Math.min(1, sw.opacity + 0.1);
-            nodes.tuftSprites.push({ spr: ts, sw: sw });
-          }
-          // kelp stalks (same layout data as before)
-          nodes.kelpSprites = [];
-          for (var k = 0; k < kelpStalks.length; k++) {
-            var ks = newSprite(nodes.kelp, 0.5, 1);
-            ks.x = kelpStalks[k].baseX;
-            ks.y = H;
-            nodes.kelpSprites.push(ks);
+          /* ---- filters ---- */
+          // reef-heal grade (bgGroup only: items, dolphin and HUD cues stay crisp, like before)
+          nodes.grade = new PIXI.ColorMatrixFilter();
+          nodes.gradeOn = false;
+          nodes.gradeKey = -1;
+
+          if (FX_FULL) {
+            var waterTex = GOGRender.tex(makeWaterMap());
+            waterTex.source.style.addressMode = "repeat";
+            nodes.dispSprite = new PIXI.Sprite(waterTex);
+            nodes.dispSprite.width = nodes.dispSprite.height = 512;
+            w.addChild(nodes.dispSprite); // must live in the scene graph (the filter hides it itself)
+            nodes.dispFilter = new PIXI.DisplacementFilter({ sprite: nodes.dispSprite, scale: 10 });
+
+            var rippleTex = GOGRender.tex(makeRippleMap());
+            nodes.rippleSprite = new PIXI.Sprite(rippleTex);
+            nodes.rippleSprite.anchor.set(0.5);
+            w.addChild(nodes.rippleSprite);
+            nodes.rippleFilter = new PIXI.DisplacementFilter({ sprite: nodes.rippleSprite, scale: 0 });
+            nodes.rippleOn = false;
+
+            var causticTex = GOGRender.tex(makeCausticMap());
+            causticTex.source.style.addressMode = "repeat";
+            nodes.caustA.texture = causticTex;
+            nodes.caustB.texture = causticTex;
+            nodes.caustA.tileScale.set(1.7, 1.7);
+            nodes.caustB.tileScale.set(1.15, 1.15);
+
+            nodes.scenery.filterArea = new PIXI.Rectangle(0, 0, W, H);
+            nodes.scenery.filters = [nodes.dispFilter];
           }
         }
 
         function applyArt() {
-          setBaked(nodes.water, { tex: art.water.tex, w: W, h: H });
-          for (var i = 0; i < nodes.shafts.children.length; i++) {
-            var sh = nodes.shafts.children[i];
-            sh.texture = art.ray.tex;
-            sh.width = Math.ceil(70 + 0.15 * H) + 1;
-            sh.height = H;
-          }
-          function ts(spr, p, y) {
-            spr.texture = p.tex;
-            spr.tileScale.set(1 / R.scale, 1 / R.scale);
-            spr.width = W;
-            spr.height = p.h;
-            spr.y = y;
-          }
-          ts(nodes.far, art.far, H - art.farH - Math.round(H * 0.03));
-          ts(nodes.mid, art.mid, H - art.midH - Math.round(H * 0.03));
-          ts(nodes.near, art.near, H - art.nearH);
-          ts(nodes.surface, art.surface, 0);
+          var rw = Math.ceil(70 + 0.15 * H) + 1;
           for (var r = 0; r < nodes.rays.children.length; r++) {
             var ry = nodes.rays.children[r];
             ry.texture = art.ray.tex;
-            ry.width = Math.ceil(70 + 0.15 * H) + 1;
+            ry.width = rw;
             ry.height = H;
           }
           setBaked(nodes.haze, { tex: art.haze.tex, w: W, h: H });
-          for (var t = 0; t < nodes.tuftSprites.length; t++) {
-            var e = nodes.tuftSprites[t];
-            var p = art.tuft[e.sw.type === 0 ? 0 : 1];
-            e.spr.texture = p.tex;
-            var hh = e.sw.scale * 760 * 0.62;
-            e.spr.height = hh;
-            e.spr.width = hh * (60 / 110);
+          for (var i = 0; i < nodes.seaweed.length; i++) {
+            var p = art.seaweed[i];
+            nodes.seaweed[i].spr.texture = p.tex;
+            nodes.seaweed[i].spr.width = p.w;
+            nodes.seaweed[i].spr.height = p.h;
           }
-          for (var k = 0; k < nodes.kelpSprites.length; k++) {
-            var kp = art.kelp[k];
-            nodes.kelpSprites[k].texture = kp.p.tex;
-            nodes.kelpSprites[k].width = 64;
-            nodes.kelpSprites[k].height = kp.h;
+          for (var kc = 0; kc < nodes.kelp.length; kc++) {
+            var lv = nodes.kelp[kc].leaves;
+            for (var l = 0; l < lv.length; l++) {
+              lv[l].left.texture = lv[l].right.texture = art.ellipse.tex;
+              lv[l].left.width = lv[l].right.width = KELP_LEAVES[l].a * 2;
+              lv[l].left.height = lv[l].right.height = KELP_LEAVES[l].b * 2;
+            }
           }
           nodes.wipeFull.texture = art.wipeFull.tex;
           nodes.wipeFull.width = W;
@@ -3151,19 +3012,34 @@
           nodes.wipeDisc.alpha = 0.85;
           nodes.wipeDisc.x = W / 2;
           nodes.wipeDisc.y = H / 2;
+          for (var m = 0; m < nodes.motes.children.length; m++) {
+            var ms = nodes.motes.children[m];
+            ms.texture = art.soft.tex;
+            ms.width = ms.height = MOTES[m].s * (W / 960);
+          }
+          nodes.dolphinGlow.texture = art.soft.tex;
+          nodes.dolphinGlow.width = nodes.dolphinGlow.height = 230;
+        }
+
+        // filters render at the screen resolution so the scene stays as sharp as the original
+        function setFilterRes() {
+          var fl = [nodes.grade, nodes.dispFilter, nodes.rippleFilter];
+          for (var i = 0; i < fl.length; i++) if (fl[i]) fl[i].resolution = R.scale;
         }
 
         function buildScene() {
+          sliceFrames();
           art = bakeArt(R.scale);
           buildNodes();
           applyArt();
-          warmFrames();
+          setFilterRes();
           R.onResize(function () {
             var old = art;
             art = bakeArt(R.scale);
             applyArt();
-            // sprites that are re-textured every frame (bubbles, trail, items, reef) must point at the
-            // NEW textures before the old ones are destroyed: GOGRender repaints right after this returns
+            setFilterRes();
+            // sprites that are re-textured every frame must point at the NEW textures before the old
+            // ones are destroyed: GOGRender repaints right after this returns
             syncBackdrop();
             syncActors();
             syncOverlays();
@@ -3174,8 +3050,8 @@
           sceneReady = true;
         }
 
-        // Compile every shader program the stage will ever use NOW (the first use of a
-        // rarely-seen node - win wipe, confetti, flashes, rings - would otherwise hitch mid-play).
+        // Compile every shader program the stage will ever use NOW (the first use of a rarely-seen
+        // node - win wipe, confetti, ripple filter, flashes - would otherwise hitch mid-play).
         function warmGL() {
           nodes.wipeFull.visible = nodes.wipeDisc.visible = nodes.wipeRing.visible = true;
           nodes.wipeDisc.width = nodes.wipeDisc.height = 4;
@@ -3186,17 +3062,39 @@
           var cs = nodes.confetti.next();
           cs.texture = PIXI.Texture.WHITE;
           cs.width = cs.height = 2;
+          nodes.dolphinGlow.visible = true;
+          nodes.bgGroup.filters = [nodes.grade];
+          if (nodes.rippleFilter) {
+            nodes.rippleSprite.scale.set(0.01);
+            nodes.scenery.filters = [nodes.dispFilter, nodes.rippleFilter];
+          }
           R.flash(0xffffff, 0.01, "warm");
+          syncBackdrop();
           R.render();
           nodes.wipeFull.visible = nodes.wipeDisc.visible = nodes.wipeRing.visible = false;
           nodes.wipeRing.clear();
           nodes.rings.clear();
           nodes.itemRings.clear();
           nodes.confetti.end();
+          nodes.dolphinGlow.visible = false;
+          nodes.bgGroup.filters = null;
+          nodes.gradeOn = false;
+          nodes.gradeKey = -1; // let the first real frame apply the grade
+          if (nodes.rippleFilter) nodes.scenery.filters = [nodes.dispFilter];
           R.flash(0xffffff, 0, "warm");
         }
 
         /* ---------- per-frame sync ---------- */
+        function hslNum(h, s, l) {
+          h = (((h % 360) + 360) % 360) / 360;
+          var q = l < 0.5 ? l * (1 + s) : l + s - l * s, p = 2 * l - q;
+          var f = function (t) {
+            if (t < 0) t += 1;
+            if (t > 1) t -= 1;
+            return t < 1 / 6 ? p + (q - p) * 6 * t : t < 1 / 2 ? q : t < 2 / 3 ? p + (q - p) * (2 / 3 - t) * 6 : p;
+          };
+          return (Math.round(f(h + 1 / 3) * 255) << 16) | (Math.round(f(h) * 255) << 8) | Math.round(f(h - 1 / 3) * 255);
+        }
         function colorToNum(col) {
           // "rgb(r, g, b)" or "hsl(h, s%, l%)" built by emitTrail -> 0xRRGGBB (cached on the string)
           var c = colorCache[col];
@@ -3206,80 +3104,168 @@
             c = (+m[1] << 16) | (+m[2] << 8) | +m[3];
           } else {
             m = /^hsl\((\d+),\s*(\d+)%,\s*(\d+)%\)$/.exec(col);
-            var h = m ? +m[1] / 360 : 0.55, s = m ? +m[2] / 100 : 0.9, l = m ? +m[3] / 100 : 0.7;
-            var q = l < 0.5 ? l * (1 + s) : l + s - l * s, p = 2 * l - q;
-            var f = function (t) {
-              if (t < 0) t += 1;
-              if (t > 1) t -= 1;
-              return t < 1 / 6 ? p + (q - p) * 6 * t : t < 1 / 2 ? q : t < 2 / 3 ? p + (q - p) * (2 / 3 - t) * 6 : p;
-            };
-            c = (Math.round(f(h + 1 / 3) * 255) << 16) | (Math.round(f(h) * 255) << 8) | Math.round(f(h - 1 / 3) * 255);
+            c = hslNum(m ? +m[1] : 200, m ? +m[2] / 100 : 0.9, m ? +m[3] / 100 : 0.7);
           }
           colorCache[col] = c;
           return c;
         }
         var colorCache = {};
 
-        function dashedCircle(g, x, y, r, w, color, alpha) {
-          var n = 16;
-          for (var i = 0; i < n; i++) {
-            var a0 = (i / n) * TAU;
-            g.moveTo(x + Math.cos(a0) * r, y + Math.sin(a0) * r);
-            g.arc(x, y, r, a0, a0 + (TAU / n) * 0.55);
-          }
-          g.stroke({ width: w, color: color, alpha: alpha });
-        }
-
         function syncBackdrop() {
           var t = state.elapsed;
-          nodes.far.tilePosition.x = (scrollX * 0.33) % W;
-          nodes.mid.tilePosition.x = (scrollX * 0.66) % W;
-          nodes.near.tilePosition.x = (scrollX * 1.1) % W;
-          nodes.surface.tilePosition.x = -((scrollX * 0.5) % W);
-          nodes.surface.y = Math.sin(t * 1.3) * 1.5;
 
-          for (var i = 0; i < nodes.shafts.children.length; i++) {
-            nodes.shafts.children[i].alpha = 0.1 + 0.03 * Math.sin(t * 0.5 + i * 1.7);
-          }
-          var rc = nodes.rays.children.length;
-          var rayA = (0.1 + 0.04 * Math.sin(t * 0.6)) * 1.5;
-          for (var r = 0; r < rc; r++) {
-            var rx = (((r / rc) * W + t * 18) % (W + 200)) - 100;
-            nodes.rays.children[r].x = Math.round(rx);
-            nodes.rays.children[r].alpha = rayA;
+          // parallax layers (same speeds as the old composite)
+          for (var li = 0; li < nodes.layers.length; li++) {
+            var L = nodes.layers[li];
+            L.spr.tilePosition.x = (scrollX * (L.speed * 0.1)) % L.tileW;
           }
 
-          // pastel haze lifts as the reef heals (never dark)
-          var haze = Collision.clamp(1 - state.reef / 100, 0, 1);
-          nodes.haze.alpha = haze * 0.62;
-          nodes.haze.visible = haze > 0.02;
+          // the reef heals: bgGroup washes out at low REEF and blooms to full colour (smooth, continuous)
+          var reef = Collision.clamp(state.reef, 0, 100);
+          var key = Math.round(reef * 4); // quarter-percent steps
+          if (key !== nodes.gradeKey) {
+            nodes.gradeKey = key;
+            var sat = (45 + reef * 0.55) / 100;
+            var bright = (82 + reef * 0.18) / 100;
+            if (reef >= 99.9) {
+              if (nodes.gradeOn) { nodes.bgGroup.filters = null; nodes.gradeOn = false; }
+            } else {
+              nodes.grade.reset();
+              nodes.grade.saturate(sat - 1, false);
+              nodes.grade.brightness(bright, true);
+              if (!nodes.gradeOn) { nodes.bgGroup.filters = [nodes.grade]; nodes.gradeOn = true; }
+            }
+          }
 
-          // reef row: grey-lilac rocks bloom into coral from left to right as REEF fills
+          // seabed coral strip - greener/brighter as the reef heals
           var reefT = state.reef / 100;
+          nodes.coralStrip.alpha = 0.25 + reefT * 0.3;
+
+          // reef row: rock -> coral emoji bloom left to right
           for (var j = 0; j < nodes.reefSprites.length; j++) {
             var e = nodes.reefSprites[j];
             var cx = e.cx;
             var bloom = cx / W < reefT + 0.08;
             var bobY = Math.sin(t * 1.5 + cx) * 3;
             var sway = Math.sin(t * 0.8 + cx) * 0.08;
-            var scale = bloom ? 1 + Math.sin(t * 2 + cx) * 0.04 : 0.95;
-            var p = bloom ? art.coral[e.idx % 3] : art.rock;
-            e.spr.texture = p.tex;
-            e.spr.width = p.w * scale;
-            e.spr.height = p.h * scale;
-            e.spr.y = H - 12 + bobY;
+            var sc = bloom ? 1 + Math.sin(t * 2 + cx) * 0.04 : 0.95;
+            var em = bloom ? nodes.coralEmoji : nodes.rockEmoji;
+            e.spr.texture = em.tex;
+            e.spr.width = em.w * sc;
+            e.spr.height = em.h * sc;
+            e.spr.y = H - 18 + bobY;
             e.spr.rotation = sway;
-            e.spr.alpha = bloom ? 1 : 0.55;
+            e.spr.alpha = bloom ? 1 : 0.22;
           }
 
-          for (var s = 0; s < nodes.tuftSprites.length; s++) {
-            var ts = nodes.tuftSprites[s];
-            ts.spr.rotation = Math.sin(t * ts.sw.speed + ts.sw.phase) * 0.08;
+          // seaweed sway
+          for (var s = 0; s < nodes.seaweed.length; s++) {
+            var se = nodes.seaweed[s];
+            se.spr.rotation = Math.sin(t * se.sw.speed + se.sw.phase) * 0.08;
           }
-          for (var k = 0; k < nodes.kelpSprites.length; k++) {
+
+          // kelp: stem curve + leaf ellipses, same maths as the Canvas2D build
+          for (var k = 0; k < kelpStalks.length; k++) {
             var st = kelpStalks[k];
-            nodes.kelpSprites[k].rotation = (Math.sin(t * st.speed + st.phase) * 16) / st.height;
+            var kn = nodes.kelp[k];
+            var sway2 = Math.sin(t * st.speed + st.phase) * 16;
+            var midSway = sway2 * 0.5;
+            var topY = H - st.height;
+            var midY = H - st.height * 0.55;
+            kn.stem.clear();
+            kn.stem.moveTo(st.baseX, H).quadraticCurveTo(st.baseX + midSway, midY, st.baseX + sway2, topY);
+            kn.stem.stroke({ width: 7, color: kn.stemColor, alpha: 0.65, cap: "round" });
+            for (var li2 = 0; li2 < KELP_LEAVES.length; li2++) {
+              var KL = KELP_LEAVES[li2];
+              var u = KL.u;
+              var lx = KL.t0 * st.baseX + KL.t1 * (st.baseX + midSway) + KL.t2 * (st.baseX + sway2);
+              var ly = KL.t0 * H + KL.t1 * midY + KL.t2 * topY;
+              var dx = 2 * (1 - u) * midSway + 2 * u * (sway2 - midSway);
+              var dy = 2 * (1 - u) * (-st.height * 0.55) + 2 * u * (-st.height * 0.45);
+              var angle = Math.atan2(dy, dx);
+              var lf = kn.leaves[li2];
+              lf.left.position.set(lx, ly);
+              lf.left.rotation = angle - Math.PI / 2 + Math.sin(t * 1.8 + u * 8) * 0.22;
+              lf.right.position.set(lx, ly);
+              lf.right.rotation = angle + Math.PI / 2 + Math.cos(t * 1.8 + u * 8) * 0.22;
+            }
           }
+
+          // drifting light rays (original numbers)
+          var rc = nodes.rays.children.length;
+          var rayA = 0.1 + 0.04 * Math.sin(t * 0.6);
+          for (var r = 0; r < rc; r++) {
+            var rx = (((r / rc) * W + t * 18) % (W + 200)) - 100;
+            nodes.rays.children[r].x = Math.round(rx);
+            nodes.rays.children[r].alpha = rayA;
+          }
+
+          // pollution haze that clears as the reef heals
+          var haze = Collision.clamp(1 - state.reef / 100, 0, 1);
+          nodes.haze.alpha = haze * 0.35;
+          nodes.haze.visible = haze > 0.02;
+
+          /* ---- extra Pixi atmosphere ---- */
+          if (FX_FULL) {
+            // liquid refraction field drifts
+            nodes.dispSprite.position.set(-((t * 22) % 512), (t * 9) % 512);
+            // two caustic webs sliding in different directions interfere into dancing light
+            var ca = 0.045 + 0.015 * Math.sin(t * 0.7);
+            nodes.caustA.alpha = ca;
+            nodes.caustB.alpha = ca * 0.8;
+            nodes.caustA.tilePosition.set(t * 14, t * 8);
+            nodes.caustB.tilePosition.set(-t * 11, t * 6 + 90);
+          } else {
+            nodes.caustA.visible = nodes.caustB.visible = false;
+          }
+          var ms = nodes.motes.children;
+          if (FX_FULL) {
+            var wr = W / 960, hr = H / 600;
+            for (var m = 0; m < ms.length; m++) {
+              var mo = MOTES[m];
+              var mx = (((mo.x * wr + mo.vx * t) % W) + W) % W;
+              var my = (((mo.y * hr + mo.vy * t) % H) + H) % H;
+              ms[m].position.set(mx, my);
+              ms[m].alpha = mo.a * (0.55 + 0.45 * Math.sin(t * 1.3 + mo.ph));
+            }
+          } else {
+            nodes.motes.visible = false;
+          }
+        }
+
+        // chooses the newest sonar ping (else a positive save shockwave) to drive the lens ripple
+        function syncRipple() {
+          if (!nodes.rippleFilter) return;
+          var src = null, strength = 0, radius = 0;
+          if (sonarRipples.length) {
+            src = sonarRipples[sonarRipples.length - 1];
+            strength = 22 * Math.max(0, src.alpha);
+            radius = src.radius;
+          } else {
+            for (var i = shockwaves.length - 1; i >= 0; i--) {
+              if (shockwaves[i].maxRadius > 60) { src = shockwaves[i]; break; }
+            }
+            if (src) {
+              strength = 16 * Math.max(0, src.alpha);
+              radius = src.radius;
+            }
+          }
+          var on = !!src && strength > 0.4 && radius > 6;
+          if (on) {
+            nodes.rippleSprite.position.set(src.x, src.y);
+            nodes.rippleSprite.scale.set(radius / RIPPLE_R);
+            nodes.rippleFilter.scale.set(strength, strength);
+          }
+          if (on !== nodes.rippleOn) {
+            nodes.rippleOn = on;
+            nodes.scenery.filters = on ? [nodes.dispFilter, nodes.rippleFilter] : [nodes.dispFilter];
+          }
+        }
+
+        function itemSprite(spr, tex, drawW, drawH, grow, flip) {
+          spr.texture = tex;
+          spr.anchor.set(0.5);
+          spr.scale.set((drawW / tex.orig.width) * grow * flip, (drawH / tex.orig.height) * grow);
         }
 
         function syncActors() {
@@ -3292,17 +3278,18 @@
           for (i = 0; i < n; i++) {
             var b = bubbles[i];
             var bs = nodes.bubbles.next();
-            bs.texture = art.bubble.tex;
+            bs.texture = art.dot.tex;
             bs.width = bs.height = b.r * 2;
             bs.position.set(b.x + Math.sin(b.phase) * b.wobbleAmt, b.y);
-            bs.alpha = b.alpha;
+            bs.alpha = 0.6 * b.alpha;
           }
           nodes.bubbles.end();
 
-          // items (+ rings)
+          // items (+ rings / glows)
           var ig = nodes.itemRings;
           ig.clear();
           var sonarOn = t < state.sonarUntil;
+          nodes.itemGlow.begin();
           nodes.itemSprites.begin();
           n = items.length;
           for (i = 0; i < n; i++) {
@@ -3314,35 +3301,67 @@
 
             if (it.type === "pufferfish" && !it.armed) {
               var tele = it.age / 0.5;
-              ig.circle(it.x, it.y, 26 + tele * 14).stroke({ width: 4, color: 0xffd166, alpha: 0.6 * (1 - tele) });
+              ig.circle(it.x, it.y, 26 + tele * 14).stroke({ width: 3, color: 0xffd166, alpha: 0.5 * (1 - tele) });
+            }
+            if (FX_FULL && it.type === "pearl") {
+              var gl = nodes.itemGlow.next();
+              gl.texture = art.soft.tex;
+              gl.blendMode = "add";
+              gl.tint = 0xffd166;
+              gl.width = gl.height = 120 + Math.sin(t * 4) * 8;
+              gl.position.set(it.x, it.y);
+              gl.alpha = 0.4 + 0.15 * Math.sin(t * 4);
             }
             if (it.type === "trash" && sonarOn) {
-              var pulse = Math.sin(t * 10) * 0.2 + 0.8;
-              ig.circle(it.x, it.y, it.r + 8).stroke({ width: 7, color: 0x111111, alpha: pulse });
-              ig.circle(it.x, it.y, it.r + 8).stroke({ width: 3.5, color: 0x22d3ee, alpha: pulse });
+              var sp = sonarRing(it.r);
+              var sr = nodes.itemSprites.next();
+              sr.texture = sp.tex;
+              sr.anchor.set(0.5);
+              sr.tint = 0xffffff;
+              sr.scale.set(1);
+              sr.width = sp.w;
+              sr.height = sp.h;
+              sr.rotation = 0;
+              sr.position.set(it.x, it.y);
+              sr.alpha = Math.sin(t * 10) * 0.2 + 0.8;
             }
 
-            var fr = itemFrame(it, t) || emojiFrame(it);
-            var spr = nodes.itemSprites.next();
-            spr.texture = fr.tex;
             var flip = (it.type === "pufferfish" && it.vx > 0) || (it.type === "tangled_fish" && it.vx < 0) ? -1 : 1;
-            if (fr.raw) {
-              spr.width = fr.raw.w;
-              spr.height = fr.raw.h;
-              spr.scale.x *= growScale * flip;
-              spr.scale.y *= growScale;
-            } else {
-              spr.scale.set(fr.k * growScale * flip, fr.k * growScale);
-            }
+            var spr = nodes.itemSprites.next();
+            spr.tint = 0xffffff;
+            spr.alpha = 1;
             spr.position.set(it.x, it.y);
             spr.rotation = wiggle;
-            spr.alpha = 1;
 
-            if (it.type === "tangled_fish") {
-              var ringA = (Math.sin(t * 8) * 0.25 + 0.75) * 0.9;
-              dashedCircle(ig, it.x, it.y, fishTangledImg ? 46 : 38, 3, 0xf59e0b, ringA);
+            if (it.type === "trash") {
+              var tt = it.glyph === "🛍️" && frames.bag ? frames.bag : it.glyph === "🥤" && frames.can ? frames.can : frames.bottle;
+              if (tt) itemSprite(spr, tt, 75, 75, growScale, flip);
+              else emojiOnto(spr, it.glyph, 54, growScale, flip);
+            } else if (it.type === "turtle" && frames.turtle.length) {
+              itemSprite(spr, frames.turtle[Math.floor((it.age * 8 + it.bob * 5) % 8)], 70, 70, growScale, flip);
+            } else if (it.type === "pufferfish" && frames.puffer.length) {
+              itemSprite(spr, frames.puffer[Math.floor(it.age * 10) % 8], 76, 76, growScale, flip);
+            } else if (it.type === "tangled_fish") {
+              if (frames.tangled.length) {
+                itemSprite(spr, frames.tangled[Math.floor(it.age * 9) % 6], 96, 64, growScale, flip);
+                var rg = nodes.itemSprites.next();
+                rg.texture = art.dash.tex;
+                rg.anchor.set(0.5);
+                rg.tint = 0xffffff;
+                rg.width = rg.height = 100;
+                rg.scale.x *= growScale * flip;
+                rg.scale.y *= growScale;
+                rg.rotation = wiggle;
+                rg.position.set(it.x, it.y);
+                rg.alpha = (Math.sin(t * 8) * 0.25 + 0.75) * 0.9;
+              } else {
+                emojiOnto(spr, "🐠", 60, growScale, flip);
+              }
+            } else {
+              emojiOnto(spr, it.glyph, it.type === "trash" ? 54 : 40, growScale, flip);
             }
           }
+          nodes.itemGlow.end();
           nodes.itemSprites.end();
 
           // dolphin trail
@@ -3395,10 +3414,12 @@
           var bob = dolphin.state === "swim" ? Math.sin(dolphin.wobble) * 2 : 0;
           var squash = dolphin.state === "swim" ? 1 + Math.sin(dolphin.wobble * 1.3) * 0.035 : 1;
           var breath = idleTimer > 1.5 ? 1 + Math.sin(t * 1.3) * 0.025 : 1;
-          var df = dolphinFrame();
-          if (df) {
-            d.texture = df.tex;
-            d.scale.set(df.k * entranceScale * squash * breath * (dolphin.facing === -1 ? -1 : 1), df.k * entranceScale * (1 / squash) * breath);
+          var fs = dolphin.state === "attack" && frames.attack.length ? frames.attack : frames.swim;
+          var dtex = fs.length ? fs[dolphin.frameIndex % fs.length] : null;
+          if (dtex) {
+            var k = 180 / dtex.orig.width;
+            d.texture = dtex;
+            d.scale.set(k * entranceScale * squash * breath * (dolphin.facing === -1 ? -1 : 1), k * entranceScale * (1 / squash) * breath);
           } else {
             var de = GOGRender.emojiTex("🐬", 54);
             d.texture = de.tex;
@@ -3407,6 +3428,17 @@
           d.position.set(dolphin.x, dolphin.y + bob);
           var blink = t < state.invulnUntil && Math.floor(t * 20) % 2 === 0;
           d.alpha = blink ? 0.4 : Math.min(1, entranceT * 1.4);
+
+          // Echo Boost aura (additive, hue-cycling like the trail)
+          var dg = nodes.dolphinGlow;
+          if (FX_FULL && t < state.boostUntil) {
+            dg.visible = true;
+            dg.tint = hslNum(Math.floor(t * 450) % 360, 0.95, 0.68);
+            dg.alpha = 0.32 * Math.min(1, (state.boostUntil - t) / 0.25);
+            dg.position.set(dolphin.x, dolphin.y + bob);
+          } else {
+            dg.visible = false;
+          }
 
           nodes.particles.sync();
 
@@ -3440,10 +3472,21 @@
             if (positive) g.circle(sw.x, sw.y, Math.max(0, sw.radius - 12)).stroke({ width: 2, color: 0xffffff, alpha: sw.alpha * 0.7 });
           }
           for (i = 0; i < sonarRipples.length; i++) {
-            var sr = sonarRipples[i];
-            g.circle(sr.x, sr.y, sr.radius).stroke({ width: 3, color: 0x22d3ee, alpha: sr.alpha * 0.8 });
-            g.circle(sr.x, sr.y, Math.max(0, sr.radius - 18)).stroke({ width: 1.5, color: 0xe0ffff, alpha: sr.alpha * 0.6 });
+            var sr2 = sonarRipples[i];
+            g.circle(sr2.x, sr2.y, sr2.radius).stroke({ width: 3, color: 0x22d3ee, alpha: sr2.alpha * 0.8 });
+            g.circle(sr2.x, sr2.y, Math.max(0, sr2.radius - 18)).stroke({ width: 1.5, color: 0xe0ffff, alpha: sr2.alpha * 0.6 });
           }
+        }
+
+        // emoji fallback for anything without a sprite
+        function emojiOnto(spr, glyph, size, grow, flip) {
+          var e = GOGRender.emojiTex(glyph, size);
+          spr.texture = e.tex;
+          spr.anchor.set(0.5);
+          spr.scale.set(1);
+          spr.width = e.w * grow;
+          spr.height = e.h * grow;
+          spr.scale.x *= flip;
         }
 
         function syncOverlays() {
@@ -3476,6 +3519,7 @@
         function draw() {
           if (GOGUi.paused || !sceneReady) return; // info pop-up open / still loading: nothing to repaint
           syncBackdrop();
+          syncRipple();
           syncActors();
           syncOverlays();
           if (coach.active && state.running) drawCoachHints(nodes.coachOverlay.begin());

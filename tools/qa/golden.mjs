@@ -103,7 +103,7 @@ for (const stage of only) {
       await page.evaluateOnNewDocument(() => { try { localStorage.setItem("gog_save_v1", JSON.stringify({ version: 1, settings: { sound: false, calmMode: false } })); } catch (e) {} });
       let note = "";
       try {
-        await page.goto(`${srv.origin}/${def.file}`, { waitUntil: "load", timeout: 45000 });
+        await page.goto(`${srv.origin}/${def.file}${args.query || ""}`, { waitUntil: "load", timeout: 45000 });
         await pumpUntil(page, "document.readyState === 'complete'", 60);
         await step(page, 30);
         await sleep(400); // let image/audio network events land (they do not need the virtual clock)
@@ -119,6 +119,7 @@ for (const stage of only) {
         if (sc === "play60") { await step(page, 60); }
         else if (sc === "play300") { await step(page, 300); }
         else if (sc === "input") { await scriptedInput(page, def.input, vp.name); }
+        else if (sc === "boost") { await step(page, 40); await page.evaluate(() => document.getElementById("boostBtn").click()); await step(page, 14); }
         else if (sc === "win") { await page.evaluate(() => window.__dbg.forceWin()); await step(page, 240); }
         else if (sc === "lose") { await page.evaluate(() => window.__dbg.forceLose()); await step(page, 240); }
         await sleep(150);
