@@ -507,7 +507,9 @@
     <script src="../src/constants.js"></script>
     <script src="../src/save.js"></script>
     <script src="../src/vendor/howler.min.js"></script>
+    <script src="../src/vendor/pixi.min.js"></script>
     <script src="../src/engine.js"></script>
+    <script src="../src/render.js"></script>
     <script src="../src/voice.js"></script>
     <script src="../src/ui.js"></script>
     <script src="../src/coach.js"></script>
@@ -517,7 +519,7 @@
         const canvas = document.getElementById("game");
         // Phone portrait: canvas fills the screen (see GOGEngine.fitCanvasToScreen)
         GOGEngine.fitCanvasToScreen(canvas, document.getElementById("canvasFrame"));
-        let ctx = canvas.getContext("2d"); // swapped by withCtx() while baking
+        let ctx = null; // 2D context only exists while baking (withCtx); the main canvas belongs to Pixi
 
         // Logical play-field size. The canvas bitmap is sized to the pixels
         // actually on screen (see GOGEngine.fitCanvas) so art stays crisp, but
@@ -531,12 +533,7 @@
         // floes) is baked at the on-screen bitmap scale; a resize that changes the
         // scale just bumps this and each cache rebuilds lazily on its next use.
         let rasterEpoch = 0;
-        const hiDpi = GOGEngine.fitCanvas(canvas, ctx, VIEW_W, VIEW_H, {
-          onResize: function () {
-            backdropDirty = true;
-            rasterEpoch++;
-          },
-        });
+        const hiDpi = { scale: 1 }; // kept in step with the Pixi renderer scale (see buildScene)
 
         const STAGE_ID = "stage04";
         const stageMeta = GOGContent.byId(STAGE_ID);
@@ -2484,20 +2481,6 @@
           ctx.restore();
         }
 
-        // All flakes are one colour, so they go into a single path / single fill.
-        function drawSnowfall() {
-          ctx.save();
-          ctx.fillStyle = "#ffffff";
-          ctx.beginPath();
-          for (let i = 0; i < snowfallParticles.length; i++) {
-            const s = snowfallParticles[i];
-            ctx.moveTo(s.x + s.size, s.y);
-            ctx.arc(s.x, s.y, s.size, 0, TAU);
-          }
-          ctx.fill();
-          ctx.restore();
-        }
-
         // World-space visibility test: is any part of [x0, x1] on screen? (margins are
         // baked into the numbers callers pass, so nothing pops in at the edge.)
         function inView(x0, x1) {
@@ -2508,76 +2491,6 @@
         function syncCamera() {
           const sc = hiDpi.scale;
           camX = Math.round(cameraX * sc) / sc;
-        }
-
-        // The backdrop paints every pixel (opaque sky down to the horizon, opaque sea
-        // below it), so the frame no longer needs a clearRect first. The 2000px world
-        // is culled: the factory, home iceberg and valve platform (and every floe,
-        // chick and particle, inside their own draw functions) only paint when in view.
-        function render() {
-          if (!state) {
-            drawIdleScene();
-            return;
-          }
-
-          syncCamera();
-          drawBackground();
-          ctx.save();
-          ctx.translate(-camX, 0);
-          if (inView(1770, 2100)) drawSmogFactory();
-          if (inView(-10, 340)) drawHomeBase();
-          spawnHomeSparkles();
-          if (inView(1020, 1320)) drawValvePlatform();
-          drawPlatforms();
-          drawWaterLift();
-          drawChicks();
-          drawPlayer();
-          drawChickPrompts();
-          drawParticles();
-          drawFloatingTexts();
-          ctx.restore();
-          drawSnowfall();
-          drawWater();
-          drawWorldHud();
-          drawCoachHints();
-          drawWinWipe();
-        }
-
-        function drawWinWipe() {
-          if (!winWiping && !winWipeDone) return;
-          const r = winWipeDone ? winWipeMax : winWipeRadius;
-          const cx = VIEW_W / 2;
-          const cy = VIEW_H / 2;
-          ctx.save();
-          ctx.beginPath();
-          ctx.arc(cx, cy, r, 0, Math.PI * 2);
-          ctx.clip();
-          const grad = ctx.createRadialGradient(cx, cy, 0, cx, cy, r || 1);
-          grad.addColorStop(0, "#FFFFFF");
-          grad.addColorStop(0.55, "#B9E3FF");
-          grad.addColorStop(1, "#2C4BFF");
-          ctx.globalAlpha = 0.85;
-          ctx.fillStyle = grad;
-          ctx.fillRect(0, 0, VIEW_W, VIEW_H);
-          ctx.restore();
-
-          if (winWiping) {
-            ctx.save();
-            ctx.beginPath();
-            ctx.arc(cx, cy, r, 0, Math.PI * 2);
-            ctx.lineWidth = 6;
-            ctx.strokeStyle = "#111";
-            ctx.stroke();
-            ctx.restore();
-          }
-        }
-
-        function drawIdleScene() {
-          syncCamera();
-          drawBackground();
-          ctx.save();
-          drawWater();
-          ctx.restore();
         }
 
         // ---- Backdrop -------------------------------------------------------
@@ -2772,190 +2685,6 @@
           return c;
         }
 
-        function buildBackdrop(scale) {
-          releaseCanvas(backdrop.far);
-          releaseCanvas(backdrop.mid);
-          releaseCanvas(backdrop.sea);
-          releaseCanvas(backdrop.sky);
-          backdrop.clouds.forEach(releaseCanvas);
-          backdrop.sky = null;
-          backdrop.skyIdx = -1; // sky is rebuilt at the new scale on next use
-          backdrop.far = makeBand(BAND.far, buildFarLayer, scale);
-          backdrop.mid = makeBand(BAND.mid, buildMidLayer, scale);
-          backdrop.sea = makeBand(BAND.sea, buildSeaLayer, scale);
-          backdrop.clouds = [
-            makeCloudSprite(scale, 190, 84, 11),
-            makeCloudSprite(scale, 150, 70, 23),
-            makeCloudSprite(scale, 220, 92, 37),
-          ];
-          backdropDirty = false;
-        }
-
-        // Sky gradient + the soft sun glow, painted ONCE per warmth step (64 steps over
-        // 0..1, ~1 colour level apart) into a bitmap that is then a single opaque blit.
-        // This replaces a per-frame 3-stop gradient (3 hex re-parses) + a 400x400
-        // radial-gradient glow. The glow is baked at the sun's resting height; the sun
-        // disc itself still bobs in drawBackground().
-        function buildSky(idx, scale) {
-          const pw = Math.max(1, Math.ceil(VIEW_W * scale));
-          const ph = Math.ceil(SKY_H * scale);
-          let c = backdrop.sky;
-          if (!c || c.width !== pw || c.height !== ph) {
-            releaseCanvas(c);
-            c = document.createElement("canvas");
-            c.width = pw;
-            c.height = ph;
-            backdrop.sky = c;
-          }
-          const g = c.getContext("2d");
-          g.setTransform(scale, 0, 0, scale, 0, 0);
-          const sky = g.createLinearGradient(0, 0, 0, HORIZON_Y);
-          sky.addColorStop(0, RAMP.sky0[idx]);
-          sky.addColorStop(0.55, RAMP.sky1[idx]);
-          sky.addColorStop(1, RAMP.sky2[idx]);
-          g.fillStyle = sky;
-          g.fillRect(0, 0, VIEW_W, SKY_H);
-          const glow = g.createRadialGradient(SUN_X, SUN_Y, 10, SUN_X, SUN_Y, 190);
-          glow.addColorStop(0, RAMP.glow[idx]);
-          glow.addColorStop(1, "rgba(255, 246, 200, 0)");
-          g.save();
-          g.globalAlpha = 0.65;
-          g.fillStyle = glow;
-          g.fillRect(SUN_X - 200, SUN_Y - 200, 400, 400);
-          g.restore();
-          backdrop.skyIdx = idx;
-        }
-
-        // One parallax band, 1:1 in DEVICE pixels (identity transform, integer offsets):
-        // no resampling, and at most two blits per layer (tile seam).
-        function drawBand(layer, band, scroll) {
-          const sc = hiDpi.scale;
-          const tile = layer.width;
-          const x0 = -(((Math.floor(scroll * sc) % tile) + tile) % tile);
-          const y = Math.round(band.y * sc);
-          const vw = canvas.width;
-          for (let dx = x0; dx < vw; dx += tile) ctx.drawImage(layer, dx, y);
-        }
-
-        // Aurora gradients never change (only the paths and alpha move), so they are
-        // created once instead of every frame.
-        let auroraIdle = null;
-        let auroraWon = null;
-        function auroraGradient(won) {
-          if (won) {
-            if (!auroraWon) {
-              auroraWon = ctx.createLinearGradient(0, 0, 0, 190);
-              auroraWon.addColorStop(0, "rgba(90, 255, 160, 0.55)");
-              auroraWon.addColorStop(1, "rgba(255, 140, 220, 0)");
-            }
-            return auroraWon;
-          }
-          if (!auroraIdle) {
-            auroraIdle = ctx.createLinearGradient(0, 0, 0, 190);
-            auroraIdle.addColorStop(0, "rgba(120, 255, 214, 0.38)");
-            auroraIdle.addColorStop(1, "rgba(255, 140, 220, 0)");
-          }
-          return auroraIdle;
-        }
-
-        // The two ribbons are big alpha gradient fills (the priciest part of the sky), and
-        // they only drift ~20 px/s, so they are painted into a small offscreen bitmap at
-        // most every 50 ms (and whenever the scale / win state changes) and that bitmap is
-        // blitted 1:1 each frame. Same shapes, sampled 20x per second.
-        const AURORA_H = 136; // ribbons stay above y = 128; multiple of 4 -> whole device px
-        const aurora = { c: null, t: -1, won: false, epoch: -1 };
-        function drawAurora(timeVal, warmthVal, won) {
-          const sc = hiDpi.scale;
-          const stale =
-            !aurora.c ||
-            aurora.epoch !== rasterEpoch ||
-            aurora.won !== won ||
-            Math.abs(timeVal - aurora.t) >= 0.05;
-          if (stale) {
-            if (!aurora.c || aurora.epoch !== rasterEpoch) {
-              releaseCanvas(aurora.c);
-              aurora.c = document.createElement("canvas");
-              aurora.c.width = Math.max(1, Math.ceil(VIEW_W * sc));
-              aurora.c.height = Math.ceil(AURORA_H * sc);
-            }
-            const g = aurora.c.getContext("2d");
-            g.setTransform(1, 0, 0, 1, 0, 0);
-            g.clearRect(0, 0, aurora.c.width, aurora.c.height);
-            g.setTransform(sc, 0, 0, sc, 0, 0);
-            g.globalAlpha = 0.35 + (1 - warmthVal) * 0.45;
-            g.fillStyle = auroraGradient(won);
-            for (let j = 0; j < 2; j++) {
-              g.beginPath();
-              g.moveTo(0, 0);
-              for (let x = 0; x <= VIEW_W + 20; x += 20) {
-                const y = 70 + j * 34 + Math.sin(timeVal * 0.9 + x * 0.004 + j * 1.5) * 24 * Math.cos(timeVal * 0.35 + x * 0.002);
-                g.lineTo(x, y);
-              }
-              g.lineTo(VIEW_W, 0);
-              g.closePath();
-              g.fill();
-            }
-            aurora.t = timeVal;
-            aurora.won = won;
-            aurora.epoch = rasterEpoch;
-          }
-          ctx.save();
-          ctx.setTransform(1, 0, 0, 1, 0, 0);
-          ctx.drawImage(aurora.c, 0, 0);
-          ctx.restore();
-        }
-
-        function drawBackground() {
-          if (backdropDirty) buildBackdrop(hiDpi.scale);
-          const W = VIEW_W;
-          const H = VIEW_H;
-          const sc = hiDpi.scale;
-          const warmthVal = state ? state.warmth : 0.0;
-          const wi = warmIdx(warmthVal);
-          const timeVal = state ? state.time : performance.now() * 0.001;
-          const scrollVal = gameRunning ? camX : camX + performance.now() * 0.02;
-          if (backdrop.skyIdx !== wi) buildSky(wi, sc);
-
-          // 1. Sky: cobalt -> lilac -> peach horizon (dusky purple/orange as warmth
-          // climbs) with the sun glow baked in. Opaque, so no clearRect is needed.
-          ctx.save();
-          ctx.setTransform(1, 0, 0, 1, 0, 0);
-          ctx.drawImage(backdrop.sky, 0, 0);
-          ctx.restore();
-
-          // 2. Aurora ribbons (painted offscreen at ~20 Hz, see drawAurora)
-          drawAurora(timeVal, warmthVal, state && state.state === "won");
-
-          // 3. Low sun behind the glaciers (glow is part of the sky bitmap)
-          ctx.fillStyle = RAMP.sun[wi];
-          circle(SUN_X, SUN_Y + Math.sin(timeVal * 0.4) * 3, 34, true);
-
-          // 4. Drifting clouds
-          for (let i = 0; i < clouds.length; i++) {
-            const c = clouds[i];
-            const sprite = backdrop.clouds[i % backdrop.clouds.length];
-            const cw = sprite.width / sc;
-            const ch = sprite.height / sc;
-            ctx.globalAlpha = c.layer === "back" ? 0.75 : 0.95;
-            ctx.drawImage(sprite, c.x - (cw * c.scale) / 2, c.y, cw * c.scale, ch * c.scale);
-          }
-          ctx.globalAlpha = 1;
-
-          // 5. Parallax scenery: glaciers, far sea, drifting bergs (device-pixel blits)
-          ctx.save();
-          ctx.setTransform(1, 0, 0, 1, 0, 0);
-          drawBand(backdrop.far, BAND.far, scrollVal * 0.08);
-          drawBand(backdrop.sea, BAND.sea, scrollVal * 0.3);
-          drawBand(backdrop.mid, BAND.mid, scrollVal * 0.22);
-          ctx.restore();
-
-          // 6. Heat haze as warmth rises
-          if (warmthVal > 0.05) {
-            ctx.fillStyle = HAZE[wi];
-            ctx.fillRect(0, 0, W, H);
-          }
-        }
-
         // The polluted shore that ends the level: a solid rocky island with
         // dirty snow, a drain pipe and a few drips. It gives the factory
         // somewhere to stand and the world a visible, finished right-hand edge.
@@ -2986,10 +2715,6 @@
           ctx.fillStyle = "#6C7077";
           roundedRect(s.x - 26, s.y + 40, 52, 24, 8, true, false);
           roundedRect(s.x - 26, s.y + 40, 52, 24, 8, false, true);
-          const drip = (state.time * 1.4) % 1;
-          ctx.fillStyle = "rgba(96, 88, 70, 0.85)";
-          ellipse(s.x - 20, s.y + 70 + drip * 90, 4, 6 + drip * 3, true, false);
-          ellipse(s.x - 12, s.y + 70 + ((drip + 0.5) % 1) * 90, 3.5, 5.5, true, false);
           ctx.restore();
         }
 
@@ -3042,43 +2767,6 @@
           ctx.arc(x + 80, y + 210, 22, Math.PI * 1.1, Math.PI * 1.9);
           ctx.stroke();
           ctx.restore();
-
-          // Smoke — sooty grey-brown with a sickly khaki tint, the same
-          // palette family as the Smog itself, so factory smoke and the
-          // Smog register as the same danger on sight.
-          const smokePuffs = 3 + Math.floor(state.warmth * 5);
-          for (let i = 0; i < smokePuffs; i++) {
-            const sx = x + 46 + i * 20 + Math.sin(state.time * 1.4 + i) * 10;
-            const sy =
-              y + 20 - i * 10 - Math.cos(state.time * 1.5 + i * 0.5) * 8;
-            ctx.globalAlpha = 0.2 + state.warmth * 0.25;
-            ctx.fillStyle =
-              i % 2 === 0 ? "rgba(70, 65, 55, 1)" : "rgba(150, 140, 108, 1)";
-            circle(sx, sy, 18 + i * 3, true);
-            ctx.globalAlpha = 1;
-          }
-
-          // T052: rising heat-wave shimmer above the stacks — makes the
-          // *cause* of Warmth visibly hotter as it climbs, not just a meter.
-          if (state.warmth > 0.15) {
-            ctx.save();
-            ctx.globalAlpha = 0.12 + state.warmth * 0.28;
-            ctx.strokeStyle = "rgba(255, 210, 140, 0.8)";
-            ctx.lineWidth = 2;
-            const waveCount = 3;
-            for (let w = 0; w < waveCount; w++) {
-              const wx = x + 30 + w * 45;
-              const topY = y - 90 - state.warmth * 40;
-              ctx.beginPath();
-              for (let hy = y - 10; hy > topY; hy -= 6) {
-                const wobble = Math.sin(state.time * 6 + hy * 0.15 + w * 2) * (3 + state.warmth * 5);
-                if (hy === y - 10) ctx.moveTo(wx + wobble, hy);
-                else ctx.lineTo(wx + wobble, hy);
-              }
-              ctx.stroke();
-            }
-            ctx.restore();
-          }
         }
 
         // The home iceberg's static look: warm halo, ice block, face, grass cap and the
@@ -3184,88 +2872,6 @@
         // World rect of the baked home sprite: halo (r=150 around x=160,y=370), block,
         // sign. Origin on multiples of 4 so it lands on whole device pixels.
         const HOME_BOX = { x: 8, y: 216, w: 304, h: 372 };
-        let homeSprite = null;
-        let homeEpoch = -1;
-
-        // Blit a baked world-space bitmap 1:1 in device pixels (wx, wy: multiples of 4).
-        function blitWorld(c, wx, wy) {
-          const sc = hiDpi.scale;
-          ctx.save();
-          ctx.setTransform(1, 0, 0, 1, 0, 0);
-          ctx.drawImage(c, Math.round(wx * sc) - Math.round(camX * sc), Math.round(wy * sc));
-          ctx.restore();
-        }
-
-        function drawHomeBase() {
-          const b = state.stableBase;
-          if (!homeSprite || homeEpoch !== rasterEpoch) {
-            releaseCanvas(homeSprite);
-            homeSprite = GOGEngine.bake(
-              HOME_BOX.w,
-              HOME_BOX.h,
-              function (g) {
-                withCtx(g, function () {
-                  ctx.translate(-HOME_BOX.x, -HOME_BOX.y);
-                  drawHomeStatic();
-                });
-              },
-              hiDpi.scale,
-            );
-            homeEpoch = rasterEpoch;
-          }
-          blitWorld(homeSprite, HOME_BOX.x, HOME_BOX.y);
-
-          // 3. Draw Parent Penguins
-          // Dad: waddles slightly
-          const dadWaddle = Math.sin(state.time * 2.5) * 3;
-          const dadX = b.x + b.w * 0.72;
-          const dadY = b.y + FOOT_SINK;
-          ctx.save();
-          ctx.translate(dadX, dadY + Math.abs(dadWaddle));
-          ctx.rotate(dadWaddle * 0.05);
-          if (spriteSheets.idle.loaded) {
-            const frame = Math.floor(state.time * 1.5) % 2; // alternates standing/smiling
-            const col = frame % spriteSheets.idle.cols;
-            const destW = 44; // Larger Dad
-            const fs = frameSprite(spriteSheets.idle, col, destW);
-            ctx.drawImage(fs, -fs.gw / 2, -fs.gh, fs.gw, fs.gh);
-          } else {
-            drawEmoji("🐧", 0, -18, 42); // Fallback Larger Dad
-          }
-          ctx.restore();
-
-          // Mom: waves happily
-          const momWave = Math.sin(state.time * 4.5) * 4;
-          const momX = b.x + b.w * 0.85;
-          const momY = b.y + FOOT_SINK;
-          ctx.save();
-          ctx.translate(momX, momY + Math.abs(momWave));
-          ctx.scale(-1, 1);
-          if (spriteSheets.idle.loaded) {
-            const frame = Math.floor(state.time * 1.2 + 1) % 2;
-            const col = frame % spriteSheets.idle.cols;
-            const destW = 40; // Smaller Mom
-            const fs = frameSprite(spriteSheets.idle, col, destW);
-            ctx.drawImage(fs, -fs.gw / 2, -fs.gh, fs.gw, fs.gh);
-          } else {
-            drawEmoji("🐧", 0, -16, 38); // Fallback Mom
-          }
-          ctx.restore();
-
-          // 4. Draw Rescued fish jumping
-          if (state.fishJumpTimer > 0) {
-            const progress = (1.5 - state.fishJumpTimer) / 1.5;
-            const jumpHeight = 75;
-            const fishX = b.x + b.w * 0.5 + (progress * 80 - 40);
-            const fishY = b.y - Math.sin(progress * Math.PI) * jumpHeight - 10;
-            ctx.save();
-            ctx.translate(fishX, fishY);
-            ctx.rotate(progress * Math.PI - Math.PI / 2);
-            drawEmoji("🐟", 0, 0, 18);
-            ctx.restore();
-          }
-        }
-
         // Snow sparkles rising off the home iceberg (spawned each frame, drawn as particles).
         function spawnHomeSparkles() {
           if (Math.random() < 0.12) {
@@ -3282,65 +2888,6 @@
               kind: "snow"
             });
           }
-        }
-
-        function drawValvePlatform() {
-          const p = state.valvePlatform;
-          ctx.fillStyle = "#CFEFFF";
-          roundedRect(p.x, p.y, p.w, p.h, 12, true, false);
-          ctx.strokeStyle = "#111";
-          ctx.lineWidth = 4;
-          roundedRect(p.x, p.y, p.w, p.h, 12, false, true);
-
-          ctx.save();
-          ctx.translate(state.valve.x, state.valve.y);
-          const spin = state.valve.pulse * 1.3 + state.valve.activeFlash * 12.0;
-          ctx.rotate(spin);
-          
-          if (state.valve.frozen) {
-            ctx.fillStyle = "#B3F0FF";
-          } else {
-            ctx.fillStyle = state.coolingTimer > 0 ? "#87E1FF" : "#FFD84D";
-          }
-          
-          circle(0, 0, state.valve.r, true);
-          ctx.strokeStyle = "#111";
-          ctx.lineWidth = 4;
-          circle(0, 0, state.valve.r, false);
-          
-          for (let i = 0; i < 4; i++) {
-            ctx.rotate(Math.PI / 2);
-            ctx.fillRect(-4, -state.valve.r - 12, 8, 22);
-            ctx.strokeRect(-4, -state.valve.r - 12, 8, 22);
-          }
-          
-          if (state.valve.frozen) {
-            ctx.save();
-            ctx.fillStyle = "rgba(255, 255, 255, 0.8)";
-            for (let j = 0; j < 6; j++) {
-              ctx.rotate(Math.PI / 3);
-              ctx.fillRect(-2, -state.valve.r + 4, 4, 14);
-            }
-            ctx.restore();
-          }
-
-          circle(0, 0, 8, true);
-          circle(0, 0, 8, false);
-          ctx.restore();
-
-          ctx.fillStyle = "#fff";
-          roundedRect(p.x + 105, p.y - 48, 120, 34, 8, true, false);
-          ctx.strokeStyle = "#111";
-          roundedRect(p.x + 105, p.y - 48, 120, 34, 8, false, true);
-          ctx.fillStyle = "#111";
-          ctx.font = "900 14px Arial";
-          ctx.textAlign = "center";
-          ctx.textBaseline = "middle";
-          ctx.fillText(
-            state.valve.frozen ? "FROZEN ❄️" : (state.coolingTimer > 0 ? "COOLING!" : "SPIN VALVE"),
-            p.x + 165,
-            p.y - 31,
-          );
         }
 
         // Small deterministic PRNG so each floe's jagged edge and crack
@@ -3529,662 +3076,6 @@
           ctx.restore();
         }
 
-        function drawPlatforms() {
-          for (const pl of state.meltPlatforms) {
-            if (pl.gone) continue;
-            const x = pl.x + pl.shrink * 0.5;
-            if (!inView(x - 30, x + pl.w + 30)) continue; // off screen
-            const meltRatio = 1 - pl.w / pl.baseW;
-
-            // Draw the beautiful, organic, bobbing/rotating ice floe!
-            drawIceFloe(pl, x, pl.w, meltRatio);
-
-            const critical = meltRatio > 0.55;
-            if (critical) {
-              const pulse = 0.5 + Math.sin(state.time * 9) * 0.5;
-              ctx.save();
-              ctx.strokeStyle = CRITICAL_STROKES[Math.round((0.5 + pulse * 0.4) * 100) - 50];
-              ctx.lineWidth = 4;
-              ctx.setLineDash([8, 6]);
-              ctx.lineDashOffset = -state.time * 40;
-              roundedRect(x - 3, pl.y - 3, pl.w + 6, pl.h + SLAB_DEPTH + 6, 16, false, true);
-              ctx.setLineDash([]);
-              ctx.restore();
-            }
-
-            // Draw visual segmented health bar underneath if it is melting
-            if (meltRatio > 0.05) {
-              const barW = pl.w * 0.65;
-              const barH = 7;
-              const bx = x + (pl.w - barW) / 2;
-              const by = pl.y + pl.h + SLAB_DEPTH + 10 + (Math.sin(state.time * 2.0 + pl.phase) * 2);
-              
-              ctx.save();
-              // Neo-brutalist health bar container
-              ctx.fillStyle = "#1e293b";
-              ctx.fillRect(bx - 2, by - 2, barW + 4, barH + 4);
-              
-              // Fill bar
-              const healthPct = 1 - meltRatio;
-              let fillCol = "#7CE6A6";
-              if (healthPct < 0.35) {
-                fillCol = "#FF3B30";
-              } else if (healthPct < 0.65) {
-                fillCol = "#FFCC00";
-              }
-              ctx.fillStyle = fillCol;
-              ctx.fillRect(bx, by, barW * healthPct, barH);
-              ctx.restore();
-            }
-          }
-        }
-
-        // T050: delivered chicks live on in a small hopping/cheering huddle
-        // near the safe iceberg instead of just disappearing.
-        function drawHuddleChick(chick) {
-          const b = state.stableBase;
-          const slot = chick.huddleSlot || 0;
-          const cols = 3;
-          const col = slot % cols;
-          const row = Math.floor(slot / cols);
-          const baseX = b.x + b.w * 0.28 + col * 30;
-          const baseY = b.y + FOOT_SINK - row * 14;
-          const cheering = chick.cheerTimer > 0;
-          const hop = Math.abs(Math.sin(chick.bob * 1.8)) * (cheering ? 12 : 5);
-          const drawX = baseX;
-          const drawY = baseY - hop;
-
-          drawContactShadow(drawX, baseY - 5, 16);
-
-          if (chickSprite.loaded) {
-            const destW = CHICK_W;
-            const destH = (chickSprite.frameH / chickSprite.frameW) * destW;
-            // hop frames (4/5) while cheering, a slow sleepy blink (2) otherwise
-            const frame = cheering
-              ? (Math.floor(chick.bob * 4) % 2 === 0 ? 4 : 5)
-              : (Math.floor(chick.bob) % 6 === 5 ? 2 : 0);
-            const fs = frameSprite(chickSprite, frame, destW);
-            ctx.drawImage(fs, drawX - fs.gw / 2, drawY - fs.gh, fs.gw, fs.gh);
-          } else {
-            drawEmoji("🐥", drawX, drawY - 10, 26);
-          }
-
-          if (cheering && Math.random() < 0.12) {
-            state.particles.push({
-              x: drawX, y: drawY - 20,
-              vx: (Math.random() - 0.5) * 20, vy: -30 - Math.random() * 15,
-              life: 0.7, maxLife: 0.7, kind: "emoji", text: "🎉", size: 12,
-            });
-          }
-        }
-
-        // Grab prompts are queued while chicks draw and painted after Penny so
-        // she can never cover the hint.
-        const chickPrompts = [];
-        function drawChickPrompts() {
-          for (const pr of chickPrompts) GOGCoach.tag(ctx, pr.x, pr.y, "Tap GRAB / press E");
-          chickPrompts.length = 0;
-        }
-
-        function drawChicks() {
-          const p = state.player;
-          chickPrompts.length = 0;
-          for (const chick of state.chicks) {
-            if (state.player.carrying.includes(chick)) continue;
-            if (chick.delivered) {
-              if (inView(-10, 340)) drawHuddleChick(chick);
-              continue;
-            }
-            if (!inView(chick.x - 60, chick.x + 80)) continue; // off screen
-            const bob = Math.sin(chick.bob) * 3;
-            let shiver = 0;
-            let crying = false;
-
-            // Find the nearest floe under the chick to decide if it
-            // should look scared (shiver + tear) or just wave happily.
-            let nearest = null;
-            let bestDist = Infinity;
-            for (const pl of state.meltPlatforms) {
-              if (pl.gone) continue;
-              const d = Math.abs(pl.x + pl.w / 2 - chick.x);
-              if (d < bestDist) {
-                bestDist = d;
-                nearest = pl;
-              }
-            }
-            if (nearest && bestDist < 120) {
-              const ratio = 1 - nearest.w / nearest.baseW;
-              if (ratio > 0.35) {
-                shiver = Math.sin(state.time * 26 + chick.bob) * 2.8;
-                crying = ratio > 0.55;
-              }
-            }
-
-            const destW = CHICK_W; // match the safe-iceberg chick size
-            let destH = 34;
-            if (chickSprite.loaded) {
-              destH = (chickSprite.frameH / chickSprite.frameW) * destW;
-            }
-
-            // Calculate exact rotated positioning to stay glued to bobbing/tilting platforms
-            let drawX = chick.x + 9 + shiver;
-            let drawY = chick.y + 18 + bob + FOOT_SINK;
-            let drawRot = 0;
-            
-            if (!chick.rescued && chick.platformIndex !== undefined) {
-              const pl = state.meltPlatforms[chick.platformIndex];
-              if (pl && !pl.gone) {
-                const plX = pl.x + pl.shrink * 0.5;
-                const plCenterW = pl.w / 2;
-                const plCenterH = pl.h / 2;
-                
-                const relX = (chick.x + 9) - (plX + plCenterW);
-                const relY = -plCenterH;
-                
-                const rot = pl.rot || 0;
-                const cos = Math.cos(rot);
-                const sin = Math.sin(rot);
-                
-                const rotX = relX * cos - relY * sin;
-                const rotY = relX * sin + relY * cos;
-                
-                drawX = plX + plCenterW + rotX + shiver;
-                drawY = pl.y + plCenterH + rotY + bob + FOOT_SINK;
-                drawRot = rot;
-              }
-            }
-
-            if (chickSprite.loaded) {
-              let frame = 0; // Default standing
-              if (crying) {
-                // Worried fast-blink animation when platform is melting
-                const worryTime = (state.time * 4.0 + chick.bob) % 3.0;
-                if (worryTime < 1.5) {
-                  frame = 1; // Worried eyes
-                } else if (worryTime < 2.0) {
-                  frame = 2; // Eyes shut tight
-                } else {
-                  frame = 0; // Normal standing
-                }
-              } else {
-                // Happy normal idle cycle
-                const chickTime = (state.time * 1.5 + chick.bob) % 5.0;
-                if (chickTime < 3.5) {
-                  frame = 0; // Normal look
-                } else if (chickTime < 3.7) {
-                  frame = 1; // Eyes half closed
-                } else if (chickTime < 3.95) {
-                  frame = 2; // Eyes closed
-                } else if (chickTime < 4.15) {
-                  frame = 1; // Eyes half closed
-                } else {
-                  frame = 0; // Happy open mouth
-                }
-              }
-
-              ctx.save();
-              ctx.translate(drawX, drawY);
-              ctx.rotate(drawRot);
-              // soft contact shadow stays on the slab while the chick bobs
-              drawContactShadow(0, -bob - (FOOT_SINK - 4), 17);
-              const fs = frameSprite(chickSprite, frame, destW);
-              ctx.drawImage(fs, -fs.gw / 2, -fs.gh, fs.gw, fs.gh);
-
-              // Draw Ice Left progress bar inside coordinate space so it tilts & stays glued
-              if (!chick.rescued && nearest && bestDist < 120) {
-                const icePct = Math.round((nearest.w / nearest.baseW) * 100);
-                if (icePct < 100) {
-                  const barW = destW;
-                  const barH = 5;
-                  const bx = -barW / 2;
-                  const by = -destH - 8;
-
-                  ctx.fillStyle = "rgba(15, 23, 42, 0.65)";
-                  ctx.fillRect(bx, by, barW, barH);
-
-                  let fillColor = "#80E0FF";
-                  if (icePct < 35) {
-                    fillColor = "#FF3B30";
-                  } else if (icePct < 65) {
-                    fillColor = "#FFCC00";
-                  }
-
-                  const fillW = (icePct / 100) * barW;
-                  ctx.fillStyle = fillColor;
-                  ctx.fillRect(bx, by, fillW, barH);
-
-                  ctx.strokeStyle = "#1e293b";
-                  ctx.lineWidth = 1;
-                  ctx.strokeRect(bx, by, barW, barH);
-                }
-              }
-              ctx.restore();
-            } else {
-              ctx.save();
-              ctx.translate(drawX, drawY);
-              ctx.rotate(drawRot);
-              drawEmoji("🐥", 0, -11, 26);
-              ctx.restore();
-            }
-
-            // "Tap GRAB" prompt while Penny is in reach (drawn after Penny, see drawChickPrompts)
-            const maxCarry = getMaxCarryingCapacity();
-            if (!calmMode && !chick.rescued && chickInReach(p, chick) && p.carrying.length < maxCarry) {
-              chickPrompts.push({ x: drawX, y: drawY - destH - 16 });
-            }
-
-            if (crying) {
-              drawEmoji("💧", chick.x + 16, chick.y + 20, 12);
-            }
-          }
-        }
-
-        // T051: draws the seal lift — a gentle ripple ring while it's about
-        // to surface, the seal itself (rideable) once surfaced.
-        function drawWaterLift() {
-          const wl = state.waterLift;
-          if (!wl) return;
-          if (!inView(wl.x - 60, wl.x + wl.w + 60)) return; // off screen
-          if (wl.surfaced) {
-            ctx.save();
-            ctx.globalAlpha = 0.9;
-            drawEmoji("🦭", wl.x + wl.w / 2, wl.y + wl.h / 2 - 4, 46);
-            ctx.restore();
-          } else {
-            const nextIn = wl.cycle - wl.phase;
-            if (nextIn < 1.2) {
-              ctx.save();
-              ctx.globalAlpha = 0.35 * (1 - nextIn / 1.2);
-              ctx.strokeStyle = "#BEEFFF";
-              ctx.lineWidth = 2;
-              circle(wl.x + wl.w / 2, state.seaLevel, 14 + (1.2 - nextIn) * 10, false);
-              ctx.restore();
-            }
-          }
-        }
-
-        function drawPlayer() {
-          const p = state.player;
-          const x = p.x;
-          const y = p.y;
-          const sheet = getActiveSpriteSheet();
-
-          // Nervous cue: a quick foot-slip jitter and a worried tilt while
-          // standing on ice that's about to give way, so kids can read
-          // "this spot is dangerous" straight from Penny's body language.
-          const nervous = !!p.onCriticalIce;
-          const jitterX = nervous ? Math.sin(state.time * 30) * 2.2 : 0;
-          const tilt = nervous ? Math.sin(state.time * 16) * 0.06 : 0;
-
-          // Exaggerated penguin waddle sway (tilt & lift feet)
-          let waddleTilt = 0;
-          let waddleY = 0;
-          if (sheet === spriteSheets.running) {
-            const runCycle = state.time * Math.max(9, Math.abs(p.vx) * 0.08);
-            waddleTilt = Math.sin(runCycle) * 0.16; // side-to-side body tilt
-            waddleY = -Math.abs(Math.cos(runCycle)) * 4.5; // waddle bounce
-          }
-
-          // Tilt of a bobbing/rotating platform Penny stands on. getSolids() entries
-          // have never carried a `rot`, so this was always 0; the per-frame solids
-          // rebuild + search that used to compute it is gone (add `rot` to the solids
-          // in getSolids() and look it up with findUnder(p, getSolids(), 6) to use it).
-          const platformRot = 0;
-
-          // Mother penguin is visually larger
-          const destW = 72;
-          let destH = 108; // Fallback size
-
-          if (p.onGround && state.state !== "failed") {
-            drawContactShadow(x + p.w / 2 + jitterX, y + p.h + FOOT_SINK - 5, 28);
-          }
-
-          if (sheet.loaded) {
-            destH = (sheet.frameH / sheet.frameW) * destW;
-            let frame = penguinAnim.frameIndex;
-
-            // Physics-based jump frame selection & fail frame override
-            if (state.state === "failed") {
-              frame = 0; // Crying
-            } else if (sheet === spriteSheets.jump) {
-              frame = p.vy < 0 ? 1 : 2; // Rising: Soaring (1), Falling/Landing: Sliding (2)
-            } else {
-              const totalFrames = sheet.cols * sheet.rows;
-              frame = frame % totalFrames;
-            }
-
-            const fs = frameSprite(sheet, frame, destW);
-
-            ctx.save();
-            ctx.translate(x + p.w / 2 + jitterX, y + p.h + waddleY + FOOT_SINK);
-            ctx.rotate(tilt + waddleTilt + platformRot);
-            if (p.isSliding) ctx.scale(1, 0.82); // T049: belly-slide squash
-
-            // Penny sprite sheets face right naturally, so scale direction directly matches facing
-            let faceDirection = p.facing;
-
-            ctx.scale(faceDirection, 1);
-            ctx.drawImage(fs, -fs.gw / 2, -fs.gh, fs.gw, fs.gh);
-            ctx.restore();
-          } else {
-            // Fallback render
-            ctx.save();
-            ctx.translate(x + p.w / 2 + jitterX, y + p.h + waddleY + FOOT_SINK);
-            ctx.rotate(tilt + waddleTilt + platformRot);
-            if (p.isSliding) ctx.scale(1, 0.82); // T049: belly-slide squash
-
-            let faceDirection = p.facing;
-
-            ctx.scale(faceDirection, 1);
-            try {
-              ctx.drawImage(sheet.img, -destW / 2, -destH, destW, destH);
-            } catch (e) {
-              // Safe secondary shape draw
-              ctx.fillStyle = "#87D0FF";
-              ctx.fillRect(-p.w / 2, -p.h, p.w, p.h);
-            }
-            ctx.restore();
-          }
-
-          if (nervous) {
-            // Draw sweat drop relative to Mother Penguin's visual head height
-            drawEmoji("💦", x + p.w / 2 + 18, y + p.h - destH + 8 + Math.sin(state.time * 10) * 2, 16);
-          }
-
-          if (p.carrying && p.carrying.length > 0) {
-            // Draw hugging emoji above Penny
-            drawEmoji("🤗", x + p.w / 2 - p.facing * 18, y + p.h - destH - 12 + Math.sin(state.time * 6) * 3, 18);
-
-            for (let index = 0; index < p.carrying.length; index++) {
-              const cW = 34; // a little smaller than a chick on the ice (CHICK_W)
-              const cH = chickSprite.loaded
-                ? (chickSprite.frameH / chickSprite.frameW) * cW
-                : 30;
-
-              // Hold the chick above the belly in front! Staggered for multiple carried chicks
-              const offsetX = 12 + index * 4;
-              const offsetY = -destH * 0.4 - index * 12;
-
-              if (chickSprite.loaded) {
-                // Alternately blink between the two idle frames
-                const flapCycle = Math.floor(state.time * 8 + index) % 2;
-                let frame = flapCycle === 0 ? 4 : 5; // wriggling feet while being carried
-
-                const fs = frameSprite(chickSprite, frame, cW);
-
-                ctx.save();
-                ctx.translate(x + p.w / 2, y + p.h + waddleY + FOOT_SINK);
-                ctx.scale(p.facing, 1); // Face same direction as Mother!
-                ctx.translate(offsetX, offsetY);
-                ctx.drawImage(fs, -fs.gw / 2, -fs.gh, fs.gw, fs.gh);
-                ctx.restore();
-              } else {
-                drawEmoji("🐥", x + p.w / 2 + offsetX * p.facing, y + p.h + waddleY + offsetY - 10, 20);
-              }
-            }
-          }
-        }
-
-        function drawParticles() {
-          for (let i = 0; i < state.particles.length; i++) {
-            const pt = state.particles[i];
-            // off-screen: wind streaks reach `size` px to the right of x, the rest ~30px around
-            if (pt.x + (pt.kind === "wind" ? pt.size : 30) < camX || pt.x - 30 > camX + VIEW_W) continue;
-            const alpha = Math.max(0, Math.min(1, pt.life / (pt.maxLife || 0.8)));
-            ctx.globalAlpha = alpha;
-            if (pt.kind === "snow") {
-              ctx.fillStyle = pt.color;
-              circle(pt.x, pt.y, pt.size, true);
-            } else if (pt.kind === "drip") {
-              ctx.fillStyle = pt.color;
-              ellipse(pt.x, pt.y, pt.size * 0.6, pt.size * 1.3, true, false);
-            } else if (pt.kind === "wind") {
-              ctx.strokeStyle = pt.color;
-              ctx.lineWidth = 3;
-              ctx.beginPath();
-              ctx.moveTo(pt.x, pt.y);
-              ctx.lineTo(pt.x + pt.size, pt.y);
-              ctx.stroke();
-            } else if (pt.kind === "emoji") {
-              const es = emojiSprite(pt.text, pt.size || 14, false);
-              ctx.drawImage(es, pt.x - es.gw / 2, pt.y - es.gh / 2, es.gw, es.gh);
-            } else if (pt.kind === "footprint") {
-              ctx.fillStyle = pt.color;
-              ctx.beginPath();
-              ctx.ellipse(pt.x, pt.y, 4, 2, 0, 0, Math.PI * 2);
-              ctx.fill();
-            } else {
-              ctx.fillStyle = pt.color;
-              ctx.strokeStyle = "#111";
-              ctx.lineWidth = 2;
-              roundedRect(pt.x, pt.y, pt.size, pt.size, 3, true, false);
-              roundedRect(pt.x, pt.y, pt.size, pt.size, 3, false, true);
-            }
-            ctx.globalAlpha = 1;
-          }
-        }
-
-        // Water body gradient: rebuilt only when the (whole-pixel) sea level or the
-        // warmth step changes, not every frame.
-        let waterGrad = null;
-        let waterGradTop = NaN;
-        let waterGradIdx = -1;
-        function getWaterGradient(top, wi) {
-          const qTop = Math.round(top);
-          if (!waterGrad || qTop !== waterGradTop || wi !== waterGradIdx) {
-            waterGrad = ctx.createLinearGradient(0, qTop - 24, 0, VIEW_H);
-            waterGrad.addColorStop(0, RAMP.water0[wi]);
-            waterGrad.addColorStop(1, RAMP.water1[wi]);
-            waterGradTop = qTop;
-            waterGradIdx = wi;
-          }
-          return waterGrad;
-        }
-
-        // Waves move the surface at most (6 + 16) + 3 = 25 px from the sea level.
-        const WATER_BAND = 26;
-        const WATER_BAND_TOP = 24; // the gradient starts this far above the sea level
-        const waterBody = { c: null, top: NaN, idx: -1, epoch: -1 };
-        // The water below ySplit as a device-pixel bitmap blitted 1:1 (gradient colours
-        // match getWaterGradient: same two ramp colours from qTop-24 down to the bottom).
-        function drawWaterBody(qTop, wi, ySplit) {
-          const sc = hiDpi.scale;
-          const yDev = Math.round(ySplit * sc);
-          const hDev = canvas.height - yDev;
-          if (hDev <= 0) return;
-          const wDev = canvas.width;
-          let c = waterBody.c;
-          if (
-            !c ||
-            waterBody.epoch !== rasterEpoch ||
-            waterBody.top !== qTop ||
-            waterBody.idx !== wi ||
-            c.width !== wDev ||
-            c.height !== hDev
-          ) {
-            if (!c) c = waterBody.c = document.createElement("canvas");
-            if (c.width !== wDev || c.height !== hDev) {
-              c.width = wDev;
-              c.height = hDev;
-            }
-            const g = c.getContext("2d");
-            const grad = g.createLinearGradient(0, (qTop - WATER_BAND_TOP) * sc - yDev, 0, canvas.height - yDev);
-            grad.addColorStop(0, RAMP.water0[wi]);
-            grad.addColorStop(1, RAMP.water1[wi]);
-            g.fillStyle = grad;
-            g.fillRect(0, 0, wDev, hDev);
-            waterBody.top = qTop;
-            waterBody.idx = wi;
-            waterBody.epoch = rasterEpoch;
-          }
-          ctx.save();
-          ctx.setTransform(1, 0, 0, 1, 0, 0);
-          ctx.drawImage(c, 0, yDev);
-          ctx.restore();
-        }
-
-        function drawWater() {
-          const top = state.seaLevel;
-          const warmthVal = state ? state.warmth : 0;
-          const wi = warmIdx(warmthVal);
-          const roughness = 1 + warmthVal * 2.2;
-          
-          const W = VIEW_W;
-          const H = VIEW_H;
-          const scrollVal = camX;
-          ctx.save();
-          // Below the wave band the water is a plain vertical gradient: blit it from a
-          // bitmap (rebuilt only when the whole-pixel sea level / warmth step changes);
-          // only the band the waves move in is a gradient-filled path. The band path runs
-          // 2px past the split so the two opaque, same-colour pieces never leave a seam.
-          const qTop = Math.round(top);
-          const ySplit = qTop + WATER_BAND;
-          drawWaterBody(qTop, wi, ySplit);
-          ctx.fillStyle = getWaterGradient(top, wi);
-          ctx.beginPath();
-
-          ctx.moveTo(0, ySplit + 2);
-          for (let x = 0; x <= W + 20; x += 15) {
-            const worldX = x + scrollVal;
-            const amp = (6 + warmthVal * 16) * Math.sin(worldX * 0.015 + state.time * (2.2 + warmthVal * 2.0));
-            const amp2 = 3 * Math.cos(worldX * 0.04 - state.time * 3.5);
-            ctx.lineTo(x, top + amp + amp2);
-          }
-          ctx.lineTo(W, ySplit + 2);
-          ctx.closePath();
-          ctx.fill();
-
-          ctx.strokeStyle = RAMP.foam[wi]; // foam crest
-          ctx.lineWidth = 3.5;
-          ctx.beginPath();
-          for (let x = 0; x <= W + 20; x += 15) {
-            const worldX = x + scrollVal;
-            const amp = (6 + warmthVal * 16) * Math.sin(worldX * 0.015 + state.time * (2.2 + warmthVal * 2.0));
-            const amp2 = 3 * Math.cos(worldX * 0.04 - state.time * 3.5);
-            if (x === 0) ctx.moveTo(0, top + amp + amp2);
-            else ctx.lineTo(x, top + amp + amp2);
-          }
-          ctx.stroke();
-
-          ctx.fillStyle = "rgba(230, 248, 255, 0.85)";
-          ctx.strokeStyle = "rgba(100, 180, 220, 0.5)";
-          ctx.lineWidth = 1.5;
-          for (const chunk of waterIceChunks) {
-            const cx = ((chunk.x - scrollVal) % (W + 200) + (W + 200)) % (W + 200) - 100;
-            const worldX = cx + scrollVal;
-            const amp = (6 + warmthVal * 16) * Math.sin(worldX * 0.015 + state.time * (2.2 + warmthVal * 2.0));
-            const cy = top + amp - 4 + Math.sin(state.time * 2.5 + chunk.wobble) * 3;
-            
-            ctx.beginPath();
-            ctx.moveTo(cx - chunk.w/2, cy);
-            ctx.lineTo(cx - chunk.w/4, cy - chunk.h);
-            ctx.lineTo(cx + chunk.w/4, cy - chunk.h);
-            ctx.lineTo(cx + chunk.w/2, cy);
-            ctx.closePath();
-            ctx.fill();
-            ctx.stroke();
-          }
-
-          const sealX = ((900 - scrollVal) % (W + 500) + (W + 500)) % (W + 500) - 100;
-          const sealWorldX = sealX + scrollVal;
-          const sealWaveY = top + (6 + warmthVal * 16) * Math.sin(sealWorldX * 0.015 + state.time * (2.2 + warmthVal * 2.0)) - 10;
-          const sealBob = Math.sin(state.time * 1.8) * 4;
-          drawEmoji("🦭", sealX, sealWaveY + sealBob, 26);
-
-          const whaleCycle = (state.time) % 24;
-          if (whaleCycle < 4.0) {
-            const progress = whaleCycle / 4.0;
-            const whaleX = ((1400 - scrollVal) % (W + 600) + (W + 600)) % (W + 600) - 100;
-            const whaleY = top - 10 - Math.sin(progress * Math.PI) * 45;
-            ctx.save();
-            ctx.translate(whaleX, whaleY);
-            ctx.rotate(progress * Math.PI - Math.PI / 2);
-            drawEmoji("🐋", 0, 0, 36);
-            ctx.restore();
-          }
-
-          ctx.globalAlpha = 0.5 - warmthVal * 0.35;
-          ctx.fillStyle = "#A0D5FF";
-          ctx.beginPath(); // all bubbles share one fill
-          for (let i = 0; i < waterBubbles.length; i++) {
-            const b = waterBubbles[i];
-            const bx = ((b.x - scrollVal) % (W + 100) + (W + 100)) % (W + 100) - 50;
-            const by = top + b.depth + Math.sin(state.time * b.speed * 0.05 + b.phase) * 6;
-            ctx.moveTo(bx + b.size, by);
-            ctx.arc(bx, by, b.size, 0, TAU);
-          }
-          ctx.fill();
-
-          for (const f of waterFish) {
-            const fx = ((f.baseX + Math.sin(state.time * 0.5 + f.phase) * 110 - scrollVal) % (W + 200) + (W + 200)) % (W + 200) - 100;
-            const fy = top + f.depth + Math.cos(state.time * 0.8 + f.phase) * 10;
-            ctx.save();
-            ctx.translate(fx, fy);
-            ctx.scale(f.dir, 1);
-            drawEmoji("🐟", 0, 0, 15);
-            ctx.restore();
-          }
-
-          ctx.restore();
-        }
-
-        function drawWorldHud() {
-          const nearValve =
-            Math.hypot(
-              state.player.x + state.player.w / 2 - state.valve.x,
-              state.player.y + state.player.h / 2 - state.valve.y,
-            ) < 78;
-          if (nearValve && state.state === "playing") {
-            const bounce = Math.sin(state.time * 6) * 3;
-            const sx = state.valve.x - camX;
-            const sy = state.valve.y - 70 + bounce;
-            // "E" and "tap ☸️" shown together — a keyboard-only hint
-            // would leave touch players (no keyboard) with no message
-            // at all, so both input paths are spelled out every time.
-            ctx.fillStyle = "#FFF7E8";
-            roundedRect(sx - 68, sy - 18, 136, 32, 8, true, false);
-            ctx.strokeStyle = "#111";
-            ctx.lineWidth = 3;
-            roundedRect(sx - 68, sy - 18, 136, 32, 8, false, true);
-            ctx.fillStyle = "#111";
-            ctx.textAlign = "center";
-            ctx.textBaseline = "middle";
-            ctx.font = "900 12px Arial";
-            ctx.fillText("Tap SPIN / press E", sx, sy - 1);
-          }
-        }
-        function drawCloud(x, y, scale, layer) {
-          ctx.save();
-          ctx.translate(x, y);
-          ctx.scale(scale, scale);
-
-          // Back clouds are softer and more transparent
-          ctx.globalAlpha = layer === "back" ? 0.45 : 1;
-          ctx.fillStyle = layer === "back" ? "#eef6ff" : "#ffffff";
-          ctx.strokeStyle = "#1e293b";
-          ctx.lineWidth = 3;
-
-          ctx.beginPath();
-
-          ctx.moveTo(-20, 8);
-
-          ctx.bezierCurveTo(-38, 8, -38, -12, -20, -12);
-
-          ctx.bezierCurveTo(-20, -30, 20, -30, 20, -12);
-
-          ctx.bezierCurveTo(38, -12, 38, 8, 20, 8);
-
-          ctx.closePath();
-
-          ctx.fill();
-
-          if (layer !== "back") {
-            ctx.stroke();
-          }
-
-          ctx.restore();
-        }
-
         function roundedRect(x, y, w, h, r, fill, stroke) {
           ctx.beginPath();
           ctx.moveTo(x + r, y);
@@ -4228,6 +3119,1087 @@
         function drawEmoji(emoji, x, y, size) {
           const c = emojiSprite(emoji, size, true);
           ctx.drawImage(c, x - c.gw / 2, y - c.gh / 2, c.gw, c.gh);
+        }
+
+        /* ================= render (PixiJS) =================
+           Retained scene graph. The ORIGINAL Stage 4 art is unchanged: every painter above
+           (sky, glaciers, bergs, clouds, factory, home iceberg, floes, chick/Penny sheets, emoji)
+           still runs through Canvas2D, but only ONCE per resolution/state, into a texture.
+           Per frame Pixi just moves sprites. On top, Pixi adds the cinematic layer (GPU only):
+             - DisplacementFilter  : heat shimmer on the far sea + glaciers, stronger as Warmth rises
+             - additive blend      : sun glitter on the sea, drifting diamond dust
+             - FillGradient        : the aurora ribbons are live gradient Graphics
+           ?fx=0 turns the extras off, ?fx=1 forces them on. */
+        const WATER_BAND_TOP = 24; // the water gradient starts this far above the sea level
+        let R = null;
+        let sceneReady = false;
+        const nodes = {};
+        let art = null;
+        let tracked = new Set(); // textures made from baked canvases (destroyed on resize)
+
+        let FX_FULL = true;
+        (function () {
+          let reduced = false;
+          try { reduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches; } catch (e) {}
+          const lowEnd = !!navigator.hardwareConcurrency && navigator.hardwareConcurrency <= 2;
+          FX_FULL = !(reduced || lowEnd);
+          const m = /[?&]fx=([01])/.exec(window.location.search);
+          if (m) FX_FULL = m[1] === "1";
+        })();
+
+        function track(canvas) {
+          const t = GOGRender.tex(canvas);
+          tracked.add(t);
+          return t;
+        }
+        // canvas -> { tex, w, h } with logical size (gw/gh set by bake / frameSprite / emojiSprite)
+        function ct(c) {
+          return c._pt || (c._pt = { tex: track(c), w: c.gw != null ? c.gw : c.width, h: c.gh != null ? c.gh : c.height });
+        }
+        function emojiT(glyph, size, outlined) {
+          return ct(emojiSprite(glyph, size, outlined));
+        }
+        function frameT(sheet, frame, destW) {
+          return ct(frameSprite(sheet, frame, destW));
+        }
+        // a baked texture drawn at its logical size (fx/fy: extra scale, negative = flip)
+        function fit(spr, o, fx, fy) {
+          spr.texture = o.tex;
+          spr.scale.set((o.w / o.tex.orig.width) * (fx || 1), (o.h / o.tex.orig.height) * (fy || 1));
+        }
+
+        const colCache = {};
+        function css(str) {
+          let c = colCache[str];
+          if (c) return c;
+          const m = /^rgba?\(\s*([\d.]+)\s*,\s*([\d.]+)\s*,\s*([\d.]+)\s*(?:,\s*([\d.]+)\s*)?\)$/.exec(str);
+          if (m) {
+            c = { n: (Math.round(+m[1]) << 16) | (Math.round(+m[2]) << 8) | Math.round(+m[3]), a: m[4] == null ? 1 : +m[4] };
+          } else {
+            const h = parseHex(str);
+            c = { n: (h[0] << 16) | (h[1] << 8) | h[2], a: 1 };
+          }
+          colCache[str] = c;
+          return c;
+        }
+
+        /* ---------- baking (Canvas2D painters -> textures) ---------- */
+        function bakeTex(w, h, scale, fn) {
+          return ct(GOGEngine.bake(w, h, fn, scale));
+        }
+        function bakeWith(w, h, scale, fn) {
+          return bakeTex(w, h, scale, function (g) {
+            withCtx(g, function () { fn(g); });
+          });
+        }
+
+        const FACT_BOX = { x: 1780, y: 148, w: 324, h: 480 };
+        const SIGN_LABELS = ["SPIN VALVE", "COOLING!", "FROZEN ❄️"];
+        function bakeArt(scale) {
+          const a = { sky: null, clouds: [], sign: [], wheel: [] };
+          a.far = ct(makeBand(BAND.far, buildFarLayer, scale));
+          a.mid = ct(makeBand(BAND.mid, buildMidLayer, scale));
+          a.sea = ct(makeBand(BAND.sea, buildSeaLayer, scale));
+          const cs = [[190, 84, 11], [150, 70, 23], [220, 92, 37]];
+          for (let i = 0; i < cs.length; i++) {
+            const cv = makeCloudSprite(scale, cs[i][0], cs[i][1], cs[i][2]);
+            cv.gw = cs[i][0];
+            cv.gh = cs[i][1];
+            a.clouds.push(ct(cv));
+          }
+          a.sun = bakeTex(68, 68, scale, function (g) { g.fillStyle = "#fff"; g.beginPath(); g.arc(34, 34, 34, 0, TAU); g.fill(); });
+          a.dot = bakeTex(32, 32, scale, function (g) { g.fillStyle = "#fff"; g.beginPath(); g.arc(16, 16, 15, 0, TAU); g.fill(); });
+          a.soft = bakeTex(64, 64, 1, function (g) {
+            const grad = g.createRadialGradient(32, 32, 0, 32, 32, 32);
+            grad.addColorStop(0, "rgba(255,255,255,1)");
+            grad.addColorStop(0.35, "rgba(255,255,255,0.45)");
+            grad.addColorStop(1, "rgba(255,255,255,0)");
+            g.fillStyle = grad;
+            g.fillRect(0, 0, 64, 64);
+          });
+          a.shadow = bakeTex(64, 16, scale, function (g) { g.fillStyle = "#fff"; g.beginPath(); g.ellipse(32, 8, 32, 8, 0, 0, TAU); g.fill(); });
+          a.wipe = bakeTex(256, 256, 1, function (g) {
+            const grad = g.createRadialGradient(128, 128, 0, 128, 128, 128);
+            grad.addColorStop(0, "#FFFFFF");
+            grad.addColorStop(0.55, "#B9E3FF");
+            grad.addColorStop(1, "#2C4BFF");
+            g.fillStyle = grad;
+            g.beginPath();
+            g.arc(128, 128, 128, 0, TAU);
+            g.fill();
+          });
+          // the home iceberg + the polluted shore/factory (static looks; everything live is separate)
+          a.home = bakeWith(HOME_BOX.w, HOME_BOX.h, scale, function (g) { ctx.translate(-HOME_BOX.x, -HOME_BOX.y); drawHomeStatic(); });
+          a.factory = bakeWith(FACT_BOX.w, FACT_BOX.h, scale, function (g) { ctx.translate(-FACT_BOX.x, -FACT_BOX.y); drawSmogFactory(); });
+          const p = state.valvePlatform;
+          a.platform = bakeWith(p.w + 8, p.h + 8, scale, function (g) {
+            ctx.translate(4 - p.x, 4 - p.y);
+            ctx.fillStyle = "#CFEFFF";
+            roundedRect(p.x, p.y, p.w, p.h, 12, true, false);
+            ctx.strokeStyle = "#111";
+            ctx.lineWidth = 4;
+            roundedRect(p.x, p.y, p.w, p.h, 12, false, true);
+          });
+          for (let i = 0; i < SIGN_LABELS.length; i++) {
+            a.sign.push(bakeWith(128, 42, scale, function (g) {
+              ctx.translate(4 - (p.x + 105), 4 - (p.y - 48));
+              ctx.fillStyle = "#fff";
+              roundedRect(p.x + 105, p.y - 48, 120, 34, 8, true, false);
+              ctx.strokeStyle = "#111";
+              ctx.lineWidth = 4;
+              roundedRect(p.x + 105, p.y - 48, 120, 34, 8, false, true);
+              ctx.fillStyle = "#111";
+              ctx.font = "900 14px Arial";
+              ctx.textAlign = "center";
+              ctx.textBaseline = "middle";
+              ctx.fillText(SIGN_LABELS[i], p.x + 165, p.y - 31);
+            }));
+          }
+          const vr = state.valve.r;
+          const wsz = (vr + 18) * 2;
+          const wheelFills = ["#FFD84D", "#87E1FF", "#B3F0FF"]; // normal, cooling, frozen
+          for (let v = 0; v < 3; v++) {
+            a.wheel.push(bakeWith(wsz, wsz, scale, function (g) {
+              ctx.translate(wsz / 2, wsz / 2);
+              ctx.fillStyle = wheelFills[v];
+              circle(0, 0, vr, true);
+              ctx.strokeStyle = "#111";
+              ctx.lineWidth = 4;
+              circle(0, 0, vr, false);
+              for (let i = 0; i < 4; i++) {
+                ctx.rotate(Math.PI / 2);
+                ctx.fillRect(-4, -vr - 12, 8, 22);
+                ctx.strokeRect(-4, -vr - 12, 8, 22);
+              }
+              if (v === 2) {
+                ctx.save();
+                ctx.fillStyle = "rgba(255, 255, 255, 0.8)";
+                for (let j = 0; j < 6; j++) {
+                  ctx.rotate(Math.PI / 3);
+                  ctx.fillRect(-2, -vr + 4, 4, 14);
+                }
+                ctx.restore();
+              }
+              circle(0, 0, 8, true);
+              circle(0, 0, 8, false);
+            }));
+          }
+          return a;
+        }
+
+        // sky + sun glow: one opaque bitmap per warmth step, repainted in place (texture re-uploaded)
+        function repaintSky(idx) {
+          const sc = hiDpi.scale;
+          const pw = Math.max(1, Math.ceil(VIEW_W * sc));
+          const ph = Math.ceil(SKY_H * sc);
+          if (!nodes.skyCanvas || nodes.skyCanvas.width !== pw || nodes.skyCanvas.height !== ph || nodes.skyEpoch !== rasterEpoch) {
+            if (nodes.skyTex) { tracked.delete(nodes.skyTex); nodes.skyTex.destroy(true); }
+            nodes.skyCanvas = document.createElement("canvas");
+            nodes.skyCanvas.width = pw;
+            nodes.skyCanvas.height = ph;
+            nodes.skyTex = track(nodes.skyCanvas);
+            nodes.sky.texture = nodes.skyTex;
+            nodes.sky.width = VIEW_W;
+            nodes.sky.height = SKY_H;
+            nodes.skyEpoch = rasterEpoch;
+          }
+          const g = nodes.skyCanvas.getContext("2d");
+          g.setTransform(sc, 0, 0, sc, 0, 0);
+          const sky = g.createLinearGradient(0, 0, 0, HORIZON_Y);
+          sky.addColorStop(0, RAMP.sky0[idx]);
+          sky.addColorStop(0.55, RAMP.sky1[idx]);
+          sky.addColorStop(1, RAMP.sky2[idx]);
+          g.fillStyle = sky;
+          g.fillRect(0, 0, VIEW_W, SKY_H);
+          const glow = g.createRadialGradient(SUN_X, SUN_Y, 10, SUN_X, SUN_Y, 190);
+          glow.addColorStop(0, RAMP.glow[idx]);
+          glow.addColorStop(1, "rgba(255, 246, 200, 0)");
+          g.save();
+          g.globalAlpha = 0.65;
+          g.fillStyle = glow;
+          g.fillRect(SUN_X - 200, SUN_Y - 200, 400, 400);
+          g.restore();
+          nodes.skyTex.source.update();
+          nodes.skyIdx = idx;
+        }
+
+        /* ---------- scene graph ---------- */
+        function spr(parent, ax, ay) {
+          const s = new PIXI.Sprite(PIXI.Texture.EMPTY);
+          s.anchor.set(ax == null ? 0.5 : ax, ay == null ? 0.5 : ay);
+          if (parent) parent.addChild(s);
+          return s;
+        }
+        function box(parent) {
+          const c = new PIXI.Container();
+          if (parent) parent.addChild(c);
+          return c;
+        }
+        function pool(parent, make) {
+          return R.pool(parent, make || function () { return spr(null); });
+        }
+        function gfx(parent) {
+          const g = new PIXI.Graphics();
+          parent.addChild(g);
+          return g;
+        }
+        function mkGrad(c0, c1) {
+          return new PIXI.FillGradient({
+            type: "linear",
+            start: { x: 0, y: 0 },
+            end: { x: 0, y: 190 },
+            colorStops: [{ offset: 0, color: c0 }, { offset: 1, color: c1 }],
+            textureSpace: "global",
+          });
+        }
+
+        function buildNodes() {
+          const w = R.world;
+          nodes.sky = spr(w, 0, 0);
+          nodes.auroraG = gfx(w);
+          nodes.auroraG2 = gfx(w);
+          nodes.auroraG2.blendMode = "add";
+          nodes.gradIdle = mkGrad("rgba(120, 255, 214, 0.38)", "rgba(255, 140, 220, 0)");
+          nodes.gradWon = mkGrad("rgba(90, 255, 160, 0.55)", "rgba(255, 140, 220, 0)");
+          nodes.sun = spr(w);
+          nodes.clouds = [];
+          for (let i = 0; i < clouds.length; i++) nodes.clouds.push(spr(w, 0, 0));
+
+          nodes.bands = box(w);
+          nodes.far = new PIXI.TilingSprite({ texture: PIXI.Texture.EMPTY, width: VIEW_W, height: BAND.far.h });
+          nodes.sea = new PIXI.TilingSprite({ texture: PIXI.Texture.EMPTY, width: VIEW_W, height: BAND.sea.h });
+          nodes.mid = new PIXI.TilingSprite({ texture: PIXI.Texture.EMPTY, width: VIEW_W, height: BAND.mid.h });
+          nodes.far.y = BAND.far.y;
+          nodes.sea.y = BAND.sea.y;
+          nodes.mid.y = BAND.mid.y;
+          nodes.bands.addChild(nodes.far, nodes.sea, nodes.mid);
+          nodes.glints = box(w);
+          for (let i = 0; i < 16; i++) { const s = spr(nodes.glints); s.blendMode = "add"; }
+          nodes.haze = spr(w, 0, 0);
+          nodes.haze.texture = PIXI.Texture.WHITE;
+          nodes.haze.tint = 0xff783c;
+          nodes.haze.width = VIEW_W;
+          nodes.haze.height = VIEW_H;
+
+          /* ---- the scrolling world ---- */
+          nodes.cam = box(w);
+          const cam = nodes.cam;
+          nodes.factory = box(cam);
+          nodes.factorySpr = spr(nodes.factory, 0, 0);
+          nodes.factoryG = gfx(nodes.factory);
+          nodes.home = box(cam);
+          nodes.homeSpr = spr(nodes.home, 0, 0);
+          nodes.dad = spr(nodes.home, 0.5, 1);
+          nodes.mom = spr(nodes.home, 0.5, 1);
+          nodes.fish = spr(nodes.home);
+          nodes.valve = box(cam);
+          nodes.platSpr = spr(nodes.valve, 0, 0);
+          nodes.wheel = spr(nodes.valve);
+          nodes.signSpr = spr(nodes.valve, 0, 0);
+          nodes.floes = box(cam);
+          nodes.floeViews = [];
+          nodes.floeG = gfx(cam);
+          nodes.lift = box(cam);
+          nodes.liftG = gfx(nodes.lift);
+          nodes.liftSeal = spr(nodes.lift);
+          nodes.chickLayer = box(cam);
+          nodes.chicks = pool(nodes.chickLayer, function () {
+            const c = box(null);
+            c.shadow = spr(c);
+            c.shadow.tint = 0x12284e;
+            c.shadow.alpha = 0.3;
+            c.body = spr(c, 0.5, 1);
+            c.bar = gfx(c);
+            return c;
+          });
+          nodes.chickEmoji = pool(nodes.chickLayer);
+          nodes.playerLayer = box(cam);
+          nodes.pShadow = spr(nodes.playerLayer);
+          nodes.pShadow.tint = 0x12284e;
+          nodes.pShadow.alpha = 0.3;
+          nodes.pBody = spr(nodes.playerLayer, 0.5, 1);
+          nodes.pExtra = pool(nodes.playerLayer);
+          nodes.partG = gfx(cam);
+          nodes.partEmoji = pool(cam);
+
+          nodes.snow = pool(w);
+
+          /* ---- water (over the world) ---- */
+          nodes.water = box(w);
+          nodes.waterFill = spr(nodes.water, 0, 0);
+          nodes.waterMask = gfx(nodes.water);
+          nodes.waterFill.mask = nodes.waterMask;
+          nodes.waterG = gfx(nodes.water);
+          nodes.waterEmoji = pool(nodes.water);
+          nodes.waterKey = "";
+
+          nodes.dust = box(w);
+          for (let i = 0; i < 30; i++) { const s = spr(nodes.dust); s.blendMode = "add"; }
+
+          nodes.wipeDisc = spr(R.fx);
+          nodes.wipeRing = gfx(R.fx);
+          nodes.wipeDisc.visible = nodes.wipeRing.visible = false;
+
+          if (FX_FULL) {
+            const mapC = pixelMap(256, function (u, v, x, y, n, o) {
+              o[0] = 128 + 127 * Math.sin(3 * v + 1.3 * Math.sin(2 * u + 0.6));
+              o[1] = 128 + 127 * 0.5 * Math.sin(2 * u + 1.1 * Math.sin(3 * v + 1.1));
+              o[2] = 128;
+              o[3] = 255;
+            });
+            const mapT = GOGRender.tex(mapC);
+            mapT.source.style.addressMode = "repeat";
+            nodes.dispSprite = new PIXI.Sprite(mapT);
+            nodes.dispSprite.width = nodes.dispSprite.height = 512;
+            w.addChild(nodes.dispSprite);
+            nodes.dispFilter = new PIXI.DisplacementFilter({ sprite: nodes.dispSprite, scale: 4 });
+            nodes.bands.filterArea = new PIXI.Rectangle(0, BAND.far.y, VIEW_W, VIEW_H - BAND.far.y);
+            nodes.bands.filters = [nodes.dispFilter];
+          } else {
+            nodes.glints.visible = false;
+            nodes.dust.visible = false;
+          }
+        }
+
+        // per-pixel map painter (tileable: integer frequencies only)
+        function pixelMap(size, fn) {
+          const c = document.createElement("canvas");
+          c.width = c.height = size;
+          const g = c.getContext("2d");
+          const img = g.createImageData(size, size);
+          const o = [0, 0, 0, 0];
+          for (let y = 0; y < size; y++) {
+            for (let x = 0; x < size; x++) {
+              fn((x / size) * TAU, (y / size) * TAU, x, y, size, o);
+              const i = (y * size + x) * 4;
+              img.data[i] = o[0] < 0 ? 0 : o[0] > 255 ? 255 : o[0];
+              img.data[i + 1] = o[1] < 0 ? 0 : o[1] > 255 ? 255 : o[1];
+              img.data[i + 2] = o[2];
+              img.data[i + 3] = o[3];
+            }
+          }
+          g.putImageData(img, 0, 0);
+          return c;
+        }
+
+        function applyArt() {
+          nodes.far.texture = art.far.tex;
+          nodes.sea.texture = art.sea.tex;
+          nodes.mid.texture = art.mid.tex;
+          for (const t of [nodes.far, nodes.sea, nodes.mid]) t.tileScale.set(1 / hiDpi.scale, 1 / hiDpi.scale);
+          fit(nodes.sun, art.sun);
+          fit(nodes.factorySpr, art.factory);
+          nodes.factorySpr.position.set(FACT_BOX.x, FACT_BOX.y);
+          fit(nodes.homeSpr, art.home);
+          nodes.homeSpr.position.set(HOME_BOX.x, HOME_BOX.y);
+          const p = state.valvePlatform;
+          fit(nodes.platSpr, art.platform);
+          nodes.platSpr.position.set(p.x - 4, p.y - 4);
+          nodes.signSpr.position.set(p.x + 105 - 4, p.y - 48 - 4);
+          nodes.skyIdx = -1;
+          for (const v of nodes.floeViews) v.key = "";
+          nodes.waterKey = "";
+          const gs = nodes.glints.children;
+          for (let i = 0; i < gs.length; i++) { gs[i].texture = art.soft.tex; gs[i].width = gs[i].height = 26; }
+          const ds = nodes.dust.children;
+          for (let i = 0; i < ds.length; i++) { ds[i].texture = art.soft.tex; ds[i].width = ds[i].height = 6 + (i % 4) * 3; }
+          nodes.wipeDisc.texture = art.wipe.tex;
+          nodes.wipeDisc.anchor.set(0.5);
+          nodes.wipeDisc.position.set(VIEW_W / 2, VIEW_H / 2);
+        }
+
+        function buildScene() {
+          hiDpi.scale = R.scale;
+          art = bakeArt(hiDpi.scale);
+          buildNodes();
+          applyArt();
+          R.onResize(function () {
+            hiDpi.scale = R.scale;
+            rasterEpoch++;
+            const old = tracked;
+            tracked = new Set();
+            art = bakeArt(hiDpi.scale);
+            applyArt();
+            renderScene();
+            old.forEach(function (t) { try { t.destroy(true); } catch (e) {} });
+          });
+          nodes.overlay = R.overlay2d();
+          sceneReady = true;
+        }
+
+        /* ---------- per-frame sync ---------- */
+        // how far a dashed rounded-rect outline travels (animated marching ants on a critical floe)
+        function rrPoints(x, y, w, h, r) {
+          const pts = [];
+          const q = function (x0, y0, cx, cy, x1, y1) {
+            for (let i = 1; i <= 4; i++) {
+              const t = i / 4, u = 1 - t;
+              pts.push(u * u * x0 + 2 * u * t * cx + t * t * x1, u * u * y0 + 2 * u * t * cy + t * t * y1);
+            }
+          };
+          pts.push(x + r, y, x + w - r, y);
+          q(x + w - r, y, x + w, y, x + w, y + r);
+          pts.push(x + w, y + h - r);
+          q(x + w, y + h - r, x + w, y + h, x + w - r, y + h);
+          pts.push(x + r, y + h);
+          q(x + r, y + h, x, y + h, x, y + h - r);
+          pts.push(x, y + r);
+          q(x, y + r, x, y, x + r, y);
+          return pts;
+        }
+        function dashPath(g, pts, dash, gap, shift, style) {
+          const n = pts.length / 2;
+          const cum = [0];
+          for (let i = 0; i < n; i++) {
+            const j = (i + 1) % n;
+            cum.push(cum[i] + Math.hypot(pts[j * 2] - pts[i * 2], pts[j * 2 + 1] - pts[i * 2 + 1]));
+          }
+          const total = cum[n];
+          const period = dash + gap;
+          const at = function (s) {
+            let i = 0;
+            while (i < n - 1 && cum[i + 1] < s) i++;
+            const j = (i + 1) % n;
+            const f = (s - cum[i]) / (cum[i + 1] - cum[i] || 1);
+            return [pts[i * 2] + (pts[j * 2] - pts[i * 2]) * f, pts[i * 2 + 1] + (pts[j * 2 + 1] - pts[i * 2 + 1]) * f, i];
+          };
+          for (let s0 = shift - period; s0 < total; s0 += period) {
+            const a = Math.max(0, s0), b = Math.min(total, s0 + dash);
+            if (b <= a) continue;
+            const pa = at(a), pb = at(b);
+            g.moveTo(pa[0], pa[1]);
+            for (let k = pa[2] + 1; k <= pb[2]; k++) g.lineTo(pts[(k % n) * 2], pts[(k % n) * 2 + 1]);
+            g.lineTo(pb[0], pb[1]);
+          }
+          g.stroke(style);
+        }
+
+        function syncBackdrop() {
+          const sc = hiDpi.scale;
+          const warmthVal = state.warmth;
+          const wi = warmIdx(warmthVal);
+          const t = state.time;
+          const scrollVal = gameRunning ? camX : camX + performance.now() * 0.02;
+          if (nodes.skyIdx !== wi) repaintSky(wi);
+
+          // aurora ribbons: live gradient Graphics (+ an additive twin for a richer glow)
+          const won = state.state === "won";
+          const grad = won ? nodes.gradWon : nodes.gradIdle;
+          const aa = 0.35 + (1 - warmthVal) * 0.45;
+          for (let k = 0; k < 2; k++) {
+            const g = k === 0 ? nodes.auroraG : nodes.auroraG2;
+            g.clear();
+            if (k === 1 && !FX_FULL) continue;
+            const tt = k === 0 ? t : t * 0.7 + 2.5;
+            for (let j = 0; j < 2; j++) {
+              const pts = [0, 0];
+              for (let x = 0; x <= VIEW_W + 20; x += 20) {
+                pts.push(x, 70 + j * 34 + Math.sin(tt * 0.9 + x * 0.004 + j * 1.5) * 24 * Math.cos(tt * 0.35 + x * 0.002));
+              }
+              pts.push(VIEW_W, 0);
+              g.poly(pts).fill(grad);
+            }
+            g.alpha = k === 0 ? aa : aa * 0.45;
+          }
+
+          // low sun behind the glaciers (glow is part of the sky bitmap)
+          nodes.sun.tint = css(RAMP.sun[wi]).n;
+          nodes.sun.position.set(SUN_X, SUN_Y + Math.sin(t * 0.4) * 3);
+
+          for (let i = 0; i < clouds.length; i++) {
+            const c = clouds[i];
+            const o = art.clouds[i % art.clouds.length];
+            const s = nodes.clouds[i];
+            s.texture = o.tex;
+            s.scale.set((o.w / o.tex.orig.width) * c.scale, (o.h / o.tex.orig.height) * c.scale);
+            s.position.set(c.x - (o.w * c.scale) / 2, c.y);
+            s.alpha = c.layer === "back" ? 0.75 : 0.95;
+          }
+
+          nodes.far.tilePosition.x = -(scrollVal * 0.08);
+          nodes.sea.tilePosition.x = -(scrollVal * 0.3);
+          nodes.mid.tilePosition.x = -(scrollVal * 0.22);
+
+          nodes.haze.visible = warmthVal > 0.05;
+          nodes.haze.alpha = (wi / WSTEPS) * 0.2;
+
+          if (FX_FULL) {
+            // the horizon shimmers like heat haze, wilder as Warmth climbs
+            nodes.dispSprite.position.set(-((t * 26) % 512), (t * 11) % 512);
+            const ds = 3 + warmthVal * 13;
+            nodes.dispFilter.scale.set(ds, ds * 0.6);
+            const gs = nodes.glints.children;
+            for (let i = 0; i < gs.length; i++) {
+              const ph = i * 1.7;
+              gs[i].position.set(SUN_X - 150 + i * 20 + Math.sin(t * 0.8 + ph) * 8, 466 + ((i * 37) % 70) + Math.sin(t * 1.3 + ph) * 3);
+              gs[i].alpha = Math.max(0, 0.55 * Math.sin(t * 2.2 + ph)) * (1 - warmthVal * 0.5);
+              gs[i].tint = 0xfff6c8;
+            }
+            const du = nodes.dust.children;
+            for (let i = 0; i < du.length; i++) {
+              const sp = 6 + (i % 5) * 3;
+              du[i].position.set((((i * 97) % VIEW_W) - t * sp + VIEW_W * 4) % VIEW_W, (((i * 61) % VIEW_H) + t * (3 + (i % 3) * 2) + VIEW_H * 4) % VIEW_H);
+              du[i].alpha = 0.14 * (0.5 + 0.5 * Math.sin(t * 1.5 + i));
+            }
+          }
+        }
+
+        function setSpriteFrame(s, sheet, frame, destW, fx, fy, x, y, rot) {
+          const o = frameT(sheet, frame, destW);
+          fit(s, o, fx, fy);
+          s.position.set(x, y);
+          s.rotation = rot || 0;
+        }
+
+        function syncFactory() {
+          const f = nodes.factory;
+          f.visible = inView(1770, 2100);
+          if (!f.visible) return;
+          const g = nodes.factoryG;
+          g.clear();
+          const s = SHORE;
+          // drain-pipe drips
+          const drip = (state.time * 1.4) % 1;
+          g.ellipse(s.x - 20, s.y + 70 + drip * 90, 4, 6 + drip * 3).fill({ color: 0x605846, alpha: 0.85 });
+          g.ellipse(s.x - 12, s.y + 70 + ((drip + 0.5) % 1) * 90, 3.5, 5.5).fill({ color: 0x605846, alpha: 0.85 });
+          const x = 1835, y = 180;
+          const smokePuffs = 3 + Math.floor(state.warmth * 5);
+          for (let i = 0; i < smokePuffs; i++) {
+            const sx = x + 46 + i * 20 + Math.sin(state.time * 1.4 + i) * 10;
+            const sy = y + 20 - i * 10 - Math.cos(state.time * 1.5 + i * 0.5) * 8;
+            g.circle(sx, sy, 18 + i * 3).fill({ color: i % 2 === 0 ? 0x464137 : 0x968c6c, alpha: 0.2 + state.warmth * 0.25 });
+          }
+          if (state.warmth > 0.15) {
+            const a = (0.12 + state.warmth * 0.28) * 0.8;
+            for (let w = 0; w < 3; w++) {
+              const wx = x + 30 + w * 45;
+              const topY = y - 90 - state.warmth * 40;
+              let first = true;
+              for (let hy = y - 10; hy > topY; hy -= 6) {
+                const wobble = Math.sin(state.time * 6 + hy * 0.15 + w * 2) * (3 + state.warmth * 5);
+                if (first) { g.moveTo(wx + wobble, hy); first = false; } else g.lineTo(wx + wobble, hy);
+              }
+              g.stroke({ width: 2, color: 0xffd28c, alpha: a });
+            }
+          }
+        }
+
+        function syncHome() {
+          const h = nodes.home;
+          h.visible = inView(-10, 340);
+          if (!h.visible) return;
+          const b = state.stableBase;
+          const idle = spriteSheets.idle;
+          nodes.dad.visible = nodes.mom.visible = idle.loaded;
+          if (idle.loaded) {
+            const dadWaddle = Math.sin(state.time * 2.5) * 3;
+            setSpriteFrame(nodes.dad, idle, Math.floor(state.time * 1.5) % 2 % idle.cols, 44, 1, 1, b.x + b.w * 0.72, b.y + FOOT_SINK + Math.abs(dadWaddle), dadWaddle * 0.05);
+            const momWave = Math.sin(state.time * 4.5) * 4;
+            setSpriteFrame(nodes.mom, idle, Math.floor(state.time * 1.2 + 1) % 2 % idle.cols, 40, -1, 1, b.x + b.w * 0.85, b.y + FOOT_SINK + Math.abs(momWave), 0);
+          }
+          const fs = nodes.fish;
+          if (state.fishJumpTimer > 0) {
+            const progress = (1.5 - state.fishJumpTimer) / 1.5;
+            fit(fs, emojiT("🐟", 18, true));
+            fs.visible = true;
+            fs.position.set(b.x + b.w * 0.5 + (progress * 80 - 40), b.y - Math.sin(progress * Math.PI) * 75 - 10);
+            fs.rotation = progress * Math.PI - Math.PI / 2;
+          } else fs.visible = false;
+        }
+
+        function syncValve() {
+          const v = nodes.valve;
+          v.visible = inView(1020, 1320);
+          if (!v.visible) return;
+          const vv = state.valve;
+          const variant = vv.frozen ? 2 : state.coolingTimer > 0 ? 1 : 0;
+          fit(nodes.wheel, art.wheel[variant]);
+          nodes.wheel.position.set(vv.x, vv.y);
+          nodes.wheel.rotation = vv.pulse * 1.3 + vv.activeFlash * 12.0;
+          fit(nodes.signSpr, art.sign[variant]);
+        }
+
+        function floeView(i) {
+          let v = nodes.floeViews[i];
+          if (!v) {
+            v = { c: box(nodes.floes), s: spr(null, 0, 0), key: "", tex: null };
+            v.c.addChild(v.s);
+            nodes.floeViews[i] = v;
+          }
+          return v;
+        }
+        const FLOE_PAD = 8;
+        function syncPlatforms() {
+          const bg = nodes.floeG;
+          bg.clear();
+          const pls = state.meltPlatforms;
+          for (let i = 0; i < pls.length; i++) {
+            const pl = pls[i];
+            const v = floeView(i);
+            const x = pl.x + pl.shrink * 0.5;
+            if (pl.gone || !inView(x - 30, x + pl.w + 30)) { v.c.visible = false; continue; }
+            v.c.visible = true;
+            const meltRatio = 1 - pl.w / pl.baseW;
+            const wr = Math.max(8, Math.round(pl.w));
+            const glowQ = pl.glowTimer > 0 ? Math.round(Math.min(1, pl.glowTimer / 1.5) * 20) + 1 : 0;
+            const stage = meltRatio < 0.15 ? 1 : meltRatio < 0.35 ? 2 : meltRatio < 0.52 ? 3 : meltRatio < 0.68 ? 4 : 5;
+            const key = stage + "|" + wr + "|" + glowQ + "|" + rasterEpoch;
+            if (key !== v.key) {
+              const fp = Object.create(pl); // slab drawn at (PAD, PAD), unrotated, into its own bitmap
+              fp.y = FLOE_PAD;
+              fp.rot = 0;
+              const h = pl.h + SLAB_DEPTH;
+              const o = bakeWith(wr + FLOE_PAD * 2, h + FLOE_PAD * 2, hiDpi.scale, function () { drawIceFloe(fp, FLOE_PAD, wr, meltRatio); });
+              if (v.tex) { tracked.delete(v.tex.tex); try { v.tex.tex.destroy(true); } catch (e) {} }
+              v.tex = o;
+              v.key = key;
+              fit(v.s, o);
+            }
+            v.c.position.set(x + pl.w / 2, pl.y + pl.h / 2);
+            v.c.rotation = pl.rot || 0;
+            v.s.position.set(-wr / 2 - FLOE_PAD, -pl.h / 2 - FLOE_PAD);
+
+            if (meltRatio > 0.55) {
+              const pulse = 0.5 + Math.sin(state.time * 9) * 0.5;
+              const cc = css(CRITICAL_STROKES[Math.round((0.5 + pulse * 0.4) * 100) - 50]);
+              dashPath(bg, rrPoints(x - 3, pl.y - 3, pl.w + 6, pl.h + SLAB_DEPTH + 6, 16), 8, 6, state.time * 40, { width: 4, color: cc.n, alpha: cc.a });
+            }
+            if (meltRatio > 0.05) {
+              const barW = pl.w * 0.65;
+              const barH = 7;
+              const bx = x + (pl.w - barW) / 2;
+              const by = pl.y + pl.h + SLAB_DEPTH + 10 + Math.sin(state.time * 2.0 + pl.phase) * 2;
+              bg.rect(bx - 2, by - 2, barW + 4, barH + 4).fill(0x1e293b);
+              const healthPct = 1 - meltRatio;
+              bg.rect(bx, by, barW * healthPct, barH).fill(healthPct < 0.35 ? 0xff3b30 : healthPct < 0.65 ? 0xffcc00 : 0x7ce6a6);
+            }
+          }
+        }
+
+        function syncLift() {
+          const wl = state.waterLift;
+          const g = nodes.liftG;
+          g.clear();
+          nodes.liftSeal.visible = false;
+          if (!wl || !inView(wl.x - 60, wl.x + wl.w + 60)) return;
+          if (wl.surfaced) {
+            fit(nodes.liftSeal, emojiT("🦭", 46, true));
+            nodes.liftSeal.visible = true;
+            nodes.liftSeal.alpha = 0.9;
+            nodes.liftSeal.position.set(wl.x + wl.w / 2, wl.y + wl.h / 2 - 4);
+          } else {
+            const nextIn = wl.cycle - wl.phase;
+            if (nextIn < 1.2) {
+              g.circle(wl.x + wl.w / 2, state.seaLevel, 14 + (1.2 - nextIn) * 10).stroke({ width: 2, color: 0xbeefff, alpha: 0.35 * (1 - nextIn / 1.2) });
+            }
+          }
+        }
+
+        const promptList = [];
+        function chickShadow(c, x, y, halfW) {
+          fit(c.shadow, art.shadow, (halfW * 2) / art.shadow.w, (halfW * 0.52) / art.shadow.h);
+          c.shadow.position.set(x, y);
+        }
+        function syncChicks() {
+          const p = state.player;
+          promptList.length = 0;
+          nodes.chicks.begin();
+          nodes.chickEmoji.begin();
+          const b = state.stableBase;
+          const loaded = chickSprite.loaded;
+          for (const chick of state.chicks) {
+            if (p.carrying.includes(chick)) continue;
+            if (chick.delivered) {
+              if (!inView(-10, 340)) continue;
+              const slot = chick.huddleSlot || 0;
+              const col = slot % 3;
+              const row = Math.floor(slot / 3);
+              const baseX = b.x + b.w * 0.28 + col * 30;
+              const baseY = b.y + FOOT_SINK - row * 14;
+              const cheering = chick.cheerTimer > 0;
+              const hop = Math.abs(Math.sin(chick.bob * 1.8)) * (cheering ? 12 : 5);
+              const view = nodes.chicks.next();
+              view.position.set(baseX, baseY - hop);
+              view.rotation = 0;
+              view.bar.clear();
+              chickShadow(view, 0, hop - 5, 16);
+              if (loaded) {
+                const frame = cheering ? (Math.floor(chick.bob * 4) % 2 === 0 ? 4 : 5) : Math.floor(chick.bob) % 6 === 5 ? 2 : 0;
+                fit(view.body, frameT(chickSprite, frame, CHICK_W));
+                view.body.visible = true;
+              } else view.body.visible = false;
+              if (cheering && Math.random() < 0.12) {
+                state.particles.push({
+                  x: baseX, y: baseY - hop - 20,
+                  vx: (Math.random() - 0.5) * 20, vy: -30 - Math.random() * 15,
+                  life: 0.7, maxLife: 0.7, kind: "emoji", text: "🎉", size: 12,
+                });
+              }
+              continue;
+            }
+            if (!inView(chick.x - 60, chick.x + 80)) continue;
+            const bob = Math.sin(chick.bob) * 3;
+            let shiver = 0;
+            let crying = false;
+            let nearest = null;
+            let bestDist = Infinity;
+            for (const pl of state.meltPlatforms) {
+              if (pl.gone) continue;
+              const d = Math.abs(pl.x + pl.w / 2 - chick.x);
+              if (d < bestDist) { bestDist = d; nearest = pl; }
+            }
+            if (nearest && bestDist < 120) {
+              const ratio = 1 - nearest.w / nearest.baseW;
+              if (ratio > 0.35) {
+                shiver = Math.sin(state.time * 26 + chick.bob) * 2.8;
+                crying = ratio > 0.55;
+              }
+            }
+            const destW = CHICK_W;
+            const destH = loaded ? (chickSprite.frameH / chickSprite.frameW) * destW : 34;
+            let drawX = chick.x + 9 + shiver;
+            let drawY = chick.y + 18 + bob + FOOT_SINK;
+            let drawRot = 0;
+            if (!chick.rescued && chick.platformIndex !== undefined) {
+              const pl = state.meltPlatforms[chick.platformIndex];
+              if (pl && !pl.gone) {
+                const plX = pl.x + pl.shrink * 0.5;
+                const plCenterW = pl.w / 2;
+                const plCenterH = pl.h / 2;
+                const relX = chick.x + 9 - (plX + plCenterW);
+                const relY = -plCenterH;
+                const rot = pl.rot || 0;
+                const cos = Math.cos(rot);
+                const sin = Math.sin(rot);
+                drawX = plX + plCenterW + (relX * cos - relY * sin) + shiver;
+                drawY = pl.y + plCenterH + (relX * sin + relY * cos) + bob + FOOT_SINK;
+                drawRot = rot;
+              }
+            }
+            const view = nodes.chicks.next();
+            view.position.set(drawX, drawY);
+            view.rotation = drawRot;
+            const bar = view.bar;
+            bar.clear();
+            chickShadow(view, 0, -bob - (FOOT_SINK - 4), 17);
+            if (loaded) {
+              let frame = 0;
+              if (crying) {
+                const worryTime = (state.time * 4.0 + chick.bob) % 3.0;
+                frame = worryTime < 1.5 ? 1 : worryTime < 2.0 ? 2 : 0;
+              } else {
+                const chickTime = (state.time * 1.5 + chick.bob) % 5.0;
+                frame = chickTime < 3.5 ? 0 : chickTime < 3.7 ? 1 : chickTime < 3.95 ? 2 : chickTime < 4.15 ? 1 : 0;
+              }
+              fit(view.body, frameT(chickSprite, frame, destW));
+              view.body.visible = true;
+              if (!chick.rescued && nearest && bestDist < 120) {
+                const icePct = Math.round((nearest.w / nearest.baseW) * 100);
+                if (icePct < 100) {
+                  const bx = -destW / 2;
+                  const by = -destH - 8;
+                  bar.rect(bx, by, destW, 5).fill({ color: 0x0f172a, alpha: 0.65 });
+                  bar.rect(bx, by, (icePct / 100) * destW, 5).fill(icePct < 35 ? 0xff3b30 : icePct < 65 ? 0xffcc00 : 0x80e0ff);
+                  bar.rect(bx, by, destW, 5).stroke({ width: 1, color: 0x1e293b });
+                }
+              }
+            } else {
+              fit(view.body, emojiT("🐥", 26, true));
+              view.body.visible = true;
+              view.body.anchor.set(0.5, 0.5);
+              view.body.y = -11;
+            }
+            if (loaded) { view.body.anchor.set(0.5, 1); view.body.y = 0; }
+            const maxCarry = getMaxCarryingCapacity();
+            if (!calmMode && !chick.rescued && chickInReach(p, chick) && p.carrying.length < maxCarry) {
+              promptList.push({ x: drawX, y: drawY - destH - 16 });
+            }
+            if (crying) {
+              const ts = nodes.chickEmoji.next();
+              fit(ts, emojiT("💧", 12, true));
+              ts.position.set(chick.x + 16, chick.y + 20);
+              ts.rotation = 0;
+              ts.alpha = 1;
+            }
+          }
+          nodes.chicks.end();
+          nodes.chickEmoji.end();
+        }
+
+        function syncPlayer() {
+          const p = state.player;
+          const x = p.x, y = p.y;
+          const sheet = getActiveSpriteSheet();
+          const nervous = !!p.onCriticalIce;
+          const jitterX = nervous ? Math.sin(state.time * 30) * 2.2 : 0;
+          const tilt = nervous ? Math.sin(state.time * 16) * 0.06 : 0;
+          let waddleTilt = 0;
+          let waddleY = 0;
+          if (sheet === spriteSheets.running) {
+            const runCycle = state.time * Math.max(9, Math.abs(p.vx) * 0.08);
+            waddleTilt = Math.sin(runCycle) * 0.16;
+            waddleY = -Math.abs(Math.cos(runCycle)) * 4.5;
+          }
+          const destW = 72;
+          let destH = 108;
+          const sh = nodes.pShadow;
+          if (p.onGround && state.state !== "failed") {
+            sh.visible = true;
+            fit(sh, art.shadow, (56) / art.shadow.w, (56 * 0.26) / art.shadow.h);
+            sh.position.set(x + p.w / 2 + jitterX, y + p.h + FOOT_SINK - 5);
+          } else sh.visible = false;
+
+          const body = nodes.pBody;
+          if (sheet.loaded) {
+            destH = (sheet.frameH / sheet.frameW) * destW;
+            let frame = penguinAnim.frameIndex;
+            if (state.state === "failed") frame = 0;
+            else if (sheet === spriteSheets.jump) frame = p.vy < 0 ? 1 : 2;
+            else frame = frame % (sheet.cols * sheet.rows);
+            fit(body, frameT(sheet, frame, destW), p.facing, p.isSliding ? 0.82 : 1);
+            body.position.set(x + p.w / 2 + jitterX, y + p.h + waddleY + FOOT_SINK);
+            body.rotation = tilt + waddleTilt;
+            body.visible = true;
+          } else body.visible = false;
+
+          nodes.pExtra.begin();
+          const ex = function (glyph, size, px, py) {
+            const s = nodes.pExtra.next();
+            s.anchor.set(0.5, 0.5);
+            fit(s, emojiT(glyph, size, true));
+            s.position.set(px, py);
+            s.rotation = 0;
+            s.alpha = 1;
+          };
+          if (nervous) ex("💦", 16, x + p.w / 2 + 18, y + p.h - destH + 8 + Math.sin(state.time * 10) * 2);
+          if (p.carrying && p.carrying.length > 0) {
+            ex("🤗", 18, x + p.w / 2 - p.facing * 18, y + p.h - destH - 12 + Math.sin(state.time * 6) * 3);
+            for (let index = 0; index < p.carrying.length; index++) {
+              const cW = 34;
+              const offsetX = 12 + index * 4;
+              const offsetY = -destH * 0.4 - index * 12;
+              const cs = nodes.pExtra.next();
+              cs.alpha = 1;
+              cs.rotation = 0;
+              if (chickSprite.loaded) {
+                const frame = Math.floor(state.time * 8 + index) % 2 === 0 ? 4 : 5;
+                cs.anchor.set(0.5, 1);
+                fit(cs, frameT(chickSprite, frame, cW), p.facing, 1);
+                cs.position.set(x + p.w / 2 + p.facing * offsetX, y + p.h + waddleY + FOOT_SINK + offsetY);
+              } else {
+                cs.anchor.set(0.5, 0.5);
+                fit(cs, emojiT("🐥", 20, true));
+                cs.position.set(x + p.w / 2 + offsetX * p.facing, y + p.h + waddleY + offsetY - 10);
+              }
+            }
+          }
+          nodes.pExtra.end();
+        }
+
+        function syncParticles() {
+          const g = nodes.partG;
+          g.clear();
+          nodes.partEmoji.begin();
+          for (let i = 0; i < state.particles.length; i++) {
+            const pt = state.particles[i];
+            if (pt.x + (pt.kind === "wind" ? pt.size : 30) < camX || pt.x - 30 > camX + VIEW_W) continue;
+            const alpha = Math.max(0, Math.min(1, pt.life / (pt.maxLife || 0.8)));
+            if (pt.kind === "emoji") {
+              const es = nodes.partEmoji.next();
+              es.anchor.set(0.5, 0.5);
+              fit(es, emojiT(pt.text, pt.size || 14, false));
+              es.position.set(pt.x, pt.y);
+              es.rotation = 0;
+              es.alpha = alpha;
+              continue;
+            }
+            const c = css(pt.color || "#ffffff");
+            const a = alpha * c.a;
+            if (pt.kind === "snow") g.circle(pt.x, pt.y, pt.size).fill({ color: c.n, alpha: a });
+            else if (pt.kind === "drip") g.ellipse(pt.x, pt.y, pt.size * 0.6, pt.size * 1.3).fill({ color: c.n, alpha: a });
+            else if (pt.kind === "wind") {
+              g.moveTo(pt.x, pt.y).lineTo(pt.x + pt.size, pt.y).stroke({ width: 3, color: c.n, alpha: a });
+            } else if (pt.kind === "footprint") g.ellipse(pt.x, pt.y, 4, 2).fill({ color: c.n, alpha: a });
+            else {
+              g.roundRect(pt.x, pt.y, pt.size, pt.size, 3).fill({ color: c.n, alpha: a });
+              g.roundRect(pt.x, pt.y, pt.size, pt.size, 3).stroke({ width: 2, color: 0x111111, alpha: alpha });
+            }
+          }
+          nodes.partEmoji.end();
+        }
+
+        function syncSnow() {
+          nodes.snow.begin();
+          for (let i = 0; i < snowfallParticles.length; i++) {
+            const s = snowfallParticles[i];
+            const sp = nodes.snow.next();
+            sp.texture = art.dot.tex;
+            sp.width = sp.height = s.size * 2;
+            sp.position.set(s.x, s.y);
+            sp.alpha = 1;
+          }
+          nodes.snow.end();
+        }
+
+        function syncWater() {
+          const top = state.seaLevel;
+          const warmthVal = state.warmth;
+          const wi = warmIdx(warmthVal);
+          const t = state.time;
+          const W = VIEW_W, H = VIEW_H;
+          const scrollVal = camX;
+          const qTop = Math.round(top);
+          const wave = function (x) {
+            const worldX = x + scrollVal;
+            return top + (6 + warmthVal * 16) * Math.sin(worldX * 0.015 + t * (2.2 + warmthVal * 2.0)) + 3 * Math.cos(worldX * 0.04 - t * 3.5);
+          };
+          // body: gradient strip, clipped to the wave polygon
+          const key = qTop + "|" + wi + "|" + rasterEpoch;
+          if (key !== nodes.waterKey) {
+            const old = nodes.waterTex;
+            const o = bakeTex(4, 64, 1, function (g) {
+              const grad = g.createLinearGradient(0, 0, 0, 64);
+              grad.addColorStop(0, RAMP.water0[wi]);
+              grad.addColorStop(1, RAMP.water1[wi]);
+              g.fillStyle = grad;
+              g.fillRect(0, 0, 4, 64);
+            });
+            nodes.waterTex = o;
+            nodes.waterFill.texture = o.tex;
+            nodes.waterFill.position.set(0, qTop - WATER_BAND_TOP);
+            nodes.waterFill.width = W;
+            nodes.waterFill.height = H - (qTop - WATER_BAND_TOP);
+            nodes.waterKey = key;
+            if (old) { tracked.delete(old.tex); try { old.tex.destroy(true); } catch (e) {} }
+          }
+          const pts = [];
+          for (let x = 0; x <= W + 20; x += 15) pts.push(x, wave(x));
+          const m = nodes.waterMask;
+          m.clear();
+          m.poly(pts.concat([W + 20, H + 4, 0, H + 4])).fill(0xffffff);
+
+          const g = nodes.waterG;
+          g.clear();
+          for (let i = 0; i < pts.length; i += 2) {
+            if (i === 0) g.moveTo(pts[0], pts[1]);
+            else g.lineTo(pts[i], pts[i + 1]);
+          }
+          g.stroke({ width: 3.5, color: css(RAMP.foam[wi]).n, join: "miter" });
+
+          for (const chunk of waterIceChunks) {
+            const cx = ((((chunk.x - scrollVal) % (W + 200)) + (W + 200)) % (W + 200)) - 100;
+            const wy = top + (6 + warmthVal * 16) * Math.sin((cx + scrollVal) * 0.015 + t * (2.2 + warmthVal * 2.0)) - 4 + Math.sin(t * 2.5 + chunk.wobble) * 3;
+            g.poly([cx - chunk.w / 2, wy, cx - chunk.w / 4, wy - chunk.h, cx + chunk.w / 4, wy - chunk.h, cx + chunk.w / 2, wy])
+              .fill({ color: 0xe6f8ff, alpha: 0.85 })
+              .stroke({ width: 1.5, color: 0x64b4dc, alpha: 0.5 });
+          }
+
+          g.beginPath();
+          const bAlpha = 0.5 - warmthVal * 0.35;
+          for (let i = 0; i < waterBubbles.length; i++) {
+            const b = waterBubbles[i];
+            const bx = ((((b.x - scrollVal) % (W + 100)) + (W + 100)) % (W + 100)) - 50;
+            const by = top + b.depth + Math.sin(t * b.speed * 0.05 + b.phase) * 6;
+            g.circle(bx, by, b.size);
+          }
+          g.fill({ color: 0xa0d5ff, alpha: bAlpha });
+
+          nodes.waterEmoji.begin();
+          const sealX = ((((900 - scrollVal) % (W + 500)) + (W + 500)) % (W + 500)) - 100;
+          const sealWaveY = top + (6 + warmthVal * 16) * Math.sin((sealX + scrollVal) * 0.015 + t * (2.2 + warmthVal * 2.0)) - 10;
+          const put = function (glyph, size, px, py, rot, flip) {
+            const s = nodes.waterEmoji.next();
+            s.anchor.set(0.5, 0.5);
+            fit(s, emojiT(glyph, size, true), flip || 1, 1);
+            s.position.set(px, py);
+            s.rotation = rot || 0;
+            s.alpha = 1;
+          };
+          put("🦭", 26, sealX, sealWaveY + Math.sin(t * 1.8) * 4);
+          const whaleCycle = t % 24;
+          if (whaleCycle < 4.0) {
+            const progress = whaleCycle / 4.0;
+            const whaleX = ((((1400 - scrollVal) % (W + 600)) + (W + 600)) % (W + 600)) - 100;
+            put("🐋", 36, whaleX, top - 10 - Math.sin(progress * Math.PI) * 45, progress * Math.PI - Math.PI / 2);
+          }
+          for (const f of waterFish) {
+            const fx = ((((f.baseX + Math.sin(t * 0.5 + f.phase) * 110 - scrollVal) % (W + 200)) + (W + 200)) % (W + 200)) - 100;
+            put("🐟", 15, fx, top + f.depth + Math.cos(t * 0.8 + f.phase) * 10, 0, f.dir);
+          }
+          nodes.waterEmoji.end();
+        }
+
+        // text / hint layer that stays a 2D overlay (same Canvas2D code as before)
+        function syncOverlay() {
+          const p = state.player;
+          const nearValve = Math.hypot(p.x + p.w / 2 - state.valve.x, p.y + p.h / 2 - state.valve.y) < 78 && state.state === "playing";
+          const coachOn = coach.active && state.state === "playing";
+          if (!state.floatingTexts.length && !promptList.length && !nearValve && !coachOn) {
+            nodes.overlay.hide();
+            return;
+          }
+          const g = nodes.overlay.begin();
+          withCtx(g, function () {
+            ctx.save();
+            ctx.translate(-camX, 0);
+            drawFloatingTexts();
+            for (const pr of promptList) GOGCoach.tag(ctx, pr.x, pr.y, "Tap GRAB / press E");
+            ctx.restore();
+            if (nearValve) {
+              const bounce = Math.sin(state.time * 6) * 3;
+              const sx = state.valve.x - camX;
+              const sy = state.valve.y - 70 + bounce;
+              ctx.fillStyle = "#FFF7E8";
+              roundedRect(sx - 68, sy - 18, 136, 32, 8, true, false);
+              ctx.strokeStyle = "#111";
+              ctx.lineWidth = 3;
+              roundedRect(sx - 68, sy - 18, 136, 32, 8, false, true);
+              ctx.fillStyle = "#111";
+              ctx.textAlign = "center";
+              ctx.textBaseline = "middle";
+              ctx.font = "900 12px Arial";
+              ctx.fillText("Tap SPIN / press E", sx, sy - 1);
+            }
+            drawCoachHints();
+          });
+        }
+
+        function syncWipe() {
+          if (!winWiping && !winWipeDone) {
+            nodes.wipeDisc.visible = nodes.wipeRing.visible = false;
+            return;
+          }
+          const r = winWipeDone ? winWipeMax : winWipeRadius;
+          nodes.wipeDisc.visible = true;
+          nodes.wipeDisc.alpha = 0.85;
+          nodes.wipeDisc.width = nodes.wipeDisc.height = Math.max(2, r * 2);
+          nodes.wipeRing.visible = winWiping;
+          nodes.wipeRing.clear();
+          if (winWiping) nodes.wipeRing.circle(VIEW_W / 2, VIEW_H / 2, r).stroke({ width: 6, color: 0x111111 });
+        }
+
+        function renderScene() {
+          syncCamera();
+          syncBackdrop();
+          nodes.cam.x = -camX;
+          syncFactory();
+          syncHome();
+          spawnHomeSparkles();
+          syncValve();
+          syncPlatforms();
+          syncLift();
+          syncChicks();
+          syncPlayer();
+          syncParticles();
+          syncSnow();
+          syncWater();
+          syncOverlay();
+          syncWipe();
+          R.render();
+        }
+        function render() {
+          if (!sceneReady) return;
+          renderScene();
         }
 
         function setControl(name, isDown) {
@@ -4339,9 +4311,17 @@
 
         state = createState();
         updateUI();
-        render();
-        loop.start();
-        showPennyIntroBeat();
+        // Pixi v8 needs WebGL; GOGRender explains on screen when it is missing and the stage then stays idle.
+        GOGRender.create(canvas, VIEW_W, VIEW_H).then(
+          function (r) {
+            R = r;
+            buildScene();
+            renderScene();
+            loop.start();
+            showPennyIntroBeat();
+          },
+          function () {}
+        );
       })();
     </script>
   </body>
