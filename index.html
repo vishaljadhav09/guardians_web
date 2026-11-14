@@ -776,7 +776,42 @@
         box-shadow: 0 10px 20px rgba(0, 0, 0, 0.35);
         transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.2);
         z-index: 15;
+        overflow: hidden;
       }
+
+      .marker .guardian-image-wrapper {
+        width: 100%;
+        height: 100%;
+        overflow: hidden;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+      }
+
+      /* Single images (hero.png etc.): whole picture, never cropped */
+      .marker .guardian-image {
+        width: 86%;
+        height: 86%;
+        display: block;
+        object-fit: contain;
+        max-width: none;
+        object-position: center center;
+        flex-shrink: 0;
+      }
+
+      /* Spritesheets: stretch the sheet to cols x rows and show only the first frame */
+      .marker[data-sprite-cols] .guardian-image-wrapper {
+        align-items: flex-start;
+        justify-content: flex-start;
+      }
+      .marker[data-sprite-cols] .guardian-image {
+        width: auto;
+        height: calc(var(--sr) * 100%);
+        object-fit: fill;
+        max-width: none;
+      }
+
       .marker:not(.locked):hover {
         transform: translate(-50%, -50%) scale(1.2);
         background: #ffffff;
@@ -2415,6 +2450,16 @@
           }
         }
 
+        markerLayer.addEventListener("load", function (e) {
+          var img = e.target;
+          var m = img.closest && img.closest(".marker[data-sprite-cols]");
+          if (!m || !img.naturalWidth) return;
+          var cols = +m.getAttribute("data-sprite-cols");
+          var rows = +m.style.getPropertyValue("--sr");
+          var aspect = (img.naturalWidth / cols) / (img.naturalHeight / rows);
+          img.style.marginLeft = Math.max(0, (1 - aspect) / 2) * 100 + "%";
+        }, true);
+
         function buildMarkers() {
           markerLayer.innerHTML = "";
           STAGES.forEach(function (stage, i) {
@@ -2424,6 +2469,11 @@
             var el = document.createElement("button");
             el.className = "marker";
             el.setAttribute("data-stage-id", stage.id);
+            if (stage.spriteGrid) {
+              el.setAttribute("data-sprite-cols", stage.spriteGrid[0]);
+              el.style.setProperty("--sc", stage.spriteGrid[0]);
+              el.style.setProperty("--sr", stage.spriteGrid[1]);
+            }
 
             // Staggered fly-in directions and delays
             var directions = [
@@ -2438,10 +2488,24 @@
 
             placeAt(el, pos(stage));
             el.setAttribute("aria-label", stage.guardian + " - " + stage.biome);
+
             if (cleared) {
               el.classList.add("cleared");
-              el.textContent = stage.icon;
               el.style.boxShadow = "0 0 20px " + stage.color;
+
+              // Create guardian image with wrapper to crop spritesheet
+              if (stage.guardianImage) {
+                var wrapper = document.createElement("div");
+                wrapper.className = "guardian-image-wrapper";
+                var img = document.createElement("img");
+                img.src = stage.guardianImage;
+                img.alt = stage.guardian;
+                img.className = "guardian-image";
+                wrapper.appendChild(img);
+                el.appendChild(wrapper);
+              } else {
+                el.textContent = stage.icon;
+              }
 
               var bestStars = GOGProgress.stars.best(stage.id);
               if (bestStars > 0) {
@@ -2456,10 +2520,36 @@
               }
             } else if (unlocked && stage.playable) {
               el.classList.add("unlocked-ready");
-              el.textContent = stage.icon;
+
+              // Create guardian image with wrapper to crop spritesheet
+              if (stage.guardianImage) {
+                var wrapper = document.createElement("div");
+                wrapper.className = "guardian-image-wrapper";
+                var img = document.createElement("img");
+                img.src = stage.guardianImage;
+                img.alt = stage.guardian;
+                img.className = "guardian-image";
+                wrapper.appendChild(img);
+                el.appendChild(wrapper);
+              } else {
+                el.textContent = stage.icon;
+              }
             } else if (unlocked && !stage.playable) {
               el.classList.add("unlocked-upcoming");
-              el.textContent = stage.icon;
+
+              // Create guardian image with wrapper to crop spritesheet
+              if (stage.guardianImage) {
+                var wrapper = document.createElement("div");
+                wrapper.className = "guardian-image-wrapper";
+                var img = document.createElement("img");
+                img.src = stage.guardianImage;
+                img.alt = stage.guardian;
+                img.className = "guardian-image";
+                wrapper.appendChild(img);
+                el.appendChild(wrapper);
+              } else {
+                el.textContent = stage.icon;
+              }
               el.title =
                 stage.guardian +
                 " is unlocked, but this stage is still being built.";

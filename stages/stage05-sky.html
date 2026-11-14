@@ -225,9 +225,11 @@
   <script src="../src/constants.js"></script>
   <script src="../src/save.js"></script>
   <script src="../src/vendor/howler.min.js"></script>
+  <script src="../src/vendor/pixi.min.js"></script>
   <script src="../src/engine.js"></script>
   <script src="../src/voice.js"></script>
   <script src="../src/scenery.js"></script>
+  <script src="../src/render.js"></script>
   <script src="../src/ui.js"></script>
   <script src="../src/coach.js"></script>
   <script src="../src/progression.js"></script>
@@ -246,24 +248,15 @@
   let calmMode = !!save.settings.calmMode;
 
   const canvas = document.getElementById('game');
-  const ctx = canvas.getContext('2d');
   // Phone portrait: canvas fills the screen (see GOGEngine.fitCanvasToScreen)
   GOGEngine.fitCanvasToScreen(canvas, document.getElementById('canvasFrame'));
   const W = canvas.width, H = canvas.height;
-  // Render at the on-screen resolution (not a stretched 800x600 bitmap) so the
-  // sprites and backdrop stay sharp; drawing code still uses 800x600 coords.
-  // Cached art (backdrop layers, smog puffs, clouds) is painted once per
-  // resolution and rebuilt here when the on-screen size changes.
+  // PixiJS draws the world (GOGRender). Cached art (backdrop layers, smog puffs, clouds,
+  // the town) is painted once per resolution and rebuilt when the on-screen size changes.
   let backdrop = null;
   let cloudArt = null;
   let skyline = null; // baked static skyline strip: rebuilt on resize and for every new run
-  const hiDpi = GOGEngine.fitCanvas(canvas, ctx, W, H, {
-    onResize: () => {
-      backdrop = null;
-      cloudArt = null;
-      skyline = null;
-    }
-  });
+  const hiDpi = { scale: 1 }; // = R.scale once Pixi is up (the bitmap is sized by GOGRender)
   // One clock reading per update step / drawn frame (instead of Date.now() in dozens of places).
   let frameNow = Date.now();
   let drawCount = 0;
@@ -352,49 +345,7 @@
 
   // Breezy's baked frame centred on the current origin; gray = the smog-hit look
   // (a grayscale copy made once by GOGEngine.tint, never ctx.filter per frame).
-  function drawBreezy(sheet, frameIndex, gray){
-    if(!sheet.ready) return false;
-    const fc = sheet.frameCount;
-    const c = sheet.baked[((frameIndex % fc) + fc) % fc];
-    ctx.drawImage(gray ? GOGEngine.tint(c, 'grayscale(100%)') : c, c.dx, c.dy, c.gw, c.gh);
-    return true;
-  }
 
-  // draws a single frame of a sheet centered at (x,y), scaled to displayH (keeps aspect), optional hFlip
-  // (call it with the base hi-DPI transform active)
-  function drawSpriteFrame(sheet, frameIndex, x, y, displayH, hFlip){
-    if(!sheet.ready) return false;
-    const fc = sheet.frameCount;
-    const fi = ((frameIndex % fc) + fc) % fc;
-    const fh = sheet.frameH;
-    const scale = displayH / fh;
-
-    let sx, sw, cx;
-    if (sheet.frames) {
-      const f = sheet.frames[fi];
-      sx = f.sx;
-      sw = f.sw;
-      cx = f.cx;
-    } else {
-      sw = sheet.frameW;
-      sx = Math.round(fi * sw);
-      cx = sx + sw / 2;
-    }
-
-    const dw = Math.round(sw * scale), dh = Math.round(fh * scale);
-    const dx = Math.round(-(cx - sx) * scale);
-    const dy = Math.round(-dh / 2);
-
-    if (hFlip) {
-      const S = hiDpi.scale;
-      ctx.setTransform(-S, 0, 0, S, S * x, S * y);
-      ctx.drawImage(sheet.img, sx, 0, sw, fh, dx, dy, dw, dh);
-      ctx.setTransform(S, 0, 0, S, 0, 0);
-    } else {
-      ctx.drawImage(sheet.img, sx, 0, sw, fh, x + dx, y + dy, dw, dh);
-    }
-    return true;
-  }
 
   const sprites = {
     breezyFly: BreezySheet('flying_breezy_v1.png', 5, [
@@ -450,6 +401,7 @@
   // guardian beat is the only pre-game dialog and starts play directly
   // (no separate start panel/legend afterward). The intro line auto-plays like
   // every other stage's; see audioPath/fallbackSpeech below.
+  function showIntro() {
   GOGUi.showGuardianBeat({
     emoji: "🌬️",
     name: "Breezy",
@@ -469,6 +421,7 @@
       if (GOGCoach.shouldAutoStart(STAGE_ID)) coach.start();
     }
   });
+  }
 
   function sfxOrb(){ audio.collect(); }
   function sfxBoost(){ audio.heal(); }
@@ -575,30 +528,30 @@
   // ---------------------------------------------------------------
   // BUILDINGS (static skyline, lights up as orbs collected)
   // ---------------------------------------------------------------
+
+  // ---------------------------------------------------------------
+  // BUILDINGS (the town: shoulder to shoulder on one pavement, lights up as suns are collected)
+  // ---------------------------------------------------------------
   function buildBuildings(){
     buildings.length = 0;
-    skyline = null; // the baked skyline strip belongs to the old layout
-    const n = BUILDING_COUNT;
-    const slotW = W / n;
+    skyline = null; // the baked town art belongs to the old layout
+    // one building per sun, packed into a tidy row in the middle of the world (the painted
+    // sheets have wide empty margins, so spacing is worked out from the building BODY width)
+    const n = ENERGY_TARGET;
+    const gap = 5, margin = 30;
+    const visW = clamp((W - margin * 2 - gap * (n - 1)) / n, 40, 112);
+    const total = n * visW + gap * (n - 1);
+    const x0 = Math.round((W - total) / 2);
+    // a gentle skyline - lower at the ends, tallest just right of the middle (same every run)
+    const profile = [0.9, 1.04, 1.2, 1.12, 1.0, 0.92, 1.08, 0.96];
     for(let i=0;i<n;i++){
-      // Keep each building close to its sprite's natural proportions (about
-      // 150 x 130) so the art is not stretched tall and blurry.
-      const w = slotW * rand(0.82, 0.95);
-      const h = w * (130 / 150) * rand(1.0, 1.3);
-      const x = i*slotW + (slotW - w)/2;
-      const windows = [];
-      const cols = Math.max(2, Math.floor(w/16));
-      const rows = Math.max(2, Math.floor(h/18));
-      for(let cx=0;cx<cols;cx++){
-        for(let cy=0;cy<rows;cy++){
-          windows.push({ lit: Math.random() < 0.5 });
-        }
-      }
-      // Designated buildings (e.g. 2nd and 5th building) have solar panels!
-      const hasSolar = (i === 1 || i === 4 || i === 6);
-      buildings.push({ 
-        x, w, h, y: H - h, lit:false, cols, rows, windows, litProgress:0, variant: i % 2,
-        hasSolar, solarGlowTimer: 0 
+      const w = visW;
+      const h = Math.round(w * 1.28 * profile[i % profile.length]);
+      // the 2nd and 5th buildings have solar panels on the roof
+      buildings.push({
+        x: x0 + i * (visW + gap), w, h, y: H - 12 - h,
+        lit:false, litProgress:0, variant: i % 2,
+        hasSolar: (i === 1 || i === 4), solarGlowTimer: 0
       });
     }
   }
@@ -851,29 +804,6 @@
       t.y -= 0.6*dt;
       if(t.life <= 0) floatTexts.splice(i,1);
     }
-  }
-  function drawFloatTexts(){
-    if(!floatTexts.length) return;
-    ctx.save();
-    ctx.textAlign = 'center';
-    ctx.textBaseline = 'middle';
-    ctx.font = "800 20px 'Baloo 2', Arial, sans-serif";
-    ctx.lineJoin = 'round';
-    floatTexts.forEach(t=>{
-      const p = clamp(t.life/t.maxLife, 0, 1);
-      const bounce = 1 + Math.sin(p*Math.PI)*0.18;
-      ctx.save();
-      ctx.globalAlpha = p;
-      ctx.translate(t.x, t.y);
-      ctx.scale(bounce, bounce);
-      ctx.lineWidth = 4;
-      ctx.strokeStyle = COLORS.ink;
-      ctx.fillStyle = t.color;
-      ctx.strokeText(t.text, 0, 0);
-      ctx.fillText(t.text, 0, 0);
-      ctx.restore();
-    });
-    ctx.restore();
   }
 
   // ---------------------------------------------------------------
@@ -1344,42 +1274,6 @@
     }
   }
 
-  function drawCoachHints(){
-    if(!coach.active || gameState !== 'playing') return;
-    const t = coach.t, i = coach.index;
-    ctx.save();
-    if(i === 0){
-      const x = player.x + 110;
-      GOGCoach.dragDemo(ctx, { x, y: 400 }, { x, y: 200 }, t, { arc: 0, radius: 30, period: 2.6 });
-      GOGCoach.tag(ctx, x, 150, 'Slide up & down');
-    } else if(i === 1 && coachSmoke){
-      const s = coachSmoke;
-      const tx = clamp(s.x, 100, W - 100);
-      if(s.x < W - 10) GOGCoach.ring(ctx, s.x, s.gapY, Math.min(60, s.gapWidth * 0.3), t);
-      GOGCoach.tag(ctx, tx, Math.max(110, s.gapY - s.gapWidth / 2 - 22), s.x > W - 30 ? 'Smoke coming →' : 'Fly through the gap!');
-    } else if(i === 2){
-      if((player.windInfluence || 0) > 0.15){
-        let o = null;
-        for(const c of orbs){ if(c.x > player.x - 30 && (!o || c.x < o.x)) o = c; }
-        if(o){
-          GOGCoach.ring(ctx, o.x, o.y, 32, t);
-          GOGCoach.tag(ctx, clamp(o.x, 90, W - 90), Math.max(110, o.y - 52), 'Touch the sun! ☀️');
-        }
-      } else {
-        const cur = windCurrents.find(c => c.x + c.length > player.x + 40);
-        if(cur){
-          const px = clamp(Math.max(cur.x + 60, player.x + 120), 60, W - 60);
-          if(px >= cur.x && px <= cur.x + cur.length){
-            const sample = sampleWindCurrentAt(cur, px);
-            const edgeY = sample.y - sample.thick * 0.5; // top edge of the ribbon
-            GOGCoach.arrow(ctx, px, edgeY - 4, t, 'down');
-            GOGCoach.tag(ctx, px, Math.max(110, edgeY - 98), 'Fly into the wind 🌬️');
-          }
-        }
-      }
-    }
-    ctx.restore();
-  }
 
   const helpBtn = document.getElementById('helpBtn');
   if(helpBtn){
@@ -1495,32 +1389,10 @@
   // bitmap pixels: a fractional x forces a bilinear resample of the whole strip on every
   // frame (the most expensive thing the CPU rasteriser does here), a whole-pixel x is a
   // plain copy. The src rect keeps the same dest->src mapping as a full-tile draw.
-  function drawTiled(cv, offset, y, x0, x1){
-    const w = cv.logicalW, h = cv.logicalH, r = cv.width / w;
-    let x = -(((offset % w) + w) % w);
-    x = Math.round(x * r) / r;
-    for (; x < x1; x += w) {
-      const a = Math.max(x, x0), b = Math.min(x + w, x1);
-      if (b <= a) continue;
-      ctx.drawImage(cv, Math.round((a - x) * r), 0, Math.round((b - a) * r), cv.height, a, y, b - a, h);
-    }
-  }
 
   // The whole backdrop in one palette for the dest columns x0..x1 (multiples of 4 logical
   // px, i.e. whole bitmap pixels at every supported scale).
-  function drawBackdropState(state, x0, x1){
-    const sky = backdrop.sky[state], r = sky.width / W;
-    ctx.drawImage(sky, Math.round(x0 * r), 0, Math.round((x1 - x0) * r), sky.height, x0, 0, x1 - x0, H);
-    drawTiled(backdrop.far[state], scrollX * 0.12, SKY_TOP, x0, x1);
-    drawTiled(backdrop.mid[state], scrollX * 0.3, SKY_TOP, x0, x1);
-    drawTiled(backdrop.ground[state], scrollX * 0.9, GROUND_Y, x0, x1);
-  }
 
-
-  // Faceless Smog puff sprites, quantised by size and cached at the current
-  // resolution so a smoke column is ~25 drawImage calls instead of ~100 gradients.
-  // part: 'both' (single puff), or 'shadow' / 'outline' / 'body' so a whole
-  // column can be drawn layer by layer and merge into one clean silhouette.
 
   function getCloudArt(){
     if (!cloudArt) {
@@ -1534,7 +1406,7 @@
   }
 
   function starPath(x, y, r, g){
-    g = g || ctx;
+    g = g;
     g.beginPath();
     for (let i = 0; i < 10; i++) {
       const a = -Math.PI / 2 + i * Math.PI / 5;
@@ -1545,104 +1417,11 @@
     g.closePath();
   }
 
-  const _edgeX = [];
-  function drawSky(){
-    if (!backdrop) buildBackdrop();
-    const progress = clamp(score / ENERGY_TARGET, 0, 1);
-    const front = progress * W;
-    const t = frameNow * 0.002;
-
-    if (front <= 1) {
-      drawBackdropState('sick', 0, W);
-    } else if (front >= W - 1) {
-      drawBackdropState('well', 0, W);
-    } else {
-      // The clean sky sweeps in from the left as buildings light up. Each palette is only
-      // painted where it can show: 'sick' right of the wavy edge, 'well' (clipped to the
-      // edge) left of it, instead of both full-screen.
-      let n = 0;
-      for (let y = -2; y <= H + 2; y += 10) _edgeX[n++] = front + Math.sin(y * 0.035 + t) * 9;
-
-      drawBackdropState('sick', Math.max(0, Math.floor((front - 12) / 4) * 4), W);
-
-      ctx.save();
-      ctx.beginPath();
-      ctx.moveTo(0, -2);
-      for (let k = 0, y = -2; k < n; k++, y += 10) ctx.lineTo(_edgeX[k], y);
-      ctx.lineTo(0, H + 2);
-      ctx.closePath();
-      ctx.clip();
-      drawBackdropState('well', 0, Math.min(W, Math.ceil((front + 12) / 4) * 4));
-      ctx.restore();
-
-      // "fresh air" edge: a cream stripe with an ink outline
-      ctx.save();
-      ctx.lineJoin = 'round';
-      ctx.beginPath();
-      for (let k = 0, y = -2; k < n; k++, y += 10) {
-        if (k === 0) ctx.moveTo(_edgeX[k], y); else ctx.lineTo(_edgeX[k], y);
-      }
-      ctx.lineWidth = 9; ctx.strokeStyle = COLORS.ink; ctx.stroke();
-      ctx.lineWidth = 4.5; ctx.strokeStyle = '#FFF6D6'; ctx.stroke();
-      ctx.restore();
-    }
-
-    // A flat lilac haze while Sky Health is low (soft and light, never dark).
-    const haze = (100 - clarity) / 100 * 0.3;
-    if (haze > 0.01) {
-      ctx.fillStyle = 'rgba(190,184,214,' + haze + ')';
-      ctx.fillRect(0, 0, W, H);
-    }
-  }
-
-  // Breezy's shadow on the grass: shrinks and fades as she climbs (a depth cue
-  // that also helps little kids see where she is).
-
-  function drawCloud(x,y,scale){
-    ctx.save();
-    ctx.translate(x,y);
-    ctx.beginPath();
-    ctx.arc(0,0, scale*0.5, 0, Math.PI*2);
-    ctx.arc(scale*0.5, -scale*0.15, scale*0.38, 0, Math.PI*2);
-    ctx.arc(-scale*0.45, -scale*0.1, scale*0.34, 0, Math.PI*2);
-    ctx.arc(scale*0.15, scale*0.12, scale*0.4, 0, Math.PI*2);
-    ctx.fill();
-    ctx.restore();
-  }
-
-  // draws one frame of a building sheet stretched to an arbitrary w x h box (not aspect-locked,
-  // since skyline slots vary but building art should fill each slot fully)
-  function drawBuildingSprite(sheet, variant, x, y, w, h){
-    if(!sheet.ready) return false;
-    const fw = sheet.frameW, fh = sheet.frameH;
-    ctx.drawImage(sheet.img, variant*fw, 0, fw, fh, x, y, w, h);
-    return true;
-  }
 
   // The ink strip, every contact shadow and every unlit building never change during a
   // run, so they are painted ONCE into a single strip (at the on-screen resolution) and
   // blitted. Only what animates is drawn per frame: the lit overlay, the bobbing star,
   // the spinning turbine, ivy while it grows, and the solar glow.
-  function bakeSkyline(){
-    const sc = hiDpi.scale;
-    let maxH = 0;
-    for (let i = 0; i < buildings.length; i++) maxH = Math.max(maxH, buildings[i].h);
-    const stripH = Math.min(H, Math.ceil((maxH + 4) / 8) * 8);
-    const y0 = H - stripH;
-    const sheet = sprites.buildingUnlit;
-    const c = GOGEngine.bake(W, stripH, (g) => {
-      g.translate(0, -y0);
-      g.fillStyle = COLORS.ink;
-      g.fillRect(0, H - 6, W, 6);
-      const fw = sheet.frameW, fh = sheet.frameH;
-      for (let i = 0; i < buildings.length; i++) {
-        const b = buildings[i];
-        GOGScenery.contactShadow(g, b.x + b.w / 2 + 6, H - 8, b.w * 0.58, 7, 0.26);
-        g.drawImage(sheet.img, b.variant * fw, 0, fw, fh, b.x, b.y, b.w, b.h);
-      }
-    }, sc);
-    skyline = { c: c, y: y0, w: c.width / sc, h: c.height / sc };
-  }
 
   // Small ink-outlined decorations, painted once (4x) and drawn as sprites.
   let skyArt = null;
@@ -1709,155 +1488,6 @@
   // the solar glow circle centre, in the panel's -0.15 rad tilted frame
   const PANEL_GLOW_DX = 12 * Math.sin(-0.15), PANEL_GLOW_DY = -12 * Math.cos(-0.15);
 
-  function drawSkyline(){
-    const baked = sprites.buildingUnlit.ready;
-    if (baked) {
-      if (!skyline) bakeSkyline();
-      ctx.drawImage(skyline.c, 0, skyline.y, skyline.w, skyline.h);
-    } else {
-      // thin ink strip along the very bottom of the world
-      ctx.fillStyle = COLORS.ink;
-      ctx.fillRect(0, H-6, W, 6);
-    }
-    const art = getSkyArt();
-    const S = hiDpi.scale;
-
-    ctx.save();
-    for (let i = 0; i < buildings.length; i++) {
-      const b = buildings[i];
-      // smooth lit transition
-      b.litProgress = lerp(b.litProgress, b.lit?1:0, 0.08);
-      const lp = b.litProgress;
-
-      if (!baked) {
-        GOGScenery.contactShadow(ctx, b.x + b.w/2 + 6, H - 8, b.w*0.58, 7, 0.26);
-        // fallback while sprite loads: neo-brutalist rect
-        ctx.fillStyle = '#8D87A6';
-        ctx.strokeStyle = COLORS.ink;
-        ctx.lineWidth = 3;
-        roundRectPath(b.x, b.y, b.w, b.h, 4);
-        ctx.fill(); ctx.stroke();
-      }
-
-      if (lp > 0.02) {
-        ctx.globalAlpha = lp;
-        if (!drawBuildingSprite(sprites.buildingLit, b.variant, b.x, b.y, b.w, b.h)) {
-          ctx.fillStyle = '#4aaf5a';
-          roundRectPath(b.x, b.y, b.w, b.h, 4);
-          ctx.fill();
-        }
-
-        // a bobbing ink-outlined gold star says "this one is lit!"
-        const bob = Math.sin(frameNow * 0.004 + b.x) * 3;
-        const st = art.star;
-        ctx.drawImage(st, b.x + b.w * 0.5 + st.ox, b.y - 22 + bob + st.oy, st.gw, st.gh);
-        ctx.globalAlpha = 1;
-
-        // small spinning wind turbine on lit rooftops
-        const tx = b.x + b.w * 0.2, ty = b.y;
-        const tw = art.tower;
-        ctx.drawImage(tw, tx + tw.ox, ty + tw.oy, tw.gw, tw.gh);
-        const spin = frameNow * 0.003 * lp + b.x;
-        const cs = Math.cos(spin) * S, sn = Math.sin(spin) * S;
-        ctx.setTransform(cs, sn, -sn, cs, S * tx, S * (ty - 24));
-        ctx.drawImage(art.rotor, art.rotor.ox, art.rotor.oy, art.rotor.gw, art.rotor.gh);
-        ctx.setTransform(S, 0, 0, S, 0, 0);
-
-        // climbing ivy leaves on the side of lit buildings (they grow while lighting up)
-        if (lp > 0.985) {
-          const lf = art.leaf;
-          for (let leaf = 0; leaf < 3; leaf++) {
-            const ly = b.y + b.h * (0.28 + leaf * 0.2);
-            const lx = b.x + (leaf % 2 === 0 ? 4 : b.w - 4);
-            ctx.drawImage(lf, lx + lf.ox, ly + lf.oy, lf.gw, lf.gh);
-          }
-        } else {
-          ctx.fillStyle = COLORS.limeDark;
-          ctx.strokeStyle = COLORS.ink;
-          ctx.lineWidth = 2;
-          for (let leaf = 0; leaf < 3; leaf++) {
-            const ly = b.y + b.h * (0.28 + leaf * 0.2);
-            const lx = b.x + (leaf % 2 === 0 ? 4 : b.w - 4);
-            const r = 5.5 * lp;
-            ctx.beginPath();
-            ctx.arc(lx, ly, r, 0, Math.PI * 2);
-            ctx.fill(); ctx.stroke();
-          }
-        }
-      }
-
-      // solar panels on the roof of designated buildings
-      if (b.hasSolar) {
-        const cx = b.x + b.w / 2;
-        const pn = art.panel;
-        ctx.drawImage(pn, cx + pn.ox, b.y + pn.oy, pn.gw, pn.gh);
-        if (b.solarGlowTimer > 0) {
-          const glowAlpha = clamp(b.solarGlowTimer / 30, 0, 1);
-          ctx.fillStyle = 'rgba(255, 230, 100, ' + (glowAlpha * 0.5) + ')';
-          ctx.beginPath();
-          ctx.arc(cx + PANEL_GLOW_DX, b.y + PANEL_GLOW_DY, 28, 0, Math.PI*2);
-          ctx.fill();
-
-          // flat golden beam from the sun down to the panel
-          ctx.fillStyle = 'rgba(255, 224, 100, 0.26)';
-          ctx.beginPath();
-          ctx.moveTo(80 - 16, 80);
-          ctx.lineTo(cx - 22, b.y - 12);
-          ctx.lineTo(cx + 22, b.y - 12);
-          ctx.lineTo(80 + 16, 80);
-          ctx.closePath();
-          ctx.fill();
-        }
-      }
-    }
-    ctx.restore();
-  }
-
-  function mixColor(a,b,t){
-    return [
-      Math.round(lerp(a[0],b[0],t)),
-      Math.round(lerp(a[1],b[1],t)),
-      Math.round(lerp(a[2],b[2],t))
-    ];
-  }
-
-  function roundRectPath(x,y,w,h,r){
-    ctx.beginPath();
-    ctx.moveTo(x+r,y);
-    ctx.arcTo(x+w,y,x+w,y+h,r);
-    ctx.arcTo(x+w,y+h,x,y+h,r);
-    ctx.arcTo(x,y+h,x,y,r);
-    ctx.arcTo(x,y,x+w,y,r);
-    ctx.closePath();
-  }
-
-  function drawUpdrafts(){
-    updrafts.forEach(u=>{
-      ctx.save();
-      ctx.translate(u.x, u.y);
-      // ctx.rotate(u.spin);
-      const displayH = u.radius * 1.6;
-      drawSpriteFrame(sprites.windOrbit, 0, 0, 0, displayH);
-      ctx.restore();
-    });
-  }
-
-  function drawAmbientClouds(){
-    const progress = clamp(score / ENERGY_TARGET, 0, 1);
-    const cleanZoneX = progress * W;
-    const art = getCloudArt();
-    ambientClouds.forEach(c=>{
-      const isDirty = c.x > cleanZoneX;
-      if (isDirty) {
-        // faceless soft-grey Smog cloud
-        const w = c.h * 2.0, h = w * art.smog.logicalH / art.smog.logicalW;
-        ctx.drawImage(art.smog, c.x - w/2, c.y - h/2, w, h);
-      } else if(!drawSpriteFrame(sprites.cloudHappy, c.frame, c.x, c.y, c.h)){
-        const w = c.h * 2.0, h = w * art.white.logicalH / art.white.logicalW;
-        ctx.drawImage(art.white, c.x - w/2, c.y - h/2, w, h);
-      }
-    });
-  }
 
   function spawnForegroundCloud(x){
     foregroundClouds.push({
@@ -1869,35 +1499,6 @@
     });
   }
 
-  function drawForegroundClouds(){
-    if(!foregroundClouds.length) return;
-    ctx.save();
-    ctx.globalAlpha = 0.50; // semi-transparent
-    for(let i=0;i<foregroundClouds.length;i++){
-      const c = foregroundClouds[i];
-      if(!drawSpriteFrame(sprites.cloudHappy, c.frame, c.x, c.y, c.h)){
-        ctx.fillStyle = 'rgba(255,255,255,0.6)';
-        drawCloud(c.x, c.y, c.h*0.9);
-      }
-    }
-    ctx.restore();
-  }
-
-  function drawBirds(){
-    birds.forEach(b=>{
-      const frame = Math.floor(b.flapTimer) % 2;
-      if(!drawSpriteFrame(sprites.birds, frame, b.x, b.y, b.h, true)){
-        // fallback: tiny drawn bird silhouette
-        ctx.save();
-        ctx.translate(b.x, b.y);
-        ctx.fillStyle = COLORS.cobalt;
-        ctx.beginPath();
-        ctx.moveTo(-10,0); ctx.quadraticCurveTo(0,-8,10,0); ctx.quadraticCurveTo(0,4,-10,0);
-        ctx.fill();
-        ctx.restore();
-      }
-    });
-  }
 
   // T058: migratory bird V-formations — a rarer special event, separate
   // from the purely ambient `birds` array. Flying alongside the leader
@@ -1940,26 +1541,6 @@
     GOGUi.setStyle(flockBadge, 'display', alongside ? '' : 'none');
   }
 
-  function drawBirdFlocks(){
-    birdFlocks.forEach(f=>{
-      const frame = Math.floor(f.flapTimer) % 2;
-      f.offsets.forEach(o=>{
-        const bx = f.x + o.dx, by = f.y + o.dy;
-        if(!drawSpriteFrame(sprites.birds, frame, bx, by, 24, true)){
-          ctx.save();
-          ctx.translate(bx, by);
-          ctx.fillStyle = COLORS.cobalt;
-          ctx.beginPath();
-          ctx.moveTo(-10,0); ctx.quadraticCurveTo(0,-8,10,0); ctx.quadraticCurveTo(0,4,-10,0);
-          ctx.fill();
-          ctx.restore();
-        }
-      });
-    });
-  }
-
-  // The clean opening in a smoke column: a lime "doorway" with chevrons showing
-  // which way to fly. Flat shapes + ink, readable without any text.
 
   // A friendly-looking, faceless factory that sits on the grass.
   // Smoke art, baked once. The plume is ~25 soft puffs per column, and each used to build
@@ -2032,162 +1613,6 @@
     return v - Math.floor(v);
   }
 
-  function drawCustomSmoke(s) {
-    const art = getSmokeArt();
-    const chimneyY = GROUND_Y - 56;
-    const span = chimneyY + 40;
-    const tw = frameNow * 0.0025, bt = frameNow * 0.003;
-    const gapHalf = s.gapWidth / 2;
-
-    // 1. The smoke plume rising from the chimneys (from chimneyY to -40): overlapping puffs
-    // that grow and twist; the safe gap is left clean. The puffs are huge, soft and overlap
-    // ~8 deep, so they are drawn with nearest sampling (they are baked bigger than they are
-    // drawn): half the cost of bilinear and indistinguishable on a smooth gradient.
-    ctx.imageSmoothingEnabled = false;
-    for (let y = chimneyY, j = 0; y >= -40; y -= 10, j++) {
-      if (Math.abs(y - s.gapY) < gapHalf) {
-        // a clean air pocket instead of smoke: now and then a little lime spark
-        if (hash01(j + s.wobble * 7.1, drawCount) < 0.1) {
-          const rr = 3 + 4 * hash01(j * 1.7 + 3.1 + s.wobble * 5.3, drawCount * 1.3 + 7);
-          ctx.globalAlpha = 1;
-          ctx.fillStyle = 'rgba(198, 255, 61, 0.3)';
-          ctx.beginPath();
-          ctx.arc(s.x + Math.sin((GROUND_Y - y) * 0.01 + s.wobble) * 10, y, rr, 0, TAU);
-          ctx.fill();
-        }
-        continue;
-      }
-
-      const age = (chimneyY - y) / span; // 0 at chimney, 1 at top
-      const px = s.x + Math.sin(age * Math.PI * 1.8 - tw + s.wobble) * 45 * age;
-      // billowing wave to make the size fluctuate organically
-      const size = s.radius * (1.0 + age * 1.6) + Math.sin(y * 0.03 + bt + s.wobble) * 8;
-      const so = size * 1.3;
-      if (px + so < 0 || px - so > W) continue; // fully off-screen
-
-      ctx.globalAlpha = 1 - age * 0.4;
-      ctx.drawImage(art.outer, px - so, y - so, so * 2, so * 2);
-      ctx.globalAlpha = 1 - age * 0.45;
-      ctx.drawImage(art.core, px - size, y - size, size * 2, size * 2);
-    }
-    ctx.globalAlpha = 1;
-    ctx.imageSmoothingEnabled = true;
-
-    // The green gap boundaries so players can spot the opening
-    const gr = s.gapWidth * 0.7;
-    ctx.drawImage(art.gap, s.x - gr, s.gapY - gr, gr * 2, gr * 2);
-
-    // Dotted guide rings
-    ctx.save();
-    ctx.strokeStyle = 'rgba(198, 255, 61, 0.5)';
-    ctx.lineWidth = 2.5;
-    ctx.setLineDash([4, 6]);
-    ctx.beginPath();
-    ctx.arc(s.x, s.gapY - s.gapWidth / 2, 16, 0, TAU);
-    ctx.arc(s.x, s.gapY + s.gapWidth / 2, 16, 0, TAU);
-    ctx.stroke();
-    ctx.restore();
-
-    // 2. The factory on the ground *on top* of the smoke base (if it's on screen)
-    if (s.x > -100 && s.x < W + 100) {
-      ctx.drawImage(art.factory, s.x - 30, GROUND_Y - 60, 62, 62);
-      ctx.save();
-      ctx.strokeStyle = COLORS.ink;
-      ctx.lineWidth = 4;
-
-      // Glowing factory windows (dirty orange, pulsing)
-      const windowPulse = 0.7 + Math.sin(frameNow * 0.005 + s.wobble) * 0.3;
-      ctx.fillStyle = 'rgba(255, 124, 59, ' + windowPulse + ')';
-      ctx.fillRect(s.x - 16, GROUND_Y - 22, 10, 10);
-      ctx.fillRect(s.x + 6, GROUND_Y - 22, 10, 10);
-      ctx.strokeRect(s.x - 16, GROUND_Y - 22, 10, 10);
-      ctx.strokeRect(s.x + 6, GROUND_Y - 22, 10, 10);
-
-      // Animated smoke puffs right at the chimney tops
-      const puffTime = frameNow * 0.004 + s.wobble;
-      const pRadius = 13 + Math.sin(puffTime) * 3;
-      ctx.fillStyle = 'rgba(45, 48, 54, 0.9)';
-      ctx.beginPath();
-      ctx.arc(s.x - 11, GROUND_Y - 56, pRadius, 0, TAU);
-      ctx.arc(s.x - 11 + Math.sin(puffTime)*4, GROUND_Y - 68, pRadius * 0.8, 0, TAU);
-      ctx.arc(s.x + 11, GROUND_Y - 56, pRadius, 0, TAU);
-      ctx.arc(s.x + 11 - Math.sin(puffTime)*4, GROUND_Y - 68, pRadius * 0.8, 0, TAU);
-      ctx.fill();
-
-      ctx.restore();
-    }
-  }
-  function drawSmokes(){
-    for(let i=0;i<smokes.length;i++) drawCustomSmoke(smokes[i]);
-  }
-
-  // A little pill that says "ride the wind first" (suns are always bright now,
-  // so a dimmed sun is never mistaken for a broken one).
-  // (the pill is painted once and then blitted)
-  let badgeArt = null;
-  function drawWindBadge(x, y){
-    if (!badgeArt) {
-      badgeArt = GOGEngine.bake(44, 30, (g) => {
-        g.translate(22, 15);
-        g.lineJoin = 'round'; g.lineCap = 'round';
-        GOGScenery.roundRect(g, -19, -12, 38, 24, 12);
-        g.fillStyle = '#fff'; g.fill();
-        g.lineWidth = 3; g.strokeStyle = COLORS.ink; g.stroke();
-        g.strokeStyle = '#27B7E8'; g.lineWidth = 3;
-        [-4.5, 4.5].forEach(k => {
-          g.beginPath();
-          g.moveTo(-11, k); g.quadraticCurveTo(-5, k - 6, 1, k); g.quadraticCurveTo(7, k + 6, 12, k);
-          g.stroke();
-        });
-      }, 3);
-    }
-    ctx.drawImage(badgeArt, x - 22, y + Math.sin(frameNow * 0.006) * 2 - 15, 44, 30);
-  }
-
-  function drawOrbs(time){
-    if(!orbs.length) return;
-    const inCurrent = (player.windInfluence || 0) > 0.15;
-    for(let i=0;i<orbs.length;i++){
-      const o = orbs[i];
-      const pulse = 1 + Math.sin(time*0.006 + o.wobble)*0.1;
-      const r = o.radius * 1.35 * pulse;
-      // The painted sun-orbit sprite (always full bright); the vector sun only shows while it loads.
-      if (!drawSpriteFrame(sprites.sunOrbit, 0, o.x, o.y, r * 2.6)) {
-        ctx.save();
-        ctx.translate(o.x, o.y);
-        ctx.fillStyle = 'rgba(17,17,17,0.3)';
-        ctx.beginPath(); ctx.arc(4, 5, r + 2, 0, Math.PI*2); ctx.fill();
-        GOGScenery.sun(ctx, 0, 0, r, { rays: 10, spin: time * 0.0015 });
-        ctx.restore();
-      }
-      if (inCurrent) {
-        ctx.save();
-        ctx.lineWidth = 3.5;
-        ctx.strokeStyle = COLORS.lime;
-        ctx.setLineDash([7, 6]);
-        ctx.lineDashOffset = -time * 0.02;
-        ctx.beginPath(); ctx.arc(o.x, o.y, r * 1.9, 0, Math.PI*2); ctx.stroke();
-        ctx.restore();
-      } else {
-        drawWindBadge(o.x, o.y - r * 1.9 - 12);
-      }
-    }
-  }
-
-  function drawParticles(){
-    const n = particles.length;
-    if(!n) return;
-    ctx.save();
-    for(let i=0;i<n;i++){
-      const p = particles[i];
-      ctx.globalAlpha = clamp(p.life,0,1);
-      ctx.fillStyle = p.color;
-      ctx.beginPath();
-      ctx.arc(p.x,p.y,p.size,0,TAU);
-      ctx.fill();
-    }
-    ctx.restore();
-  }
 
   // Breezy's glow discs, painted once (the radial gradients used to be rebuilt every frame).
   let glowArt = null;
@@ -2211,254 +1636,6 @@
     return glowArt;
   }
 
-  function drawPlayer(){
-    const R = player.radius;
-    const glowing = player.boostTimer > 0 && !smokeOverlapThisFrame;
-    const wi = player.windInfluence || 0;
-    const rot = player.angle + wi * 0.18; // leans forward slightly when surfing the wind current!
-
-    // hard offset shadow disc (its offset turns with Breezy)
-    const cs = Math.cos(rot), sn = Math.sin(rot);
-    ctx.fillStyle = 'rgba(0,0,0,0.18)';
-    ctx.beginPath();
-    ctx.arc(player.x + 5 * cs - 6 * sn, player.y + 5 * sn + 6 * cs, R, 0, TAU);
-    ctx.fill();
-
-    // glow ring when boosted / smog haze when coughing
-    if(glowing || smokeOverlapThisFrame){
-      const gl = glowing ? getGlowArt().boost : getGlowArt().smoke;
-      ctx.drawImage(gl, player.x - gl.gw / 2, player.y - gl.gh / 2, gl.gw, gl.gh);
-    }
-
-    // Breezy sprite: happy pose while boosted, flight loop otherwise.
-    ctx.save();
-    ctx.translate(player.x, player.y);
-
-    // Squash & Stretch based on vertical velocity and wind riding
-    const dy = player.y - player.prevY;
-    const stretch = clamp(Math.abs(dy) * 0.03, 0, 0.12);
-    const scaleX = 1 - stretch + wi * 0.05;
-    const scaleY = 1 + stretch - wi * 0.05;
-    ctx.scale(scaleX, scaleY);
-
-    ctx.rotate(player.angle*0.35 + wi * 0.12);
-
-    const sheet = (player.boostTimer > 0 && !smokeOverlapThisFrame) ? sprites.breezyHappy : sprites.breezyFly;
-
-    if(smokeOverlapThisFrame) {
-      ctx.globalAlpha = 0.55; // ...and Breezy goes grey (a pre-made grayscale copy)
-    }
-
-    const drawn = drawBreezy(sheet, player.animFrame, smokeOverlapThisFrame);
-
-    if(!drawn){
-      // fallback while sprite loads: original neo-brutalist disc
-      ctx.fillStyle = glowing ? COLORS.lime : (smokeOverlapThisFrame ? '#888' : COLORS.cream);
-      ctx.strokeStyle = COLORS.ink;
-      ctx.lineWidth = 4;
-      ctx.beginPath();
-      ctx.arc(0,0, player.radius, 0, Math.PI*2);
-      ctx.fill(); ctx.stroke();
-      ctx.font = '30px Arial';
-      ctx.textAlign='center'; ctx.textBaseline='middle';
-      ctx.fillText(smokeOverlapThisFrame ? '😷' : '🌀', 0, 2);
-    }
-    ctx.restore();
-
-    // NEW: clear "rising / falling" cue — a small colored chevron beside
-    // Breezy, shown only once vertical motion is clearly noticeable so it
-    // doesn't jitter while gliding roughly level.
-    if (Math.abs(dy) > 0.15) {
-      ctx.save();
-      ctx.translate(player.x + player.radius + 14, player.y);
-      const climbing = dy < 0;
-      ctx.globalAlpha = clamp(Math.abs(dy) * 0.08, 0.35, 1);
-      ctx.font = '900 22px Arial';
-      ctx.textAlign = 'center';
-      ctx.textBaseline = 'middle';
-      ctx.fillStyle = climbing ? COLORS.lime : COLORS.cobalt;
-      ctx.fillText(climbing ? '▲' : '▼', 0, 0);
-      ctx.restore();
-    }
-
-    // Coughing speech bubble above Breezy when she hits smoke
-    if (smokeOverlapThisFrame) {
-      ctx.save();
-      ctx.translate(player.x, player.y - player.radius * 1.75);
-
-      // Bubble box shadow
-      ctx.fillStyle = COLORS.ink;
-      roundRectPath(-32 + 3, -18 + 3, 64, 20, 6);
-      ctx.fill();
-
-      // Bubble box
-      ctx.fillStyle = COLORS.cream;
-      ctx.strokeStyle = COLORS.ink;
-      ctx.lineWidth = 3;
-      roundRectPath(-32, -18, 64, 20, 6);
-      ctx.fill(); ctx.stroke();
-
-      // Little pointer at bottom
-      ctx.beginPath();
-      ctx.moveTo(-6, 2); ctx.lineTo(0, 8); ctx.lineTo(6, 2);
-      ctx.fillStyle = COLORS.cream; ctx.fill();
-      ctx.beginPath();
-      ctx.moveTo(-6, 2); ctx.lineTo(0, 8); ctx.lineTo(6, 2);
-      ctx.strokeStyle = COLORS.ink; ctx.lineWidth = 3;
-      ctx.stroke();
-
-      // Text inside bubble
-      ctx.fillStyle = '#ff3d8a'; // pink/red text
-      ctx.font = "800 11px 'Quicksand', sans-serif";
-      ctx.textAlign = 'center';
-      ctx.textBaseline = 'middle';
-      ctx.fillText("😷 *cough*", 0, -8);
-      ctx.restore();
-    }
-  }
-
-  // The smoke vignette is a smooth radial ramp, so it is painted once at 1/4 size and
-  // stretched over the frame instead of a full-screen gradient every frame.
-  let vignetteArt = null;
-  function drawSmokeVignette(){
-    if(!smokeOverlapThisFrame) return;
-    if(!vignetteArt){
-      vignetteArt = GOGEngine.bake(W, H, (g) => {
-        const vig = g.createRadialGradient(W/2, H/2, W*0.35, W/2, H/2, W*0.7);
-        vig.addColorStop(0, 'rgba(40, 40, 40, 0)');
-        vig.addColorStop(1, 'rgba(15, 15, 15, 0.45)');
-        g.fillStyle = vig;
-        g.fillRect(0, 0, W, H);
-      }, 0.25);
-    }
-    ctx.drawImage(vignetteArt, 0, 0, W, H);
-  }
-
-  // T059: explicit reactive contrast — smoothly gray-tints the whole scene
-  // toward smog contact, or washes it radiant-blue right after a clean
-  // touch (updraft/orb). Layered on top of drawSky()'s existing
-  // progress-based clean/dirty split, not a replacement for it.
-  function drawSkyReactTint(){
-    if(Math.abs(skyReactTint) < 0.02) return;
-    ctx.save();
-    if(skyReactTint < 0){
-      ctx.globalAlpha = -skyReactTint * 0.4;
-      ctx.fillStyle = '#6b6f76';
-    } else {
-      ctx.globalAlpha = skyReactTint * 0.22;
-      ctx.fillStyle = '#bfe4ff';
-    }
-    ctx.fillRect(0,0,W,H);
-    ctx.restore();
-  }
-
-  // T056: full-screen speed lines while leaning into a steep dive.
-  function drawSpeedLines(){
-    if(!player.diving) return;
-    ctx.save();
-    ctx.strokeStyle = 'rgba(255,255,255,0.6)';
-    ctx.lineWidth = 3;
-    ctx.lineCap = 'round';
-    const count = 10;
-    const phase = scrollX * 3;
-    for(let i=0;i<count;i++){
-      const lx = ((i * 97 + phase) % (W + 200)) - 100;
-      const ly = (i * 173) % H;
-      const len = 40 + (i % 3) * 20;
-      ctx.beginPath();
-      ctx.moveTo(lx, ly);
-      ctx.lineTo(lx - len * 0.25, ly - len);
-      ctx.stroke();
-    }
-    ctx.restore();
-  }
-
-  function render(time){
-    frameNow = Date.now();
-    drawCount++;
-    ctx.clearRect(0,0,W,H);
-    
-    // Base Sky & Landscape
-    drawSky();
-    
-    // Layer 1: Very distant clouds
-    drawAmbientClouds();
-    
-    // Layer 2: Birds
-    drawBirds();
-    drawBirdFlocks(); // T058
-    
-    // Victory Rainbow (drawn behind buildings and player)
-    if (gameState === 'winning' && winTimer >= 160) {
-      const alpha = clamp((winTimer - 160) / 65, 0, 1);
-      drawRainbow(alpha);
-    }
-    
-    // Skyline buildings (stands in middle-ground behind wind/player/smoke)
-    drawSkyline();
-    
-    // Layer 3: Wind ribbons, wind turbines, ambient flyers
-    drawWind(time);
-    
-    // Collectible Orbs
-    drawOrbs(time);
-    
-    // Surfing glow behind Breezy
-    drawWindAura();
-    
-    // Layer 4: Breezy (the player)
-    drawPlayer();
-    
-    // Layer 5: Smoke plumes (overlaps Breezy & buildings)
-    drawSmokes();
-    
-    // Particles & Floating texts
-    drawParticles();
-    drawFloatTexts();
-    
-    // Victory Seed of Life (drawn in front of Breezy)
-    if (gameState === 'winning' && winTimer >= 320) {
-      const alpha = clamp((winTimer - 320) / 45, 0, 1);
-      drawSeedOfLife(alpha);
-    }
-    
-    // Layer 6: Foreground clouds (overlaps everything)
-    drawForegroundClouds();
-    
-    // HUD overlays
-    drawSkyReactTint(); // T059
-    drawSpeedLines();   // T056
-    drawSmokeVignette();
-    drawCoachHints();
-    drawWinWipe();
-  }
-
-  function drawWinWipe(){
-    if(gameState !== 'winning' && gameState !== 'win') return;
-    const r = winWipeDone ? winWipeMax : winWipeRadius;
-    ctx.save();
-    ctx.beginPath();
-    ctx.arc(W/2, H/2, r, 0, Math.PI*2);
-    ctx.clip();
-    const grad = ctx.createRadialGradient(W/2, H/2, 0, W/2, H/2, r || 1);
-    grad.addColorStop(0, '#FFD23F');
-    grad.addColorStop(0.55, '#A6C9FF');
-    grad.addColorStop(1, '#2C4BFF');
-    ctx.globalAlpha = 0.85;
-    ctx.fillStyle = grad;
-    ctx.fillRect(0,0,W,H);
-    ctx.restore();
-
-    if(gameState === 'winning'){
-      ctx.save();
-      ctx.beginPath();
-      ctx.arc(W/2, H/2, r, 0, Math.PI*2);
-      ctx.lineWidth = 6;
-      ctx.strokeStyle = '#111';
-      ctx.stroke();
-      ctx.restore();
-    }
-  }
 
   // =================================================================
   // CLEAN WIND CURRENTS  (added gameplay system)
@@ -2661,49 +1838,6 @@
     }
   }
 
-  function drawWindParticles(){
-    const n = windParticles.length;
-    if(!n) return;
-    const S = hiDpi.scale;
-    ctx.save();
-    for(let i=0;i<n;i++){
-      const p = windParticles[i];
-      const a = clamp(p.life,0,1);
-      const c = Math.cos(p.angle) * S, sn = Math.sin(p.angle) * S;
-      ctx.setTransform(c, sn, -sn, c, S * p.x, S * p.y); // translate + rotate without save/restore
-      ctx.globalAlpha = a;
-      if(p.type === 'sparkle'){
-        ctx.fillStyle = p.color;
-        ctx.beginPath();
-        ctx.moveTo(0,-p.size); ctx.lineTo(p.size*0.3,0); ctx.lineTo(0,p.size); ctx.lineTo(-p.size*0.3,0);
-        ctx.closePath(); ctx.fill();
-      } else if(p.type === 'leaf'){
-        ctx.fillStyle = p.color;
-        ctx.beginPath(); ctx.ellipse(0,0,p.size,p.size*0.55,0,0,Math.PI*2); ctx.fill();
-        ctx.strokeStyle = 'rgba(0,0,0,0.15)'; ctx.lineWidth = 0.6;
-        ctx.beginPath(); ctx.moveTo(-p.size,0); ctx.lineTo(p.size,0); ctx.stroke();
-      } else if(p.type === 'feather'){
-        ctx.fillStyle = p.color;
-        ctx.beginPath();
-        ctx.moveTo(0,-p.size);
-        ctx.quadraticCurveTo(p.size*0.6,0,0,p.size);
-        ctx.quadraticCurveTo(-p.size*0.6,0,0,-p.size);
-        ctx.fill();
-      } else if(p.type === 'dust'){
-        ctx.globalAlpha = a * 0.55;
-        ctx.fillStyle = p.color;
-        ctx.beginPath(); ctx.arc(0,0,p.size*1.4,0,Math.PI*2); ctx.fill();
-      } else { // cloudlet
-        ctx.fillStyle = 'rgba(255,255,255,0.6)';
-        ctx.beginPath();
-        ctx.arc(-p.size*0.5,0,p.size*0.6,0,Math.PI*2);
-        ctx.arc(p.size*0.5,0,p.size*0.6,0,Math.PI*2);
-        ctx.arc(0,-p.size*0.3,p.size*0.7,0,Math.PI*2);
-        ctx.fill();
-      }
-    }
-    ctx.restore();
-  }
 
   // -----------------------------------------------------------------
   // WindCurrent — one flowing "air river". Its spine is sampled into
@@ -2777,8 +1911,8 @@
       const bend = Math.sin(u*Math.PI) * cur.bendAmount * Math.sin(windTime*0.35 + cur.bendPhase);
       const targetY = cur.baseY + wave + drift + bend;
       
-      // Bends down towards the turbine hub on the right side
-      const blend = Math.pow(u, 3.0); // Bends more near the right end
+      // Leans down a little towards the turbine hub on the right side
+      const blend = 0.5 * Math.pow(u, 4.0); // leans toward the turbine hub near the right end
       const y = lerp(targetY, hubY, blend);
       
       // Tapers at both ends: thin at the tail (left) and thin at the hub (right)
@@ -2996,271 +2130,19 @@
     }
   }
 
-  function drawAmbientFlyers(){
-    ambientFlyers.forEach(f=>{
-      ctx.save();
-      ctx.translate(f.x,f.y);
-      if(f.kind === 'butterfly'){
-        const wing = Math.sin(f.flap)*0.6+0.6;
-        ctx.fillStyle = f.hue>0.5 ? '#FF9F6B' : '#8DD9FF';
-        ctx.strokeStyle = COLORS.ink; ctx.lineWidth = 1;
-        ctx.save(); ctx.scale(wing,1);
-        ctx.beginPath(); ctx.ellipse(-4,0,4,6,0,0,Math.PI*2); ctx.fill(); ctx.stroke();
-        ctx.restore();
-        ctx.save(); ctx.scale(wing,1);
-        ctx.beginPath(); ctx.ellipse(4,0,4,6,0,0,Math.PI*2); ctx.fill(); ctx.stroke();
-        ctx.restore();
-      } else if(f.kind === 'leaf'){
-        ctx.rotate(f.wobble);
-        ctx.fillStyle = WIND_COLORS.leaf; ctx.strokeStyle = WIND_COLORS.leafDark; ctx.lineWidth = 1;
-        ctx.beginPath(); ctx.ellipse(0,0,7,4,0,0,Math.PI*2); ctx.fill(); ctx.stroke();
-      } else if(f.kind === 'pollen'){
-        ctx.fillStyle = WIND_COLORS.pollen; ctx.globalAlpha = 0.85;
-        ctx.beginPath(); ctx.arc(0,0,2.4,0,Math.PI*2); ctx.fill();
-      } else {
-        ctx.strokeStyle = 'rgba(255,255,255,0.8)'; ctx.lineWidth = 0.8;
-        for(let a=0;a<8;a++){
-          const ang = a*Math.PI/4 + f.wobble;
-          ctx.beginPath(); ctx.moveTo(0,0); ctx.lineTo(Math.cos(ang)*5, Math.sin(ang)*5); ctx.stroke();
-        }
-        ctx.fillStyle = '#FFFFFF';
-        ctx.beginPath(); ctx.arc(0,0,1.5,0,Math.PI*2); ctx.fill();
-      }
-      ctx.restore();
-    });
-  }
 
   // -----------------------------------------------------------------
   // Rendering: renewable-energy source glyph, the ribbon itself
   // (glow + gradient strokes + flow-direction glints), and the aura
   // drawn behind Breezy while she's riding a current.
   // -----------------------------------------------------------------
-  function drawWindSource(cur){
-    const p = cur.points[cur.points.length-1];
-    if(p.x > W+70 || p.x < -70) return;
-    ctx.save();
-    ctx.translate(p.x, p.y);
-    
-    const groundH = GROUND_Y - p.y;
-    
-    if(cur.sourceType === 'turbine'){
-      // Draw tower shadow
-      ctx.fillStyle = 'rgba(0,0,0,0.12)';
-      ctx.beginPath();
-      ctx.moveTo(-5, 0); ctx.lineTo(-2, groundH); ctx.lineTo(10, groundH); ctx.lineTo(3, 0);
-      ctx.fill();
-
-      // Tower
-      ctx.fillStyle = WIND_COLORS.turbineBody;
-      ctx.strokeStyle = COLORS.ink;
-      ctx.lineWidth = 3.5;
-      ctx.beginPath();
-      ctx.moveTo(-6, groundH);
-      ctx.lineTo(-2.5, 0);
-      ctx.lineTo(2.5, 0);
-      ctx.lineTo(6, groundH);
-      ctx.closePath();
-      ctx.fill(); ctx.stroke();
-      
-      // Hub
-      ctx.beginPath(); ctx.arc(0,0,7,0,Math.PI*2);
-      ctx.fillStyle = WIND_COLORS.turbineAccent; ctx.fill(); ctx.stroke();
-      
-      // Blades
-      for(let b=0;b<3;b++){
-        const a = cur.bladeAngle + b*(Math.PI*2/3);
-        ctx.save();
-        ctx.rotate(a);
-        ctx.beginPath();
-        ctx.moveTo(0,0);
-        ctx.quadraticCurveTo(5,-15,2.5,-35);
-        ctx.quadraticCurveTo(-2,-15,0,0);
-        ctx.fillStyle = WIND_COLORS.turbineBody;
-        ctx.strokeStyle = COLORS.ink; ctx.lineWidth = 2;
-        ctx.fill(); ctx.stroke();
-        ctx.restore();
-      }
-    } else { // Solar updraft tower
-      // Draw glass canopy shadow
-      ctx.fillStyle = 'rgba(0,0,0,0.12)';
-      ctx.fillRect(-35, groundH - 4, 70, 4);
-
-      // Solar canopy at the base (glass collector)
-      ctx.fillStyle = 'rgba(46, 94, 232, 0.45)'; // glass blue canopy
-      ctx.strokeStyle = COLORS.ink;
-      ctx.lineWidth = 3;
-      ctx.beginPath();
-      ctx.moveTo(-35, groundH);
-      ctx.quadraticCurveTo(0, groundH - 24, 35, groundH);
-      ctx.closePath();
-      ctx.fill(); ctx.stroke();
-      
-      // Support pillars for canopy
-      ctx.fillStyle = COLORS.ink;
-      ctx.fillRect(-32, groundH - 4, 3, 4);
-      ctx.fillRect(-16, groundH - 6, 3, 6);
-      ctx.fillRect(16, groundH - 6, 3, 6);
-      ctx.fillRect(29, groundH - 4, 3, 4);
-
-      // Tower chimney
-      ctx.fillStyle = WIND_COLORS.turbineBody;
-      ctx.strokeStyle = COLORS.ink;
-      ctx.lineWidth = 3.5;
-      ctx.beginPath();
-      ctx.moveTo(-10, groundH - 12);
-      ctx.lineTo(-6, 0);
-      ctx.lineTo(6, 0);
-      ctx.lineTo(10, groundH - 12);
-      ctx.closePath();
-      ctx.fill(); ctx.stroke();
-      
-      // Solar collector thermal core glow
-      const pulse = 0.7 + Math.sin(windTime*4 + cur.phase)*0.3;
-      ctx.fillStyle = `rgba(255, 170, 50, ${0.55*pulse})`;
-      ctx.beginPath(); ctx.arc(0, groundH - 12, 16, 0, Math.PI*2); ctx.fill();
-      
-      // Top rim
-      ctx.fillStyle = WIND_COLORS.turbineAccent;
-      ctx.fillRect(-8, -4, 16, 6);
-      ctx.strokeRect(-8, -4, 16, 6);
-    }
-    ctx.restore();
-  }
 
   // traces a smooth quadratic path through the ribbon's sample points,
   // offset vertically by `sign*splitOff` (0 for a single unsplit ribbon)
-  function tracePath(pts, sign, widthFactor){
-    const wf = widthFactor || 1;
-    ctx.beginPath();
-    const first = pts[0];
-    ctx.moveTo(first.x, first.y + sign*first.splitOff*wf);
-    for(let i=1;i<pts.length;i++){
-      const p0 = pts[i-1], p1 = pts[i];
-      const y0 = p0.y + sign*p0.splitOff*wf, y1 = p1.y + sign*p1.splitOff*wf;
-      const midX = (p0.x+p1.x)/2, midY = (y0+y1)/2;
-      ctx.quadraticCurveTo(p0.x, y0, midX, midY);
-    }
-    const last = pts[pts.length-1];
-    ctx.lineTo(last.x, last.y + sign*last.splitOff*wf);
-  }
 
   // Ribbon outline helper: the band is filled between a top and bottom edge
   // built from the same sampled spine, smoothed with midpoint quadratics.
-  const _rib = [];
-  function ribbonPath(n, k, dx, dy){
-    ctx.beginPath();
-    ctx.moveTo(_rib[0].x + dx, _rib[0].c - _rib[0].hw * k + dy);
-    for (let i = 1; i < n - 1; i++) {
-      const mx = (_rib[i].x + _rib[i+1].x) / 2 + dx;
-      const my = ((_rib[i].c - _rib[i].hw * k) + (_rib[i+1].c - _rib[i+1].hw * k)) / 2 + dy;
-      ctx.quadraticCurveTo(_rib[i].x + dx, _rib[i].c - _rib[i].hw * k + dy, mx, my);
-    }
-    ctx.lineTo(_rib[n-1].x + dx, _rib[n-1].c - _rib[n-1].hw * k + dy);
-    ctx.lineTo(_rib[n-1].x + dx, _rib[n-1].c + _rib[n-1].hw * k + dy);
-    for (let i = n - 2; i > 0; i--) {
-      const mx = (_rib[i].x + _rib[i-1].x) / 2 + dx;
-      const my = ((_rib[i].c + _rib[i].hw * k) + (_rib[i-1].c + _rib[i-1].hw * k)) / 2 + dy;
-      ctx.quadraticCurveTo(_rib[i].x + dx, _rib[i].c + _rib[i].hw * k + dy, mx, my);
-    }
-    ctx.lineTo(_rib[0].x + dx, _rib[0].c + _rib[0].hw * k + dy);
-    ctx.closePath();
-  }
 
-  function drawWindRibbon(cur){
-    const pts = cur.points;
-    const n = pts.length;
-    if(pts[n-1].x < -80 || pts[0].x > W+80) return;
-    while (_rib.length < n) _rib.push({ x: 0, c: 0, hw: 0 });
-
-    const branches = cur.canSplit ? [-1, 1] : [0];
-    branches.forEach(sign=>{
-      for (let i = 0; i < n; i++) {
-        const p = pts[i];
-        _rib[i].x = p.x;
-        _rib[i].c = p.y + sign * p.splitOff;
-        _rib[i].hw = Math.max(5, p.thick * 0.58);
-      }
-      ctx.save();
-      ctx.lineJoin = 'round'; ctx.lineCap = 'round';
-      // hard offset shadow, then a solid candy-blue band with a light core
-      ribbonPath(n, 1, 5, 6);
-      ctx.fillStyle = 'rgba(17,17,17,0.28)'; ctx.fill();
-      ribbonPath(n, 1, 0, 0);
-      ctx.fillStyle = '#8FE6FF'; ctx.fill();
-      ribbonPath(n, 0.5, 0, 0);
-      ctx.fillStyle = '#D9F8FF'; ctx.fill();
-      ribbonPath(n, 1, 0, 0);
-      ctx.lineWidth = 4; ctx.strokeStyle = COLORS.ink; ctx.stroke();
-
-      // chevrons slide along the band: "fly this way"
-      for (let g = 0; g < 5; g++) {
-        const u = ((windTime * 0.1 + g / 5) % 1 + 1) % 1;
-        const wx = cur.x + u * cur.length;
-        if (wx < -20 || wx > W + 20) continue;
-        const s = sampleWindCurrentAt(cur, wx);
-        const hw = Math.max(5, s.thick * 0.58);
-        if (hw < 14) continue;
-        const cy = s.y + sign * s.splitOff;
-        const sz = hw * 0.5;
-        ctx.beginPath();
-        ctx.moveTo(wx - sz * 0.5, cy - sz); ctx.lineTo(wx + sz * 0.5, cy); ctx.lineTo(wx - sz * 0.5, cy + sz);
-        ctx.lineWidth = 8; ctx.strokeStyle = COLORS.ink; ctx.stroke();
-        ctx.lineWidth = 4; ctx.strokeStyle = '#fff'; ctx.stroke();
-      }
-      ctx.restore();
-    });
-  }
-
-  function drawWind(time){
-    if(!windCurrents.length && !windParticles.length && !ambientFlyers.length) return;
-    windCurrents.forEach(cur=>drawWindSource(cur));
-    windCurrents.forEach(cur=>drawWindRibbon(cur));
-    drawAmbientFlyers();
-    drawWindParticles();
-  }
-
-  // Radial light-blue glow behind Breezy: painted once at full strength and faded with
-  // globalAlpha (the gradient's alpha stops all scale with the wind influence).
-  let auraArt = null;
-  function drawWindAura(){
-    const wi = player.windInfluence || 0;
-    if(wi < 0.03) return;
-
-    if(!auraArt){
-      const R = player.radius, r = R * 2.4;
-      auraArt = GOGEngine.bake(r * 2, r * 2, (g) => {
-        const grad = g.createRadialGradient(r, r, R * 0.4, r, r, r);
-        grad.addColorStop(0, 'rgba(255,255,255,0.6)');
-        grad.addColorStop(0.5, 'rgba(135,206,250,0.4)');
-        grad.addColorStop(1, 'rgba(135,206,255,0)');
-        g.fillStyle = grad;
-        g.beginPath(); g.arc(r, r, r, 0, TAU); g.fill();
-      }, 3);
-    }
-    ctx.save();
-    ctx.globalAlpha = wi;
-    ctx.drawImage(auraArt, player.x - auraArt.gw / 2, player.y - auraArt.gh / 2, auraArt.gw, auraArt.gh);
-
-    // Flowing wind streaks (trails) trailing from Breezy
-    ctx.globalAlpha = 1;
-    ctx.strokeStyle = 'rgba(173, 216, 255, ' + (0.85 * wi) + ')';
-    ctx.lineWidth = 3.5;
-    ctx.lineCap = 'round';
-
-    const time = frameNow * 0.015;
-    for (let i = 0; i < 3; i++) {
-      const dy = -16 + i * 16 + Math.sin(time + i * 2) * 4;
-      const length = 55 + Math.sin(time + i) * 15;
-      ctx.beginPath();
-      ctx.moveTo(player.x - player.radius*0.5, player.y + dy);
-      ctx.quadraticCurveTo(
-        player.x - player.radius*0.5 - length/2, player.y + dy + Math.sin(time + i)*5,
-        player.x - player.radius*0.5 - length, player.y + dy
-      );
-      ctx.stroke();
-    }
-    ctx.restore();
-  }
 
   // WIND HOOK — called once from initGame() to clear/reset the system on every new run
   function resetWindSystem(){
@@ -3281,70 +2163,1217 @@
   }
 
 
-  function drawRainbow(alpha) {
+  // ---------------------------------------------------------------
+  // RENDER (PixiJS)
+  // Retained scene graph. The art is the same as before (painted sky/hills,
+  // the painted building / sun / cloud / bird / Breezy sheets); every painter
+  // still runs through Canvas2D, but only ONCE (per resolution) into a texture.
+  // Per frame Pixi just moves sprites. The wind is new: flowing streak-lines
+  // with curled tips (rope meshes) instead of a solid blue band.
+  // Pixi extras on top (GPU only, ?fx=0 turns them off): a gentle air-wobble
+  // DisplacementFilter on the wind, additive sun halos, clean-air sparkles.
+  // ---------------------------------------------------------------
+  let R = null;
+  let sceneReady = false;
+  const N = {};
+  const INK_N = 0x12120F;
+
+  let FX_FULL = true;
+  (function () {
+    let reduced = false;
+    try { reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches; } catch (e) {}
+    const lowEnd = !!navigator.hardwareConcurrency && navigator.hardwareConcurrency <= 2;
+    FX_FULL = !(reduced || lowEnd);
+    const m = /[?&]fx=([01])/.exec(window.location.search);
+    if (m) FX_FULL = m[1] === '1';
+  })();
+
+  const _col = {};
+  function colNum(s) {
+    let c = _col[s];
+    if (c === undefined) { c = parseInt(s.charAt(0) === '#' ? s.slice(1) : s, 16); _col[s] = c; }
+    return c;
+  }
+
+  // canvas -> { tex, w, h } (logical size from bake's gw/gh or the layer's logicalW/H)
+  function ct(c) {
+    return c._pt || (c._pt = {
+      tex: GOGRender.tex(c),
+      w: c.gw != null ? c.gw : (c.logicalW != null ? c.logicalW : c.width),
+      h: c.gh != null ? c.gh : (c.logicalH != null ? c.logicalH : c.height)
+    });
+  }
+  // a baked texture drawn at its logical size (fx/fy: extra scale, negative = flip)
+  function fit(spr, o, fx, fy) {
+    spr.texture = o.tex;
+    spr.scale.set((o.w / o.tex.orig.width) * (fx || 1), (o.h / o.tex.orig.height) * (fy || 1));
+  }
+  function mkSprite(parent, anchor) {
+    const s = new PIXI.Sprite();
+    s.anchor.set(anchor == null ? 0.5 : anchor);
+    if (parent) parent.addChild(s);
+    return s;
+  }
+  function gfx(parent) {
+    const g = new PIXI.Graphics();
+    if (parent) parent.addChild(g);
+    return g;
+  }
+  function cont(parent) {
+    const c = new PIXI.Container();
+    if (parent) parent.addChild(c);
+    return c;
+  }
+  function pool(parent) {
+    return R.pool(parent, function () { const s = new PIXI.Sprite(); s.anchor.set(0.5); return s; });
+  }
+
+  // ---- sheets (image sprite sheets: frames cut once, sprites reuse them) ----
+  function sheetTex(sheet) {
+    if (!sheet.ready) return null;
+    if (!sheet._tx) {
+      const fw = sheet.frameW, fh = sheet.frameH;
+      sheet._tx = [];
+      for (let i = 0; i < sheet.frameCount; i++) sheet._tx.push(GOGRender.frame(sheet.img, i * fw, 0, fw, fh));
+      sheet._fh = fh;
+    }
+    return sheet._tx;
+  }
+  // one frame centred on (x,y), displayH tall; flip mirrors it (birds face left)
+  function putFrame(spr, sheet, idx, x, y, displayH, flip) {
+    const tx = sheetTex(sheet);
+    if (!tx) { spr.visible = false; return false; }
+    const fc = sheet.frameCount;
+    spr.texture = tx[((idx % fc) + fc) % fc];
+    const k = displayH / sheet._fh;
+    spr.scale.set(flip ? -k : k, k);
+    spr.position.set(x, y);
+    spr.visible = true;
+    return true;
+  }
+
+  // ---------------------------------------------------------------
+  // BAKED ART (Canvas2D -> textures, once)
+  // ---------------------------------------------------------------
+  let miscArt = null;
+  function getMiscArt() {
+    if (miscArt) return miscArt;
+    const A = {};
+    A.disc = ct(GOGEngine.bake(16, 16, (g) => { g.fillStyle = '#fff'; g.beginPath(); g.arc(8, 8, 8, 0, TAU); g.fill(); }, 4));
+    A.soft = ct(GOGEngine.bake(64, 64, (g) => {
+      const gr = g.createRadialGradient(32, 32, 0, 32, 32, 32);
+      gr.addColorStop(0, 'rgba(255,255,255,1)');
+      gr.addColorStop(1, 'rgba(255,255,255,0)');
+      g.fillStyle = gr; g.fillRect(0, 0, 64, 64);
+    }, 2));
+    A.sparkle = ct(GOGEngine.bake(16, 16, (g) => {
+      g.fillStyle = '#fff';
+      g.beginPath();
+      g.moveTo(8, 0); g.lineTo(10, 6); g.lineTo(16, 8); g.lineTo(10, 10);
+      g.lineTo(8, 16); g.lineTo(6, 10); g.lineTo(0, 8); g.lineTo(6, 6);
+      g.closePath(); g.fill();
+    }, 4));
+    A.leaf = ct(GOGEngine.bake(20, 12, (g) => {
+      g.fillStyle = '#fff';
+      g.beginPath(); g.ellipse(10, 6, 10, 5.5, 0, 0, TAU); g.fill();
+      g.strokeStyle = 'rgba(0,0,0,0.22)'; g.lineWidth = 1;
+      g.beginPath(); g.moveTo(1, 6); g.lineTo(19, 6); g.stroke();
+    }, 3));
+    A.feather = ct(GOGEngine.bake(14, 28, (g) => {
+      g.fillStyle = '#fff';
+      g.beginPath();
+      g.moveTo(7, 0); g.quadraticCurveTo(15, 14, 7, 28); g.quadraticCurveTo(-1, 14, 7, 0);
+      g.fill();
+    }, 3));
+    A.cloudlet = ct(GOGEngine.bake(30, 20, (g) => {
+      g.fillStyle = '#fff';
+      g.beginPath();
+      g.arc(9, 12, 7, 0, TAU); g.arc(21, 12, 7, 0, TAU); g.arc(15, 8, 8, 0, TAU);
+      g.fill();
+    }, 3));
+    // wind streaks: a tapered lens with a blue outline and a white core. 'curl' keeps its
+    // thickest part at ~55% of the rope and tapers into the curl at the tip.
+    function streak(kind) {
+      const w = 256, h = 32;
+      return ct(GOGEngine.bake(w, h, (g) => {
+        const prof = kind === 'curl'
+          ? (u) => (u < 0.4 ? Math.pow(Math.sin(Math.PI / 2 * u / 0.4), 0.8) : u < 0.55 ? 1 : 1 - 0.68 * Math.pow((u - 0.55) / 0.45, 1.1))
+          : (u) => (u < 0.4 ? Math.pow(Math.sin(Math.PI / 2 * u / 0.4), 0.8) : u < 0.65 ? 1 : Math.cos(Math.PI / 2 * (u - 0.65) / 0.35));
+        function lens(inset, col) {
+          const steps = 64;
+          g.fillStyle = col;
+          g.beginPath();
+          for (let i = 0; i <= steps; i++) {
+            const u = i / steps, hh = Math.max(0, prof(u) * h / 2 - inset);
+            if (i === 0) g.moveTo(u * w, h / 2 - hh); else g.lineTo(u * w, h / 2 - hh);
+          }
+          for (let i = steps; i >= 0; i--) {
+            const u = i / steps, hh = Math.max(0, prof(u) * h / 2 - inset);
+            g.lineTo(u * w, h / 2 + hh);
+          }
+          g.closePath(); g.fill();
+        }
+        lens(0, '#2F7FD8');
+        lens(3.6, '#FFFFFF');
+      }, 2));
+    }
+    A.streakPlain = streak('plain');
+    A.streakCurl = streak('curl');
+    // "ride the wind first" pill over a sun that Breezy cannot catch yet
+    A.badge = ct(GOGEngine.bake(44, 30, (g) => {
+      g.translate(22, 15);
+      g.lineJoin = 'round'; g.lineCap = 'round';
+      GOGScenery.roundRect(g, -19, -12, 38, 24, 12);
+      g.fillStyle = '#fff'; g.fill();
+      g.lineWidth = 3; g.strokeStyle = COLORS.ink; g.stroke();
+      g.strokeStyle = '#27B7E8'; g.lineWidth = 3;
+      [-4.5, 4.5].forEach(k => {
+        g.beginPath();
+        g.moveTo(-11, k); g.quadraticCurveTo(-5, k - 6, 1, k); g.quadraticCurveTo(7, k + 6, 12, k);
+        g.stroke();
+      });
+    }, 3));
+    const glow = getGlowArt();
+    A.glowBoost = ct(glow.boost);
+    A.glowSmoke = ct(glow.smoke);
+    // light-blue aura behind Breezy while she rides the wind
+    A.aura = (function () {
+      const Rr = player.radius, r = Rr * 2.4;
+      return ct(GOGEngine.bake(r * 2, r * 2, (g) => {
+        const grad = g.createRadialGradient(r, r, Rr * 0.4, r, r, r);
+        grad.addColorStop(0, 'rgba(255,255,255,0.6)');
+        grad.addColorStop(0.5, 'rgba(135,206,250,0.4)');
+        grad.addColorStop(1, 'rgba(135,206,255,0)');
+        g.fillStyle = grad;
+        g.beginPath(); g.arc(r, r, r, 0, TAU); g.fill();
+      }, 3));
+    })();
+    // soft vignette painted at 1/4 size and stretched
+    A.vignette = ct(GOGEngine.bake(W, H, (g) => {
+      const vig = g.createRadialGradient(W / 2, H / 2, W * 0.35, W / 2, H / 2, W * 0.7);
+      vig.addColorStop(0, 'rgba(40, 40, 40, 0)');
+      vig.addColorStop(1, 'rgba(15, 15, 15, 0.45)');
+      g.fillStyle = vig;
+      g.fillRect(0, 0, W, H);
+    }, 0.25));
+    // win: expanding gradient disc, light beam, the Seed of Life
+    A.wipe = ct(GOGEngine.bake(256, 256, (g) => {
+      g.beginPath(); g.arc(128, 128, 128, 0, TAU); g.clip();
+      const grad = g.createRadialGradient(128, 128, 0, 128, 128, 128);
+      grad.addColorStop(0, '#FFD23F');
+      grad.addColorStop(0.55, '#A6C9FF');
+      grad.addColorStop(1, '#2C4BFF');
+      g.fillStyle = grad; g.fillRect(0, 0, 256, 256);
+    }, 1));
+    A.beam = ct(GOGEngine.bake(80, 256, (g) => {
+      const grad = g.createLinearGradient(0, 0, 0, 256);
+      grad.addColorStop(0, 'rgba(198, 255, 61, 0.45)');
+      grad.addColorStop(1, 'rgba(198, 255, 61, 0)');
+      g.fillStyle = grad; g.fillRect(0, 0, 80, 256);
+    }, 1));
+    A.seed = ct(GOGEngine.bake(80, 80, (g) => {
+      g.translate(40, 40);
+      const sg = g.createRadialGradient(0, 0, 2, 0, 0, 36);
+      sg.addColorStop(0, 'rgba(198, 255, 61, 0.9)');
+      sg.addColorStop(1, 'rgba(198, 255, 61, 0)');
+      g.fillStyle = sg; g.beginPath(); g.arc(0, 0, 36, 0, TAU); g.fill();
+      g.fillStyle = COLORS.lime; g.strokeStyle = COLORS.ink; g.lineWidth = 4; g.lineJoin = 'round';
+      g.beginPath(); g.moveTo(0, -18); g.quadraticCurveTo(12, 0, 0, 18); g.quadraticCurveTo(-12, 0, 0, -18);
+      g.closePath(); g.fill(); g.stroke();
+      g.lineWidth = 2.5; g.beginPath(); g.moveTo(0, -10); g.lineTo(0, 10); g.stroke();
+    }, 3));
+    miscArt = A;
+    return A;
+  }
+
+  // ---------------------------------------------------------------
+  // SCENE
+  // ---------------------------------------------------------------
+  function makeBackdropGroup() {
+    const c = cont(null);
+    const g = { c, sky: mkSprite(c, 0), far: [mkSprite(null, 0), mkSprite(null, 0)], mid: [mkSprite(null, 0), mkSprite(null, 0)], ground: [mkSprite(null, 0), mkSprite(null, 0)] };
+    c.addChild(g.far[0], g.far[1], g.mid[0], g.mid[1], g.ground[0], g.ground[1]);
+    return g;
+  }
+
+  function buildScene() {
+    hiDpi.scale = R.scale;
+    const A = getMiscArt();
+    const w = R.world;
+
+    // 1. sky + parallax + clean-air reveal
+    N.skyC = cont(w);
+    N.sick = makeBackdropGroup();
+    N.well = makeBackdropGroup();
+    N.wellMask = gfx(N.skyC);
+    N.skyC.addChildAt(N.sick.c, 0);
+    N.skyC.addChildAt(N.well.c, 1);
+    N.well.c.mask = N.wellMask;
+    N.maskOn = true;
+    N.edgeG = gfx(N.skyC);
+    N.haze = gfx(N.skyC);
+    N.haze.rect(0, 0, W, H).fill(0xBEB8D6);
+    N.haze.alpha = 0;
+    N.bdTex = [];
+
+    // 2. soft clouds + birds + victory rainbow
+    N.cloudP = pool(cont(w));
+    N.birdP = pool(cont(w));
+    N.rainbowG = gfx(w);
+    (function () {
+      const colors = ['#ff3d8a', '#ff8a3d', '#ffc93c', '#c6ff3d', '#2c4bff', '#b6a6ff'];
+      const cx = W / 2, cy = H - 120, rad = Math.min(280, W * 0.36);
+      for (let i = 0; i < colors.length; i++) {
+        const r = rad + i * 9;
+        N.rainbowG.moveTo(cx - r, cy).arc(cx, cy, r, Math.PI, 0, false).stroke({ width: 9, color: colNum(colors[i]), cap: 'round' });
+      }
+      N.rainbowG.visible = false;
+    })();
+
+    // 3. smoke plumes (puffs under the gap marks and the factory) — before the town so it renders behind
+    N.smokeC = cont(w);
+    N.plumeP = pool(cont(N.smokeC));
+    N.gapP = pool(cont(N.smokeC));
+    N.factoryP = pool(cont(N.smokeC));
+    N.smokeG = gfx(N.smokeC);
+
+    // 4. wind turbines / towers stand behind the town
+    N.srcG = gfx(w);
+
+    // 5. the town
+    N.cityC = cont(w);
+    N.bn = [];
+
+    // 6. wind (band + streaks with the air wobble, particles, drifting flyers)
+    N.windFxC = cont(w);
+    N.bandG = gfx(N.windFxC);
+    N.streakC = cont(N.windFxC);
+    N.ropes = {};
+    N.flyG = gfx(w);
+    N.windPartP = pool(cont(w));
+    if (FX_FULL) {
+      const S = 128, mc = document.createElement('canvas');
+      mc.width = mc.height = S;
+      const g = mc.getContext('2d'), img = g.createImageData(S, S);
+      for (let y = 0; y < S; y++) {
+        for (let x = 0; x < S; x++) {
+          const u = (x / S) * TAU, v = (y / S) * TAU, i = (y * S + x) * 4;
+          img.data[i] = 128 + 127 * Math.sin(3 * v + 1.3 * Math.sin(2 * u + 0.6));
+          img.data[i + 1] = 128 + 127 * 0.6 * Math.sin(2 * u + 1.1 * Math.sin(3 * v + 1.1));
+          img.data[i + 2] = 128; img.data[i + 3] = 255;
+        }
+      }
+      g.putImageData(img, 0, 0);
+      const mt = GOGRender.tex(mc);
+      mt.source.style.addressMode = 'repeat';
+      N.dispSprite = new PIXI.Sprite(mt);
+      N.dispSprite.width = N.dispSprite.height = 384;
+      N.dispSprite.renderable = false;
+      w.addChild(N.dispSprite);
+      N.dispFilter = new PIXI.DisplacementFilter({ sprite: N.dispSprite, scale: 5 });
+      N.windFxC.filterArea = new PIXI.Rectangle(0, 0, W, H);
+      N.windFxC.filters = [N.dispFilter];
+    }
+
+    // 7. suns (collectibles)
+    N.haloP = pool(cont(w));
+    N.sunP = pool(cont(w));
+    N.ringG = gfx(w);
+    N.badgeP = pool(cont(w));
+
+    // 8. Breezy
+    N.auraC = cont(w);
+    N.aura = mkSprite(N.auraC);
+    fit(N.aura, A.aura);
+    N.auraG = gfx(N.auraC);
+    N.pShadow = gfx(w);
+    N.pShadow.circle(0, 0, player.radius).fill({ color: 0x000000, alpha: 0.18 });
+    N.pGlow = mkSprite(w);
+    N.pBody = cont(w);
+    N.pSpr = mkSprite(N.pBody, 0);
+    N.grayF = new PIXI.ColorMatrixFilter();
+    N.grayF.saturate(-1, false);
+    N.chev = gfx(w);
+    N.bubble = cont(w);
+    (function () {
+      const g = gfx(N.bubble);
+      g.roundRect(-32 + 3, -18 + 3, 64, 20, 6).fill(INK_N);
+      g.roundRect(-32, -18, 64, 20, 6).fill(0xFDFBF7).stroke({ width: 3, color: INK_N });
+      g.poly([-6, 2, 0, 8, 6, 2]).fill(0xFDFBF7).stroke({ width: 3, color: INK_N, join: 'round' });
+      g.rect(-5, 0, 10, 3).fill(0xFDFBF7);
+      const t = GOGRender.text('\u{1F637} *cough*', { fontSize: 12, fontWeight: '800', fill: '#ff3d8a', fontFamily: 'Quicksand, sans-serif' }, { anchor: 0.5 });
+      t.position.set(0, -8);
+      N.bubble.addChild(t);
+      N.bubble.visible = false;
+    })();
+
+    // 9. sparks + floating words + victory seed + foreground clouds
+    N.partP = pool(cont(w));
+    N.floatP = R.pool(cont(w), function () {
+      return GOGRender.text('', { fontSize: 20, fontWeight: '800', fill: '#ffffff', stroke: { color: '#12120F', width: 4, join: 'round' } }, { anchor: 0.5 });
+    });
+    N.seedC = cont(w);
+    N.beam = mkSprite(N.seedC, 0);
+    fit(N.beam, A.beam);
+    N.beam.position.set(W / 2 - 40, 0);
+    N.beam.height = H;
+    N.seed = mkSprite(N.seedC);
+    fit(N.seed, A.seed);
+    N.seedC.visible = false;
+    N.fgP = pool(cont(w));
+    N.fgP.parent.alpha = 0.5;
+
+    // pixi-only extras: clean-air sparkles along the healed edge
+    N.sparkP = pool(cont(w));
+
+    // 10. fx layer (above the world, never shaken)
+    N.vig = mkSprite(R.fx, 0);
+    fit(N.vig, A.vignette);
+    N.vig.alpha = 0;
+    N.speedG = gfx(R.fx);
+    N.wipe = mkSprite(R.fx);
+    N.wipe.texture = A.wipe.tex;
+    N.wipe.position.set(W / 2, H / 2);
+    N.wipe.alpha = 0.85;
+    N.wipe.visible = false;
+    N.wipeRing = gfx(R.fx);
+    N.wipeRing.visible = false;
+    N.vigA = 0;
+
+    N.overlay = R.overlay2d();
+
+    R.onResize(function () {
+      hiDpi.scale = R.scale;
+      backdrop = null;
+      cloudArt = null;
+      skyline = null;
+    });
+    sceneReady = true;
+  }
+
+  // sky/hills/ground pairs -> sprites (rebuilt when the on-screen resolution changes)
+  function rebuildBackdrop() {
+    buildBackdrop();
+    const old = N.bdTex, fresh = [];
+    function T(c) { const o = ct(c); fresh.push(o.tex); return o; }
+    ['sick', 'well'].forEach(function (st) {
+      const g = N[st];
+      fit(g.sky, T(backdrop.sky[st]));
+      for (let i = 0; i < 2; i++) {
+        fit(g.far[i], T(backdrop.far[st]));
+        fit(g.mid[i], T(backdrop.mid[st]));
+        fit(g.ground[i], T(backdrop.ground[st]));
+        g.far[i].y = g.mid[i].y = SKY_TOP;
+        g.ground[i].y = GROUND_Y;
+      }
+    });
+    N.bdTex = fresh;
+    old.forEach(function (t) { try { t.destroy(true); } catch (e) {} });
+  }
+
+  function placeTiles(pair, offset) {
+    const s = hiDpi.scale;
+    let x = -(((offset % W) + W) % W);
+    x = Math.round(x * s) / s;
+    pair[0].x = x;
+    pair[1].x = x + W;
+  }
+
+  const _edgeX = [];
+  function syncSky() {
+    const progress = clamp(score / ENERGY_TARGET, 0, 1);
+    const front = progress * W;
+    const t = frameNow * 0.002;
+    const sick = N.sick, well = N.well;
+    N.sparkOn = false;
+    if (front <= 1) {
+      sick.c.visible = true; well.c.visible = false; N.edgeG.visible = false;
+    } else if (front >= W - 1) {
+      sick.c.visible = false; well.c.visible = true; N.edgeG.visible = false;
+      if (N.maskOn) { well.c.mask = null; N.maskOn = false; }
+    } else {
+      sick.c.visible = true; well.c.visible = true; N.edgeG.visible = true;
+      if (!N.maskOn) { well.c.mask = N.wellMask; N.maskOn = true; }
+      let n = 0;
+      for (let y = -2; y <= H + 2; y += 10) _edgeX[n++] = front + Math.sin(y * 0.035 + t) * 9;
+      const m = N.wellMask;
+      m.clear();
+      m.moveTo(0, -2);
+      for (let k = 0, y = -2; k < n; k++, y += 10) m.lineTo(_edgeX[k], y);
+      m.lineTo(0, H + 2);
+      m.closePath();
+      m.fill(0xffffff);
+      // "fresh air" edge: a cream stripe with an ink outline
+      const e = N.edgeG;
+      e.clear();
+      for (let pass = 0; pass < 2; pass++) {
+        for (let k = 0, y = -2; k < n; k++, y += 10) {
+          if (k === 0) e.moveTo(_edgeX[k], y); else e.lineTo(_edgeX[k], y);
+        }
+        e.stroke(pass === 0 ? { width: 9, color: INK_N, join: 'round', cap: 'round' } : { width: 4.5, color: 0xFFF6D6, join: 'round', cap: 'round' });
+      }
+      N.sparkOn = true;
+      N.front = front;
+    }
+    placeTiles(sick.far, scrollX * 0.12); placeTiles(sick.mid, scrollX * 0.3); placeTiles(sick.ground, scrollX * 0.9);
+    placeTiles(well.far, scrollX * 0.12); placeTiles(well.mid, scrollX * 0.3); placeTiles(well.ground, scrollX * 0.9);
+    // a flat lilac haze while Sky Health is low (soft and light, never dark)
+    const haze = (100 - clarity) / 100 * 0.3;
+    N.haze.visible = haze > 0.01;
+    N.haze.alpha = haze;
+    // reactive tint: grey on smoke contact, radiant blue after a clean touch
+    if (Math.abs(skyReactTint) < 0.02) R.flash(0xffffff, 0, 'react');
+    else if (skyReactTint < 0) R.flash(0x6b6f76, -skyReactTint * 0.4, 'react');
+    else R.flash(0xbfe4ff, skyReactTint * 0.22, 'react');
+  }
+
+  function syncSparkles() {
+    const P = N.sparkP;
+    P.begin();
+    if (FX_FULL && N.sparkOn) {
+      const A = getMiscArt(), t = frameNow * 0.001;
+      for (let i = 0; i < 12; i++) {
+        const s = P.next();
+        fit(s, A.sparkle);
+        const ph = i * 1.9;
+        s.position.set(N.front + 16 + Math.sin(t * 1.3 + ph) * 12 + (i % 3) * 8,
+          60 + ((i * 53 + frameNow * 0.025 * (1 + (i % 3) * 0.4)) % (GROUND_Y - 80)));
+        s.scale.x = s.scale.y = s.scale.x * (0.35 + 0.3 * Math.abs(Math.sin(t * 2 + ph)));
+        s.blendMode = 'add';
+        s.tint = i % 2 ? 0xFFF6D6 : 0xC6FF3D;
+        s.alpha = 0.25 + 0.4 * Math.abs(Math.sin(t * 2.4 + ph));
+      }
+    }
+    P.end();
+  }
+
+  // ---- ambient life ----
+  function syncClouds() {
+    const progress = clamp(score / ENERGY_TARGET, 0, 1);
+    const cleanZoneX = progress * W;
+    const art = getCloudArt();
+    const sm = ct(art.smog), wh = ct(art.white);
+    const P = N.cloudP;
+    P.begin();
+    for (let i = 0; i < ambientClouds.length; i++) {
+      const c = ambientClouds[i];
+      const s = P.next();
+      if (c.x > cleanZoneX) {
+        // faceless soft-grey Smog cloud
+        const w = c.h * 2.0, h = w * sm.h / sm.w;
+        s.texture = sm.tex;
+        s.scale.set(w / sm.tex.orig.width, h / sm.tex.orig.height);
+        s.position.set(c.x, c.y);
+      } else if (!putFrame(s, sprites.cloudHappy, c.frame, c.x, c.y, c.h)) {
+        const w = c.h * 2.0, h = w * wh.h / wh.w;
+        s.texture = wh.tex;
+        s.scale.set(w / wh.tex.orig.width, h / wh.tex.orig.height);
+        s.position.set(c.x, c.y);
+        s.visible = true;
+      }
+    }
+    P.end();
+  }
+
+  function syncBirds() {
+    const P = N.birdP;
+    P.begin();
+    for (let i = 0; i < birds.length; i++) {
+      const b = birds[i];
+      putFrame(P.next(), sprites.birds, Math.floor(b.flapTimer) % 2, b.x, b.y, b.h, true);
+    }
+    for (let i = 0; i < birdFlocks.length; i++) {
+      const f = birdFlocks[i], frame = Math.floor(f.flapTimer) % 2;
+      for (let k = 0; k < f.offsets.length; k++) {
+        putFrame(P.next(), sprites.birds, frame, f.x + f.offsets[k].dx, f.y + f.offsets[k].dy, 24, true);
+      }
+    }
+    P.end();
+  }
+
+  function syncForegroundClouds() {
+    const P = N.fgP;
+    P.begin();
+    for (let i = 0; i < foregroundClouds.length; i++) {
+      const c = foregroundClouds[i];
+      putFrame(P.next(), sprites.cloudHappy, c.frame, c.x, c.y, c.h);
+    }
+    P.end();
+  }
+
+  // ---------------------------------------------------------------
+  // TOWN — the buildings stand shoulder to shoulder on a little pavement,
+  // with a tree at each end, so the lit-up "city" reads as one place.
+  // ---------------------------------------------------------------
+  // The painted sheets have a lot of empty margin and the body sits at a different spot in each
+  // frame, so the body rectangles (measured once from the art) are what get placed and spaced.
+  const BODY_UNLIT = [{ x: 41, y: 9, w: 99, h: 123 }, { x: 17, y: 0, w: 97, h: 133 }];
+  const BODY_LIT = [{ x: 41, y: 7, w: 98, h: 122 }, { x: 22, y: 20, w: 99, h: 110 }];
+  const LAMP_PAD = 14; // the lit art has street lamps just outside the body
+  const TOWN_STRIP = 16;
+  let townTex = null;
+
+  function rebuildCity() {
+    if (!buildings.length) return false;
+    const uT = sheetTex(sprites.buildingUnlit), lT = sheetTex(sprites.buildingLit);
+    if (!uT || !lT) return false;
+    const art = getSkyArt(), A = getMiscArt();
+    const C = N.cityC;
+    C.removeChildren().forEach(function (ch) { ch.destroy({ children: true }); });
+    N.bn = [];
+    if (townTex) { try { townTex.destroy(true); } catch (e) {} townTex = null; }
+
+    // pavement + contact shadows + end trees, painted once at the on-screen resolution
+    const first = buildings[0], last = buildings[buildings.length - 1];
+    const x0 = Math.max(0, first.x - 34), x1 = Math.min(W, last.x + last.w + 34);
+    const th = TOWN_STRIP + 64, ty = H - th;
+    const base = GOGEngine.bake(x1 - x0, th, (g) => {
+      g.translate(-x0, -ty);
+      GOGScenery.roundTree(g, x0 + 16, H - TOWN_STRIP + 8, 1.15, { ink: true, main: '#5FAE4E', dark: '#4A9440', lite: '#80CE69', trunk: '#8B6B4A' });
+      GOGScenery.roundTree(g, x1 - 16, H - TOWN_STRIP + 8, 1.0, { ink: true, main: '#5FAE4E', dark: '#4A9440', lite: '#80CE69', trunk: '#8B6B4A' });
+      g.fillStyle = '#D8D3E8';
+      g.fillRect(x0, H - TOWN_STRIP, x1 - x0, TOWN_STRIP);
+      g.fillStyle = '#C3BDD9';
+      g.fillRect(x0, H - 5, x1 - x0, 5);
+      g.fillStyle = COLORS.ink;
+      g.fillRect(x0, H - TOWN_STRIP, x1 - x0, 3);
+      for (let i = 0; i < buildings.length; i++) {
+        const b = buildings[i];
+        GOGScenery.contactShadow(g, b.x + b.w / 2 + 6, b.y + b.h + 1, b.w * 0.58, 6, 0.26);
+      }
+    }, hiDpi.scale);
+    townTex = ct(base).tex;
+    const baseSpr = mkSprite(C, 0);
+    fit(baseSpr, ct(base));
+    baseSpr.position.set(x0, ty);
+
+    const fwU = sprites.buildingUnlit.frameW, fwL = sprites.buildingLit.frameW, fhL = sprites.buildingLit.frameH;
+    for (let i = 0; i < buildings.length; i++) {
+      const b = buildings[i], v = b.variant;
+      const root = cont(C);
+      root.position.set(b.x, b.y);
+      const bu = BODY_UNLIT[v], bl = BODY_LIT[v];
+      const node = { root: root };
+
+      node.unlit = mkSprite(root, 0);
+      node.unlit.texture = GOGRender.frame(sprites.buildingUnlit.img, v * fwU + bu.x, bu.y, bu.w, bu.h);
+      node.unlit.width = b.w; node.unlit.height = b.h;
+
+      // the sun beam when a solar roof is charging (static shape, alpha toggled)
+      if (b.hasSolar) {
+        node.beam = gfx(root);
+        const cx = b.w / 2;
+        node.beam.poly([80 - 16 - b.x, 80 - b.y, cx - 22, -12, cx + 22, -12, 80 + 16 - b.x, 80 - b.y]).fill({ color: 0xFFE064, alpha: 0.26 });
+        node.beam.visible = false;
+      }
+
+      node.litC = cont(root);
+      const lx0 = Math.max(0, bl.x - LAMP_PAD), lx1 = Math.min(fwL, bl.x + bl.w + LAMP_PAD);
+      const ly1 = Math.min(fhL, bl.y + bl.h + 3);
+      node.lit = mkSprite(node.litC, 0);
+      node.lit.texture = GOGRender.frame(sprites.buildingLit.img, v * fwL + lx0, bl.y, lx1 - lx0, ly1 - bl.y);
+      const sx = b.w / bl.w, sy = b.h / bl.h;
+      node.lit.scale.set(sx, sy);
+      node.lit.position.set(-(bl.x - lx0) * sx, 0);
+      node.star = mkSprite(node.litC, 0);
+      fit(node.star, ct(art.star));
+      node.litC.visible = false;
+
+      // rooftop turbine (kept clear of the solar panel)
+      const tx = b.w * (b.hasSolar ? 0.86 : 0.2);
+      node.tower = mkSprite(root, 0);
+      fit(node.tower, ct(art.tower));
+      node.tower.position.set(tx + art.tower.ox, art.tower.oy);
+      node.rotor = mkSprite(root);
+      fit(node.rotor, ct(art.rotor));
+      node.rotor.position.set(tx, -24);
+      node.tower.visible = node.rotor.visible = false;
+      node.tx = tx;
+
+      node.leaves = [];
+      for (let k = 0; k < 3; k++) {
+        const lf = mkSprite(root);
+        fit(lf, ct(art.leaf));
+        lf.position.set(k % 2 === 0 ? 4 : b.w - 4, b.h * (0.28 + k * 0.2));
+        lf.visible = false;
+        node.leafK = lf.scale.x;
+        node.leaves.push(lf);
+      }
+
+      if (b.hasSolar) {
+        node.panel = mkSprite(root, 0);
+        fit(node.panel, ct(art.panel));
+        node.panel.position.set(b.w / 2 + art.panel.ox, art.panel.oy);
+        node.glow = mkSprite(root);
+        node.glow.texture = A.soft.tex;
+        node.glow.scale.set(60 / A.soft.tex.orig.width);
+        node.glow.tint = 0xFFE664;
+        node.glow.position.set(b.w / 2 + PANEL_GLOW_DX, PANEL_GLOW_DY);
+        node.glow.visible = false;
+        if (FX_FULL) node.glow.blendMode = 'add';
+      }
+      N.bn.push(node);
+    }
+    skyline = { ok: true };
+    return true;
+  }
+
+  function syncCity() {
+    if (!skyline && !rebuildCity()) return;
+    for (let i = 0; i < buildings.length; i++) {
+      const b = buildings[i], n = N.bn[i];
+      if (!n) continue;
+      b.litProgress = lerp(b.litProgress, b.lit ? 1 : 0, 0.08);
+      const lp = b.litProgress, on = lp > 0.02;
+      n.litC.visible = on;
+      n.tower.visible = n.rotor.visible = on;
+      if (on) {
+        n.litC.alpha = lp;
+        // a bobbing ink-outlined gold star says "this one is lit!"
+        const bob = Math.sin(frameNow * 0.004 + b.x) * 3, st = getSkyArt().star;
+        n.star.position.set(b.w * 0.5 + st.ox, -22 + bob + st.oy);
+        n.rotor.rotation = frameNow * 0.003 * lp + b.x;
+        const grown = lp > 0.985;
+        for (let k = 0; k < 3; k++) { n.leaves[k].visible = true; n.leaves[k].scale.set(n.leafK * (grown ? 1 : Math.max(0.05, lp))); }
+      } else {
+        for (let k = 0; k < 3; k++) n.leaves[k].visible = false;
+      }
+      if (b.hasSolar) {
+        const glowing = b.solarGlowTimer > 0;
+        n.glow.visible = glowing;
+        n.beam.visible = glowing;
+        if (glowing) n.glow.alpha = clamp(b.solarGlowTimer / 30, 0, 1) * 0.85;
+      }
+    }
+  }
+
+  // ---------------------------------------------------------------
+  // WIND — flowing streak-lines with curled tips (like a picture-book breeze)
+  // over a pale "wind lane" that shows where Breezy can ride. Each streak is a
+  // rope mesh whose points are re-laid along the current's spine every frame.
+  // ---------------------------------------------------------------
+  function cr(a, b, c, d, t) {
+    return 0.5 * ((2 * b) + (-a + c) * t + (2 * a - 5 * b + 4 * c - d) * t * t + (-a + 3 * b - 3 * c + d) * t * t * t);
+  }
+  const _sp = { y: 0, hw: 0 };
+  // smooth spine position + half-width at world X (Catmull-Rom through the sampled points)
+  function spineAt(cur, wx, sign) {
+    const pts = cur.points, n = pts.length;
+    let u = (wx - cur.x) / cur.length;
+    u = u < 0 ? 0 : u > 1 ? 1 : u;
+    const f = u * (n - 1);
+    let i = Math.floor(f);
+    if (i >= n - 1) i = n - 2;
+    const t = f - i;
+    const p0 = pts[i > 0 ? i - 1 : 0], p1 = pts[i], p2 = pts[i + 1], p3 = pts[i + 2 < n ? i + 2 : n - 1];
+    _sp.y = cr(p0.y + sign * p0.splitOff, p1.y + sign * p1.splitOff, p2.y + sign * p2.splitOff, p3.y + sign * p3.splitOff, t);
+    _sp.hw = Math.max(5, cr(p0.thick, p1.thick, p2.thick, p3.thick, t) * 0.58);
+  }
+
+  const ROPE_W = [17, 13];
+  function getRope(kind, wcls) {
+    const key = kind + wcls;
+    let p = N.ropes[key];
+    if (!p) p = N.ropes[key] = { items: [], used: 0 };
+    let r = p.items[p.used];
+    if (!r) {
+      const cnt = kind === 'curl' ? 22 : 14, pts = [];
+      for (let i = 0; i < cnt; i++) pts.push(new PIXI.Point(0, 0));
+      const geo = new PIXI.RopeGeometry({ width: ROPE_W[wcls], points: pts, textureScale: 0 });
+      r = new PIXI.Mesh({ geometry: geo, texture: (kind === 'curl' ? getMiscArt().streakCurl : getMiscArt().streakPlain).tex });
+      r.pts = pts;
+      N.streakC.addChild(r);
+      p.items.push(r);
+    }
+    p.used++;
+    r.visible = true;
+    return r;
+  }
+
+  function layStreak(cur, sign, k, L) {
+    const lane = L === 1 ? 0 : (k - (L - 1) / 2) / ((L - 1) / 2);
+    const spd = 0.22 + 0.06 * ((k * 5 + 1) % 4);
+    const len = 0.28 + 0.06 * ((k * 3 + 1) % 3);
+    const cycle = 1 + len + 0.12;
+    const off = ((k * 0.61 + cur.phase * 0.159) % 1 + 1) % 1;
+    const head = (windTime * spd + off * cycle) % cycle;
+    const tail = head - len;
+    const a = tail > 0 ? tail : 0, b = head < 1 ? head : 1;
+    const curl = k % 2 === 0;
+    if (b - a < (curl ? 0.12 : 0.04)) return;
+    const wxA = cur.x + a * cur.length, wxB = cur.x + b * cur.length;
+    if (wxB < -30 || wxA > W + 30) return;
+    const rope = getRope(curl ? 'curl' : 'plain', Math.abs(lane) < 0.5 ? 0 : 1);
+    const pts = rope.pts, nb = 14;
+    for (let i = 0; i < nb; i++) {
+      const u = a + (b - a) * (i / (nb - 1));
+      const wx = cur.x + u * cur.length;
+      spineAt(cur, wx, sign);
+      pts[i].x = wx;
+      pts[i].y = _sp.y + lane * _sp.hw * 0.62 + Math.sin(u * 9 + windTime * 2.2 + k * 1.7) * _sp.hw * 0.1;
+    }
+    if (curl) {
+      let x = pts[nb - 1].x, y = pts[nb - 1].y;
+      const th = Math.atan2(y - pts[nb - 2].y, x - pts[nb - 2].x);
+      const dir = lane <= 0 ? 1 : -1; // curl away from the middle of the wind
+      for (let j = 1; j <= 8; j++) {
+        const phi = th - dir * Math.pow(j / 8, 1.15) * Math.PI * 1.8;
+        x += Math.cos(phi) * 5.2;
+        y += Math.sin(phi) * 5.2;
+        pts[nb - 1 + j].x = x;
+        pts[nb - 1 + j].y = y;
+      }
+    }
+    rope.geometry.update();
+  }
+
+  function syncWindSources() {
+    const g = N.srcG;
+    g.clear();
+    for (let c = 0; c < windCurrents.length; c++) {
+      const cur = windCurrents[c];
+      const p = cur.points[cur.points.length - 1];
+      if (p.x > W + 70 || p.x < -70) continue;
+      const gh = GROUND_Y - p.y, x = p.x, y = p.y;
+      if (cur.sourceType === 'turbine') {
+        g.poly([x - 5, y, x - 2, y + gh, x + 10, y + gh, x + 3, y]).fill({ color: 0x000000, alpha: 0.12 });
+        g.poly([x - 6, y + gh, x - 2.5, y, x + 2.5, y, x + 6, y + gh]).fill(colNum(WIND_COLORS.turbineBody)).stroke({ width: 3.5, color: INK_N, join: 'round' });
+        g.circle(x, y, 7).fill(colNum(WIND_COLORS.turbineAccent)).stroke({ width: 3.5, color: INK_N });
+        for (let b = 0; b < 3; b++) {
+          const a = cur.bladeAngle + b * (Math.PI * 2 / 3), cs = Math.cos(a), sn = Math.sin(a);
+          const rx = (px, py) => x + px * cs - py * sn, ry = (px, py) => y + px * sn + py * cs;
+          g.moveTo(x, y)
+            .quadraticCurveTo(rx(5, -15), ry(5, -15), rx(2.5, -35), ry(2.5, -35))
+            .quadraticCurveTo(rx(-2, -15), ry(-2, -15), x, y)
+            .closePath()
+            .fill(colNum(WIND_COLORS.turbineBody)).stroke({ width: 2, color: INK_N, join: 'round' });
+        }
+      } else { // solar updraft tower
+        g.rect(x - 35, y + gh - 4, 70, 4).fill({ color: 0x000000, alpha: 0.12 });
+        g.moveTo(x - 35, y + gh).quadraticCurveTo(x, y + gh - 24, x + 35, y + gh).closePath()
+          .fill({ color: 0x2E5EE8, alpha: 0.45 }).stroke({ width: 3, color: INK_N, join: 'round' });
+        g.rect(x - 32, y + gh - 4, 3, 4).fill(INK_N);
+        g.rect(x - 16, y + gh - 6, 3, 6).fill(INK_N);
+        g.rect(x + 16, y + gh - 6, 3, 6).fill(INK_N);
+        g.rect(x + 29, y + gh - 4, 3, 4).fill(INK_N);
+        g.poly([x - 10, y + gh - 12, x - 6, y, x + 6, y, x + 10, y + gh - 12]).fill(colNum(WIND_COLORS.turbineBody)).stroke({ width: 3.5, color: INK_N, join: 'round' });
+        const pulse = 0.7 + Math.sin(windTime * 4 + cur.phase) * 0.3;
+        g.circle(x, y + gh - 12, 16).fill({ color: 0xFFAA32, alpha: 0.55 * pulse });
+        g.rect(x - 8, y - 4, 16, 6).fill(colNum(WIND_COLORS.turbineAccent)).stroke({ width: 3, color: INK_N });
+      }
+    }
+  }
+
+  function syncWind() {
+    const band = N.bandG;
+    band.clear();
+    for (const k in N.ropes) N.ropes[k].used = 0;
+    for (let c = 0; c < windCurrents.length; c++) {
+      const cur = windCurrents[c], pts = cur.points, n = pts.length;
+      if (pts[n - 1].x < -80 || pts[0].x > W + 80) continue;
+      const branches = cur.canSplit ? [-1, 1] : [0];
+      for (let bi = 0; bi < branches.length; bi++) {
+        const sign = branches[bi];
+        // the pale wind lane
+        const top = [], bot = [], NS = 20;
+        for (let i = 0; i <= NS; i++) {
+          const wx = cur.x + (i / NS) * cur.length;
+          spineAt(cur, wx, sign);
+          top.push(wx, _sp.y - _sp.hw);
+          bot.push(wx, _sp.y + _sp.hw);
+        }
+        const poly = top.slice();
+        for (let i = NS; i >= 0; i--) poly.push(bot[i * 2], bot[i * 2 + 1]);
+        band.poly(poly).fill({ color: 0xE3F7FF, alpha: 0.5 }).stroke({ width: 3, color: 0xFFFFFF, alpha: 0.85, join: 'round' });
+        // the flowing streaks
+        const L = cur.canSplit ? 3 : (cur.thickness > 72 ? 5 : 4);
+        for (let k = 0; k < L; k++) layStreak(cur, sign, k, L);
+      }
+    }
+    for (const k in N.ropes) {
+      const p = N.ropes[k];
+      for (let i = p.used; i < p.items.length; i++) p.items[i].visible = false;
+    }
+    syncWindSources();
+    if (FX_FULL && N.dispSprite) {
+      N.dispSprite.position.set(-((windTime * 34) % 384), (windTime * 13) % 384);
+      const ds = 4 + (player.windInfluence || 0) * 3;
+      N.dispFilter.scale.set(ds, ds * 0.7);
+    }
+    // butterflies, leaves, pollen and dandelion seeds swept along
+    const g = N.flyG;
+    g.clear();
+    for (let i = 0; i < ambientFlyers.length; i++) {
+      const f = ambientFlyers[i];
+      if (f.kind === 'butterfly') {
+        const wing = Math.sin(f.flap) * 0.6 + 0.6, col = f.hue > 0.5 ? 0xFF9F6B : 0x8DD9FF;
+        g.ellipse(f.x - 4 * wing, f.y, Math.max(0.3, 4 * wing), 6).fill(col).stroke({ width: 1, color: INK_N });
+        g.ellipse(f.x + 4 * wing, f.y, Math.max(0.3, 4 * wing), 6).fill(col).stroke({ width: 1, color: INK_N });
+      } else if (f.kind === 'leaf') {
+        const cs = Math.cos(f.wobble), sn = Math.sin(f.wobble), pl = [];
+        for (let a = 0; a < 10; a++) {
+          const t = a / 10 * TAU, ex = Math.cos(t) * 7, ey = Math.sin(t) * 4;
+          pl.push(f.x + ex * cs - ey * sn, f.y + ex * sn + ey * cs);
+        }
+        g.poly(pl).fill(colNum(WIND_COLORS.leaf)).stroke({ width: 1, color: colNum(WIND_COLORS.leafDark) });
+      } else if (f.kind === 'pollen') {
+        g.circle(f.x, f.y, 2.4).fill({ color: colNum(WIND_COLORS.pollen), alpha: 0.85 });
+      } else {
+        for (let a = 0; a < 8; a++) {
+          const ang = a * Math.PI / 4 + f.wobble;
+          g.moveTo(f.x, f.y).lineTo(f.x + Math.cos(ang) * 5, f.y + Math.sin(ang) * 5);
+        }
+        g.stroke({ width: 0.8, color: 0xFFFFFF, alpha: 0.8 });
+        g.circle(f.x, f.y, 1.5).fill(0xFFFFFF);
+      }
+    }
+    // sparkles, leaves, feathers, dust
+    const P = N.windPartP, A = getMiscArt();
+    P.begin();
+    for (let i = 0; i < windParticles.length; i++) {
+      const p = windParticles[i], s = P.next();
+      const a = clamp(p.life, 0, 1);
+      s.rotation = p.angle;
+      s.position.set(p.x, p.y);
+      s.alpha = a;
+      s.tint = 0xFFFFFF;
+      if (p.type === 'sparkle') { fit(s, A.sparkle, (p.size * 3.4) / 16); s.rotation = 0; }
+      else if (p.type === 'leaf') { fit(s, A.leaf, (p.size * 2) / 20); s.tint = colNum(p.color); }
+      else if (p.type === 'feather') { fit(s, A.feather, (p.size * 2) / 14); s.tint = colNum(p.color); }
+      else if (p.type === 'dust') { fit(s, A.disc, (p.size * 2.8) / 16); s.alpha = a * 0.55; s.tint = 0xCFEAFF; }
+      else { fit(s, A.cloudlet, (p.size * 2) / 20); s.alpha = a * 0.6; }
+    }
+    P.end();
+  }
+
+  // ---------------------------------------------------------------
+  // SUNS, BREEZY, SMOKE, SPARKS
+  // ---------------------------------------------------------------
+  function syncOrbs(time) {
+    const A = getMiscArt();
+    const inCurrent = (player.windInfluence || 0) > 0.15;
+    N.haloP.begin(); N.sunP.begin(); N.badgeP.begin();
+    const rg = N.ringG;
+    rg.clear();
+    for (let i = 0; i < orbs.length; i++) {
+      const o = orbs[i];
+      const pulse = 1 + Math.sin(time * 0.006 + o.wobble) * 0.1;
+      const r = o.radius * 1.35 * pulse;
+      if (FX_FULL) {
+        const h = N.haloP.next();
+        h.texture = A.soft.tex;
+        h.scale.set((r * 5.2) / A.soft.tex.orig.width);
+        h.position.set(o.x, o.y);
+        h.tint = 0xFFE066;
+        h.alpha = 0.55 + 0.2 * Math.sin(time * 0.005 + o.wobble);
+        h.blendMode = 'add';
+      }
+      putFrame(N.sunP.next(), sprites.sunOrbit, 0, o.x, o.y, r * 2.6);
+      if (inCurrent) {
+        // marching dashes round the sun: "you can grab it now"
+        const rad = r * 1.9, off = time * 0.0006 * TAU;
+        for (let d = 0; d < 12; d++) {
+          const a0 = off + d * (TAU / 12);
+          rg.moveTo(o.x + Math.cos(a0) * rad, o.y + Math.sin(a0) * rad).arc(o.x, o.y, rad, a0, a0 + TAU / 12 * 0.55);
+        }
+        rg.stroke({ width: 3.5, color: colNum(COLORS.lime), cap: 'round' });
+      } else {
+        const b = N.badgeP.next();
+        fit(b, A.badge);
+        b.position.set(o.x, o.y - r * 1.9 - 12 + Math.sin(frameNow * 0.006) * 2);
+      }
+    }
+    N.haloP.end(); N.sunP.end(); N.badgeP.end();
+  }
+
+  function syncPlayer() {
+    const A = getMiscArt();
+    const Rr = player.radius;
+    const hit = smokeOverlapThisFrame;
+    const glowing = player.boostTimer > 0 && !hit;
+    const wi = player.windInfluence || 0;
+    const rot = player.angle + wi * 0.18;
+    const cs = Math.cos(rot), sn = Math.sin(rot);
+
+    // surfing aura + soft swooshes trailing behind
+    if (wi >= 0.03) {
+      N.auraC.visible = true;
+      N.aura.alpha = wi;
+      N.aura.position.set(player.x, player.y);
+      const g = N.auraG, tt = frameNow * 0.015;
+      g.clear();
+      for (let pass = 0; pass < 2; pass++) {
+        for (let i = 0; i < 3; i++) {
+          const dy = -16 + i * 16 + Math.sin(tt + i * 2) * 4;
+          const length = 55 + Math.sin(tt + i) * 15;
+          const sx = player.x - Rr * 0.5, sy = player.y + dy;
+          g.moveTo(sx, sy).quadraticCurveTo(sx - length / 2, sy + Math.sin(tt + i) * 5, sx - length, sy);
+        }
+        g.stroke(pass === 0 ? { width: 7, color: 0x2F7FD8, alpha: 0.6 * wi, cap: 'round' } : { width: 3.5, color: 0xFFFFFF, alpha: 0.95 * wi, cap: 'round' });
+      }
+    } else {
+      N.auraC.visible = false;
+    }
+
+    N.pShadow.position.set(player.x + 5 * cs - 6 * sn, player.y + 5 * sn + 6 * cs);
+    if (glowing || hit) {
+      const gl = glowing ? A.glowBoost : A.glowSmoke;
+      N.pGlow.visible = true;
+      fit(N.pGlow, gl);
+      N.pGlow.position.set(player.x, player.y);
+    } else {
+      N.pGlow.visible = false;
+    }
+
+    const sheet = glowing ? sprites.breezyHappy : sprites.breezyFly;
+    if (sheet.ready) {
+      const fc = sheet.frameCount, c = sheet.baked[((player.animFrame % fc) + fc) % fc];
+      fit(N.pSpr, ct(c));
+      N.pSpr.position.set(c.dx, c.dy);
+      N.pBody.visible = true;
+      const dy = player.y - player.prevY;
+      const stretch = clamp(Math.abs(dy) * 0.03, 0, 0.12);
+      N.pBody.position.set(player.x, player.y);
+      N.pBody.scale.set(1 - stretch + wi * 0.05, 1 + stretch - wi * 0.05);
+      N.pBody.rotation = player.angle * 0.35 + wi * 0.12;
+      N.pBody.alpha = hit ? 0.55 : 1; // ...and Breezy goes grey when she coughs
+      N.pBody.filters = hit ? [N.grayF] : null;
+
+      // rising / falling cue
+      const ch = N.chev;
+      ch.clear();
+      if (Math.abs(dy) > 0.15) {
+        const climbing = dy < 0, cx = player.x + Rr + 14, cy = player.y;
+        const pl = climbing ? [cx - 8, cy + 6, cx, cy - 8, cx + 8, cy + 6] : [cx - 8, cy - 6, cx, cy + 8, cx + 8, cy - 6];
+        ch.poly(pl).fill(climbing ? colNum(COLORS.lime) : colNum(COLORS.cobalt)).stroke({ width: 2.5, color: INK_N, join: 'round' });
+        ch.alpha = clamp(Math.abs(dy) * 0.08, 0.45, 1);
+      }
+    } else {
+      N.pBody.visible = false;
+      N.chev.clear();
+    }
+
+    N.bubble.visible = hit;
+    if (hit) N.bubble.position.set(player.x, player.y - Rr * 1.75);
+  }
+
+  function syncSmokes() {
+    const art = getSmokeArt();
+    const oT = ct(art.outer), cT = ct(art.core), gT = ct(art.gap), fT = ct(art.factory);
+    const chimneyY = GROUND_Y - 56, span = chimneyY + 40;
+    const tw = frameNow * 0.0025, bt = frameNow * 0.003;
+    const P = N.plumeP, GP = N.gapP, g = N.smokeG;
+    P.begin(); GP.begin();
+    g.clear();
+    let factories = 0;
+    for (let si = 0; si < smokes.length; si++) {
+      const s = smokes[si], gapHalf = s.gapWidth / 2;
+      // the plume: overlapping puffs that grow and twist; the safe gap stays clean
+      for (let y = chimneyY, j = 0; y >= -40; y -= 10, j++) {
+        if (Math.abs(y - s.gapY) < gapHalf) {
+          // a clean air pocket: now and then a little lime spark
+          if (hash01(j + s.wobble * 7.1, drawCount) < 0.1) {
+            const rr = 3 + 4 * hash01(j * 1.7 + 3.1 + s.wobble * 5.3, drawCount * 1.3 + 7);
+            g.circle(s.x + Math.sin((GROUND_Y - y) * 0.01 + s.wobble) * 10, y, rr).fill({ color: 0xC6FF3D, alpha: 0.3 });
+          }
+          continue;
+        }
+        const age = (chimneyY - y) / span;
+        const px = s.x + Math.sin(age * Math.PI * 1.8 - tw + s.wobble) * 45 * age;
+        const size = s.radius * (1.0 + age * 1.6) + Math.sin(y * 0.03 + bt + s.wobble) * 8;
+        const so = size * 1.3;
+        if (px + so < 0 || px - so > W) continue;
+        const a = P.next();
+        a.texture = oT.tex;
+        a.scale.set((so * 2) / oT.tex.orig.width);
+        a.position.set(px, y);
+        a.alpha = 1 - age * 0.4;
+        const c = P.next();
+        c.texture = cT.tex;
+        c.scale.set((size * 2) / cT.tex.orig.width);
+        c.position.set(px, y);
+        c.alpha = 1 - age * 0.45;
+      }
+      // the green gap: a soft lime glow and dotted rings above and below it
+      const gr = s.gapWidth * 0.7;
+      const gs = GP.next();
+      gs.texture = gT.tex;
+      gs.scale.set((gr * 2) / gT.tex.orig.width);
+      gs.position.set(s.x, s.gapY);
+      gs.alpha = 1;
+      for (let side = -1; side <= 1; side += 2) {
+        const cy = s.gapY + side * s.gapWidth / 2;
+        for (let d = 0; d < 8; d++) {
+          const a0 = d * (TAU / 8);
+          g.moveTo(s.x + Math.cos(a0) * 16, cy + Math.sin(a0) * 16).arc(s.x, cy, 16, a0, a0 + TAU / 8 * 0.4);
+        }
+      }
+      g.stroke({ width: 2.5, color: 0xC6FF3D, alpha: 0.5, cap: 'round' });
+    }
+    P.end(); GP.end();
+    // factory on the grass, on top of the plume base
+    const F = N.factoryP;
+    F.begin();
+    for (let si = 0; si < smokes.length; si++) {
+      const s = smokes[si];
+      if (s.x <= -100 || s.x >= W + 100) continue;
+      const f = F.next();
+      fit(f, fT);
+      f.anchor.set(0);
+      f.position.set(s.x - 30, GROUND_Y - 60);
+      const pulse = 0.7 + Math.sin(frameNow * 0.005 + s.wobble) * 0.3;
+      g.rect(s.x - 16, GROUND_Y - 22, 10, 10).fill({ color: 0xFF7C3B, alpha: pulse }).stroke({ width: 4, color: INK_N });
+      g.rect(s.x + 6, GROUND_Y - 22, 10, 10).fill({ color: 0xFF7C3B, alpha: pulse }).stroke({ width: 4, color: INK_N });
+      const puffTime = frameNow * 0.004 + s.wobble, pr = 13 + Math.sin(puffTime) * 3;
+      g.circle(s.x - 11, GROUND_Y - 56, pr).fill({ color: 0x2D3036, alpha: 0.9 });
+      g.circle(s.x - 11 + Math.sin(puffTime) * 4, GROUND_Y - 68, pr * 0.8).fill({ color: 0x2D3036, alpha: 0.9 });
+      g.circle(s.x + 11, GROUND_Y - 56, pr).fill({ color: 0x2D3036, alpha: 0.9 });
+      g.circle(s.x + 11 - Math.sin(puffTime) * 4, GROUND_Y - 68, pr * 0.8).fill({ color: 0x2D3036, alpha: 0.9 });
+    }
+    F.end();
+  }
+
+  function syncParticles() {
+    const A = getMiscArt();
+    const P = N.partP;
+    P.begin();
+    for (let i = 0; i < particles.length; i++) {
+      const p = particles[i], s = P.next();
+      s.texture = A.disc.tex;
+      s.scale.set((p.size * 2) / A.disc.tex.orig.width);
+      s.position.set(p.x, p.y);
+      s.tint = colNum(p.color);
+      s.alpha = clamp(p.life, 0, 1);
+    }
+    P.end();
+    // floating "+1 ⚡" words
+    const F = N.floatP;
+    F.begin();
+    for (let i = 0; i < floatTexts.length; i++) {
+      const t = floatTexts[i], s = F.next();
+      const p = clamp(t.life / t.maxLife, 0, 1);
+      if (s._txt !== t.text) { s.text = t.text; s._txt = t.text; }
+      if (s._col !== t.color) { s.style.fill = t.color; s._col = t.color; }
+      const bounce = 1 + Math.sin(p * Math.PI) * 0.18;
+      s.position.set(t.x, t.y);
+      s.scale.set(bounce);
+      s.alpha = p;
+    }
+    F.end();
+  }
+
+  function syncFx() {
+    // dive speed lines
+    const sg = N.speedG;
+    sg.clear();
+    if (player.diving) {
+      const phase = scrollX * 3;
+      for (let i = 0; i < 10; i++) {
+        const lx = ((i * 97 + phase) % (W + 200)) - 100, ly = (i * 173) % H, len = 40 + (i % 3) * 20;
+        sg.moveTo(lx, ly).lineTo(lx - len * 0.25, ly - len);
+      }
+      sg.stroke({ width: 3, color: 0xFFFFFF, alpha: 0.6, cap: 'round' });
+    }
+    // smoke vignette eases in and out
+    N.vigA = lerp(N.vigA, smokeOverlapThisFrame ? 1 : 0, 0.18);
+    N.vig.alpha = N.vigA < 0.01 ? 0 : N.vigA;
+    N.vig.visible = N.vigA >= 0.01;
+
+    const winning = gameState === 'winning', won = gameState === 'win';
+    // victory rainbow (behind the town and Breezy)
+    const showRb = winning && winTimer >= 160;
+    N.rainbowG.visible = showRb;
+    if (showRb) N.rainbowG.alpha = clamp((winTimer - 160) / 65, 0, 1) * 0.85;
+    // victory Seed of Life (in front of Breezy)
+    const showSeed = winning && winTimer >= 320;
+    N.seedC.visible = showSeed;
+    if (showSeed) {
+      const al = clamp((winTimer - 320) / 45, 0, 1);
+      N.beam.alpha = al * 0.4;
+      N.seed.alpha = al;
+      N.seed.position.set(W / 2, H / 2 + 25 + Math.sin(frameNow * 0.005) * 8);
+      N.seed.rotation = frameNow * 0.0015;
+    }
+    // expanding win wipe
+    if (winning || won) {
+      const r = winWipeDone ? winWipeMax : winWipeRadius;
+      N.wipe.visible = r > 1;
+      N.wipe.scale.set((r * 2) / N.wipe.texture.orig.width);
+      N.wipeRing.visible = winning && r > 1;
+      if (N.wipeRing.visible) {
+        N.wipeRing.clear();
+        N.wipeRing.circle(W / 2, H / 2, r).stroke({ width: 6, color: 0x111111 });
+      }
+    } else {
+      N.wipe.visible = false;
+      N.wipeRing.visible = false;
+    }
+  }
+
+  // text / hint layer that stays a 2D overlay (the coach helpers draw on a Canvas2D context)
+  function drawCoachHints() {
+    const ov = N.overlay;
+    if (!ov) return;
+    if (!coach.active || gameState !== 'playing') { ov.hide(); return; }
+    const ctx = ov.begin();
+    const t = coach.t, i = coach.index;
     ctx.save();
-    ctx.globalAlpha = alpha * 0.85;
-    const colors = ['#ff3d8a', '#ff8a3d', '#ffc93c', '#c6ff3d', '#2c4bff', '#b6a6ff'];
-    ctx.lineWidth = 9;
-    ctx.lineCap = 'round';
-    
-    // Draw arc from x=80 to x=720, curving up
-    const startX = 80, endX = 720;
-    const centerX = (startX + endX) / 2;
-    const centerY = H - 120;
-    const radius = 280;
-    
-    for (let i = 0; i < colors.length; i++) {
-      ctx.strokeStyle = colors[i];
-      ctx.beginPath();
-      ctx.arc(centerX, centerY, radius + i * 9, Math.PI, 0, false);
-      ctx.stroke();
+    if (i === 0) {
+      const x = player.x + 110;
+      GOGCoach.dragDemo(ctx, { x, y: 400 }, { x, y: 200 }, t, { arc: 0, radius: 30, period: 2.6 });
+      GOGCoach.tag(ctx, x, 150, 'Slide up & down');
+    } else if (i === 1 && coachSmoke) {
+      const s = coachSmoke;
+      const tx = clamp(s.x, 100, W - 100);
+      if (s.x < W - 10) GOGCoach.ring(ctx, s.x, s.gapY, Math.min(60, s.gapWidth * 0.3), t);
+      GOGCoach.tag(ctx, tx, Math.max(110, s.gapY - s.gapWidth / 2 - 22), s.x > W - 30 ? 'Smoke coming →' : 'Fly through the gap!');
+    } else if (i === 2) {
+      if ((player.windInfluence || 0) > 0.15) {
+        let o = null;
+        for (const c of orbs) { if (c.x > player.x - 30 && (!o || c.x < o.x)) o = c; }
+        if (o) {
+          GOGCoach.ring(ctx, o.x, o.y, 32, t);
+          GOGCoach.tag(ctx, clamp(o.x, 90, W - 90), Math.max(110, o.y - 52), 'Touch the sun! ☀️');
+        }
+      } else {
+        const cur = windCurrents.find(c => c.x + c.length > player.x + 40);
+        if (cur) {
+          const px = clamp(Math.max(cur.x + 60, player.x + 120), 60, W - 60);
+          if (px >= cur.x && px <= cur.x + cur.length) {
+            const sample = sampleWindCurrentAt(cur, px);
+            const edgeY = sample.y - sample.thick * 0.5; // top edge of the wind
+            GOGCoach.arrow(ctx, px, edgeY - 4, t, 'down');
+            GOGCoach.tag(ctx, px, Math.max(110, edgeY - 98), 'Fly into the wind 🌬️');
+          }
+        }
+      }
     }
     ctx.restore();
   }
 
-  function drawSeedOfLife(alpha) {
-    ctx.save();
-    
-    // 1. Draw glowing vertical light beam
-    ctx.globalAlpha = alpha * 0.4;
-    const beamGrad = ctx.createLinearGradient(W/2, 0, W/2, H);
-    beamGrad.addColorStop(0, 'rgba(198, 255, 61, 0.45)');
-    beamGrad.addColorStop(1, 'rgba(198, 255, 61, 0)');
-    ctx.fillStyle = beamGrad;
-    ctx.fillRect(W/2 - 40, 0, 80, H);
-    
-    // 2. Draw glowing Seed leaf droplet icon bobbing in the center
-    ctx.globalAlpha = alpha;
-    ctx.translate(W/2, H/2 + 25 + Math.sin(frameNow * 0.005) * 8);
-    ctx.rotate(frameNow * 0.0015);
-    
-    // Outer radial aura
-    const sg = ctx.createRadialGradient(0, 0, 2, 0, 0, 36);
-    sg.addColorStop(0, 'rgba(198, 255, 61, 0.9)');
-    sg.addColorStop(1, 'rgba(198, 255, 61, 0)');
-    ctx.fillStyle = sg;
-    ctx.beginPath(); ctx.arc(0, 0, 36, 0, Math.PI * 2); ctx.fill();
-    
-    // leaf outline + body (neo-brutalist styling)
-    ctx.fillStyle = COLORS.lime;
-    ctx.strokeStyle = COLORS.ink;
-    ctx.lineWidth = 4;
-    ctx.beginPath();
-    ctx.moveTo(0, -18);
-    ctx.quadraticCurveTo(12, 0, 0, 18);
-    ctx.quadraticCurveTo(-12, 0, 0, -18);
-    ctx.closePath();
-    ctx.fill(); ctx.stroke();
-    
-    // Draw leaf vein line
-    ctx.strokeStyle = COLORS.ink;
-    ctx.lineWidth = 2.5;
-    ctx.beginPath();
-    ctx.moveTo(0, -10); ctx.lineTo(0, 10);
-    ctx.stroke();
-    
-    ctx.restore();
+  function syncScene(time) {
+    if (!backdrop) rebuildBackdrop();
+    syncSky();
+    syncSparkles();
+    syncClouds();
+    syncBirds();
+    syncCity();
+    syncWind();
+    syncOrbs(time);
+    syncPlayer();
+    syncSmokes();
+    syncParticles();
+    syncForegroundClouds();
+    syncFx();
+    drawCoachHints();
+  }
+
+  function render(time) {
+    frameNow = Date.now();
+    drawCount++;
+    if (!sceneReady) return;
+    syncScene(time);
+    R.render();
   }
 
   // ---------------------------------------------------------------
@@ -3485,7 +3514,14 @@
   buildBuildings();
   seedAmbientClouds();
   updateHUD();
-  loop.start();
+  // Pixi v8 needs WebGL; GOGRender explains on screen when it is missing and the stage then stays idle.
+  GOGRender.create(canvas, W, H).then(function (r) {
+    R = r;
+    buildScene();
+    render(performance.now());
+    loop.start();
+    showIntro();
+  }, function () {});
   
 })();
 </script>
