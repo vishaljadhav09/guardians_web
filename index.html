@@ -8,7 +8,7 @@
     <link rel="preload" as="font" type="font/woff2" crossorigin href="src/fonts/Baloo2.woff2" />
     <link rel="preload" as="font" type="font/woff2" crossorigin href="src/fonts/Quicksand.woff2" />
     <link rel="preload" as="font" type="font/woff2" crossorigin href="src/fonts/Caveat.woff2" />
-    <link rel="preload" as="image" type="image/webp" href="stages/assets/background/bio_bg.webp" />
+    <link rel="preload" as="image" type="image/webp" href="stages/assets/background/hub_map.webp" />
     <link rel="stylesheet" href="src/styles.css" />
     <style>
       :root {
@@ -45,8 +45,9 @@
         inset: 0;
         z-index: -2;
         pointer-events: none;
-        background: url("./stages/assets/background/bio_bg.webp") center / cover
-          no-repeat;
+        background:
+          radial-gradient(circle at 1.5px 1.5px, rgba(46, 94, 232, 0.16) 1.5px, transparent 2px) 0 0 / 22px 22px,
+          linear-gradient(180deg, #bfe6ff 0%, #e6f6ff 55%, var(--gog-cream, #f5efe0) 100%);
       }
 
       .wrap {
@@ -1623,6 +1624,91 @@
         }
       }
           .reset-btn { min-height: 48px; }
+
+      /* ---------- Toy-style restyle: cream cards, thick ink outlines, hard shadows ---------- */
+      .hud, .guideBar {
+        background: var(--gog-cream, #f5efe0);
+        border: 4px solid var(--gog-ink);
+        box-shadow: 6px 6px 0 var(--gog-ink);
+        color: var(--gog-ink);
+      }
+      .guideBar { border-radius: 20px; }
+      .brand h1 { background: none; color: var(--gog-cobalt, #2e5ee8); -webkit-text-fill-color: currentColor; }
+      .brand small { color: var(--gog-ink); opacity: 0.75; }
+      .chip, .smog-meter {
+        background: var(--gog-white, #fffdf8);
+        border: 3px solid var(--gog-ink);
+        color: var(--gog-ink);
+        box-shadow: 3px 3px 0 var(--gog-ink);
+      }
+      .chip:hover { background: var(--gog-lime, #c9f23d); }
+      .smog-meter .label { color: var(--gog-ink); }
+      .smog-track { background: #d9d2bf; border: 2px solid var(--gog-ink); }
+      .brutal-btn {
+        background: var(--gog-white, #fffdf8);
+        color: var(--gog-ink);
+        border: 3px solid var(--gog-ink);
+        box-shadow: 3px 3px 0 var(--gog-ink);
+      }
+      .brutal-btn:hover { background: var(--gog-lime, #c9f23d); border-color: var(--gog-ink); box-shadow: 3px 3px 0 var(--gog-ink); }
+      .footer-note {
+        color: var(--gog-ink);
+        background: var(--gog-white, #fffdf8);
+        border: 3px solid var(--gog-ink);
+        border-radius: 999px;
+        display: table;
+        margin: 16px auto 0;
+        padding: 4px 16px;
+        font-weight: 700;
+      }
+
+      /* Markers: white disc, thick ink ring, hard shadow; state shown by ring colour */
+      .marker {
+        overflow: visible;
+        background: var(--gog-white, #fffdf8);
+        border: 4px solid var(--gog-ink);
+        box-shadow: 4px 4px 0 var(--gog-ink);
+      }
+      .marker:not(.locked):hover {
+        background: #fff;
+        border-color: var(--gog-ink);
+        box-shadow: 6px 6px 0 var(--gog-ink);
+      }
+      .marker.locked { background: #e7e1d0; }
+      .marker.unlocked-ready {
+        background: #fff;
+        border-color: var(--gog-ink);
+        box-shadow: 0 0 0 5px var(--gog-lime, #c9f23d), 4px 4px 0 5px var(--gog-ink);
+      }
+      .marker.unlocked-ready::before { border: 3px solid var(--gog-ink); inset: -12px; }
+      .marker.unlocked-upcoming {
+        background: #fff;
+        border-color: var(--gog-ink);
+        box-shadow: 0 0 0 5px var(--gog-sun, #facc15), 4px 4px 0 5px var(--gog-ink);
+      }
+      .marker.cleared { box-shadow: 0 0 0 4px var(--gog-lime, #c9f23d), 4px 4px 0 4px var(--gog-ink); }
+      .marker.cleared::after { border: 2px dashed var(--gog-ink); inset: -9px; }
+      .marker.locked::after { background: var(--gog-white, #fffdf8); border: 2px solid var(--gog-ink); width: 24px; height: 24px; }
+      .marker-label {
+        background: var(--gog-white, #fffdf8);
+        color: var(--gog-ink);
+        border: 3px solid var(--gog-ink);
+        border-left-width: 3px;
+        box-shadow: 3px 3px 0 var(--gog-ink);
+      }
+      .icon-btn { background: var(--gog-white, #fffdf8); border: 3px solid var(--gog-ink); color: var(--gog-ink); box-shadow: 3px 3px 0 var(--gog-ink); }
+
+      /* Painted hub map: the picture lives on the map box itself so mapPos % lines up with its clearings */
+      @media not ((orientation: portrait) and (max-width: 768px)) {
+        .map-stage {
+          background: url('./stages/assets/background/hub_map.webp') center / 100% 100% no-repeat;
+          border: 4px solid var(--gog-ink);
+          box-shadow: 6px 6px 0 var(--gog-ink);
+        }
+        .tree-zone { opacity: 0; }
+        .biome-blob { opacity: 0; }
+        .biome-blob.cleared { opacity: 0.3; }
+      }
     </style>
   </head>
   <body>

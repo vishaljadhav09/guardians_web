@@ -15,7 +15,7 @@
       color: "var(--gog-cobalt)",
       icon: "🐬",
       guardianImage: "stages/assets/sprites/stage01/hero.png",
-      mapPos: { x: 18, y: 78 },
+      mapPos: { x: 15, y: 66 },
       fact: "Over 8 million tonnes of plastic enter the ocean every year.",
       playable: true,
       href: "stages/stage01-ocean.html"
@@ -31,7 +31,7 @@
       color: "var(--gog-lime)",
       icon: "🐯",
       guardianImage: "stages/assets/sprites/stage02/hero.png",
-      mapPos: { x: 14, y: 48 },
+      mapPos: { x: 13, y: 46 },
       fact: "One big tree can soak up about 22 kg of CO\u2082 a year.",
       playable: true,
       href: "stages/stage02-forest.html"
@@ -47,7 +47,7 @@
       color: "var(--gog-tangerine)",
       icon: "🐝",
       guardianImage: "stages/assets/sprites/stage03/hero.png",
-      mapPos: { x: 24, y: 20 },
+      mapPos: { x: 25, y: 27 },
       fact: "About 1 in 3 bites of our food depends on pollinators like bees.",
       playable: true,
       href: "stages/stage03-food.html"
@@ -63,7 +63,7 @@
       color: "var(--gog-lime)",
       icon: "🐧",
       guardianImage: "stages/assets/sprites/stage04/penny_idle.png",
-      mapPos: { x: 50, y: 10 },
+      mapPos: { x: 51, y: 17 },
       spriteGrid: [3, 1],
       fact: "As the planet warms, sea ice shrinks \u2014 homes for polar animals shrink too.",
       playable: true,
@@ -81,7 +81,7 @@
       icon: "🌬️",
       guardianImage: "stages/assets/sprites/stage05/happy-breezy.png",
       spriteGrid: [3, 1],
-      mapPos: { x: 78, y: 18 },
+      mapPos: { x: 78, y: 27 },
       fact: "Wind and sun make electricity without polluting the air.",
       playable: true,
       href: "stages/stage05-sky.html"
@@ -98,7 +98,7 @@
       icon: "🐼",
       guardianImage: "stages/assets/sprites/stage02/Giraffe-Spritesheet.png",
       spriteGrid: [2, 3],
-      mapPos: { x: 86, y: 46 },
+      mapPos: { x: 51, y: 85 },
       fact: "A healthy habitat has many different plants and animals living together.",
       playable: false
     },
@@ -114,7 +114,7 @@
       icon: "🦏",
       guardianImage: "stages/assets/sprites/stage02/Deer-Spritesheet.png",
       spriteGrid: [2, 3],
-      mapPos: { x: 80, y: 76 },
+      mapPos: { x: 85, y: 47 },
       fact: "Protected reserves give endangered animals a safe place to live and grow.",
       playable: false
     },
@@ -130,7 +130,7 @@
       icon: "🦧",
       guardianImage: "stages/assets/sprites/stage03/Boar_Run_with_shadow.png",
       spriteGrid: [4, 1],
-      mapPos: { x: 54, y: 88 },
+      mapPos: { x: 83, y: 79 },
       fact: "Choosing forest-friendly products helps keep rainforests standing.",
       playable: false
     },
@@ -146,7 +146,7 @@
       icon: "🦒",
       guardianImage: "stages/assets/sprites/stage02/Giraffe-Spritesheet.png",
       spriteGrid: [2, 3],
-      mapPos: { x: 30, y: 88 },
+      mapPos: { x: 23, y: 84 },
       fact: "Water moves in a cycle \u2014 clouds, rain, rivers, and back to the sky.",
       playable: false
     },
@@ -161,7 +161,7 @@
       color: "var(--gog-pink)",
       icon: "☀️",
       guardianImage: "stages/assets/sprites/stage05/sun-orbit.png",
-      mapPos: { x: 50, y: 50 },
+      mapPos: { x: 50, y: 63 },
       fact: "Everything in nature is connected \u2014 caring for one part helps them all.",
       playable: false,
       finale: true
