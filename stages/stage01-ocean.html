@@ -1224,7 +1224,7 @@
         // NEW: ambient kelp + background fish — set up once, animated procedurally (cheap: no images)
         var kelpStalks = [];
         (function initKelp() {
-          var count = 7;
+          var count = 0; // procedural kelp removed: it clashed with the painted seaweed sheets
           for (var k = 0; k < count; k++) {
             var stalk = {
               baseX: (k + 0.5) * (W / count) + rand(-20, 20),
@@ -1277,28 +1277,30 @@
         var seaweedElements = [];
         function initSeaweed() {
           // Back layer (smaller, faded, deeper background)
-          for (var i = 0; i < 15; i++) {
+          // Tidy, evenly spaced rows (alternating the two plant sheets, near-uniform size)
+          // so the seabed reads as one matching garden instead of random overlapping clumps.
+          var nBack = 9, nFront = 7;
+          for (var i = 0; i < nBack; i++) {
             seaweedElements.push({
-              x: rand(0, W),
+              x: (i + 0.5) * (W / nBack) + rand(-8, 8),
               y: H,
-              type: Math.random() < 0.5 ? 0 : 1,
-              scale: rand(0.08, 0.18),
-              phase: rand(0, Math.PI * 2),
-              speed: rand(0.5, 0.9),
-              opacity: rand(0.45, 0.6),
+              type: i % 2,
+              scale: 0.13 + rand(-0.01, 0.01),
+              phase: i * 0.9,
+              speed: 0.7,
+              opacity: 0.5,
               layer: "back"
             });
           }
-          // Front layer (larger, prominent foreground)
-          for (var i = 0; i < 20; i++) {
+          for (var j = 0; j < nFront; j++) {
             seaweedElements.push({
-              x: rand(0, W),
+              x: (j + 0.5) * (W / nFront) + rand(-10, 10),
               y: H,
-              type: Math.random() < 0.5 ? 0 : 1,
-              scale: rand(0.18, 0.3),
-              phase: rand(0, Math.PI * 2),
-              speed: rand(0.8, 1.3),
-              opacity: rand(0.8, 0.95),
+              type: (j + 1) % 2,
+              scale: 0.22 + rand(-0.015, 0.015),
+              phase: j * 1.3,
+              speed: 1.0,
+              opacity: 0.92,
               layer: "front"
             });
           }
@@ -2960,7 +2962,7 @@
             nodes.dispSprite = new PIXI.Sprite(waterTex);
             nodes.dispSprite.width = nodes.dispSprite.height = 512;
             w.addChild(nodes.dispSprite); // must live in the scene graph (the filter hides it itself)
-            nodes.dispFilter = new PIXI.DisplacementFilter({ sprite: nodes.dispSprite, scale: 10 });
+            nodes.dispFilter = new PIXI.DisplacementFilter({ sprite: nodes.dispSprite, scale: 2 });
 
             var rippleTex = GOGRender.tex(makeRippleMap());
             nodes.rippleSprite = new PIXI.Sprite(rippleTex);
@@ -3210,7 +3212,7 @@
             // liquid refraction field drifts
             nodes.dispSprite.position.set(-((t * 22) % 512), (t * 9) % 512);
             // two caustic webs sliding in different directions interfere into dancing light
-            var ca = 0.045 + 0.015 * Math.sin(t * 0.7);
+            var ca = 0; // caustic web off: it read as busy wave lines
             nodes.caustA.alpha = ca;
             nodes.caustB.alpha = ca * 0.8;
             nodes.caustA.tilePosition.set(t * 14, t * 8);
